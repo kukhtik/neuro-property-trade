@@ -1,220 +1,65 @@
-# Полная переработка UX/UI + подключение ассетов — план (v2)
+# UI overhaul — historical plan (superseded)
 
-**Цель:** завершить фундамент (фаза A 1-5 сделана), подключить готовые SVG-ассеты и провести полную переработку UX/UI: красивые клетки, фишки, кубики, кнопки, понятные панели, наблюдатель, рестарт, правила, локализация.
+**This document predates the approved v2 UI/UX redesign concept and is kept
+only for history.** It still describes the work that was done for Phase A and
+the asset-copy phase (G), but every later phase (what used to be B/C/D/E/F)
+has been replanned and renumbered in line with the v2 concept.
 
-**Архитектура:** UI-слой (`game/ui/`) — «кожа» поверх движка. Ассеты (SVG) подключаются через `load()` с фолбэком на code-built формы. Вся палитра/стили — в `ui/theme.gd` (шов для ассетов). Логика ввода — через `seat_manager.push_intent`; HUD читает `for_spectator`. Движок не трогаем, кроме полей настроек и расширения лога.
+Authoritative roadmap from 2026-09-07 onwards:
 
-**Технологии:** Godot 4.7.2 (gl_compatibility), GDScript, Control-дерево, Tween, SVG-импорт (thorvg). Тесты headless: `godot --headless --path game --script res://tests/run.gd`.
+- **Source of truth:** `docs/superpowers/specs/2026-09-07-ui-ux-redesign-concept-v2.md`
+- **Rolling status / next steps:** `docs/plan.md`, section "Current phase —
+  UI/UX overhaul".
 
-**Ветка:** `ui/overhaul`. Каждая фаза — отдельный коммит, после каждой — прогон 190 тестов + playability-проба.
+The mapping below lets you read the v1 plan without losing context:
 
-**Ассеты:** `C:\Users\kukhtik\Desktop\assets` → скопировать в `game/assets/`. Всё SVG, Godot импортирует напрямую.
+| v1 phase | v2 status / replacement |
+|---|---|
+| A (foundation, A1–A5) | **DONE** — kept as-is, with the v2 layout/adaptivity tweaks landing in P5 |
+| G (SVG assets) | **In progress** — asset copy + import done; wiring into TileView/TokenPanel continues inside P2/P1 |
+| B1 host-observer | Replaced by **P4** (observer is a seat-config, not a driver) |
+| B2 restart + settings | **P0** — settings overlay + restart + game-over flow in one commit |
+| B3 toasts | **P3** (toast/banner stack + anti-spam, fed by EventMessages upgrade) |
+| B4 top timer | **P3** (timer ring in TopBar, honest about SDK seats) |
+| C1 admin host-only | **P0** (is_host gate + no-render on WebGL) |
+| C2 admin clarity | **P4** (per-operation fields, inline results, admin log) |
+| D1 rules button | **P0** (rules modal, F2, dynamic from settings; localized in P5) |
+| D2 more settings | **P0** (the SettingsOverlay exposes the full 5-block config) |
+| D3 parametric board (tile_count, presets) | **Descoped** — not part of the 17-problem fix list; revisit post-v2 if stream format really wants a small board |
+| E logging (`ai_decision`, filters) | **P4** (journal rewrite with filters/export; `ai_decision` event still queued there) |
+| F i18n | **P5** (dict-based `game/i18n/i18n.gd`, instant switch, RU/EN) |
+
+Do NOT schedule new work against the v1 numbering below this line.
 
 ---
 
-## Фаза A — Фундамент (СДЕЛАНО, 1-5)
+## (archived v1 content)
+
+**Фаза A — Фундамент (СДЕЛАНО, 2026-09-06)**
 
 A1 адаптивный лейаут · A2 тултипы · A3 авто-скрытие справки · A4 фишки/цвет/домики · A5 переработка клеток.
-**Статус: завершено.** Не переделывать, кроме интеграции ассетов (фаза G).
-
----
-
-## Фаза G — Подключение ассетов (СЕЙЧАС, ассеты готовы)
-
-### G1. Копирование + структура
-
-**Файлы:** `game/assets/` (новый)
-
-- [ ] **Шаг 1:** Скопировать `C:\Users\kukhtik\Desktop\assets\*` → `game/assets/` (SVG напрямую, Godot импортирует).
-- [ ] **Шаг 2:** Создать `game/assets/README.md` — карта слотов → файлов (см. ниже).
-- [ ] **Шаг 3:** `godot --headless --path game --import .` — убедиться, что SVG импортируются без ошибок.
-
-### G2. Слоты ассетов в theme.gd
-
-**Файлы:** `game/ui/theme.gd`
-
-- [ ] **Шаг 1:** Добавить `AssetLoader` (или статические функции в theme.gd): `load_texture(path)` с фолбэком на `null` (если файла нет — рисуем форму).
-- [ ] **Шаг 2:** Карта слотов:
-  - `token_<name>` → `assets/tokens/<name>.svg` (8 шт: ship, top_hat, dog, cat, race_car, boot, iron, wheelbarrow)
-  - `corner_<name>` → `assets/corner_icons/<name>.svg` (go_arrow, jail, free_parking, go_to_jail)
-  - `type_<name>` → `assets/type_icons/<name>.svg` (tax, chance, community_chest, railroad, utility)
-  - `die_<n>` → `assets/dice/die_<n>.svg` (1-6)
-  - `house`, `hotel` → `assets/houses/<name>.svg`
-  - `board_center` → `assets/board_center.svg`
-  - `button` → `assets/button.svg`
-  - `tile` → `assets/tile.svg`
-- [ ] **Шаг 3:** Проверка: `load_texture("assets/tokens/ship.svg")` возвращает текстуру.
-
-### G3. Фишки из ассетов
-
-**Файлы:** `game/visual/token_panel.gd`
-
-- [ ] **Шаг 1:** Вместо code-built квадрата — `TextureRect` с ассетом фишки (по `seat.token_id` → `assets/tokens/<token_id>.svg`). Фолбэк на цветной круг с инициалом.
-- [ ] **Шаг 2:** Цвет фишки = цвет игрока (подкрасить через modulate или оставить ассет как есть).
-- [ ] **Шаг 3:** Проверка: на доске фишки — реальные спрайты (корабль, шляпа, собака...).
-
-### G4. Клетки из ассетов
-
-**Файлы:** `game/visual/board_view.gd`
-
-- [ ] **Шаг 1:** Фон клетки — `assets/tile.svg` (вместо StyleBoxFlat). Цвет группы/владельца — через modulate/подложку.
-- [ ] **Шаг 2:** Угловые клетки (GO/Jail/Free Parking/Go To Jail) — иконка из `assets/corner_icons/`.
-- [ ] **Шаг 3:** Типовые клетки (tax/chance/community/railroad/utility) — иконка из `assets/type_icons/`.
-- [ ] **Шаг 4:** Домики/отели — `assets/houses/house.svg` / `hotel.svg` (вместо текста "H").
-- [ ] **Шаг 5:** Центр доски — `assets/board_center.svg`.
-- [ ] **Шаг 6:** Проверка: скриншот — клетки с иконками, домики-спрайты, центр с фоном.
-
-### G5. Кнопки из ассетов
-
-**Файлы:** `game/ui/theme.gd`
-
-- [ ] **Шаг 1:** `UiTheme.button()` — фон из `assets/button.svg` (вместо StyleBoxFlat), с фолбэком.
-- [ ] **Шаг 2:** Проверка: кнопки выглядят как ассет.
-
-### G6. Кубики из ассетов
-
-**Файлы:** `game/visual/dice.gd` (новый)
-
-- [ ] **Шаг 1:** Создать `visual/dice.gd` — два `TextureRect` с `assets/dice/die_<n>.svg`, анимация вращения/подпрыгивания при броске, показ результата.
-- [ ] **Шаг 2:** Подписка на событие `roll` → показать кубики, анимировать, показать сумму.
-- [ ] **Шаг 3:** Проверка: при броске видна анимация кубиков с реальными спрайтами.
-
----
-
-## Фаза B — Игровой процесс (UX/UI)
-
-### B1. Хост-наблюдатель
-
-**Файлы:** `game/ui/lobby.gd`, `game/ui/game_view.gd`, `game/seats/seat_config.gd`
-
-- [ ] **Шаг 1:** В `seat_config.gd` добавить драйвер `OBSERVER`: не участвует, только смотрит. `resolve_driver` мапит.
-- [ ] **Шаг 2:** В лобби: у хоста выбор драйвера (LOCAL / OBSERVER). Если OBSERVER — остальные AI.
-- [ ] **Шаг 3:** В `game_view`: если `_human_pid == -1` — панель действий показывает "Режим наблюдателя", кнопки скрыты.
-- [ ] **Шаг 4:** Проверка: лобби → хост=наблюдатель → ИИ ходят, кнопок нет.
-
-### B2. Рестарт + меню настроек из главного окна
-
-**Файлы:** `game/ui/game_view.gd`, `game/ui/top_bar.gd`, `game/main.gd`
-
-- [ ] **Шаг 1:** В `top_bar.gd` — кнопка «⟲ Рестарт» (сигнал `restart_requested`) и «Меню» (сигнал `menu_requested`).
-- [ ] **Шаг 2:** В `main.gd`: «Меню» → вернуться в лобби (пересоздать), «Рестарт» → пересоздать движок с теми же настройками.
-- [ ] **Шаг 3:** Проверка: в игре «Меню» → лобби → изменить → старт заново.
-
-### B3. Уведомления посреди экрана
-
-**Файлы:** `game/ui/game_view.gd`, `game/ui/theme.gd`
-
-- [ ] **Шаг 1:** Добавить `ui/toast.gd` — всплывающее уведомление по центру (текст + авто-скрытие 2с). Подписка на `engine.log.event_appended`.
-- [ ] **Шаг 2:** Маппинг событий → текст (переиспользовать `EventMessages.describe`).
-- [ ] **Шаг 3:** Проверка: при ходе/покупке/ренте — уведомление по центру.
-
-### B4. Таймер сверху
-
-**Файлы:** `game/ui/top_bar.gd`, `game/ui/game_view.gd`
-
-- [ ] **Шаг 1:** В `top_bar.gd` — таймер: оставшиеся секунды текущего решения (из `seat.decision_waiting` и `settings.turn_timer`/`auction_timer`). Если таймер = 0 — не показывать.
-- [ ] **Шаг 2:** Проверка: при ходе человека виден обратный отсчёт.
-
----
-
-## Фаза C — Админ
-
-### C1. Админ только у хоста (webgl без надписи)
-
-**Файлы:** `game/main.gd`, `game/ui/top_bar.gd`, `game/project.godot`
-
-- [ ] **Шаг 1:** Флаг `is_host` (из лаунчера). На webgl `is_host=false` → админ не создаётся, надпись «F12 — админ» скрыта.
-- [ ] **Шаг 2:** В `top_bar.gd` — показывать «F12 — админ» только если `is_host`.
-- [ ] **Шаг 3:** Проверка: локально админ есть; webgl — нет.
-
-### C2. Админ панель — понятность
-
-**Файлы:** `game/admin/admin_panel.gd`
-
-- [ ] **Шаг 1:** Тултипы к каждому полю/кнопке (что делает op, какие параметры).
-- [ ] **Шаг 2:** Подсказка-заголовок: «Выберите операцию, заполните параметры, нажмите Apply».
-- [ ] **Шаг 3:** Проверка: наведение на op показывает описание.
-
----
-
-## Фаза D — Правила и настройки
-
-### D1. Правила отдельной кнопкой, подробно
-
-**Файлы:** `game/ui/modal_host.gd`, `game/ui/game_view.gd`
-
-- [ ] **Шаг 1:** Отдельная кнопка «ПРАВИЛА» в топбаре (рядом с ⚙).
-- [ ] **Шаг 2:** Развернуть `_rules_text()`: полные правила (ход, дубли, тюрьма, покупка, аукцион, аренда, застройка, залог, банкротство, торги, карты), из настроек.
-- [ ] **Шаг 3:** Проверка: кнопка «ПРАВИЛА» открывает подробный текст.
-
-### D2. Больше настроек
-
-**Файлы:** `game/ui/lobby.gd`, `game/core/game_settings.gd`
-
-- [ ] **Шаг 1:** В лобби: стартовый капитал, бонус за GO, штраф тюрьмы, дубли, тройные дубли→тюрьма, равномерная застройка, монополия ×2, залог, торги, агрессия ИИ.
-- [ ] **Шаг 2:** Поля в `game_settings.gd` (если нет).
-- [ ] **Шаг 3:** Проверка: настройки применяются (правила обновляются).
-
-### D3. Глубокие настройки доски (кол-во клеток, названия)
-
-**Файлы:** `game/core/board.gd`, `game/data/board.json`, `game/ui/lobby.gd`
-
-- [ ] **Шаг 1:** (Архитектурное) `Board` параметризуемый: `tile_count` из настроек, пресеты доски.
-- [ ] **Шаг 2:** В лобби — выбор пресета (классическая 40 / компактная 24).
-- [ ] **Шаг 3:** Проверка: выбор пресета меняет доску.
-
----
-
-## Фаза E — Логирование для наблюдателя/тестов
-
-**Файлы:** `game/core/engine.gd`, `game/core/event_log.gd`, `game/ui/game_view.gd`
-
-- [ ] **Шаг 1:** Расширить `EventLog`: `ai_decision` (что выбрал ИИ и почему), `auction_bid`, `trade_proposed/declined/accepted`, `build/sell/mortgage` с деталями.
-- [ ] **Шаг 2:** В `ai_driver.gd` — логировать выбор действия.
-- [ ] **Шаг 3:** В `game_view` — журнал больше строк (30) + фильтр по типу.
-- [ ] **Шаг 4:** Проверка: в режиме наблюдателя видно, что делает каждый ИИ.
-
----
-
-## Фаза F — Локализация
-
-**Файлы:** `game/ui/` (все), `game/core/game_settings.gd`
-
-- [ ] **Шаг 1:** `ui/i18n.gd` — словарь `{key: {ru, en}}` + `tr(key)`.
-- [ ] **Шаг 2:** Заменить все строки в UI на `I18n.tr(...)`.
-- [ ] **Шаг 3:** Язык из `settings.language` (уже есть).
-- [ ] **Шаг 4:** Проверка: выбор English → весь интерфейс на английском.
-
----
-
-## Порядок выполнения (обновлённый)
-
-1. **Фаза G** (ассеты) — СЕЙЧАС, ассеты готовы. Подключить все слоты.
-2. **Фаза B** — игровой процесс (наблюдатель, рестарт, уведомления, таймер).
-3. **Фаза C** — админ (только хост + понятность).
-4. **Фаза D** — правила + настройки + доска.
-5. **Фаза E** — логирование.
-6. **Фаза F** — локализация.
-
-## Параллельность
-
-- **G** (ассеты) — можно параллелить с B/C/D/E (разные файлы: assets/ + visual/ vs ui/).
-- **C2** (admin_panel.gd) — изолирован, параллельно.
-- **D2** (lobby.gd + game_settings.gd) — изолирован от game_view, параллельно.
-- **E** (engine.gd, event_log.gd, ai_driver.gd) — движковая сторона, изолирована.
-- **НЕЛЬЗЯ параллелить** (все трогают game_view.gd / top_bar.gd / main.gd): B, C1, D1, F.
-
-## Проверка после каждой фазы
-
-```bash
-cd ~/projects/neuro-property-trade
-godot --headless --path game --script res://tests/run.gd 2>&1 | grep -E "ran |PASSED|FAILED|SCRIPT ERROR"
-godot --headless --path game res://tools/tony.tscn 2>&1 | grep -E "PASSED|PASS "
-cd game && timeout 40 godot --path . res://tools/ui_smoke.tscn 2>&1 | grep -E "PASS|FAIL|SAVED"
-```
-
-## Риски
-
-- **D3 (доска)** — самое рискованное: движок жёстко завязан на 40 клеток. Делать последним, отдельным коммитом, с полным регрессом.
-- **G (ассеты)** — SVG-импорт в Godot: проверить, что все файлы импортируются без ошибок; фолбэк на формы обязателен.
-- **F (локализация)** — большой объём замен строк; делать после стабилизации UI.
+Коммиты `cca9b11` + `7583980` на `ui/overhaul`.
+
+**Фаза G — Подключение ассетов (в работе)**
+
+- Шаг 0: ассеты скопированы `C:\Users\kukhtik\Desktop\assets` → `game/assets/`, `godot --headless --import .` прогнан (28 `.import` файлов).
+- Карта слотов: `tokens/{ship,top_hat,dog,cat,race_car,boot,iron,wheelbarrow}.svg`, `corner_icons/{go_arrow,jail,free_parking,go_to_jail}.svg`, `type_icons/{tax,chance,community_chest,railroad,utility}.svg`, `dice/die_1..6.svg`, `houses/{house,hotel}.svg`, `board_center.svg`, `button.svg`, `tile.svg`.
+- Интеграция в код — теперь часть фаз P1/P2 v2 (AssetLoader seam в `ui/theme.gd` остаётся).
+
+Всё ниже — историческое, заменено v2-концепцией.
+
+### B1. Хост-наблюдатель → v2 P4 (наблюдатель = матч без LOCAL-места, не новый драйвер)
+### B2. Рестарт + меню → v2 P0 (настройки-оверлей + рестарт + game-over)
+### B3. Уведомления → v2 P3
+### B4. Таймер → v2 P3
+### C1. Админ host-only → v2 P0
+### C2. Админ-понятность → v2 P4
+### D1. Правила → v2 P0
+### D2. Больше настроек → v2 P0 (полный GameSettings в оверлее)
+### D3. Параметризуемая доска → descoped
+### E. Логирование → v2 P4
+### F. Локализация → v2 P5
+
+Проверка всегда: `godot --headless --path game --script res://tests/run.gd`
+(+ grep SCRIPT ERROR), `tools/tony.tscn`, phase-specific probes. Скриншоты —
+только иллюстрация.

@@ -15,272 +15,96 @@ are in `docs/specs/game-concept-spec.md` — authoritative before seat/lobby wor
 |---|---|---|
 | DEV (heavy code / ARCH / REVIEW) | deepseek-v4-flash | smartest of the equal-cost pair; default of this profile |
 | DEV (parallel) | minimax-m2.7 | same usage/cost tier |
-| Executor on a crisply-specified goal (QA/DOCS/aggregation) | gemma4 | cheapest; needs fully-specified goals |
+| Executor on crisply-specified goal (QA/DOCS/aggregation) | gemma4 | cheapest; needs fully-specified goals |
 
 Rule of thumb: CREATE/design/undefined or investigate a discrepancy →
-deepseek-v4-flash; bulk GDScript on a fixed interface → minimax-m2.7;
+deepseek-v4-flash; bulk GDScript on fixed interface → minimax-m2.7;
 execute-a-listed-schema / tests/docs/aggregation → gemma4.
 `delegation.reasoning_effort: high` is set for creative review.
 
-## Phase 0 — Skeleton (target: 2–3 sessions)
+## Completed foundations (Phases 0–5, 2026-09-06)
 
-- [x] Godot 4.7.2 skeleton in `game/` (headless-testable) — done, 2026-09-06
-- [x] Core state model: 40 tiles (board.json + Board), Player, deterministic
-      RNG (Rng), full event log (EventLog) — done
-- [x] Unit tests headless (`godot --headless --path game --script res://tests/run.gd`)
-      — 23 tests green
-- [ ] Phase enum (turn-loop phases) — NOT yet done; first task of Phase 1
-- [x] ASCII renderer (`ui/ascii_board.gd`) + demo (`tools/ascii_demo.gd`)
+All base systems are DONE and merged to `main`:
+- **Phase 0** engine skeleton (40 tiles, board.json, Player, RNG, EventLog,
+  headless test runner, 23 tests).
+- **Phase 1** full rules engine (turn loop, doubles, jail, auctions, rent,
+  houses/hotels, mortgage, bankruptcy, trades, cards — 81 tests).
+- **Phase 2** Neuro SDK adapter (actions, projection, decision controller;
+  Randy soak passes).
+- **Phase 3** seat layer (LOCAL/AI/CHAT/SDK drivers, timeout auto-pass,
+  spectator projection; 109 tests).
+- **Phase 4** admin console + snapshot + Tony scenarios + WebGL build
+  (146 tests). Token-guarded admin gate (190 tests).
+- **Phase 5** code-built visual layer (board, tokens, spectacle, event
+  overlay, procedural SFX; 161→190 tests).
 
-Status (handing off to a new session): Phase 0 core is committed. The clean
-next task is to design the phase enum / turn-loop model before dispatching
-parallel Phase 1 leaf agents — lock the phase machine first so leaves don't
-diverge.
+Ground truth for what's shipped: `docs/plan.md` here + the design docs under
+`docs/superpowers/{specs,plans}/2026-09-06-*`. Test ladder is green headless;
+WebGL export builds and boots in a browser (frame-capture under SwiftShader is
+a proven environment limitation, not a build bug).
 
-## Phase 1 — Rules engine (target: 1–2 weeks)
+## Current phase — UI/UX overhaul (branch `ui/overhaul`)
 
-- [x] Turn loop: roll → move → resolve tile (buy/auction/rent/jail) — core
-      in Tranche A: roll/move, GO bonus, doubles (extra turn),
-      triple-doubles→jail, tax, free_parking (OFF), go_to_jail, jail decision
-      (rule "both"), property purchase/pass→auction, railroad + utility rent,
-      both card decks (original names + 8 effect tokens).
-- [x] Doubles, jail 3-turns-or-pay, GO landing bonus
-- [x] Houses/hotels (even-build), mortgage/unmortgage, bankruptcy transfer
-      — Tranche B: houses/hotels + even-build rent table, mortgage (50 loan /
-      110 repay) with rent-block + monopoly-break, bankruptcy
-      transfer-to-creditor with player removal + END_GAME winner detection,
-      player trades (propose/respond, tile+cash swap).
-- [x] Auctions (all-pass fallback), rent with railroad/utility multiplier,
-      monopoly rent ×2 on full set
-- [x] Card decks (original names, classic effects), Free Parking house-rule OFF
-- [x] Property set definitions in `game/data/board.json` (color groups;
-      monopoly doubling + house-rent tables + house_cost per set)
+The UI is being reworked per the **v2 redesign concept**
+`docs/superpowers/specs/2026-09-07-ui-ux-redesign-concept-v2.md`
+(single source of truth; supersedes the 2026-09-06 concept).
 
-**Phase 1 COMPLETE — 2026-09-06.** All rules engine features done. Design +
-plans in `docs/superpowers/{specs,plans}/2026-09-06-phase1-*.md`. 81 headless
-tests green (`godot --headless --path game --script res://tests/run.gd`).
-Engine: authoritative state machine + fail-closed intent API
-(`submit_intent`) covering roll/move/GO/doubles/jail, purchase/auction,
-property/railroad/utility rent + monopoly doubling, houses/hotels (even-build),
-mortgage/unmortgage, bankruptcy+winner, trades, and both card decks. Phase 2
-(Neuro SDK adapter → `submit_intent`) is next, over this stable engine API.
+Key decisions already locked (do NOT re-litigate):
+- **One screen.** No separate lobby scene; `GameView` is always the root. The
+  old `lobby.gd` becomes a `SettingsOverlay` opened via F1/⚙ (and shown on
+  first run). Match start, restart, in-game settings edits all happen through
+  this overlay on top of the live board.
+- **Board always whole.** Spectacle camera is optional and OFF by default; the
+  full 40-tile ring always fits in the viewport (cell = min(w,h)/11, compact
+  mode < 44px).
+- **Center of the board is the stage** — BG3-style dice animation, decision
+  cards (purchase/auction), and major banners live there.
+- **`core/player_identity.gd`** is the single source of player color+token;
+  the four duplicated color arrays (seat_config/lobby/board_view/tile_view)
+  are deleted.
+- **Tiles** get `short` names in `board.json`, SVG art (tile.svg, type/corner
+  icons, house/hotel), owner = 2px frame + badge; mortgaged = desaturated +
+  hatched.
+- **Host-only admin** on the F12 panel; WebGL build does not create the panel
+  at all.
+- Every phase ends with **behavioral probes, not llvmpipe screenshots**.
 
-## Phase 2 — Neuro adapter
+### Phase status (per v2)
 
-- [x] Godot Neuro SDK wired: startup, context, action registry (stable set)
-- [x] Actions: roll_dice, buy_property, pass_on_purchase, bid_auction,
-      build_house, sell_house, mortgage_property, unmortgage_property,
-      propose_trade, respond_trade, use_jail_card, pay_jail_fine
-      (end_turn intentionally omitted — engine auto-ends turns; see design doc)
-- [x] Per-seat projection (isolate per-seat auction bids until resolution)
-- [x] actions/force per decision point, priority=low, ephemeral_context for
-      bulky board dumps; markdown state renderer
-- [x] Validator: reject malformed, list legal options in failure message
-- [x] Fail-closed: result-before-execute, no contradictory second result,
-      reconnect → resync → fresh force
-- [x] Randy soak of the wired adapter (tools/soak.tscn) — PASSED: 12 turns,
-      no stall. Auctions OFF in soak (Randy can't bid affordably — retries
-      huge amounts forever; auction path covered by Phase 1 headless tests).
+| Phase | Scope | Status |
+|-------|-------|--------|
+| A | Adaptive layout, tooltips everywhere, inspector auto-hide, tile/token rework, bigger window | DONE (2026-09-06) |
+| G | SVG asset copy → `game/assets/`, AssetLoader seam in `theme.gd`, tile/token/button/dice/house/hotel/corner/type art wired in | assets copied + imported; **in progress** |
+| P0 | **Core UI skeleton** — `main.gd` boots straight to `GameView`, `SettingsOverlay` (ex-lobby) with full match config, restart + game-over flow from TopBar, host-only admin gate eats F12 | NEXT |
+| P1 | PlayerIdentity + token/halo/fan layout + walking token animation + player cards | after P0 |
+| P2 | Tile rework (SVG, short names, owner frame, compact mode, highlight frame) | after P0, can parallel P3 |
+| P3 | Toast stack + banners + timer ring + BG3 dice + inspector pin (auto-hide) + tooltip autotest | after P0, can parallel P2 |
+| P4 | Observer mode (host = not LOCAL), richer journal with filters/export, admin panel tabs + inline results | after P3 |
+| P5 | Full RU/EN i18n (dict-based), 5-breakpoint adaptivity (rails/drawers), SFX for dice/toasts/timer | last |
 
-## Phase 3 — Multi-seat + humans
+**Validation per phase:** `godot --headless --path game --script res://tests/run.gd`
+(`SCRIPT ERROR` grep mandatory), `tools/tony.tscn`, plus phase-specific probes
+(`ui_smoke*.tscn`, tooltip coverage probe, etc.). Commit per phase.
 
-- [x] Seat manager: human turns wait for input, AI turns force
-      (`seats/seat_manager.gd` + `seat_config.gd`; pure testable helper
-      `find_decision_holder`)
-- [x] Second AI seat (internal naive `ai_driver`; `seat_config.resolve_driver`
-      maps a 2nd `sdk:*` seat to AI until a second SDK connection is supported)
-- [x] Trade negotiation UX for humans: engine propose/respond exists;
-      auto-resolve for AI-vs-AI via `TradeEvaluator` (accept if received
-      value >= given value)
-- [x] Spectator-safe state (no hidden info leak in context messages) —
-      `projection.for_spectator` + `render_spectator` (no `private` block, no
-      get-out-of-jail cards)
+Full phase-by-phase file lists, behavioral probes, and the done-criteria for
+all 17 tracked UI problems are in the v2 concept doc (sections 11 and the
+"Definition of Done" summary). Use that as the working checklist; this plan
+only tracks the roadmap, not every sub-task.
 
-**Phase 3 COMPLETE — 2026-09-06.** Seat/driver layer + timeout auto-pass +
-spectator-safe projection + a second AI seat. 109 headless tests green
-(`game/tests/seats_test.gd` added). Runtime proof: `tools/seats_soak.tscn`
-drives `[SDK(Neuro↔Randy), AI, AI, LOCAL]` on one engine → 12 turns, no stall
-(`NEURO_SDK_WS_URL=ws://localhost:8000 godot --headless --path game
-res://tools/seats_soak.tscn`). **SDK-singleton constraint:** the vendored SDK
-is one process-wide websocket/action-handler singleton, so Neuro + evil cannot
-both be SDK seats this phase — the 2nd SDK seat falls back to the internal AI
-driver via `seat_config.resolve_driver` (single place a future multi-connection
-SDK changes). Auto-pass (spec §3) runs in `seat_manager` for LOCAL/ADMIN/CHAT/
-AI; SDK seats self-drive their own force/result cycle (a manager-side timeout
-raced it — a future SDK-side one-retry-then-pass belongs in the adapter, not
-the manager). Admin console is Phase 4, but `seat_manager.push_admin_intent`
-(stub) routes admin overrides through the engine to keep the
-authoritative-engine + event-log invariant. Design+plan:
-`docs/superpowers/{specs,plans}/2026-09-06-phase3-seats-lobby*`.
+## Up next (post-UI)
 
-## Phase 4 — Stream polish
+1. **In-browser WebGL playthrough smoke** (the only Phase-4/5 deferral that
+   still matters for stream): run the Web build on real Chrome/Firefox, click
+   through a full game, confirm 60 FS-wise acceptable on an overlay.
+2. **Real `evil` over a second SDK connection** — requires re-vendoring the
+   SDK singleton into per-connection instances; plan is in the dev skill, do
+   not start without a live second SDK server.
+3. **REMOTE browser client (post-MVP)** — the third human driver, only after
+   the UI overhaul is stable.
 
-- [x] Admin console (spec §4): pure `admin_controller` + F12 `admin_panel`,
-      host-local, every edit routes through the authoritative `admin_override`
-      and writes to the same event log. Ops: unblocking (force_roll,
-      force_pass, reset_seat_away, rollback_decision) + state-edit
-      (set_balance, teleport, force_dice, grant/revoke property, set_houses,
-      set_mortgage, set_go_jail). Diagnostics: dump_state, list_events.
-- [x] Engine snapshot export/import: `engine.to_snapshot()/from_snapshot()`
-      full round-trip (players, phase, pending, houses, mortgaged, decks, RNG
-      seed, event log) + thin `core/snapshot.gd` JSON file wrapper.
-- [x] Test ladder rung 3 — Tony scripted scenarios (auction_resolve,
-      bankruptcy_transfer, trade_chain, admin_unblock) as `tests/tony_test.gd`
-      + `tools/tony.tscn` runner (exit 0, 4/4).
-- [x] Test ladder rung 4 — WebGL export build (rung 4 artifact):
-      `game/export_presets.cfg` + installed export templates; headless
-      `--export-debug "Web"` → `game/build/web/index.html|.wasm|.js` succeeds.
-- [x] Board art (original theme), SFX, camera, replay of last event — Phase 5
-      visual/stream layer (below)
-- [x] Voice-chat side-channel spike (API/VOICE_CHAT.md) — DONE 2026-09-06
-- [ ] In-browser WebGL play smoke — deferred with the visual layer
-
-**Phase 4 (engine + test-ladder slice) DONE — 2026-09-06.** Admin console,
-admin_override, snapshot, diagnostics, Tony scenarios, and the WebGL build are
-complete on `phase4/admin-console`; 146 headless tests green. Deferred to a
-later pass: full visual layer (board art/SFX/camera/overlay), live tile-cost
-tweak / deck-card insert-remove / player reorder / redo-turn-with-seed,
-token-guarded remote admin panel, second SDK connection (real evil), in-browser
-WebGL validation. Design+plan:
-`docs/superpowers/{specs,plans}/2026-09-06-phase4-admin-console*`.
-
-## Phase 5 — Visual / stream layer
-
-- [x] Code-built board scene from board.json (no asset files): `visual/tile_layout.gd`
-      pure 40-tile ring math, `visual/theme.gd` original non-Hasbro palette,
-      `visual/board_view.gd` (repaint from spectator projection, ownership tint,
-      houses/hotel labels, active-player highlight), `visual/token_panel.gd`
-      (animated tokens w/ outline + name).
-- [x] Spectacle camera (spec §4): `visual/spectacle.gd` pans a clip-contents
-      frustum over the board to the action tile on move/land/purchase; honors
-      `settings.animations` toggle (snap vs tween).
-- [x] Event overlay (spec §5 `event_overlay`): `visual/event_overlay.gd` +
-      `visual/event_messages.gd` (pure, spectator-safe — never reads private
-      keys), feeds from the engine event log; `visual/sfx.gd` procedural tones
-      via AudioStreamGenerator (no files) on roll/move/pay/build/card/etc.
-- [x] Assembly: `visual/board_scene.gd` + wiring into `main.gd` (sibling of
-      admin panel; F12 admin still works). Subscribes to `engine.log.event_appended`.
-- [x] Windowed screenshot smoke: `tools/visual_smoke.gd` + `tools/visual_smoke.tscn`;
-      drives 12 AI turns, saves PNGs, exit 0. **VALIDATED**: full 40-tile ring,
-      correct colors, tokens, active highlight, event overlay visible.
-- [ ] In-browser WebGL play smoke — still deferred (build works; not run in-browser)
-
-**Phase 5 COMPLETE — 2026-09-06.** Visual/stream layer on branch
-`phase5/visual-layer`; **161 headless tests green** (was 146). Original-themed,
-code-built (no asset pipeline, no Hasbro) board watchable + OBS-capturable;
-spectacle auto-focus, event overlay, procedural SFX, and a windowed screenshot
-smoke all in. Design+plan:
-`docs/superpowers/{specs,plans}/2026-09-06-phase5-visual-layer*`.
-
-## Test ladder (per SDK best practices)
-
-1. Headless engine unit tests (deterministic seeds, property-based invariants)
-2. Randy random-action soak (never crashes, always valid results)
-3. Tony scripted scenarios (auction, bankruptcy, trade chains)
-4. Real Neuro dry-run (private session) before stream
-
-## Risks
+## Risks (still live)
 
 - Hasbro trade dress → mitigated in `docs/licensing.md`, enforced by review.
 - Neuro action spam mid-animation → force only at decision points, engine queue.
-- WebGL export quirks with the SDK → POC in Phase 2, fallback native build.
----
-
-## Setup log (2026-09-06)
-
-- Profile `monopoly` created (default: deepseek-v4-flash; delegation per-task).
-- 13 skills installed: superpowers stack (6), godot-gdscript + mastery +
-  best-practices, tdd, WebSocket, board-game-master, hermes-agent.
-- Profile AGENTS.md holds model routing table and domain invariants.
-- Local clone moved to `~/projects/neuro-property-trade` (persistent), SSH remote.
-
-## Handoff — next session (2026-09-06 evening)
-
-**Current state:** `main` at `e77cbd1` (+ Phase 5 merged below), clean working
-tree. **161 headless tests green, 0 script errors** (`godot --headless --path
-game --script res://tests/run.gd`). Tony runner exits 0. WebGL build succeeds to
-`game/build/web/` (`--export-debug "Web"`). Phases 0–5 committed on `main`.
-
-**Phase 5 delivered — visual/stream layer (branch `phase5/visual-layer`):**
-code-built (no asset files, no Hasbro) board from board.json — `tile_layout.gd`
-(pure 40-tile ring math, headless-tested), `theme.gd` (original palette),
-`board_view.gd` (repaint from `for_spectator`, ownership tint, houses/HOTEL
-labels, active-player highlight), `token_panel.gd` (animated tokens w/ outline
-+ name); `spectacle.gd` auto-focus camera (honors `settings.animations`);
-`event_overlay.gd` + `event_messages.gd` (spectator-safe stream overlay fed by
-the event log) + `sfx.gd` (procedural AudioStreamGenerator tones, no files);
-assembled in `board_scene.gd` and wired into `main.gd` (F12 admin still works).
-Windowed screenshot smoke `tools/visual_smoke.gd/.tscn` drives 12 AI turns and
-saves PNGs — **validated by eye**: full ring, correct colors, tokens, active
-highlight, overlay. Design+plan:
-`docs/superpowers/{specs,plans}/2026-09-06-phase5-visual-layer*`.
-
-**Remaining big work / next up:**
-- In-browser WebGL smoke — **PARTIALLY validated (2026-09-06):** served the
-  existing `game/build/web` over HTTP (`python3 -m http.server`) and drove real
-  Playwright Chromium (full build, `--enable-unsafe-swiftshader`) against
-  `localhost:8801`. Console proves the game boots in-browser: WebGL2
-  (Compatibility) context created, `Neuro Property Trade — ready` logs, NO
-  pageerror/no render errors (the `NEURO_SDK_WS_URL` error is expected —
-  default seats are LOCAL+AI, no SDK). Canvas present at 1152×648. Caveat: the
-  actual rendered frame does NOT composite into any `page.screenshot` / X11-grab
-  capture under single-threaded SwiftShader in this WSL environment — all
-  captures return solid `77,77,77` (Godot's default clear color). **This is a
-  proven environment limitation, NOT a build bug:** a control test with a
-  trivial red WebGL2 triangle also fails to composite (white box + broken-image
-  icon) in the same headful chromium on `DISPLAY=:0`. **So: boot/runtime is
-  validated; the rendered-board pixels still need a human eye on a headed/real
-  browser (a stream host's Chrome).** Do NOT treat "black/solid screenshots" as
-  a build bug — check console for the `ready` line first.
-- Voice-chat side-channel spike — **DONE (2026-09-06):** the vendored Neuro SDK
-  already ships a complete `NeuroVoiceChat` client
-  (`game/addons/neuro-sdk/voice/voice_chat.gd`). Spike validated it headless
-  (7 new tests in `tests/voice_test.gd`, 168 total green) and documented the
-  wiring in `API/VOICE_CHAT.md`. Live websocket path still needs a real server.
-
-**Known follow-ups queued (small):**
-- ~~Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
-  redo-turn-with-seed admin ops~~ — **DONE 2026-09-06** (see below).
-- ~~Token-guarded remote admin panel~~ — **DONE 2026-09-06** (see below).
-- Real `evil` over a second SDK connection — **NOT built; re-vendor plan
-  documented in the dev skill.** The vendored SDK wires `Websocket` +
-  `NeuroActionHandler` as ONE process-wide autoload singleton (9+5 global refs
-  across the addon); two sessions need deep re-vendoring + a live second SDK
-  server to verify (not headless-testable). Until then `sdk:evil`/2nd `sdk:*`
-  resolves to the internal AI driver (`seat_config.resolve_driver` is the single
-  swap point).
-
-**Live admin ops — DONE (2026-09-06, 181 headless tests green).** Added 5 new
-`engine.admin_override` ops (spec §4.B deferred, now built), each range-checks
-before mutating and appends an `admin_override` event:
-- `tweak_tile {tile, cost?, rent?, rent_set?, house_cost?}` — live-edit a tile's
-  numeric cost/rent data (mutates the in-memory board tile; board.json is only
-  the seed).
-- `deck_insert {kind, card:{name,effect,value}}` — push a card to the FRONT of
-  a deck (drawn next); kind must match an existing deck.
-- `deck_remove {kind, name?}` — remove a card by name (or the front card if no
-  name); returns the removed card in the event.
-- `reorder_players {order:[pid,...]}` — reorder the players array by a full
-  permutation; `turn_player` is remapped so the SAME logical player keeps the
-  turn.
-- `redo_turn {seed}` — re-seed the RNG and reset the current turn to
-  TURN_START (clears pending/trade/last_roll) for a deterministic re-roll.
-Deck mutations are snapshot-safe (round-trip test added). Tests in
-`tests/admin_test.gd` (+12) and `tests/snapshot_test.gd` (+1).
-
-**Token-guarded admin gate — DONE (2026-09-06, 190 headless tests green).**
-`game/admin/admin_gate.gd` is a pure, headless-testable auth layer over
-`admin_controller` (spec §4 "later possible"). It establishes the remote-admin
-authentication invariant BEFORE any network transport exists (REMOTE is
-post-MVP). `GameSettings.admin_token` holds the shared secret; `main.gd` wires
-the F12 panel through the gate (passing the configured token), so every
-override is authenticated + engine-authoritative. Gate semantics: mutations
-(`override`, `reset_seat_away`) require a valid token (constant-time compare,
-fail-closed `{ok:false, reason:"unauthorized"}`, no mutation); diagnostics
-(`dump_state`, `list_events`) are read-only and NOT gated. Empty token =
-unguarded (host-local default). Tests in `tests/admin_gate_test.gd` (+9).
-
-**Model routing reminder:** ARCH/design/review → deepseek-v4-flash; bulk
-GDScript on fixed interface → minimax-m2.7; crisply-specified leaf execution
-(tests/docs/aggregation) → gemma4. `gh` CLI segfaults — use git over SSH or the
-GitHub API. SDK addon parse errors in `--script` mode are expected/harmless.
+- WebGL export quirks with the SDK → POC done, real-browser run pending.
+- `llvmpipe` screenshots unreliable → all UI phases judged by behavioral probes.
