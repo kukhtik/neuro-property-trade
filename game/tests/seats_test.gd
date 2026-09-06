@@ -12,6 +12,7 @@ static func test_list() -> Array[String]:
 		"test_spectator_projection_no_private",
 		"test_spectator_render_omits_private",
 		"test_trade_accept_rejects",
+		"test_find_decision_holder",
 	]
 
 static func _make_settings():
@@ -182,4 +183,19 @@ static func test_trade_accept_rejects() -> String:
 	var bad: bool = TE.accept_with(e, 1, {"give_tiles": [6], "give_cash": 0, "want_tiles": [1], "want_cash": 0})
 	if bad:
 		return "should reject a clearly bad deal (give 100, want 60)"
+	return ""
+
+# --- SeatManager (pure helper) ---
+
+static func test_find_decision_holder() -> String:
+	var e = _engine()
+	var SM = load("res://seats/seat_manager.gd")
+	var holder: int = SM.find_decision_holder(e, e.player_count())
+	if holder != 0:
+		return "expected holder 0, got %d" % holder
+	# Player 0 is not its turn -> holder is player 1 after advancing.
+	e.turn_player = 1
+	var h1: int = SM.find_decision_holder(e, e.player_count())
+	if h1 != 1:
+		return "expected holder 1 after advancing, got %d" % h1
 	return ""
