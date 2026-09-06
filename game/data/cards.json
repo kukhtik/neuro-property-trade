@@ -1,0 +1,40 @@
+{
+	"decks": {
+		"community": [
+			{ "name": "Borrowers' Grant", "kind": "community", "effect": "collect", "value": 50 },
+			{ "name": "Parking Fine Reimbursed", "kind": "community", "effect": "collect", "value": 100 },
+			{ "name": "Bank Bonus", "kind": "community", "effect": "collect", "value": 200 },
+			{ "name": "Hospital Fee", "kind": "community", "effect": "pay", "value": 50 },
+			{ "name": "School Fees", "kind": "community", "effect": "pay", "value": 50 },
+			{ "name": "Street Repair Rebate", "kind": "community", "effect": "collect", "value": 100 },
+			{ "name": "Inheritance", "kind": "community", "effect": "collect", "value": 100 },
+			{ "name": "Consultancy Fee", "kind": "community", "effect": "collect", "value": 25 },
+			{ "name": "Speeding Ticket", "kind": "community", "effect": "pay", "value": 15 },
+			{ "name": "Go Back Three Spaces", "kind": "community", "effect": "advance", "value": -3 },
+			{ "name": "Clerk's Mistake", "kind": "community", "effect": "collect_from_all", "value": 50 },
+			{ "name": "Charity Drive", "kind": "community", "effect": "pay_each_player", "value": 50 },
+			{ "name": "Jail Assistance Card", "kind": "community", "effect": "jail_card", "value": 0 },
+			{ "name": "Visit the Chamber", "kind": "community", "effect": "go_to_jail", "value": 0 },
+			{ "name": "Advance to Start", "kind": "community", "effect": "move_to", "value": 0 },
+			{ "name": "Neighborhood Renewal", "kind": "community", "effect": "collect", "value": 150 }
+		],
+		"chance": [
+			{ "name": "Speed of Light", "kind": "chance", "effect": "advance", "value": 5 },
+			{ "name": "Citywide Cleanup", "kind": "chance", "effect": "collect", "value": 50 },
+			{ "name": "Building Loan", "kind": "chance", "effect": "collect", "value": 150 },
+			{ "name": "Traffic Ticket", "kind": "chance", "effect": "pay", "value": 15 },
+			{ "name": "Take a Break at the Jail", "kind": "chance", "effect": "go_to_jail", "value": 0 },
+			{ "name": "Community Service Card", "kind": "chance", "effect": "jail_card", "value": 0 },
+			{ "name": "Advance to Grand Place", "kind": "chance", "effect": "move_to", "value": 39 },
+			{ "name": "Advance to Gardens", "kind": "chance", "effect": "move_to", "value": 31 },
+			{ "name": "Advance to Start", "kind": "chance", "effect": "move_to", "value": 0 },
+			{ "name": "Go Forward Three", "kind": "chance", "effect": "advance", "value": 3 },
+			{ "name": "Pay Each Neighbor", "kind": "chance", "effect": "pay_each_player", "value": 50 },
+			{ "name": "Neighborhood Windfall", "kind": "chance", "effect": "collect_from_all", "value": 50 },
+			{ "name": "Dividend", "kind": "chance", "effect": "collect", "value": 50 },
+			{ "name": "Property Tax Rebate", "kind": "chance", "effect": "collect", "value": 100 },
+			{ "name": "Return to Palm Row", "kind": "chance", "effect": "move_to", "value": 3 },
+			{ "name": "Take a Vacation", "kind": "chance", "effect": "pay", "value": 100 }
+		]
+	}
+}
