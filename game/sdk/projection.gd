@@ -79,3 +79,32 @@ func _private_view(engine, pid: int) -> Dictionary:
 	return {
 		"get_out_of_jail_cards": p.get_out_of_jail_cards,
 	}
+
+## Full public view for a spectator / stream overlay — NO private section and
+## no hidden per-seat info (auction high/bidder ARE public; jail cards are not).
+func for_spectator(engine) -> Dictionary:
+	var out := {}
+	out["phase"] = engine.phase
+	out["turn_player"] = engine.turn_player
+	out["board"] = _board_view(engine)
+	out["players"] = _spectator_players_view(engine)
+	out["pending"] = _pending_view(engine)
+	# NOTE: no "legal" and no "private" — a spectator is not a decision holder.
+	return out
+
+func _spectator_players_view(engine) -> Array:
+	var players: Array = []
+	for i in engine.players.size():
+		var p = engine.players[i]
+		var entry := {
+			"index": i,
+			"name": p.name,
+			"money": p.money,
+			"position": p.position,
+			"in_jail": p.in_jail,
+			"jail_turns": p.jail_turns,
+			"bankrupt": p.bankrupt,
+			"tiles": p.owned_tiles(),
+		}
+		players.append(entry)
+	return players

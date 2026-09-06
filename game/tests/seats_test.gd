@@ -9,6 +9,8 @@ static func test_list() -> Array[String]:
 		"test_starting_order_manual_keeps_order",
 		"test_auto_pass_phases",
 		"test_jail_timeout_priority",
+		"test_spectator_projection_no_private",
+		"test_spectator_render_omits_private",
 	]
 
 static func _make_settings():
@@ -131,4 +133,37 @@ static func test_jail_timeout_priority() -> String:
 	var p2 = MA.pick(e, 0)
 	if not p2.is_empty():
 		return "jailed, broke, no card -> {} expected, got %s" % str(p2)
+	return ""
+
+# --- Spectator projection + renderer ---
+
+static func test_spectator_projection_no_private() -> String:
+	var e = _engine()
+	var Proj = load("res://sdk/projection.gd")
+	var p = Proj.for_spectator(e)
+	if p.has("private"):
+		return "spectator must not contain private info"
+	if p.board.size() != 40:
+		return "board should have 40 tiles, got %d" % p.board.size()
+	if p.has("legal"):
+		return "spectator must not contain legal (not a decision holder)"
+	# Give player 0 a jail card to prove it is NOT leaked.
+	e.player(0).get_out_of_jail_cards = 5
+	var p2 = Proj.for_spectator(e)
+	if str(p2.players[0]).find("jail_cards") != -1:
+		return "jail card leaked to spectator"
+	if str(p2).find("get_out_of_jail") != -1:
+		return "get_out_of_jail leaked to spectator"
+	return ""
+
+static func test_spectator_render_omits_private() -> String:
+	var e = _engine()
+	e.player(0).get_out_of_jail_cards = 5
+	var Proj = load("res://sdk/projection.gd")
+	var R = load("res://sdk/markdown_renderer.gd")
+	var md: String = R.render_spectator(Proj.for_spectator(e))
+	if md.find("get-out-of-jail") != -1 or md.find("Your private") != -1:
+		return "spectator markdown leaks private section"
+	if md.find("Phase") == -1:
+		return "spectator markdown should show phase"
 	return ""
