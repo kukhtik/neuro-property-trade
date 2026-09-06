@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -251,4 +251,112 @@ static func test_utility_rent_single_and_pair() -> String:
 	e2.submit_intent(0, "roll", {})
 	# pair utility: rent = 10 * sum = 10 * 1 = 10
 	if e2.player(0).money != 1500 - 10: return "pair utility rent should be 10, money=%d" % e2.player(0).money
+	return ""
+
+static func test_tax_charged() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e._teleport(0, 3)
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 4 (Tax 200)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).money != 1500 - 200: return "tax 200 not charged, money=%d" % e.player(0).money
+	return ""
+
+static func test_free_parking_default_noop() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e._teleport(0, 19)
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 20 (free_parking, house rule OFF)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).money != 1500: return "free_parking should not change money, got %d" % e.player(0).money
+	return ""
+
+static func test_go_to_jail_sends_to_jail_tile() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e._teleport(0, 29)
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 30 (go_to_jail)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).in_jail != true: return "go_to_jail should jail player"
+	if e.player(0).position != 10: return "jailed to tile 10, got %d" % e.player(0).position
+	return ""
+
+static func test_jail_pay_fine_leaves_and_rolls() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).in_jail = true
+	e.player(0).position = 10
+	e._force_dice(1, 1, 0, false)   # after paying, roll sum 1 → tile 11 (Oak Street unowned → PURCHASE_WAIT)
+	var res = e.submit_intent(0, "pay", {})
+	if res["ok"] != true: return "pay rejected: " + res.get("reason", "")
+	if e.player(0).in_jail != false: return "pay should leave jail"
+	if e.player(0).money != 1500 - 50: return "jail fine 50 not charged, money=%d" % e.player(0).money
+	return ""
+
+static func test_jail_roll_doubles_leaves_and_moves() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).in_jail = true
+	e.player(0).position = 10
+	e._force_dice(8, 4, 4, true)    # doubles sum 8 → out of jail to tile 18 (Aspen Way unowned → PURCHASE_WAIT)
+	var res = e.submit_intent(0, "roll", {})
+	if res["ok"] != true: return "jail roll rejected"
+	if e.player(0).in_jail != false: return "doubles should leave jail"
+	if e.turn_player != 0: return "after leaving jail via doubles, player should be in PURCHASE_WAIT (not advanced), got turn_player=%d" % e.turn_player
+	return ""
+
+static func test_jail_roll_no_doubles_stays_and_fails() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).in_jail = true
+	e.player(0).position = 10
+	e._force_dice(6, 3, 3, false)   # non-doubles (sum 6, but is_doubles=false)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).in_jail != true: return "non-doubles should stay in jail"
+	if e.turn_player != 1: return "failed jail roll should advance turn, got %d" % e.turn_player
+	if e.player(0).jail_turns != 1: return "jail_turns should be 1, got %d" % e.player(0).jail_turns
+	return ""
+
+static func test_jail_three_failures_forces_pay() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).in_jail = true
+	e.player(0).position = 10
+	e.player(0).jail_turns = 2
+	# 3rd roll attempt is a failure → jail_turns 3
+	e._force_dice(5, 2, 3, false)
+	var res = e.submit_intent(0, "roll", {})
+	if res["ok"] != true: return "2 jail_turns then a roll should still be allowed (3rd failure)"
+	if e.player(0).jail_turns != 3: return "jail_turns should now be 3, got %d" % e.player(0).jail_turns
+	if e.player(0).in_jail != true: return "still in jail"
+	# now 3 failures — next "roll" should be rejected; only pay/use_card
+	# (note: the failed attempt advanced the turn to player 1 — bring the jailed
+	# player back so their next jail decision can be exercised)
+	e.turn_player = 0
+	e._force_dice(5, 2, 3, false)
+	var res2 = e.submit_intent(0, "roll", {})
+	if res2["ok"] == true: return "after 3 failures roll must be rejected"
+	var legal: Array = res2.get("legal", []) as Array
+	if legal.has("pay") != true: return "after 3 failures 'pay' must be legal, got %s" % str(legal)
+	return ""
+
+static func test_card_collect_applied() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e._teleport(0, 1)
+	e._force_draw_card("community", "collect", 50)
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 2 (community), draws forced collect 50
+	e.submit_intent(0, "roll", {})
+	if e.player(0).money != 1500 + 50: return "community collect 50 not applied, money=%d" % e.player(0).money
+	return ""
+
+static func test_card_go_to_jail() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e._teleport(0, 6)
+	e._force_draw_card("chance", "go_to_jail", 0)
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 7 (chance), draws forced go_to_jail
+	e.submit_intent(0, "roll", {})
+	if e.player(0).in_jail != true: return "go_to_jail card should jail player"
+	if e.player(0).position != 10: return "jailed to tile 10, got %d" % e.player(0).position
 	return ""

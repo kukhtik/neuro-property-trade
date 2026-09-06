@@ -26,6 +26,9 @@ var _forced_roll = null   # Variant: nullable Dictionary for test hook
 var _last_roll = {}       # last roll dict, reused by tile resolution (Tasks 5-8)
 var _last_doubles: bool = false
 var _pending = {}         # decision context (e.g. {"tile": N} for purchase)
+var _no_extra_turn: bool = false   # set when the current turn must NOT grant a bonus roll (jail-exit doubles, go-to-jail)
+var _card_depth: int = 0           # recursion guard for card-triggered moves
+var _forced_draw = null   # Variant: nullable Dictionary {kind, card} — test hook
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -65,6 +68,19 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 		return {"ok": false, "reason": "not your turn", "legal": [], "events": []}
 	match phase:
 		PHASE_TURN_START:
+			var cur = players[turn_player]
+			if cur.in_jail:
+				var can_roll: bool = cur.jail_turns < 3
+				if action == "roll" and can_roll:
+					return _resolve_jail_roll()
+				if action == "pay":
+					return _resolve_jail_pay()
+				if action == "use_card":
+					return _resolve_jail_use_card()
+				if action == "roll":
+					# jail_rule "both": after 3 failed attempts you must pay or use a card
+					return {"ok": false, "reason": "must pay fine or use card", "legal": ["pay", "use_card"], "events": []}
+				return {"ok": false, "reason": "in jail: roll doubles, pay, or use card", "legal": ["roll", "pay", "use_card"] if can_roll else ["pay", "use_card"], "events": []}
 			if action == "roll":
 				return _resolve_roll()
 			return {"ok": false, "reason": "must roll", "legal": ["roll"], "events": []}
@@ -83,8 +99,7 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 				log.append("purchase", {"player": pid, "tile": tile, "cost": cost})
 				_pending = {}
 				# after purchase, end the turn honoring doubles
-				if _last_doubles: phase = PHASE_TURN_START
-				else: _next_turn()
+				_end_turn_or_continue()
 				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 			elif action == "pass":
 				if settings.auctions_on_refusal:
@@ -93,8 +108,7 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 					return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 				log.append("pass", {"player": pid, "tile": tile})
 				_pending = {}
-				if _last_doubles: phase = PHASE_TURN_START
-				else: _next_turn()
+				_end_turn_or_continue()
 				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 			return {"ok": false, "reason": "must buy or pass", "legal": ["buy", "pass"], "events": []}
 		PHASE_AUCTION:
@@ -130,12 +144,6 @@ func _resolve_roll() -> Dictionary:
 	_last_doubles = roll.doubles
 	log.append("roll", {"player": turn_player, "d1": roll.d1, "d2": roll.d2, "doubles": roll.doubles, "sum": roll.sum})
 	var p = players[turn_player]
-	if p.in_jail:
-		# Full jail decision tree (pay/card/doubles-out) lands in Task 8.
-		# For this task: jailed turns are a no-op so the game doesn't stall.
-		log.append("jail_skip", {"player": turn_player})
-		_next_turn()
-		return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 	if roll.doubles:
 		consecutive_doubles += 1
 		if settings.triple_doubles_to_jail and consecutive_doubles >= 3:
@@ -239,11 +247,225 @@ func _move_and_resolve(roll: Dictionary) -> void:
 			var urent: int = (10 if owns_both else 4) * sum
 			_transfer(turn_player, uowner, urent)
 			log.append("rent", {"from": turn_player, "to": uowner, "tile": new_pos, "amount": urent})
-	# end the turn honoring doubles (covers property owned / railroad / utility / other non-decision tiles)
-	if _last_doubles:
-		phase = PHASE_TURN_START   # same player again; but ensure NOT in a decision phase
+	elif ttype == "tax":
+		var amt: int = board.tile_at(new_pos).get("amount", 0)
+		_credit(turn_player, -amt)
+		log.append("tax", {"player": turn_player, "tile": new_pos, "amount": amt})
+	elif ttype == "free_parking":
+		# house rule OFF by default — no money collected, nothing happens
+		log.append("land", {"player": turn_player, "tile": new_pos, "type": ttype, "note": "free_parking off"})
+	elif ttype == "go_to_jail":
+		_send_to_jail()
+		_no_extra_turn = true   # going to jail always ends your turn (even on doubles)
+	elif ttype == "community" or ttype == "chance":
+		var kind: String = "community" if ttype == "community" else "chance"
+		var card = _draw_card(kind)
+		if card == null:
+			log.append("card_null", {"player": turn_player, "kind": kind})
+		else:
+			log.append("card_draw", {"player": turn_player, "kind": kind, "name": card.get("name", ""), "effect": card.get("effect", ""), "value": card.get("value", 0)})
+			_apply_card_effect(card)
+			# _apply_card_effect may have changed phase (e.g. PURCHASE_WAIT / jail) —
+			# if it set a decision phase, return now WITHOUT the trailing end-of-turn.
+			if phase == PHASE_PURCHASE_WAIT or phase == PHASE_JAIL_DECISION or phase == PHASE_CARD_WAIT:
+				return
+	# (no else for "go"/"jail" — they do nothing and fall through to end-of-turn)
+	_end_turn_or_continue()
+
+func _end_turn_or_continue() -> void:
+	# Unified end-of-turn. Normally doubles grant the same player another roll;
+	# _no_extra_turn (jail-exit doubles, going to jail) suppresses that.
+	if _no_extra_turn:
+		_no_extra_turn = false
+		_next_turn()
+	elif _last_doubles:
+		phase = PHASE_TURN_START   # same player again
 	else:
 		_next_turn()
+
+# --- Task 8: JAIL decision (rule "both") ---
+
+func _resolve_jail_roll() -> Dictionary:
+	var roll = _next_roll()
+	_last_roll = roll
+	var was_doubles: bool = roll.doubles
+	_last_doubles = roll.doubles
+	log.append("roll", {"player": turn_player, "d1": roll.d1, "d2": roll.d2, "doubles": roll.doubles, "sum": roll.sum})
+	var p = players[turn_player]
+	if was_doubles:
+		p.in_jail = false
+		p.jail_turns = 0
+		log.append("jail", {"player": turn_player, "reason": "doubles, out"})
+		_no_extra_turn = true   # rolling out of jail does NOT grant a bonus turn
+		_move_and_resolve(roll)
+	else:
+		p.jail_turns += 1
+		log.append("jail", {"player": turn_player, "reason": "no doubles", "turns": p.jail_turns})
+		# failed attempt consumes the turn; if this was the 3rd failure they must pay next
+		_next_turn()
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+func _resolve_jail_pay() -> Dictionary:
+	var p = players[turn_player]
+	if p.money < settings.jail_fine:
+		# can't pay — but they have no alternative unless they hold cards; fail-closed:
+		if p.get_out_of_jail_cards > 0:
+			return {"ok": false, "reason": "insufficient funds, use a card", "legal": ["use_card"], "events": []}
+		return {"ok": false, "reason": "insufficient funds to pay jail fine", "legal": [], "events": []}
+	_credit(turn_player, -settings.jail_fine)
+	p.in_jail = false
+	p.jail_turns = 0
+	log.append("jail", {"player": turn_player, "reason": "paid fine", "amount": settings.jail_fine})
+	# after paying you still get a normal roll+move this turn
+	var roll = _next_roll()
+	_last_roll = roll
+	_last_doubles = roll.doubles
+	log.append("roll", {"player": turn_player, "d1": roll.d1, "d2": roll.d2, "doubles": roll.doubles, "sum": roll.sum})
+	_move_and_resolve(roll)
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+func _resolve_jail_use_card() -> Dictionary:
+	var p = players[turn_player]
+	if p.get_out_of_jail_cards <= 0:
+		return {"ok": false, "reason": "no get-out-of-jail cards", "legal": ["roll", "pay"], "events": []}
+	p.get_out_of_jail_cards -= 1
+	p.in_jail = false
+	p.jail_turns = 0
+	log.append("jail", {"player": turn_player, "reason": "used card"})
+	var roll = _next_roll()
+	_last_roll = roll
+	_last_doubles = roll.doubles
+	log.append("roll", {"player": turn_player, "d1": roll.d1, "d2": roll.d2, "doubles": roll.doubles, "sum": roll.sum})
+	_move_and_resolve(roll)
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+# --- Task 8: CARD draw/apply (original decks, engine-authoritative) ---
+
+func _force_draw_card(kind: String, effect: String, value: int, extra: Dictionary = {}) -> void:
+	# test hook: override the next draw for 'kind' with a synthetic card
+	_forced_draw = {"kind": kind, "card": {"name": "Forced Card", "kind": kind, "effect": effect, "value": value, "extra": extra}}
+
+func _draw_card(kind: String):
+	if _forced_draw != null:
+		var d = _forced_draw
+		if d["kind"] == kind:
+			_forced_draw = null
+			return d["card"]
+	var deck = decks.get(kind)
+	if deck == null: return null
+	return deck.draw(kind)
+
+func _apply_card_effect(card: Dictionary) -> void:
+	var effect: String = card.get("effect", "")
+	var value: int = card.get("value", 0)
+	var p = players[turn_player]
+	match effect:
+		"collect":
+			_credit(turn_player, value)
+		"pay":
+			_credit(turn_player, -value)
+		"go_to_jail":
+			_send_to_jail()
+			_no_extra_turn = true
+		"jail_card":
+			p.get_out_of_jail_cards += 1
+			log.append("card_gain", {"player": turn_player, "type": "jail_card"})
+		"collect_from_all":
+			for i in players.size():
+				if i != turn_player:
+					if players[i].money >= value:
+						_transfer(i, turn_player, value)
+						log.append("rent", {"from": i, "to": turn_player, "amount": value, "tile": -1, "reason": "collect_from_all"})
+		"pay_each_player":
+			for i in players.size():
+				if i != turn_player:
+					if p.money >= value:
+						_transfer(turn_player, i, value)
+						log.append("rent", {"from": turn_player, "to": i, "amount": value, "tile": -1, "reason": "pay_each_player"})
+		"move_to":
+			_card_depth += 1
+			if _card_depth <= 5:
+				_card_move_to(card.get("value", 0))
+			_card_depth -= 1
+		"advance":
+			_card_depth += 1
+			if _card_depth <= 5:
+				var target = (p.position + value) % 40  # value may be negative
+				_card_move_to_mod(target, value)
+			_card_depth -= 1
+
+func _card_move_to(target_tile: int) -> void:
+	var p = players[turn_player]
+	var from = p.position
+	# moving FORWARD (target < from means wrapping past 0 → collect GO). Moving to Start (0) also pays GO bonus per classic.
+	if target_tile == 0 or target_tile < from:
+		_credit(turn_player, settings.go_bonus)
+		log.append("go_bonus", {"player": turn_player, "amount": settings.go_bonus, "reason": "card"})
+	p.position = target_tile
+	log.append("move", {"player": turn_player, "from": from, "to": target_tile, "reason": "card"})
+	_resolve_card_landing(target_tile)
+
+func _card_move_to_mod(target_tile: int, raw_value: int) -> void:
+	# for 'advance', collect GO only when moving forward and wrapping past 0
+	var p = players[turn_player]
+	var from = p.position
+	var wrapped = raw_value > 0 and target_tile < from
+	if wrapped or target_tile == 0:
+		_credit(turn_player, settings.go_bonus)
+		log.append("go_bonus", {"player": turn_player, "amount": settings.go_bonus, "reason": "card"})
+	p.position = target_tile
+	log.append("move", {"player": turn_player, "from": from, "to": target_tile, "reason": "card"})
+	_resolve_card_landing(target_tile)
+
+func _resolve_card_landing(tile: int) -> void:
+	# When a card moves a player, the destination tile's effects apply (rent, purchase wait, another card, jail, tax...).
+	var ttype: String = board.type_at(tile)
+	var lander = players[turn_player]
+	log.append("card_land", {"player": turn_player, "tile": tile, "type": ttype})
+	match ttype:
+		"property":
+			var owner = _owner_of(tile)
+			if owner == -1:
+				phase = PHASE_PURCHASE_WAIT
+				_pending = {"tile": tile}
+			elif owner == turn_player:
+				log.append("land_self", {"player": turn_player, "tile": tile})
+			else:
+				var rent: int = board.tile_at(tile).get("rent", 0)
+				_transfer(turn_player, owner, rent)
+				log.append("rent", {"from": turn_player, "to": owner, "tile": tile, "amount": rent})
+		"railroad", "utility":
+			# unowned → nothing; owned by other → rent (reuse compact logic)
+			var r_owner = _owner_of(tile)
+			if r_owner != -1 and r_owner != turn_player:
+				if ttype == "railroad":
+					var n: int = 0
+					for ridx in [5, 15, 25, 35]:
+						if players[r_owner].owns(ridx): n += 1
+					var rt: int = ({1:25, 2:50, 3:100, 4:200}).get(n, 25)
+					_transfer(turn_player, r_owner, rt)
+					log.append("rent", {"from": turn_player, "to": r_owner, "tile": tile, "amount": rt})
+				else:
+					var both: bool = players[r_owner].owns(12) and players[r_owner].owns(28)
+					var usum: int = _last_roll.get("sum", 7)
+					var ur: int = (10 if both else 4) * usum
+					_transfer(turn_player, r_owner, ur)
+					log.append("rent", {"from": turn_player, "to": r_owner, "tile": tile, "amount": ur})
+		"tax":
+			var amt2: int = board.tile_at(tile).get("amount", 0)
+			_credit(turn_player, -amt2)
+			log.append("tax", {"player": turn_player, "tile": tile, "amount": amt2})
+		"go_to_jail":
+			_send_to_jail()
+			_no_extra_turn = true
+		"community", "chance":
+			var kind2: String = "community" if ttype == "community" else "chance"
+			var c2 = _draw_card(kind2)
+			if c2 != null:
+				log.append("card_draw", {"player": turn_player, "kind": kind2, "name": c2.get("name", ""), "effect": c2.get("effect", "")})
+				_apply_card_effect(c2)
+		_: # go, jail, free_parking → nothing
+			pass
 
 # --- Task 6: AUCTION phase (round-robin, engine-authoritative) ---
 
@@ -283,8 +505,7 @@ func _auction_pass(t: int) -> void:
 		else:
 			log.append("auction_unwon", {"tile": t})
 			_pending = {}
-			if _last_doubles: phase = PHASE_TURN_START
-			else: _next_turn()
+			_end_turn_or_continue()
 	elif active.size() == 1 and _pending.get("high", -1) != -1:
 		# one bidder left and someone has bid → they win at the current high
 		_resolve_auction(active[0], t, _pending.get("high", 0))
@@ -303,5 +524,4 @@ func _resolve_auction(winner: int, tile: int, pay: int) -> void:
 	log.append("cash", {"player": winner, "amount": -pay, "balance": wp.money})
 	log.append("auction_win", {"player": winner, "tile": tile, "amount": pay})
 	_pending = {}
-	if _last_doubles: phase = PHASE_TURN_START
-	else: _next_turn()
+	_end_turn_or_continue()

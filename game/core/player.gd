@@ -14,6 +14,7 @@ var money: int
 var position: int
 var in_jail: bool = false
 var get_out_of_jail_cards: int = 0
+var jail_turns: int = 0
 var bankrupt: bool = false
 
 var _owned: Array = []  # tile indices owned by this player

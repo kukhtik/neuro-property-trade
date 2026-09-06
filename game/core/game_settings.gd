@@ -6,6 +6,7 @@ var seat_count: int = 4
 var starting_cash: int = 1500
 var go_bonus: int = 200
 var jail_rule: String = "both"
+var jail_fine: int = 50
 var free_parking: bool = false
 var doubles: bool = true
 var triple_doubles_to_jail: bool = true
