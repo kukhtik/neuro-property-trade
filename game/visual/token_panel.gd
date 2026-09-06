@@ -1,7 +1,9 @@
 class_name TokenPanel
 extends Control
-## A single animated player token. Moves to a tile on command, tweening if
-## animations enabled. Cosmetic; never blocks the engine.
+## A single animated player token (A4): a unique colored piece with the
+## player's initial drawn on it. Moves to a tile on command, tweening if
+## animations enabled. Cosmetic; never blocks the engine. The piece is drawn
+## as a circle with a distinct shape per player index (slot for a sprite later).
 
 const TL := preload("res://visual/tile_layout.gd")
 
@@ -10,14 +12,16 @@ var player_name: String = ""
 var _animations := true
 var _cell := 64
 var _tile_count := 40
+var _pid := 0
+var _initial: Label
 
 func setup(col: Color, lbl: String, tile_count: int, cell: int, start_idx: int) -> void:
 	color = col
 	player_name = lbl
 	_tile_count = tile_count
 	_cell = cell
-	custom_minimum_size = Vector2(16, 16)
-	size = Vector2(16, 16)
+	custom_minimum_size = Vector2(18, 18)
+	size = Vector2(18, 18)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# outline so the token reads against any tile color
@@ -34,21 +38,27 @@ func setup(col: Color, lbl: String, tile_count: int, cell: int, start_idx: int) 
 	circ.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(circ)
 
-	# tiny name tag below the token (not over the tile name)
-	var name_lbl = Label.new()
-	name_lbl.text = player_name
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 7)
-	name_lbl.add_theme_color_override("font_color", Color.WHITE)
-	name_lbl.add_theme_color_override("font_outline_color", Color.BLACK)
-	name_lbl.add_theme_constant_override("outline_size", 2)
-	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_lbl.position = Vector2(-6, 15)
-	name_lbl.size = Vector2(28, 10)
-	add_child(name_lbl)
+	# the player's initial, centered on the piece
+	_initial = Label.new()
+	_initial.text = _initial_of(lbl)
+	_initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_initial.add_theme_font_size_override("font_size", 10)
+	_initial.add_theme_color_override("font_color", Color.WHITE)
+	_initial.add_theme_color_override("font_outline_color", Color.BLACK)
+	_initial.add_theme_constant_override("outline_size", 2)
+	_initial.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_initial.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_initial)
 
 	move_to(start_idx, false)
+
+## First letter of the player name, uppercased (fallback to a pid letter).
+func _initial_of(name: String) -> String:
+	var n := name.strip_edges()
+	if n.length() > 0:
+		return n.substr(0, 1).to_upper()
+	return "P"
 
 func set_animations(on: bool) -> void:
 	_animations = on
