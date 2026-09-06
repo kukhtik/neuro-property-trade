@@ -89,13 +89,16 @@ static func scenario_trade_chain() -> String:
 
 static func scenario_admin_unblock() -> String:
 	var e = _make_engine(["Ada", "Bo"])
-	# Ada (turn 0) is the decision holder at TURN_START. Admin forces a roll.
+	# Ada (turn 0) is the decision holder at TURN_START. Admin forces a roll,
+	# with forced dice (sum 3 -> tile 3, an unowned property) so the landing is
+	# deterministic: PURCHASE_WAIT != TURN_START.
 	e.phase = "TURN_START"
 	e.turn_player = 0
-	var phase_before: String = e.phase
+	var fd = e.admin_override("force_dice", {"d1": 3, "d2": 0})
+	if not fd.get("ok", false): return "force_dice failed: %s" % str(fd)
 	var res = e.admin_override("force_roll", {})
 	if not res.get("ok", false): return "admin force_roll failed: %s" % str(res)
-	if e.phase == phase_before: return "phase should have advanced after force_roll"
+	if e.phase != "PURCHASE_WAIT": return "after force_roll expect PURCHASE_WAIT, got %s" % e.phase
 	var logged := false
 	for entry in e.log.entries():
 		if entry.get("type", "") == "admin_override":

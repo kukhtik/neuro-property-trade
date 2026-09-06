@@ -159,12 +159,13 @@ static func test_force_roll_advances() -> String:
 	var before: int = e.turn_player
 	var h: int = _decision_holder(e)
 	if h == -1: return "no decision holder at TURN_START"
+	# Force deterministic dice first (sum 3 -> tile 3, an unowned property) so
+	# the landing resolves to PURCHASE_WAIT reliably regardless of RNG.
+	var fd = e.admin_override("force_dice", {"d1": 3, "d2": 0})
+	if not fd.get("ok", false): return "force_dice failed: %s" % str(fd)
 	var res = e.admin_override("force_roll", {})
 	if not res.get("ok", false): return "force_roll should be ok: %s" % str(res)
-	# a roll moves to ROLL_RESOLVE then onto a decision/next state; must leave
-	# TURN_START (the engine resolves automatically)
-	if e.phase == "TURN_START" and e.player(0).position == 0:
-		return "force_roll did not advance the turn"
+	if e.phase != "PURCHASE_WAIT": return "after force_roll expect PURCHASE_WAIT, got %s" % e.phase
 	if before != h: return "holder should equal turn_player at start"
 	if not _has_admin_event(e, "force_roll"): return "expected admin_override force_roll event"
 	return ""
