@@ -67,6 +67,12 @@ func _process(delta: float) -> void:
 	if _poll_elapsed < POLL_INTERVAL:
 		return
 	_poll_elapsed = 0.0
+	tick()
+
+## Public tick so the seat manager can drive the SDK seat explicitly (in
+## addition to this node's own _process self-driving). Idempotent: _force_if_needed
+## is guarded by _awaiting_result + the decision-key check.
+func tick() -> void:
 	_force_if_needed()
 
 func setup(eng, pid: int) -> void:

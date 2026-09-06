@@ -84,8 +84,15 @@ func _tick() -> void:
 				drv.act()
 			# AI/CHAT drivers act immediately; timeout is a safety net for them too
 			_maybe_timeout(seat)
-		"LOCAL", "ADMIN", "SDK":
+		"LOCAL", "ADMIN":
 			_maybe_timeout(seat)
+		# "SDK" seats are NOT auto-passed here — the SDK adapter self-drives its
+		# own force/result cycle and imposing a manager timeout would race it
+		# (manager forces roll while Randy/Neuro is still answering the force).
+		# A future SDK-side timeout (one short retry then auto-pass, per spec) is
+		# handled inside the adapter, not the seat manager.
+		_:
+			pass
 	emit_spectator()
 
 func _maybe_timeout(seat) -> void:
@@ -134,5 +141,6 @@ func push_admin_intent(action: String, params: Dictionary) -> Dictionary:
 func emit_spectator() -> void:
 	if engine == null:
 		return
-	var Proj = load("res://sdk/projection.gd")
-	state_changed.emit(Proj.for_spectator(engine))
+	var ProjScript = load("res://sdk/projection.gd")
+	var proj = ProjScript.new()
+	state_changed.emit(proj.for_spectator(engine))
