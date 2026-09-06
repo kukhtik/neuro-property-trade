@@ -976,6 +976,99 @@ func admin_override(op: String, params: Dictionary) -> Dictionary:
 			_pending = {}
 			_pending_trade = {}
 			return _admin_ok(op, params)
+		"tweak_tile":
+			# Live edit of a tile's static cost/rent data (spec §4.B deferred).
+			# Mutates the in-memory board tile dict (board.json is the seed; the
+			# running game uses the live copy). Only numeric fields are editable.
+			var ttile: int = int(params.get("tile", -1))
+			if ttile < 0 or ttile >= board.tile_count():
+				return _admin_fail("bad tile")
+			var td: Dictionary = board.tile_at(ttile)
+			var changed := false
+			for key in ["cost", "rent", "rent_set", "house_cost"]:
+				if params.has(key):
+					var v: int = int(params[key])
+					if v < 0:
+						return _admin_fail("negative %s" % key)
+					td[key] = v
+					changed = true
+			if not changed:
+				return _admin_fail("no editable field supplied")
+			return _admin_ok(op, params)
+		"deck_insert":
+			# Insert a card at the FRONT of a deck (drawn next). Card must be a
+			# valid dict with name/kind/effect/value. kind must match the deck.
+			var dkind: String = str(params.get("kind", ""))
+			if not decks.has(dkind):
+				return _admin_fail("bad deck kind")
+			var card: Dictionary = params.get("card", {})
+			if card.is_empty() or not card.has("name") or not card.has("effect"):
+				return _admin_fail("card needs name+effect")
+			card["kind"] = dkind
+			card["value"] = int(card.get("value", 0))
+			decks[dkind]._decks[dkind].push_front(card)
+			return _admin_ok(op, params)
+		"deck_remove":
+			# Remove the first card in a deck whose name matches (or the front
+			# card if no name given). Returns the removed card in the event.
+			var rkind: String = str(params.get("kind", ""))
+			if not decks.has(rkind):
+				return _admin_fail("bad deck kind")
+			var arr: Array = decks[rkind]._decks[rkind]
+			if arr.is_empty():
+				return _admin_fail("deck empty")
+			var rname: String = str(params.get("name", ""))
+			var removed: Dictionary = {}
+			if rname == "":
+				removed = arr.pop_front()
+			else:
+				var idx := -1
+				for i in arr.size():
+					if str(arr[i].get("name", "")) == rname:
+						idx = i
+						break
+				if idx == -1:
+					return _admin_fail("no card named %s" % rname)
+				removed = arr[idx]
+				arr.remove_at(idx)
+			return _admin_ok(op, {"op": op, "kind": rkind, "removed": removed})
+		"reorder_players":
+			# Reorder the players array by a permutation of pids. turn_player is
+			# remapped so the SAME logical player keeps the turn. Each pid must
+			# appear exactly once.
+			var order: Array = params.get("order", [])
+			if order.size() != players.size():
+				return _admin_fail("order must list every pid exactly once")
+			var seen := {}
+			for pid in order:
+				var p: int = int(pid)
+				if p < 0 or p >= players.size() or seen.has(p):
+					return _admin_fail("bad order permutation")
+				seen[p] = true
+			var cur: int = turn_player
+			var new_players: Array = []
+			for pid in order:
+				new_players.append(players[int(pid)])
+			players = new_players
+			# remap turn_player: find where the old turn holder landed
+			turn_player = order.find(cur)
+			return _admin_ok(op, params)
+		"redo_turn":
+			# Re-seed the RNG and reset the current turn to TURN_START so the
+			# same player re-rolls deterministically from the given seed. Clears
+			# any pending decision/trade and the last roll.
+			var seed: int = int(params.get("seed", 0))
+			if seed == 0:
+				return _admin_fail("seed must be non-zero")
+			rng.seed_rng(seed)
+			phase = PHASE_TURN_START
+			_last_roll = {}
+			_last_doubles = false
+			_no_extra_turn = false
+			_pending = {}
+			_pending_trade = {}
+			consecutive_doubles = 0
+			return _admin_ok(op, params)
 		_:
 			return _admin_fail("unknown admin op %s" % op)
 

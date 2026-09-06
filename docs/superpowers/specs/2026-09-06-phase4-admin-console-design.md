@@ -103,9 +103,9 @@ range-checks its params and rejects invalid ones *before* mutating.
 - `set_go_jail` — put a player in jail (`_send_to_jail`).
 
 **(§4.B "tweak tile cost/rent", insert/remove deck card, reorder players,
-redo-turn) are deferred** — they touch board.json/static data or card decks in
-ways that complicate the snapshot round-trip; noted in the plan as future work,
-not built this pass.
+redo-turn) were deferred at Phase 4 — **all built 2026-09-06** as
+`engine.admin_override` ops: `tweak_tile`, `deck_insert`, `deck_remove`,
+`reorder_players`, `redo_turn`. See `docs/plan.md` "Live admin ops — DONE".
 
 Every applied override appends `log.append("admin_override", {op, params})`.
 

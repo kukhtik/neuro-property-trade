@@ -8,6 +8,7 @@ static func test_list() -> Array[String]:
 		"test_roundtrip_auction", "test_roundtrip_trade_pending",
 		"test_roundtrip_post_bankruptcy", "test_restore_deterministic_roll",
 		"test_snapshot_file_save_load",
+		"test_roundtrip_deck_mutation",
 	]
 
 static func _make_engine(names: Array = ["Ada", "Bo", "Cyd"]):
@@ -108,3 +109,22 @@ static func test_snapshot_file_save_load() -> String:
 	if e2.player(1).money != 999:
 		return "loaded balance want 999 got %d" % e2.player(1).money
 	return ""
+
+static func test_roundtrip_deck_mutation() -> String:
+	var e = _make_engine()
+	# deck_insert/remove mutate the live deck; the snapshot must preserve them
+	e.admin_override("deck_insert", {"kind": "community", "card": {"name": "Admin Card", "effect": "collect", "value": 500}})
+	e.admin_override("deck_remove", {"kind": "chance", "name": "Dividend"})
+	var snap: Dictionary = e.to_snapshot()
+	var e2 = e.from_snapshot(snap)
+	# inserted card present in restored deck
+	var found := false
+	for card in e2.decks["community"].cards("community"):
+		if card.get("name", "") == "Admin Card":
+			found = true
+	if not found: return "restored deck should contain inserted Admin Card"
+	# removed card absent in restored deck
+	for card in e2.decks["chance"].cards("chance"):
+		if card.get("name", "") == "Dividend":
+			return "restored deck should NOT contain removed Dividend"
+	return _assert_same(snap, e2.to_snapshot())

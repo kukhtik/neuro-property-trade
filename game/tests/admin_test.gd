@@ -14,6 +14,13 @@ static func test_list() -> Array[String]:
 		"test_force_roll_advances", "test_force_roll_no_holder_fails",
 		"test_force_pass_purchase", "test_force_pass_response",
 		"test_rollback_decision_clears_pending",
+		"test_tweak_tile_cost_rent", "test_tweak_tile_rejects_bad_tile",
+		"test_tweak_tile_rejects_negative", "test_tweak_tile_no_field_fails",
+		"test_deck_insert_drawn_next", "test_deck_insert_bad_kind",
+		"test_deck_remove_by_name", "test_deck_remove_front",
+		"test_deck_remove_missing_name_fails",
+		"test_reorder_players_remaps_turn", "test_reorder_players_bad_permutation",
+		"test_redo_turn_reseeds_and_resets",
 	]
 
 static func _make_engine(names: Array = ["Ada", "Bo"]):
@@ -207,4 +214,112 @@ static func test_rollback_decision_clears_pending() -> String:
 	if not res.get("ok", false): return "rollback should be ok: %s" % str(res)
 	if e._pending.size() != 0: return "pending should be cleared"
 	if e._pending_trade.size() != 0: return "pending trade should be cleared"
+	return ""
+
+# --- Deferred live-edit ops (spec §4.B deferred, now built) ---
+
+static func test_tweak_tile_cost_rent() -> String:
+	var e = _make_engine()
+	var res = e.admin_override("tweak_tile", {"tile": 1, "cost": 100, "rent": 5})
+	if not res.get("ok", false): return "tweak should be ok: %s" % str(res)
+	if e.board.tile_at(1).get("cost", 0) != 100: return "cost want 100 got %d" % e.board.tile_at(1).get("cost", 0)
+	if e.board.tile_at(1).get("rent", 0) != 5: return "rent want 5 got %d" % e.board.tile_at(1).get("rent", 0)
+	if not _has_admin_event(e, "tweak_tile"): return "expected admin_override tweak_tile event"
+	return ""
+
+static func test_tweak_tile_rejects_bad_tile() -> String:
+	var e = _make_engine()
+	var res = e.admin_override("tweak_tile", {"tile": 99, "cost": 100})
+	if res.get("ok", false): return "should reject bad tile"
+	return ""
+
+static func test_tweak_tile_rejects_negative() -> String:
+	var e = _make_engine()
+	var res = e.admin_override("tweak_tile", {"tile": 1, "cost": -5})
+	if res.get("ok", false): return "should reject negative cost"
+	return ""
+
+static func test_tweak_tile_no_field_fails() -> String:
+	var e = _make_engine()
+	var res = e.admin_override("tweak_tile", {"tile": 1})
+	if res.get("ok", false): return "should fail with no editable field"
+	return ""
+
+static func test_deck_insert_drawn_next() -> String:
+	var e = _make_engine()
+	var before: int = e.decks["community"].size("community")
+	var res = e.admin_override("deck_insert", {"kind": "community", "card": {"name": "Admin Card", "effect": "collect", "value": 500}})
+	if not res.get("ok", false): return "deck_insert should be ok: %s" % str(res)
+	if e.decks["community"].size("community") != before + 1: return "deck should grow by 1"
+	# the inserted card is at the front -> drawn next
+	var card = e.decks["community"].draw("community")
+	if card.get("name", "") != "Admin Card": return "inserted card should be drawn next, got %s" % str(card)
+	return ""
+
+static func test_deck_insert_bad_kind() -> String:
+	var e = _make_engine()
+	var res = e.admin_override("deck_insert", {"kind": "nope", "card": {"name": "X", "effect": "collect"}})
+	if res.get("ok", false): return "should reject bad deck kind"
+	return ""
+
+static func test_deck_remove_by_name() -> String:
+	var e = _make_engine()
+	var res = e.admin_override("deck_remove", {"kind": "chance", "name": "Dividend"})
+	if not res.get("ok", false): return "deck_remove should be ok: %s" % str(res)
+	# Dividend was in the chance deck; confirm it's gone
+	for card in e.decks["chance"].cards("chance"):
+		if card.get("name", "") == "Dividend":
+			return "Dividend should be removed"
+	return ""
+
+static func test_deck_remove_front() -> String:
+	var e = _make_engine()
+	var first: String = str(e.decks["chance"].cards("chance")[0].get("name", ""))
+	var res = e.admin_override("deck_remove", {"kind": "chance"})
+	if not res.get("ok", false): return "deck_remove front should be ok: %s" % str(res)
+	var now_first: String = str(e.decks["chance"].cards("chance")[0].get("name", ""))
+	if now_first == first: return "front card should be removed"
+	return ""
+
+static func test_deck_remove_missing_name_fails() -> String:
+	var e = _make_engine()
+	var res = e.admin_override("deck_remove", {"kind": "chance", "name": "No Such Card"})
+	if res.get("ok", false): return "should fail for missing card name"
+	return ""
+
+static func test_reorder_players_remaps_turn() -> String:
+	var e = _make_engine(["Ada", "Bo", "Cyd"])
+	# turn_player is 0 (Ada). Reorder so Ada moves to index 2.
+	var res = e.admin_override("reorder_players", {"order": [1, 2, 0]})
+	if not res.get("ok", false): return "reorder should be ok: %s" % str(res)
+	if e.player(0).name != "Bo": return "player 0 should now be Bo, got %s" % e.player(0).name
+	if e.player(2).name != "Ada": return "player 2 should now be Ada, got %s" % e.player(2).name
+	if e.turn_player != 2: return "turn_player should remap to 2 (Ada), got %d" % e.turn_player
+	return ""
+
+static func test_reorder_players_bad_permutation() -> String:
+	var e = _make_engine(["Ada", "Bo", "Cyd"])
+	var res = e.admin_override("reorder_players", {"order": [0, 0, 1]})
+	if res.get("ok", false): return "should reject duplicate pid"
+	var res2 = e.admin_override("reorder_players", {"order": [0, 1]})
+	if res2.get("ok", false): return "should reject wrong-size order"
+	return ""
+
+static func test_redo_turn_reseeds_and_resets() -> String:
+	var e = _make_engine(["Ada", "Bo"])
+	# advance into a mid-turn state with a pending decision
+	e.phase = "PURCHASE_WAIT"
+	e._pending = {"tile": 1}
+	e._last_roll = {"sum": 1, "d1": 1, "d2": 0, "doubles": false}
+	var res = e.admin_override("redo_turn", {"seed": 42})
+	if not res.get("ok", false): return "redo_turn should be ok: %s" % str(res)
+	if e.phase != "TURN_START": return "phase should reset to TURN_START, got %s" % e.phase
+	if e._pending.size() != 0: return "pending should be cleared"
+	if e._last_roll.size() != 0: return "last_roll should be cleared"
+	# RNG re-seeded: two identical redo_turn calls must produce identical rolls
+	var e2 = _make_engine(["Ada", "Bo"])
+	e2.admin_override("redo_turn", {"seed": 42})
+	var r1 = e.rng.roll_two_dice()
+	var r2 = e2.rng.roll_two_dice()
+	if r1.get("sum", 0) != r2.get("sum", 0): return "same seed should give same roll, got %s vs %s" % [str(r1), str(r2)]
 	return ""

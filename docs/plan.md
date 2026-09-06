@@ -239,11 +239,29 @@ highlight, overlay. Design+plan:
   wiring in `API/VOICE_CHAT.md`. Live websocket path still needs a real server.
 
 **Known follow-ups queued (small):**
-- Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
-  redo-turn-with-seed admin ops (need deeper board/deck mutation + snapshot).
+- ~~Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
+  redo-turn-with-seed admin ops~~ — **DONE 2026-09-06** (see below).
 - Token-guarded remote admin panel (spec §4 "later possible").
 - Real `evil` over a second SDK connection (needs SDK re-vendor; the engine and
   `seat_config.resolve_driver` are already single-swap-point ready).
+
+**Live admin ops — DONE (2026-09-06, 181 headless tests green).** Added 5 new
+`engine.admin_override` ops (spec §4.B deferred, now built), each range-checks
+before mutating and appends an `admin_override` event:
+- `tweak_tile {tile, cost?, rent?, rent_set?, house_cost?}` — live-edit a tile's
+  numeric cost/rent data (mutates the in-memory board tile; board.json is only
+  the seed).
+- `deck_insert {kind, card:{name,effect,value}}` — push a card to the FRONT of
+  a deck (drawn next); kind must match an existing deck.
+- `deck_remove {kind, name?}` — remove a card by name (or the front card if no
+  name); returns the removed card in the event.
+- `reorder_players {order:[pid,...]}` — reorder the players array by a full
+  permutation; `turn_player` is remapped so the SAME logical player keeps the
+  turn.
+- `redo_turn {seed}` — re-seed the RNG and reset the current turn to
+  TURN_START (clears pending/trade/last_roll) for a deterministic re-roll.
+Deck mutations are snapshot-safe (round-trip test added). Tests in
+`tests/admin_test.gd` (+12) and `tests/snapshot_test.gd` (+1).
 
 **Model routing reminder:** ARCH/design/review → deepseek-v4-flash; bulk
 GDScript on fixed interface → minimax-m2.7; crisply-specified leaf execution
