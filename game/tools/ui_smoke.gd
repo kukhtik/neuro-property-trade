@@ -6,6 +6,7 @@ extends Node
 ## Run windowed: godot --path game res://tools/ui_smoke.tscn
 
 const MainScript := preload("res://main.gd")
+const ProjectionScript := preload("res://sdk/projection.gd")
 
 var _launcher
 
@@ -49,6 +50,24 @@ func _ready() -> void:
 	for _i in 40:
 		await get_tree().process_frame
 	print("PASS: game survives; phase=%s" % str(eng.phase))
+
+	# 5) A3: tile inspector auto-hide. Select a tile -> visible; wait >3s -> hidden.
+	var insp = gv._inspector
+	insp.select(5)
+	insp.sync(ProjectionScript.new().for_spectator(eng), gv.seats)
+	if not insp.visible:
+		print("FAIL: inspector should be visible after select")
+		quit(1); return
+	print("PASS: inspector visible after tile select")
+	# wait ~4s of real time (frame count is unreliable under llvmpipe)
+	var deadline := Time.get_ticks_msec() + 4000
+	while Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	if insp.visible:
+		print("FAIL: inspector should auto-hide after 3s")
+		quit(1); return
+	print("PASS: inspector auto-hides after 3s")
+
 	await _shot_save("ui_played")
 	quit(0)
 

@@ -114,32 +114,38 @@ func _build() -> void:
 	v.add_child(set_grid)
 
 	_turn_timer = _seconds_option([0, 5, 10, 15, 20, 30, 45, 60], 30)
+	_turn_timer.tooltip_text = "Сколько секунд у игрока на ход. 0 = без лимита."
 	var tt_row := _h(UiTheme.label("Таймер хода"), _turn_timer)
 	set_grid.add_child(tt_row)
 
 	_auction_timer = _seconds_option([0, 5, 8, 10, 12, 15, 20], 15)
+	_auction_timer.tooltip_text = "Сколько секунд на ставку в аукционе. 0 = без лимита."
 	set_grid.add_child(_h(UiTheme.label("Аукцион"), _auction_timer))
 
 	_free_parking = OptionButton.new()
 	_free_parking.add_item("Выкл"); _free_parking.add_item("Вкл")
 	_free_parking.selected = 0
+	_free_parking.tooltip_text = "Собирать ли налоги в «Бесплатную стоянку» и отдавать их приземлившемуся."
 	set_grid.add_child(_h(UiTheme.label("Беспл. стоянка"), _free_parking))
 
 	_starting_order = OptionButton.new()
 	_starting_order.add_item("случайный"); _starting_order.add_item("вручную")
 	_starting_order.selected = 0
+	_starting_order.tooltip_text = "Случайный порядок ходов или порядок в списке игроков."
 	set_grid.add_child(_h(UiTheme.label("Нач. порядок"), _starting_order))
 
 	# language selector (full localization is a follow-up; this stores the choice)
 	_language = OptionButton.new()
 	_language.add_item("Русский"); _language.add_item("English")
 	_language.selected = 0
+	_language.tooltip_text = "Язык интерфейса (полная локализация — позже)."
 	set_grid.add_child(_h(UiTheme.label("Язык"), _language))
 
 	# auctions optional
 	_auctions = OptionButton.new()
 	_auctions.add_item("вкл"); _auctions.add_item("выкл")
 	_auctions.selected = 0
+	_auctions.tooltip_text = "Проводить ли аукцион, когда игрок отказывается покупать клетку."
 	set_grid.add_child(_h(UiTheme.label("Аукционы"), _auctions))
 
 	# help button
@@ -154,10 +160,12 @@ func _build() -> void:
 	_animations = CheckButton.new()
 	_animations.text = "анимации"
 	_animations.button_pressed = true
+	_animations.tooltip_text = "Плавные анимации фишек и камеры. Выключите для слабых машин."
 	toggles.add_child(_animations)
 	_event_overlay = CheckButton.new()
 	_event_overlay.text = "журнал событий"
 	_event_overlay.button_pressed = true
+	_event_overlay.tooltip_text = "Показывать ли журнал событий поверх доски."
 	toggles.add_child(_event_overlay)
 	v.add_child(toggles)
 
@@ -169,6 +177,7 @@ func _build() -> void:
 	_rng_seed.max_value = 99999
 	_rng_seed.value = 0
 	_rng_seed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rng_seed.tooltip_text = "Число для воспроизводимой партии. 0 = случайная."
 	seed_row.add_child(seed_lbl)
 	seed_row.add_child(_rng_seed)
 	v.add_child(seed_row)
@@ -225,6 +234,7 @@ func _add_row(_unused: Variant = null) -> void:
 	for d in DRIVERS:
 		driver.add_item(d)
 	driver.selected = 0 if idx == 0 else 1   # first seat LOCAL by default
+	driver.tooltip_text = "LOCAL = человек за этим компьютером, AI = компьютерный игрок."
 	if idx == 0:
 		driver.disabled = true   # host must be LOCAL this pass
 	h.add_child(driver)
@@ -239,6 +249,7 @@ func _add_row(_unused: Variant = null) -> void:
 	var name_edit := LineEdit.new()
 	name_edit.text = NAMES[idx % NAMES.size()]
 	name_edit.custom_minimum_size.x = 200
+	name_edit.tooltip_text = "Имя игрока, отображаемое на доске и в списке."
 	h.add_child(name_edit)
 
 	# remove button (disabled for the host seat)

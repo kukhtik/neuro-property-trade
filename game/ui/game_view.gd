@@ -38,6 +38,7 @@ var _modals
 var _journal
 var _jpanel: PanelContainer
 var _last_vp := Vector2.ZERO
+var _center: HBoxContainer   # players | board | journal (ties the panels together)
 
 func setup(eng, mgr, seat_list: Array, s) -> void:
 	engine = eng
@@ -55,8 +56,7 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	var bs = _board_scene
 	if bs.has_node("EventOverlay"):
 		bs.get_node("EventOverlay").visible = false
-	if _board_scene._board != null:
-		_board_scene._board.tile_clicked.connect(_on_tile_clicked)
+	_board_scene.tile_clicked.connect(_on_tile_clicked)
 	# HUD refresh on every seat-manager tick
 	manager.state_changed.connect(_on_state_changed)
 	_top.settings_requested.connect(_on_settings_requested)
@@ -84,26 +84,35 @@ func _build_layout() -> void:
 	_top.offset_bottom = 34
 	add_child(_top)
 
-	# board (center), below the top bar
+	# CENTER ROW: players | board | journal — a single HBox so the three panels
+	# are tied together and the board always fills the space between them.
+	_center = HBoxContainer.new()
+	_center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_center.anchor_top = 0.0
+	_center.offset_top = 34
+	_center.offset_bottom = -_ACTION_H
+	_center.add_theme_constant_override("separation", 8)
+	add_child(_center)
+
+	# left players panel (fixed proportional width)
+	_players = PlayersPanel.new()
+	_players.custom_minimum_size.x = _panel_w()
+	_players.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_center.add_child(_players)
+
+	# board (center) — expands to fill whatever the side panels leave
 	_board_scene = BoardScene.new()
 	_board_scene.name = "BoardScene"
-	_board_scene.position = Vector2(0, 34)
-	add_child(_board_scene)
+	_board_scene.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_board_scene.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_board_scene.set_managed_by_container(true)
+	_center.add_child(_board_scene)
 
-	# left players panel
-	_players = PlayersPanel.new()
-	_players.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_players.offset_top = 34
-	add_child(_players)
-
-	# right journal panel
+	# right journal panel (fixed proportional width)
 	_jpanel = UiTheme.panel()
-	_jpanel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_jpanel.anchor_left = 1.0
-	_jpanel.offset_top = 34
-	_jpanel.offset_bottom = -70
-	_jpanel.offset_right = 0
-	add_child(_jpanel)
+	_jpanel.custom_minimum_size.x = _journal_w()
+	_jpanel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_center.add_child(_jpanel)
 	var jm := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		jm.add_theme_constant_override(edge, 8)
@@ -145,23 +154,17 @@ func _build_layout() -> void:
 	add_child(_inspector)
 
 ## Recompute the proportional panel sizes + board frame. Called on setup and
-## whenever the viewport size changes (A1).
+## whenever the viewport size changes (A1). The HBox re-sizes the side panels
+## and the board fills the remaining center region automatically.
 func _layout() -> void:
 	if _players == null or _jpanel == null or _board_scene == null:
 		return
 	var pw := _panel_w()
 	var jw := _journal_w()
-	# left players panel
-	_players.offset_right = pw
-	_players.offset_bottom = size.y - _ACTION_H
-	# right journal panel
-	_jpanel.offset_left = -jw
+	_players.custom_minimum_size.x = pw
 	_jpanel.custom_minimum_size.x = jw
-	# board fills the center region between the panels
-	var board_rect := Rect2()
-	board_rect.position = Vector2(pw + 8, _TOP_H + 8)
-	board_rect.size = Vector2(size.x - pw - jw - 16, size.y - _TOP_H - _ACTION_H - 16)
-	_board_scene.set_frame(board_rect)
+	# the board scene fills the center region between the panels (HBox handles it)
+	_board_scene.set_frame(Rect2(0, 0, 0, 0))   # signal it to re-fit its own rect
 
 func _process(delta: float) -> void:
 	# A1: re-layout when the viewport size changes (window resize / different screen)

@@ -43,6 +43,18 @@ func _ready() -> void:
 		quit(1); return
 	print("PASS: proportional panel widths adapt to small screen")
 
+	# A1: the board must SCALE to fit the smaller frame, not clip. The board
+	# scene recomputes its cell size from its own (container-managed) rect.
+	var bs = gv._board_scene
+	for _i in 10:
+		await get_tree().process_frame
+	var cell: int = bs._cell
+	print("board cell=%d (should be < 64 on a small screen)" % cell)
+	if cell >= 64:
+		print("FAIL: board did not scale down for small screen (cell=%d)" % cell)
+		quit(1); return
+	print("PASS: board scales to fit the small frame (cell=%d)" % cell)
+
 	# drive a human roll to prove the input path still works
 	var eng = gv.engine
 	var hp: int = gv._human_pid

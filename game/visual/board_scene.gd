@@ -7,6 +7,10 @@ extends Control
 ## The "camera" is a clip_contents Control that pans the board inside the root
 ## viewport (so it is physically rendered/capturable — no SubViewport, which
 ## would be a separate render target and show black in a root-viewport grab).
+##
+## A1: the board SCALES to fit the available frame. The cell size is recomputed
+## from the frame each layout pass; when it changes the board is rebuilt at the
+## new cell size (so it never clips — it always fits the center region).
 
 const ProjectionScript := preload("res://sdk/projection.gd")
 const MarkdownRenderer := preload("res://sdk/markdown_renderer.gd")
@@ -16,7 +20,8 @@ const Spectacle := preload("res://visual/spectacle.gd")
 const EventOverlay := preload("res://visual/event_overlay.gd")
 const Sfx := preload("res://visual/sfx.gd")
 
-const CELL := 48
+const MIN_CELL := 24
+const MAX_CELL := 64
 const BOARD_TILES := 40
 
 var _engine
@@ -27,13 +32,20 @@ var _spectacle: Spectacle
 var _overlay: EventOverlay
 var _sfx: Sfx
 var _timer := 0.0
+var _cell := 0
 var _frame_override: Rect2 = Rect2(-1, -1, -1, -1)   # when set, fill this rect instead of the viewport
+var _managed_by_container := false   # when true, a parent container sets our size
 
 ## Optional: constrain this scene to a sub-rect (e.g. the center board region
 ## of a larger HUD). Leave unset to fill the whole viewport (plain Node parent).
 func set_frame(r: Rect2) -> void:
 	_frame_override = r
 	_apply_viewport_rect()
+
+## When the scene is a child of a container (HBox/VBox), the container manages
+## our size — call this so we don't fight it with the viewport rect.
+func set_managed_by_container(v: bool) -> void:
+	_managed_by_container = v
 
 func setup(engine, settings) -> void:
 	_engine = engine
@@ -54,15 +66,8 @@ func setup(engine, settings) -> void:
 	_camera.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_camera)
 
-	# board fills the whole board plane, centered; panned by the camera
-	_board = BoardView.new()
-	_board.name = "BoardView"
-	_board.build(BOARD_TILES, CELL)
-	_camera.add_child(_board)
-
 	# spectacle pans the camera (frustum) to follow the action
 	_spectacle = Spectacle.new()
-	_spectacle.setup(_camera, _board, CELL, BOARD_TILES)
 	_spectacle.set_animations(_settings.animations)
 	add_child(_spectacle)
 
@@ -78,6 +83,11 @@ func setup(engine, settings) -> void:
 
 	_engine.log.event_appended.connect(_on_engine_event)
 
+	# build the board now (default cell) so it's never null; _resize_children
+	# will rebuild at the correct size once the container lays us out
+	_cell = MAX_CELL
+	_rebuild_board()
+
 	# size children now that we know our rect
 	_resize_children()
 
@@ -86,6 +96,8 @@ func setup(engine, settings) -> void:
 ## Set this control's rect to the root viewport's visible rect (works even
 ## when parented under a plain Node, where anchors have no parent to size from).
 func _apply_viewport_rect() -> void:
+	if _managed_by_container:
+		return   # the parent container sets our size; don't fight it
 	var r := _frame_override
 	if r.size.x < 0 or r.size.y < 0:
 		r = Rect2()
@@ -96,19 +108,34 @@ func _apply_viewport_rect() -> void:
 	position = r.position
 	size = r.size
 
+## Recompute the cell size to fit the frame, rebuild the board if it changed,
+## and position the camera + board. This is what makes the board ADAPT to the
+## window instead of clipping (A1).
 func _resize_children() -> void:
 	var w := size.x
 	var h := size.y
+	if w <= 0 or h <= 0:
+		return
 	var grid := TL.grid_cells(BOARD_TILES)
-	var board_px := grid * CELL
-	var bx := 48.0
-	var by := 48.0
+	var bx := 24.0
+	var by := 24.0
+	var frustum_w := w - bx - 24.0
+	var frustum_h := h - by - 24.0
+	# cell size that fits the frustum (integer so tiles stay crisp)
+	var cell := int(minf(frustum_w / grid, frustum_h / grid))
+	cell = clampi(cell, MIN_CELL, MAX_CELL)
+	if cell != _cell:
+		_cell = cell
+		_rebuild_board()
+		if _engine != null:
+			_paint(false)   # fill the fresh board right away
 	# camera frustum: leave room for the overlay (bottom-right) when event_overlay
 	_camera.position = Vector2(bx, by)
-	_camera.size = Vector2(w - bx - 24.0, h - by - 24.0)
+	_camera.size = Vector2(frustum_w, frustum_h)
 	# center the board inside the frustum, clamped so tiles stay in view
-	var cx := maxf(0.0, (_camera.size.x - board_px) * 0.5)
-	var cy := maxf(0.0, (_camera.size.y - board_px) * 0.5)
+	var board_px := grid * _cell
+	var cx := maxf(0.0, (frustum_w - board_px) * 0.5)
+	var cy := maxf(0.0, (frustum_h - board_px) * 0.5)
 	_board.position = Vector2(cx, cy)
 	# background covers our rect
 	for child in get_children():
@@ -122,9 +149,27 @@ func _resize_children() -> void:
 			b.offset_left = 0; b.offset_top = 0
 			b.offset_right = 0; b.offset_bottom = 0
 
+## (Re)build the board at the current `_cell`. Frees the old board and creates
+## a fresh one, reconnecting the tile-click signal.
+func _rebuild_board() -> void:
+	if _board != null and is_instance_valid(_board):
+		_board.queue_free()
+	_board = BoardView.new()
+	_board.name = "BoardView"
+	_board.build(BOARD_TILES, _cell)
+	_camera.add_child(_board)
+	_board.tile_clicked.connect(_on_tile_clicked)
+	_spectacle.setup(_camera, _board, _cell, BOARD_TILES)
+
+func _on_tile_clicked(idx: int) -> void:
+	tile_clicked.emit(idx)
+
+signal tile_clicked(index: int)
+
 func _process(delta: float) -> void:
 	# keep our rect synced to the viewport (root is a plain Node)
 	_apply_viewport_rect()
+	_resize_children()
 	_timer += delta
 	if _timer >= 0.5:
 		_timer = 0.0

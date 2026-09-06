@@ -32,6 +32,8 @@ func _init() -> void:
 	v.add_child(head)
 	_text = UiTheme.label("Кликните по тайлу доски", 13, UiTheme.COL.text_dim)
 	v.add_child(_text)
+	# A3: hidden until a tile is selected
+	visible = false
 
 func _process(delta: float) -> void:
 	# A3: auto-hide the inspector a few seconds after the last selection.
@@ -43,10 +45,12 @@ func _process(delta: float) -> void:
 func select(idx: int) -> void:
 	selected = idx
 	_hide_timer = _HIDE_AFTER   # reset the auto-hide countdown
+	visible = true              # show the panel
 
 func clear() -> void:
 	selected = -1
 	_hide_timer = 0.0
+	visible = false             # hide the whole panel (A3)
 	_text.text = "Кликните по тайлу доски"
 	_text.add_theme_color_override("font_color", UiTheme.COL.text_dim)
 

@@ -58,6 +58,7 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	# proposer (the human) builds an offer to one other player.
 	_show()
 	var recipient: OptionButton = OptionButton.new()
+	recipient.tooltip_text = "Кому вы предлагаете сделку."
 	for s in seats:
 		if int(s.pid) != proposer_pid:
 			recipient.add_item(str(s.name), int(s.pid))
@@ -85,6 +86,7 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	row.add_child(UiTheme.label("Даю $"))
 	var give_cash := SpinBox.new()
 	give_cash.min_value = 0; give_cash.max_value = 99999; give_cash.value = 0
+	give_cash.tooltip_text = "Сколько денег вы отдаёте в сделке."
 	row.add_child(give_cash)
 
 	var row2 := HBoxContainer.new()
@@ -93,6 +95,7 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	row2.add_child(UiTheme.label("Хочу $"))
 	var want_cash := SpinBox.new()
 	want_cash.min_value = 0; want_cash.max_value = 99999; want_cash.value = 0
+	want_cash.tooltip_text = "Сколько денег вы просите в сделке."
 	row2.add_child(want_cash)
 
 	# NOTE: MVP trade flow selects give_tiles from clicked tiles; want_tiles here
@@ -161,6 +164,7 @@ func open_auction(proj: Dictionary, seats: Array) -> void:
 	amt.min_value = high + 1
 	amt.max_value = 99999
 	amt.value = high + 1
+	amt.tooltip_text = "Ваша ставка. Должна быть выше текущей."
 	row.add_child(amt)
 	var bid := UiTheme.button_accent("СТАВКА", "Сделать ставку на эту клетку")
 	bid.connect("pressed", Callable(self, "_emit_bid").bind(amt))
