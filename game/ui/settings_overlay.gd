@@ -14,12 +14,12 @@ signal closed
 const UiTheme := preload("res://ui/theme.gd")
 const Settings := preload("res://core/game_settings.gd")
 const SeatConfig := preload("res://seats/seat_config.gd")
+const PI := preload("res://core/player_identity.gd")
 
 const DRIVERS := ["LOCAL", "AI", "CHAT", "sdk:neuro", "sdk:evil"]
 const NAMES := ["Host", "AI-2", "AI-3", "AI-4", "AI-5", "AI-6", "AI-7", "AI-8"]
-const COLORS := [Color("e74c3c"), Color("3498db"), Color("2ecc71"),
-	Color("f1c40f"), Color("9b59b6"), Color("e67e22"), Color("1abc9c"), Color("34495e")]
-const TOKENS := ["token0", "token1", "token2", "token3", "token4", "token5", "token6", "token7"]
+const COLORS := PI.COLORS
+const TOKENS := PI.TOKENS
 
 var _rows: Array = []            # per-player: {driver, name, color, token, remove_btn, row}
 var _pre_game := true            # true => main button is СТАРТ; false => ПРИМЕНИТЬ (restart)

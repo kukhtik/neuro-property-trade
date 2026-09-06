@@ -12,6 +12,7 @@ extends Control
 
 const TL := preload("res://visual/tile_layout.gd")
 const BT := preload("res://visual/theme.gd")
+const PI := preload("res://core/player_identity.gd")
 
 const CORNER_ICONS := {
 	"go": "GO",
@@ -270,6 +271,4 @@ func _clear_houses() -> void:
 		c.queue_free()
 
 func _owner_color(pid: int) -> Color:
-	var colors := [Color("e74c3c"), Color("3498db"), Color("2ecc71"),
-		Color("f1c40f"), Color("9b59b6"), Color("e67e22")]
-	return colors[pid % colors.size()]
+	return PI.color_of(pid)

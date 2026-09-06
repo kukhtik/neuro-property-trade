@@ -86,7 +86,7 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 			_human_pid = int(seat.pid)
 			break
 	# board fills the center region (between left panel, top bar, journal, action bar)
-	_board_scene.setup(engine, settings)
+	_board_scene.setup(engine, settings, seats)
 	_layout()
 	var bs = _board_scene
 	if bs.has_node("EventOverlay"):

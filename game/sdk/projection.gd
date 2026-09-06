@@ -51,9 +51,24 @@ func _players_view(engine, pid: int) -> Array:
 			"jail_turns": p.jail_turns,
 			"bankrupt": p.bankrupt,
 			"tiles": p.owned_tiles(),
+			"houses": _player_houses(engine, p.owned_tiles()),
+			"mortgaged": _player_mortgaged(engine, p.owned_tiles()),
 		}
 		players.append(entry)
 	return players
+
+func _player_houses(engine, tiles: Array) -> int:
+	var total := 0
+	for t in tiles:
+		total += engine._houses_on(t)
+	return total
+
+func _player_mortgaged(engine, tiles: Array) -> int:
+	var n := 0
+	for t in tiles:
+		if engine._mortgaged.has(t):
+			n += 1
+	return n
 
 func _pending_view(engine) -> Dictionary:
 	var pending := {}
@@ -108,6 +123,8 @@ func _spectator_players_view(engine) -> Array:
 			"jail_turns": p.jail_turns,
 			"bankrupt": p.bankrupt,
 			"tiles": p.owned_tiles(),
+			"houses": _player_houses(engine, p.owned_tiles()),
+			"mortgaged": _player_mortgaged(engine, p.owned_tiles()),
 		}
 		players.append(entry)
 	return players

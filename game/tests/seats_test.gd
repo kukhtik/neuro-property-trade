@@ -54,8 +54,9 @@ static func test_assignment_parsing() -> String:
 		return "label sdk:neuro"
 	if seats[1].input_driver != "SDK":
 		return "driver SDK"
-	if seats[1].color != Color(0.35, 0.6, 1):
-		return "sdk seat should get default blue color, got %s" % str(seats[1].color)
+	var PI = load("res://core/player_identity.gd")
+	if seats[1].color != PI.color_of(1):
+		return "sdk seat should get default PlayerIdentity color, got %s" % str(seats[1].color)
 	if seats[2].input_driver != "AI":
 		return "driver AI"
 	if seats[3].input_driver != "CHAT":

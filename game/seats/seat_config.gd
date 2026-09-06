@@ -2,8 +2,12 @@ extends RefCounted
 ## Builds an Array[Seat] from GameSettings Block 1, and resolves a raw seat
 ## assignment to a runtime driver. This resolve_driver function is the SINGLE
 ## place the future multi-SDK-connection support changes.
+##
+## P1: colors + tokens come from PlayerIdentity (single source). A seat's
+## color/token_id are assigned from PlayerIdentity so the owner marker, the
+## piece halo and the players-panel row can never disagree.
 
-const DEFAULT_COLORS := [Color(1, 0.3, 0.3), Color(0.35, 0.6, 1), Color(0.4, 0.9, 0.4), Color(1, 0.85, 0.3)]
+const PI := preload("res://core/player_identity.gd")
 
 static func from_settings(settings) -> Array:
 	var n: int = settings.seat_count
@@ -19,16 +23,16 @@ static func from_settings(settings) -> Array:
 			var a: Dictionary = assignments[i]
 			driver_label = str(a.get("driver", ""))
 			s.name = str(a.get("name", "Seat #%d" % (i + 1)))
-			s.color = _color_from_name(str(a.get("token_color", "")), DEFAULT_COLORS[i % DEFAULT_COLORS.size()])
-			s.token_id = str(a.get("token_id", "token%d" % i))
+			s.color = _color_from_name(str(a.get("token_color", "")), PI.color_of(i))
+			s.token_id = str(a.get("token_id", PI.token_of(i)))
 		else:
 			var drv: String = "AI"
 			if i == 0:
 				drv = "LOCAL"
 			driver_label = drv
 			s.name = "Host" if i == 0 else "AI Seat #%d" % (i + 1)
-			s.color = DEFAULT_COLORS[i % DEFAULT_COLORS.size()]
-			s.token_id = "token%d" % i
+			s.color = PI.color_of(i)
+			s.token_id = PI.token_of(i)
 		s.driver_label = driver_label
 		s.input_driver = resolve_driver(driver_label, seen_sdk)
 		if s.input_driver == "SDK":

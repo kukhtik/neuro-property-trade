@@ -26,6 +26,7 @@ const BOARD_TILES := 40
 
 var _engine
 var _settings
+var _seats: Array = []
 var _board: BoardView
 var _camera: Control          # clip_contents frustum holding the board
 var _spectacle: Spectacle
@@ -47,9 +48,10 @@ func set_frame(r: Rect2) -> void:
 func set_managed_by_container(v: bool) -> void:
 	_managed_by_container = v
 
-func setup(engine, settings) -> void:
+func setup(engine, settings, seats: Array = []) -> void:
 	_engine = engine
 	_settings = settings
+	_seats = seats
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_viewport_rect()
 
@@ -158,6 +160,7 @@ func _rebuild_board() -> void:
 	_board = BoardView.new()
 	_board.name = "BoardView"
 	_board.build(BOARD_TILES, _cell)
+	_board.set_seats(_seats)
 	_camera.add_child(_board)
 	_board.tile_clicked.connect(_on_tile_clicked)
 	_spectacle.setup(_camera, _board, _cell, BOARD_TILES)
