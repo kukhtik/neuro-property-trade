@@ -84,10 +84,34 @@ mortgage/unmortgage, bankruptcy+winner, trades, and both card decks. Phase 2
 
 ## Phase 3 — Multi-seat + humans
 
-- [ ] Seat manager: human turns wait for input, AI turns force
-- [ ] Second AI seat (evil) — separate SDK session/characterId
-- [ ] Trade negotiation UX for humans; auto-resolve for AI-vs-AI
-- [ ] Spectator-safe state (no hidden info leak in context messages)
+- [x] Seat manager: human turns wait for input, AI turns force
+      (`seats/seat_manager.gd` + `seat_config.gd`; pure testable helper
+      `find_decision_holder`)
+- [x] Second AI seat (internal naive `ai_driver`; `seat_config.resolve_driver`
+      maps a 2nd `sdk:*` seat to AI until a second SDK connection is supported)
+- [x] Trade negotiation UX for humans: engine propose/respond exists;
+      auto-resolve for AI-vs-AI via `TradeEvaluator` (accept if received
+      value >= given value)
+- [x] Spectator-safe state (no hidden info leak in context messages) —
+      `projection.for_spectator` + `render_spectator` (no `private` block, no
+      get-out-of-jail cards)
+
+**Phase 3 COMPLETE — 2026-09-06.** Seat/driver layer + timeout auto-pass +
+spectator-safe projection + a second AI seat. 109 headless tests green
+(`game/tests/seats_test.gd` added). Runtime proof: `tools/seats_soak.tscn`
+drives `[SDK(Neuro↔Randy), AI, AI, LOCAL]` on one engine → 12 turns, no stall
+(`NEURO_SDK_WS_URL=ws://localhost:8000 godot --headless --path game
+res://tools/seats_soak.tscn`). **SDK-singleton constraint:** the vendored SDK
+is one process-wide websocket/action-handler singleton, so Neuro + evil cannot
+both be SDK seats this phase — the 2nd SDK seat falls back to the internal AI
+driver via `seat_config.resolve_driver` (single place a future multi-connection
+SDK changes). Auto-pass (spec §3) runs in `seat_manager` for LOCAL/ADMIN/CHAT/
+AI; SDK seats self-drive their own force/result cycle (a manager-side timeout
+raced it — a future SDK-side one-retry-then-pass belongs in the adapter, not
+the manager). Admin console is Phase 4, but `seat_manager.push_admin_intent`
+(stub) routes admin overrides through the engine to keep the
+authoritative-engine + event-log invariant. Design+plan:
+`docs/superpowers/{specs,plans}/2026-09-06-phase3-seats-lobby*`.
 
 ## Phase 4 — Stream polish
 
