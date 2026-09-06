@@ -1011,3 +1011,95 @@ func _admin_fail(reason: String) -> Dictionary:
 func _admin_ok(op: String, params: Dictionary) -> Dictionary:
 	log.append("admin_override", {"op": op, "params": params})
 	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+# --- Phase 4: SNAPSHOT (export/import full engine state, spec §4.C) ---
+## Serialize the entire authoritative state to plain JSON-able dictionaries:
+## settings, players, phase, pending, houses, mortgaged, decks (remaining
+## order), RNG seed, and the event log — enough to restore "this exact state".
+func to_snapshot() -> Dictionary:
+	var players_d: Array = []
+	for p in players:
+		players_d.append({
+			"name": p.name, "token_id": p.token_id,
+			"money": p.money, "position": p.position,
+			"in_jail": p.in_jail, "jail_turns": p.jail_turns,
+			"bankrupt": p.bankrupt,
+			"get_out_of_jail_cards": p.get_out_of_jail_cards,
+			"tiles": p.owned_tiles(),
+		})
+	var decks_d: Dictionary = {}
+	for kind in decks:
+		decks_d[kind] = decks[kind].cards(kind)
+	var names: Array = []
+	for p in players:
+		names.append(p.name)
+	return {
+		"settings": settings.to_data(),
+		"names": names,
+		"players": players_d,
+		"phase": phase,
+		"turn_player": turn_player,
+		"consecutive_doubles": consecutive_doubles,
+		"last_roll": _last_roll,
+		"last_doubles": _last_doubles,
+		"no_extra_turn": _no_extra_turn,
+		"card_depth": _card_depth,
+		"pending": _pending,
+		"pending_trade": _pending_trade,
+		"houses": _houses,
+		"mortgaged": _mortgaged,
+		"decks": decks_d,
+		"log": log.entries(),
+	}
+
+## Rebuild a fresh authoritative engine from a snapshot. Uses the engine's
+## standard setup (board/cards/settings) then overwrites every live member.
+func from_snapshot(d: Dictionary):
+	var E = load("res://core/engine.gd")
+	var e = E.new()
+	var S = load("res://core/game_settings.gd")
+	var s = S.new()
+	s.from_data(d.get("settings", {}))
+	var names: Array = d.get("names", [])
+	e.setup(s, names)
+	e._restore_from_snapshot(d)
+	return e
+
+func _restore_from_snapshot(d: Dictionary) -> void:
+	phase = d.get("phase", PHASE_TURN_START)
+	turn_player = int(d.get("turn_player", 0))
+	consecutive_doubles = int(d.get("consecutive_doubles", 0))
+	_last_roll = d.get("last_roll", {})
+	_last_doubles = bool(d.get("last_doubles", false))
+	_no_extra_turn = bool(d.get("no_extra_turn", false))
+	_card_depth = int(d.get("card_depth", 0))
+	_pending = d.get("pending", {})
+	_pending_trade = d.get("pending_trade", {})
+	_houses = d.get("houses", {})
+	_mortgaged = (d.get("mortgaged", []) as Array).duplicate()
+	var pdata: Array = d.get("players", [])
+	for i in pdata.size():
+		if i >= players.size(): break
+		var pd: Dictionary = pdata[i]
+		var pp = players[i]
+		pp.name = pd.get("name", pp.name)
+		# token_id is per-piece identity (survives player removal); must be
+		# serialized explicitly or a shifted survivor gets the wrong index token.
+		pp.token_id = pd.get("token_id", pp.token_id)
+		pp.money = int(pd.get("money", pp.money))
+		pp.position = int(pd.get("position", pp.position))
+		pp.in_jail = bool(pd.get("in_jail", false))
+		pp.jail_turns = int(pd.get("jail_turns", 0))
+		pp.bankrupt = bool(pd.get("bankrupt", false))
+		pp.get_out_of_jail_cards = int(pd.get("get_out_of_jail_cards", 0))
+		pp._owned = (pd.get("tiles", []) as Array).duplicate()
+	var decks_d: Dictionary = d.get("decks", {})
+	for kind in decks_d:
+		if decks.has(kind):
+			decks[kind]._decks[kind] = (decks_d[kind] as Array).duplicate()
+	if settings.rng_seed != 0:
+		rng.seed_rng(settings.rng_seed)
+	log.clear()
+	var entries: Array = d.get("log", [])
+	for entry in entries:
+		log._entries.append(entry as Dictionary)
