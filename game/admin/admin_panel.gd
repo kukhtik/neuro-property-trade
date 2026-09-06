@@ -25,7 +25,7 @@ func setup(controller) -> void:
 	_controller = controller
 	# If the controller is an admin_gate, read its token for authenticated calls.
 	if controller != null and controller.has_method("is_guarded"):
-		_token = controller._token if controller.has("_token") else ""
+		_token = str(controller.get("_token")) if controller.get("_token") != null else ""
 	_build()
 	_refresh_all()
 

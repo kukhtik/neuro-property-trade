@@ -27,6 +27,13 @@ var _spectacle: Spectacle
 var _overlay: EventOverlay
 var _sfx: Sfx
 var _timer := 0.0
+var _frame_override: Rect2 = Rect2(-1, -1, -1, -1)   # when set, fill this rect instead of the viewport
+
+## Optional: constrain this scene to a sub-rect (e.g. the center board region
+## of a larger HUD). Leave unset to fill the whole viewport (plain Node parent).
+func set_frame(r: Rect2) -> void:
+	_frame_override = r
+	_apply_viewport_rect()
 
 func setup(engine, settings) -> void:
 	_engine = engine
@@ -79,11 +86,13 @@ func setup(engine, settings) -> void:
 ## Set this control's rect to the root viewport's visible rect (works even
 ## when parented under a plain Node, where anchors have no parent to size from).
 func _apply_viewport_rect() -> void:
-	var r := Rect2()
-	if get_viewport() != null:
-		r = get_viewport().get_visible_rect()
-	if r.size.x <= 0 or r.size.y <= 0:
-		r = Rect2(0, 0, 1152, 648)
+	var r := _frame_override
+	if r.size.x < 0 or r.size.y < 0:
+		r = Rect2()
+		if get_viewport() != null:
+			r = get_viewport().get_visible_rect()
+		if r.size.x <= 0 or r.size.y <= 0:
+			r = Rect2(0, 0, 1152, 648)
 	position = r.position
 	size = r.size
 

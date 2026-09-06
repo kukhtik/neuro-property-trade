@@ -1,59 +1,76 @@
 extends Node
-## Phase 4 entry point. Hosts the seat manager, a default game, and a hidden
-## (F12) admin panel wired to admin_controller. All admin edits route through
-## engine.admin_override (fail-closed, same event log).
+## Entry point / single launcher. Shows the Lobby first; on START builds the
+## engine + seat manager + full game view (board, HUD, action panel, journal).
+## F12 toggles the host-local admin panel (engine-authoritative, token-guarded).
 
 const EngineScript := preload("res://core/engine.gd")
-const Settings := preload("res://core/game_settings.gd")
-const SeatConfig := preload("res://seats/seat_config.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const AdminController := preload("res://admin/admin_controller.gd")
 const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
-const BoardScene := preload("res://visual/board_scene.gd")
+const Lobby := preload("res://ui/lobby.gd")
+const GameView := preload("res://ui/game_view.gd")
 
 var _engine
 var _manager
 var _controller
 var _gate
 var _panel
-var _board_scene
+var _game_view
+var _lobby
 
 func _ready() -> void:
-	var s = Settings.new()
-	var seats: Array = SeatConfig.from_settings(s)
+	# set window size for the playable shell
+	var vp = get_viewport()
+	if vp != null:
+		# 1280x720 readable playable layout
+		DisplayServer.window_set_size(Vector2i(1280, 720))
+	_lobby = Lobby.new()
+	add_child(_lobby)
+	_lobby.started.connect(_on_started)
+
+func _on_started(settings, seats: Array) -> void:
 	_engine = EngineScript.new()
-	_engine.setup(s, _names(seats))
+	var names: Array = []
+	for s in seats:
+		names.append(str(s.name))
+	_engine.setup(settings, names)
+
 	_manager = SeatManager.new()
 	_manager.name = "SeatManager"
 	add_child(_manager)
 	_manager.setup(_engine, seats)
+
+	# admin (host-local, token-guarded) wired after seats exist
 	_controller = AdminController.new()
 	_controller.setup(_engine, seats)
-	# Host-local admin goes through the token gate too (invariant: every
-	# override is authenticated + engine-authoritative). The F12 panel passes
-	# the configured token; a future remote panel authenticates the same way.
 	_gate = AdminGate.new()
-	_gate.setup(_controller, s.admin_token)
+	_gate.setup(_controller, settings.admin_token)
 	_panel = AdminPanel.new()
 	_panel.name = "AdminPanel"
 	add_child(_panel)
 	_panel.setup(_gate)
 	_panel.visible = false
-	_board_scene = BoardScene.new()
-	_board_scene.name = "BoardScene"
-	add_child(_board_scene)
-	_board_scene.setup(_engine, s)
-	print("Neuro Property Trade — ready. F12 toggles admin panel.")
 
-func _names(seats: Array) -> Array:
-	var out := []
+	# swap lobby for the game view
+	_lobby.visible = false
+	_game_view = GameView.new()
+	add_child(_game_view)
+	_game_view.setup(_engine, _manager, seats, settings)
+	print("Neuro Property Trade — ready. F12 toggles admin panel. Human seat: " + str(_human_names(seats)))
+
+func _human_names(seats: Array) -> String:
+	var out: Array = []
 	for s in seats:
-		out.append(s.name)
-	return out
+		if str(s.input_driver) in ["LOCAL", "ADMIN"]:
+			out.append(str(s.name))
+	return ", ".join(out)
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F12:
 			if _panel != null:
 				_panel.visible = not _panel.visible
+				# keep the admin panel above any modal overlays
+				if _panel.visible:
+					_panel.move_to_front()
