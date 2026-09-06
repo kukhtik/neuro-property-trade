@@ -15,10 +15,28 @@ extends Node
 
 signal events_emitted(events: Array)
 
-const Projection := preload("res://sdk/projection.gd")
+const ProjectionScript := preload("res://sdk/projection.gd")
 const Renderer := preload("res://sdk/markdown_renderer.gd")
 const DecisionController := preload("res://sdk/decision_controller.gd")
 const EngineAction := preload("res://sdk/engine_action.gd")
+
+## Map engine action names (from engine.legal_actions) to SDK action names
+## (the registered action set). The decision controller returns engine names;
+## the SDK registry is keyed by SDK names.
+const ENGINE_TO_SDK := {
+	"roll": "roll_dice",
+	"buy": "buy_property",
+	"pass": "pass_on_purchase",
+	"bid": "bid_auction",
+	"build_house": "build_house",
+	"sell_house": "sell_house",
+	"mortgage_property": "mortgage_property",
+	"unmortgage_property": "unmortgage_property",
+	"propose_trade": "propose_trade",
+	"respond_trade": "respond_trade",
+	"pay": "pay_jail_fine",
+	"use_card": "use_jail_card",
+}
 
 var engine
 var seat_pid: int = -1
@@ -26,15 +44,30 @@ var _projection
 var _renderer
 var _controller
 var _window: ActionWindow = null
+var _last_decision_key: String = ""
+var _awaiting_result: bool = false
+var _poll_elapsed: float = 0.0
+const POLL_INTERVAL := 0.5
 
 func _ready() -> void:
 	NeuroSdkConfig.game = "Neuro Property Trade"
-	_projection = Projection.new()
+	_projection = ProjectionScript.new()
 	_renderer = Renderer.new()
 	_controller = DecisionController.new()
 	# Re-register + re-force on (re)connect — context survives disconnects.
 	Websocket.connected.connect(_on_connected)
 	_register_actions()
+
+func _process(delta: float) -> void:
+	# Self-driving: poll the engine each tick and force when the decision point
+	# changes (or when it becomes this seat's turn). The decision-key guard
+	# prevents re-forcing the same decision point (which would cancel/replace
+	# the pending force and spam the server).
+	_poll_elapsed += delta
+	if _poll_elapsed < POLL_INTERVAL:
+		return
+	_poll_elapsed = 0.0
+	_force_if_needed()
 
 func setup(eng, pid: int) -> void:
 	engine = eng
@@ -52,31 +85,45 @@ func _register_actions() -> void:
 	if engine == null:
 		return
 	var actions: Array[NeuroAction] = []
-	actions.append(_make_action("roll_dice", "roll", "Roll the dice and move.", _no_params))
-	actions.append(_make_action("buy_property", "buy", "Buy the property you landed on.", _no_params))
-	actions.append(_make_action("pass_on_purchase", "pass", "Pass on buying the property (or pass in an auction).", _no_params))
-	actions.append(_make_action("bid_auction", "bid", "Bid an amount in the auction.", _amount_param))
-	actions.append(_make_action("build_house", "build_house", "Build a house on a tile you own.", _tile_param))
-	actions.append(_make_action("sell_house", "sell_house", "Sell a house from a tile you own.", _tile_param))
-	actions.append(_make_action("mortgage_property", "mortgage_property", "Mortgage a tile you own.", _tile_param))
-	actions.append(_make_action("unmortgage_property", "unmortgage_property", "Unmortgage a tile you own.", _tile_param))
-	actions.append(_make_action("propose_trade", "propose_trade", "Propose a trade to another player.", _trade_param))
-	actions.append(_make_action("respond_trade", "respond_trade", "Accept or decline a pending trade.", _accept_param))
-	actions.append(_make_action("pay_jail_fine", "pay", "Pay the jail fine to get out of jail.", _no_params))
-	actions.append(_make_action("use_jail_card", "use_card", "Use a get-out-of-jail card.", _no_params))
+	actions.append(_make_action("roll_dice", "roll", "Roll the dice and move.", {}, _no_params))
+	actions.append(_make_action("buy_property", "buy", "Buy the property you landed on.", {}, _no_params))
+	actions.append(_make_action("pass_on_purchase", "pass", "Pass on buying the property (or pass in an auction).", {}, _no_params))
+	actions.append(_make_action("bid_auction", "bid", "Bid an amount in the auction.", {"amount": {"type": "integer", "minimum": 1}}, _amount_param))
+	actions.append(_make_action("build_house", "build_house", "Build a house on a tile you own.", {"tile": {"type": "integer", "minimum": 0, "maximum": 39}}, _tile_param))
+	actions.append(_make_action("sell_house", "sell_house", "Sell a house from a tile you own.", {"tile": {"type": "integer", "minimum": 0, "maximum": 39}}, _tile_param))
+	actions.append(_make_action("mortgage_property", "mortgage_property", "Mortgage a tile you own.", {"tile": {"type": "integer", "minimum": 0, "maximum": 39}}, _tile_param))
+	actions.append(_make_action("unmortgage_property", "unmortgage_property", "Unmortgage a tile you own.", {"tile": {"type": "integer", "minimum": 0, "maximum": 39}}, _tile_param))
+	actions.append(_make_action("propose_trade", "propose_trade", "Propose a trade to another player.", {"to": {"type": "integer", "minimum": 0, "maximum": 7}, "give_tiles": {"type": "array", "items": {"type": "integer"}}, "want_tiles": {"type": "array", "items": {"type": "integer"}}, "give_cash": {"type": "integer", "minimum": 0}, "want_cash": {"type": "integer", "minimum": 0}}, _trade_param))
+	actions.append(_make_action("respond_trade", "respond_trade", "Accept or decline a pending trade.", {"accept": {"type": "boolean"}}, _accept_param))
+	actions.append(_make_action("pay_jail_fine", "pay", "Pay the jail fine to get out of jail.", {}, _no_params))
+	actions.append(_make_action("use_jail_card", "use_card", "Use a get-out-of-jail card.", {}, _no_params))
 	NeuroActionHandler.register_actions(actions)
 
-func _make_action(sdk_name: String, engine_action: String, description: String, params: Callable) -> NeuroAction:
-	return EngineAction.new(_window, self, sdk_name, engine_action, description, params)
+func _make_action(sdk_name: String, engine_action: String, description: String, schema: Dictionary, params: Callable) -> NeuroAction:
+	return EngineAction.new(_window, self, sdk_name, engine_action, description, schema, params)
 
-## Force the current decision point for this seat, if it is their turn.
+## Force the current decision point for this seat, if it is their turn and the
+## decision point has changed since the last force.
 func _force_if_needed() -> void:
 	if engine == null or seat_pid < 0:
+		return
+	# Don't send a new force while the previous one is still awaiting a result
+	# (Randy/Neuro queue or drop a force that arrives mid-result; this caused
+	# stalls). The flag is cleared in emit_events when the action executes.
+	if _awaiting_result:
 		return
 	var proj: Dictionary = _projection.for_player(engine, seat_pid)
 	var decision: Dictionary = _controller.decide(engine, seat_pid, proj)
 	if not decision.get("force", false):
+		_last_decision_key = ""
 		return
+	# Decision key: phase + turn_player + pending bidder/tile. Re-forcing the
+	# same key would cancel/replace the pending force and spam the server.
+	var key: String = "%s|%d|%s" % [engine.phase, engine.turn_player, str(proj.get("pending", {}))]
+	if key == _last_decision_key:
+		return
+	_last_decision_key = key
+	_awaiting_result = true
 	var markdown: String = _renderer.render(proj)
 	# Build a fresh ActionWindow for this decision point.
 	if _window != null:
@@ -90,7 +137,8 @@ func _force_if_needed() -> void:
 		ActionsForce.Priority.LOW
 	)
 	for name in decision.get("actions", []):
-		var action: NeuroAction = NeuroActionHandler.get_action(name)
+		var sdk_name: String = ENGINE_TO_SDK.get(name, name)
+		var action: NeuroAction = NeuroActionHandler.get_action(sdk_name)
 		if action != null:
 			_window.add_action(action)
 	_window.register()
@@ -100,9 +148,21 @@ func _force_if_needed() -> void:
 func try_submit(engine_action: String, params: Dictionary) -> Dictionary:
 	if engine == null:
 		return {"ok": false, "reason": "engine not ready", "legal": [], "events": []}
-	return engine.submit_intent(seat_pid, engine_action, params)
+	var result: Dictionary = engine.submit_intent(seat_pid, engine_action, params)
+	# On failure the SDK sends the failure result and Neuro auto-retries the
+	# force. Clear the awaiting-result gate so the retry (and future forces)
+	# aren't blocked. On success emit_events clears it too.
+	if not result.get("ok", false):
+		_awaiting_result = false
+	return result
 
 func emit_events(events: Array) -> void:
+	# An action executed — the decision point has advanced. Reset the guard so
+	# the next poll forces the NEW decision point (a fresh turn/phase). Without
+	# this, a full turn cycle back to the same key (e.g. TURN_START|0) would be
+	# wrongly suppressed by the decision-key guard.
+	_last_decision_key = ""
+	_awaiting_result = false
 	events_emitted.emit(events)
 
 # --- param extractors (IncomingData -> Dictionary) ---

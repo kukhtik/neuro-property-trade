@@ -15,14 +15,16 @@ var _adapter
 var _sdk_name: String
 var _engine_action: String
 var _description: String
+var _schema: Dictionary
 var _params: Callable   # (IncomingData) -> Dictionary
 
-func _init(window: ActionWindow, adapter, sdk_name: String, engine_action: String, description: String, params: Callable):
+func _init(window: ActionWindow, adapter, sdk_name: String, engine_action: String, description: String, schema: Dictionary, params: Callable):
 	super(window)
 	_adapter = adapter
 	_sdk_name = sdk_name
 	_engine_action = engine_action
 	_description = description
+	_schema = schema
 	_params = params
 
 func _get_name() -> String:
@@ -32,9 +34,10 @@ func _get_description() -> String:
 	return _description
 
 func _get_schema() -> Dictionary:
-	# Free-form object schema; the engine validates and lists legal options in
-	# the failure message (per SDK best practices for changing option sets).
-	return JsonUtils.wrap_schema({}, false)
+	# Object schema with the action's params, all declared properties REQUIRED
+	# so drivers (Randy's JSONSchemaFaker / real Neuro) generate valid params.
+	# The engine still validates and lists legal options in the failure message.
+	return JsonUtils.wrap_schema(_schema, true)
 
 func _validate_action(data: IncomingData, state: Dictionary) -> ExecutionResult:
 	var params: Dictionary = _params.call(data)

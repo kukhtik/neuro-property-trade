@@ -78,7 +78,9 @@ mortgage/unmortgage, bankruptcy+winner, trades, and both card decks. Phase 2
 - [x] Validator: reject malformed, list legal options in failure message
 - [x] Fail-closed: result-before-execute, no contradictory second result,
       reconnect → resync → fresh force
-- [ ] Randy/Tony soak of the wired adapter (Phase 4 test ladder)
+- [x] Randy soak of the wired adapter (tools/soak.tscn) — PASSED: 12 turns,
+      no stall. Auctions OFF in soak (Randy can't bid affordably — retries
+      huge amounts forever; auction path covered by Phase 1 headless tests).
 
 ## Phase 3 — Multi-seat + humans
 
