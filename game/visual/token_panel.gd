@@ -4,6 +4,7 @@ extends Control
 ## player's initial drawn on it. Moves to a tile on command, tweening if
 ## animations enabled. Cosmetic; never blocks the engine. The piece is drawn
 ## as a circle with a distinct shape per player index (slot for a sprite later).
+## Size scales with the tile cell so tokens stay visible at any board scale.
 
 const TL := preload("res://visual/tile_layout.gd")
 
@@ -20,8 +21,9 @@ func setup(col: Color, lbl: String, tile_count: int, cell: int, start_idx: int) 
 	player_name = lbl
 	_tile_count = tile_count
 	_cell = cell
-	custom_minimum_size = Vector2(18, 18)
-	size = Vector2(18, 18)
+	var s := maxi(16, int(cell * 0.34))   # token ~1/3 of the tile
+	custom_minimum_size = Vector2(s, s)
+	size = Vector2(s, s)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# outline so the token reads against any tile color
@@ -43,7 +45,7 @@ func setup(col: Color, lbl: String, tile_count: int, cell: int, start_idx: int) 
 	_initial.text = _initial_of(lbl)
 	_initial.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_initial.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_initial.add_theme_font_size_override("font_size", 10)
+	_initial.add_theme_font_size_override("font_size", maxi(9, int(s * 0.5)))
 	_initial.add_theme_color_override("font_color", Color.WHITE)
 	_initial.add_theme_color_override("font_outline_color", Color.BLACK)
 	_initial.add_theme_constant_override("outline_size", 2)

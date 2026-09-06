@@ -19,9 +19,9 @@ const EventMessages := preload("res://visual/event_messages.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 
 const _TOP_H := 34
-const _ACTION_H := 84
-const _MIN_PANEL_W := 200
-const _MIN_JOURNAL_W := 240
+const _ACTION_H := 64
+const _MIN_PANEL_W := 150
+const _MIN_JOURNAL_W := 180
 
 var engine
 var manager
@@ -68,10 +68,10 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 ## adapts to any resolution (A1). Left players panel and right journal are
 ## fractions of the width; the board fills the remaining center region.
 func _panel_w() -> int:
-	return maxi(_MIN_PANEL_W, int(size.x * 0.16))
+	return maxi(_MIN_PANEL_W, int(size.x * 0.12))
 
 func _journal_w() -> int:
-	return maxi(_MIN_JOURNAL_W, int(size.x * 0.20))
+	return maxi(_MIN_JOURNAL_W, int(size.x * 0.14))
 
 func _build_layout() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -137,7 +137,7 @@ func _build_layout() -> void:
 	_actions = ActionPanel.new()
 	_actions.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_actions.anchor_top = 1.0
-	_actions.offset_top = -84
+	_actions.offset_top = -_ACTION_H
 	_actions.offset_bottom = 0
 	_actions.anchor_right = 1.0
 	_actions.offset_right = 0

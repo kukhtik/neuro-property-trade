@@ -21,7 +21,7 @@ const EventOverlay := preload("res://visual/event_overlay.gd")
 const Sfx := preload("res://visual/sfx.gd")
 
 const MIN_CELL := 24
-const MAX_CELL := 64
+const MAX_CELL := 72
 const BOARD_TILES := 40
 
 var _engine
@@ -117,10 +117,10 @@ func _resize_children() -> void:
 	if w <= 0 or h <= 0:
 		return
 	var grid := TL.grid_cells(BOARD_TILES)
-	var bx := 24.0
-	var by := 24.0
-	var frustum_w := w - bx - 24.0
-	var frustum_h := h - by - 24.0
+	var bx := 8.0
+	var by := 8.0
+	var frustum_w := w - bx - 8.0
+	var frustum_h := h - by - 8.0
 	# cell size that fits the frustum (integer so tiles stay crisp)
 	var cell := int(minf(frustum_w / grid, frustum_h / grid))
 	cell = clampi(cell, MIN_CELL, MAX_CELL)
