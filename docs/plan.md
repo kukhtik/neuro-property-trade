@@ -67,16 +67,18 @@ mortgage/unmortgage, bankruptcy+winner, trades, and both card decks. Phase 2
 
 ## Phase 2 — Neuro adapter
 
-- [ ] Godot Neuro SDK wired: startup, context, action registry (stable set)
-- [ ] Actions: roll_dice, buy_property, pass_on_purchase, bid_auction,
+- [x] Godot Neuro SDK wired: startup, context, action registry (stable set)
+- [x] Actions: roll_dice, buy_property, pass_on_purchase, bid_auction,
       build_house, sell_house, mortgage_property, unmortgage_property,
-      propose_trade, respond_trade, use_jail_card, pay_jail_fine, end_turn
-- [ ] Per-seat projection (isolate per-seat auction bids until resolution)
-- [ ] actions/force per decision point, priority=low, ephemeral_context for
+      propose_trade, respond_trade, use_jail_card, pay_jail_fine
+      (end_turn intentionally omitted — engine auto-ends turns; see design doc)
+- [x] Per-seat projection (isolate per-seat auction bids until resolution)
+- [x] actions/force per decision point, priority=low, ephemeral_context for
       bulky board dumps; markdown state renderer
-- [ ] Validator: reject malformed, list legal options in failure message
-- [ ] Fail-closed: result-before-execute, no contradictory second result,
+- [x] Validator: reject malformed, list legal options in failure message
+- [x] Fail-closed: result-before-execute, no contradictory second result,
       reconnect → resync → fresh force
+- [ ] Randy/Tony soak of the wired adapter (Phase 4 test ladder)
 
 ## Phase 3 — Multi-seat + humans
 

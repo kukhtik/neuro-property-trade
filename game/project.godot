@@ -9,6 +9,10 @@ config/name="Neuro Property Trade"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7")
 
+[autoload]
+
+Websocket="*res://addons/neuro-sdk/neuro_sdk.tscn"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

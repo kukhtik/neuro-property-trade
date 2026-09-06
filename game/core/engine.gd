@@ -165,6 +165,50 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 			return {"ok": false, "reason": "must bid or pass", "legal": ["bid", "pass"], "events": []}
 	return {"ok": false, "reason": "phase %s not ready" % phase, "legal": [], "events": []}
 
+## Read-only legal-action query for a seat. Mirrors submit_intent's branches
+## WITHOUT mutating state. Used by the SDK adapter to project what a seat may
+## do at a decision point. Returns an Array[String] of legal action names.
+func legal_actions(pid: int) -> Array:
+	if pid < 0 or pid >= players.size():
+		return []
+	if phase == PHASE_END_GAME:
+		return []
+	# cross-player responder path: a pending trade may be answered by its
+	# recipient regardless of whose turn it is
+	if _pending_trade.size() != 0 and _pending_trade.get("recipient", -1) == pid:
+		return ["respond_trade"]
+	# during an auction the acting player is _pending.bidder, not turn_player
+	if phase == PHASE_AUCTION:
+		if _pending.get("bidder", -1) == pid:
+			return ["bid", "pass"]
+		return []
+	if pid != turn_player:
+		return []
+	match phase:
+		PHASE_TURN_START:
+			var cur = players[turn_player]
+			if cur.in_jail:
+				var can_roll: bool = cur.jail_turns < 3
+				var legal: Array = []
+				if can_roll:
+					legal.append("roll")
+				if cur.money >= settings.jail_fine:
+					legal.append("pay")
+				if cur.get_out_of_jail_cards > 0:
+					legal.append("use_card")
+				return legal
+			return ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property", "propose_trade", "respond_trade"]
+		PHASE_PURCHASE_WAIT:
+			var tile = _pending.get("tile", -1)
+			if tile == -1:
+				return []
+			var legal: Array = ["pass"]
+			var tile_data = board.tile_at(tile)
+			if players[pid].money >= int(tile_data.get("cost", 0)):
+				legal.append("buy")
+			return legal
+	return []
+
 func _resolve_roll() -> Dictionary:
 	phase = PHASE_ROLL_RESOLVE
 	var roll = _next_roll()
