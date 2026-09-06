@@ -3,6 +3,7 @@ extends PanelContainer
 ## engine logic here. F12 toggle is handled in main.gd.
 
 var _controller
+var _token: String = ""
 var _op: OptionButton
 var _param_pid: SpinBox
 var _param_tile: SpinBox
@@ -22,6 +23,9 @@ const OPS := ["set_balance", "teleport", "force_dice", "grant_property",
 
 func setup(controller) -> void:
 	_controller = controller
+	# If the controller is an admin_gate, read its token for authenticated calls.
+	if controller != null and controller.has_method("is_guarded"):
+		_token = controller._token if controller.has("_token") else ""
 	_build()
 	_refresh_all()
 
@@ -138,14 +142,22 @@ func _apply_op() -> void:
 	if _controller == null: return
 	var op: String = _op.get_item_text(_op.selected)
 	var params := _params_for_op(op)
-	var res: Dictionary = _controller.override(op, params)
+	var res: Dictionary
+	if _controller.has_method("override") and _controller.has_method("is_guarded"):
+		res = _controller.override(op, params, _token)
+	else:
+		res = _controller.override(op, params)
 	_refresh_all()
 	print("[admin] %s -> ok=%s reason=%s" % [op, str(res.get("ok")), str(res.get("reason", ""))])
 
 func _reset_away_pressed() -> void:
 	if _controller == null: return
 	var pid: int = int(_param_pid.value)
-	var res: Dictionary = _controller.reset_seat_away(pid)
+	var res: Dictionary
+	if _controller.has_method("reset_seat_away") and _controller.has_method("is_guarded"):
+		res = _controller.reset_seat_away(pid, _token)
+	else:
+		res = _controller.reset_seat_away(pid)
 	print("[admin] reset_seat_away %d -> %s" % [pid, str(res)])
 	_refresh_all()
 

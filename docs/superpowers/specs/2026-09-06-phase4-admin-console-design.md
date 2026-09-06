@@ -182,7 +182,9 @@ validation is deferred with the visual layer.
   redo-turn-with-seed (needs deeper board/deck mutation + snapshot coupling).
 - Full visual layer: board scene/art, camera/spectacle auto-focus, SFX,
   stream overlay, event-overlay on-stream.
-- Remote token-guarded admin panel (spec §4 "later possible").
+- Remote token-guarded admin panel (spec §4 "later possible") — **built
+  2026-09-06** as `game/admin/admin_gate.gd` (pure auth layer over
+  `admin_controller`; `GameSettings.admin_token`; see `docs/plan.md`).
 - Second SDK connection for real `evil`.
 
 ## Files touched (map)

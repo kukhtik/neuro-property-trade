@@ -241,7 +241,7 @@ highlight, overlay. Design+plan:
 **Known follow-ups queued (small):**
 - ~~Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
   redo-turn-with-seed admin ops~~ — **DONE 2026-09-06** (see below).
-- Token-guarded remote admin panel (spec §4 "later possible").
+- ~~Token-guarded remote admin panel~~ — **DONE 2026-09-06** (see below).
 - Real `evil` over a second SDK connection (needs SDK re-vendor; the engine and
   `seat_config.resolve_driver` are already single-swap-point ready).
 
@@ -262,6 +262,18 @@ before mutating and appends an `admin_override` event:
   TURN_START (clears pending/trade/last_roll) for a deterministic re-roll.
 Deck mutations are snapshot-safe (round-trip test added). Tests in
 `tests/admin_test.gd` (+12) and `tests/snapshot_test.gd` (+1).
+
+**Token-guarded admin gate — DONE (2026-09-06, 190 headless tests green).**
+`game/admin/admin_gate.gd` is a pure, headless-testable auth layer over
+`admin_controller` (spec §4 "later possible"). It establishes the remote-admin
+authentication invariant BEFORE any network transport exists (REMOTE is
+post-MVP). `GameSettings.admin_token` holds the shared secret; `main.gd` wires
+the F12 panel through the gate (passing the configured token), so every
+override is authenticated + engine-authoritative. Gate semantics: mutations
+(`override`, `reset_seat_away`) require a valid token (constant-time compare,
+fail-closed `{ok:false, reason:"unauthorized"}`, no mutation); diagnostics
+(`dump_state`, `list_events`) are read-only and NOT gated. Empty token =
+unguarded (host-local default). Tests in `tests/admin_gate_test.gd` (+9).
 
 **Model routing reminder:** ARCH/design/review → deepseek-v4-flash; bulk
 GDScript on fixed interface → minimax-m2.7; crisply-specified leaf execution

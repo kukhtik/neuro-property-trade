@@ -35,6 +35,7 @@ var evil_enabled: bool = false
 var spectacle: bool = true
 var event_overlay: bool = true
 var animations: bool = true   # master toggle for cosmetic tweens (spec control)
+var admin_token: String = ""  # token required by admin_gate for remote/override auth
 var rng_seed: int = 0
 
 func from_data(d: Dictionary) -> void:

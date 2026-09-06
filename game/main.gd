@@ -8,12 +8,14 @@ const Settings := preload("res://core/game_settings.gd")
 const SeatConfig := preload("res://seats/seat_config.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const AdminController := preload("res://admin/admin_controller.gd")
+const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
 
 var _engine
 var _manager
 var _controller
+var _gate
 var _panel
 var _board_scene
 
@@ -28,10 +30,15 @@ func _ready() -> void:
 	_manager.setup(_engine, seats)
 	_controller = AdminController.new()
 	_controller.setup(_engine, seats)
+	# Host-local admin goes through the token gate too (invariant: every
+	# override is authenticated + engine-authoritative). The F12 panel passes
+	# the configured token; a future remote panel authenticates the same way.
+	_gate = AdminGate.new()
+	_gate.setup(_controller, s.admin_token)
 	_panel = AdminPanel.new()
 	_panel.name = "AdminPanel"
 	add_child(_panel)
-	_panel.setup(_controller)
+	_panel.setup(_gate)
 	_panel.visible = false
 	_board_scene = BoardScene.new()
 	_board_scene.name = "BoardScene"
