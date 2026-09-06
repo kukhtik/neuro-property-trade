@@ -20,11 +20,11 @@ var _game_view
 var _lobby
 
 func _ready() -> void:
-	# set window size for the playable shell
+	# set window size for the playable shell (1440x900 gives the board room to
+	# render larger, more readable tiles; the layout adapts to any size)
 	var vp = get_viewport()
 	if vp != null:
-		# 1280x720 readable playable layout
-		DisplayServer.window_set_size(Vector2i(1280, 720))
+		DisplayServer.window_set_size(Vector2i(1440, 900))
 	_lobby = Lobby.new()
 	add_child(_lobby)
 	_lobby.started.connect(_on_started)
