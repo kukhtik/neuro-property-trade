@@ -115,10 +115,34 @@ authoritative-engine + event-log invariant. Design+plan:
 
 ## Phase 4 — Stream polish
 
-- [ ] Board art (original theme), SFX, camera, replay of last event
-- [ ] Voice-chat side-channel spike (optional, per API/VOICE_CHAT.md)
-- [ ] WebGL build + Web Game Runner smoke test
-- [ ] Randy → Tony → real Neuro test ladder
+- [x] Admin console (spec §4): pure `admin_controller` + F12 `admin_panel`,
+      host-local, every edit routes through the authoritative `admin_override`
+      and writes to the same event log. Ops: unblocking (force_roll,
+      force_pass, reset_seat_away, rollback_decision) + state-edit
+      (set_balance, teleport, force_dice, grant/revoke property, set_houses,
+      set_mortgage, set_go_jail). Diagnostics: dump_state, list_events.
+- [x] Engine snapshot export/import: `engine.to_snapshot()/from_snapshot()`
+      full round-trip (players, phase, pending, houses, mortgaged, decks, RNG
+      seed, event log) + thin `core/snapshot.gd` JSON file wrapper.
+- [x] Test ladder rung 3 — Tony scripted scenarios (auction_resolve,
+      bankruptcy_transfer, trade_chain, admin_unblock) as `tests/tony_test.gd`
+      + `tools/tony.tscn` runner (exit 0, 4/4).
+- [x] Test ladder rung 4 — WebGL export build (rung 4 artifact):
+      `game/export_presets.cfg` + installed export templates; headless
+      `--export-debug "Web"` → `game/build/web/index.html|.wasm|.js` succeeds.
+- [ ] Board art (original theme), SFX, camera, replay of last event — deferred
+      (needs stream validation, separate visual-layer pass)
+- [ ] Voice-chat side-channel spike (optional, per API/VOICE_CHAT.md) — deferred
+- [ ] In-browser WebGL play smoke — deferred with the visual layer
+
+**Phase 4 (engine + test-ladder slice) DONE — 2026-09-06.** Admin console,
+admin_override, snapshot, diagnostics, Tony scenarios, and the WebGL build are
+complete on `phase4/admin-console`; 146 headless tests green. Deferred to a
+later pass: full visual layer (board art/SFX/camera/overlay), live tile-cost
+tweak / deck-card insert-remove / player reorder / redo-turn-with-seed,
+token-guarded remote admin panel, second SDK connection (real evil), in-browser
+WebGL validation. Design+plan:
+`docs/superpowers/{specs,plans}/2026-09-06-phase4-admin-console*`.
 
 ## Test ladder (per SDK best practices)
 
