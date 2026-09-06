@@ -34,6 +34,7 @@ var ai_aggression: int = 50
 var evil_enabled: bool = false
 var spectacle: bool = true
 var event_overlay: bool = true
+var animations: bool = true   # master toggle for cosmetic tweens (spec control)
 var rng_seed: int = 0
 
 func from_data(d: Dictionary) -> void:
