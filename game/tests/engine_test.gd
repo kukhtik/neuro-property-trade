@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -133,6 +133,7 @@ static func test_purchase_insufficient_funds() -> String:
 static func test_purchase_pass_leaves_unowned() -> String:
 	var r = _make_engine()
 	var e = r["engine"]
+	e.settings.auctions_on_refusal = false   # this test covers the non-auction pass path
 	e._force_dice(1, 1, 0, false)
 	e.submit_intent(0, "roll", {})
 	e.submit_intent(0, "pass", {})
@@ -148,4 +149,55 @@ static func test_base_rent_on_property() -> String:
 	e.submit_intent(0, "roll", {})
 	if e.player(0).money != 1500 - 2: return "base rent not charged, money=%d" % e.player(0).money
 	if e.player(1).money != 1500 + 2: return "rent not credited, money=%d" % e.player(1).money
+	return ""
+
+static func test_auction_bid_requires_exceed() -> String:
+	var r = _make_engine(["Ada", "Bo", "Cy"])
+	var e = r["engine"]
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})            # land tile 1, PURCHASE_WAIT
+	e.submit_intent(0, "pass", {})            # open auction (auctioneer=0) → AUCTION
+	if e.phase != e.PHASE_AUCTION: return "pass should open auction, phase=" + e.phase
+	# bidder 0 bids 40, then bidder 1 must exceed 40
+	e.submit_intent(0, "bid", {"amount": 40})
+	var res = e.submit_intent(1, "bid", {"amount": 30})
+	if res["ok"] == true: return "lower bid should be rejected"
+	return ""
+
+static func test_auction_single_winner() -> String:
+	var r = _make_engine(["Ada", "Bo", "Cy"])
+	var e = r["engine"]
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	e.submit_intent(0, "pass", {})            # auction opens, auctioneer 0
+	e.submit_intent(0, "bid", {"amount": 30}) # bidder 0 bids 30
+	if e.player(0).owns(1): return "should not own before auction resolves"
+	# rotate: bidder 1 bids/passes; bidder 2 passes; then only ... resolve
+	e.submit_intent(1, "pass", {})            # bidder 1 out
+	e.submit_intent(2, "pass", {})            # bidder 2 out → active=[0], winner=0
+	if not e.player(0).owns(1): return "auction winner should own tile 1"
+	if e.player(0).money != 1500 - 30: return "winner should pay bid 30, money=%d" % e.player(0).money
+	return ""
+
+static func test_auction_all_pass_unowned() -> String:
+	var r = _make_engine(["Ada", "Bo"])
+	var e = r["engine"]
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	e.submit_intent(0, "pass", {})   # auctioneer 0 passes → bidder becomes 1
+	e.submit_intent(0, "pass", {})   # not bidder 1 → rejected (harmless no-op)
+	e.submit_intent(1, "pass", {})   # bidder 1 passes → active empty → unowned
+	if e.player(0).owns(1) or e.player(1).owns(1): return "all-pass should leave tile unowned"
+	return ""
+
+static func test_auction_winner_pays_bid() -> String:
+	var r = _make_engine(["Ada", "Bo"])
+	var e = r["engine"]
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	e.submit_intent(0, "pass", {})
+	e.submit_intent(0, "bid", {"amount": 50}) # bidder 0 bids 50, high=50
+	e.submit_intent(1, "pass", {})            # bidder 1 out → active=[0], winner=0 pays 50
+	if e.player(0).money != 1500 - 50: return "winner must pay bid 50, got %d" % e.player(0).money
+	if not e.player(0).owns(1): return "winner should own tile"
 	return ""

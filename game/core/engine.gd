@@ -58,7 +58,10 @@ func player(i: int):
 func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 	if pid < 0 or pid >= players.size():
 		return {"ok": false, "reason": "no such player", "legal": [], "events": []}
-	if pid != turn_player:
+	# During an auction the acting player is tracked in _pending.bidder, not
+	# turn_player (the auctioneer still owns the turn slot), so the turn guard
+	# is bypassed there; the PHASE_AUCTION branch re-checks pid against bidder.
+	if pid != turn_player and phase != PHASE_AUCTION:
 		return {"ok": false, "reason": "not your turn", "legal": [], "events": []}
 	match phase:
 		PHASE_TURN_START:
@@ -84,16 +87,40 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 				else: _next_turn()
 				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 			elif action == "pass":
-				# auctions come in Task 6. For now, pass = tile stays unowned (auction stub).
 				if settings.auctions_on_refusal:
-					# TODO Task 6: _start_auction(tile). For now, treat as skip (no auction yet).
-					pass
+					log.append("pass_on_purchase", {"player": pid, "tile": tile})
+					_start_auction(tile)
+					return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 				log.append("pass", {"player": pid, "tile": tile})
 				_pending = {}
 				if _last_doubles: phase = PHASE_TURN_START
 				else: _next_turn()
 				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 			return {"ok": false, "reason": "must buy or pass", "legal": ["buy", "pass"], "events": []}
+		PHASE_AUCTION:
+			var t: int = _pending.get("tile", -1)
+			if t == -1:
+				return {"ok": false, "reason": "no active auction", "legal": [], "events": []}
+			var cur: int = _pending.get("bidder", -1)
+			if pid != cur:
+				return {"ok": false, "reason": "not your bid", "legal": [], "events": []}
+			if action == "bid":
+				var amount: int = int(params.get("amount", 0))
+				var high: int = _pending.get("high", -1)
+				if high != -1 and amount <= high:
+					return {"ok": false, "reason": "bid must exceed current high", "legal": ["bid", "pass"], "events": []}
+				var bp = players[pid]
+				if amount > bp.money:
+					return {"ok": false, "reason": "insufficient funds", "legal": ["pass"], "events": []}
+				_pending["high"] = amount
+				_pending["high_player"] = pid
+				log.append("auction_bid", {"player": pid, "amount": amount, "tile": t})
+				_advance_bidder()
+				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+			elif action == "pass":
+				_auction_pass(t)
+				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+			return {"ok": false, "reason": "must bid or pass", "legal": ["bid", "pass"], "events": []}
 	return {"ok": false, "reason": "phase %s not ready" % phase, "legal": [], "events": []}
 
 func _resolve_roll() -> Dictionary:
@@ -201,3 +228,64 @@ func _move_and_resolve(roll: Dictionary) -> void:
 		phase = PHASE_TURN_START   # same player again; but ensure NOT in a decision phase
 	else:
 		_next_turn()
+
+# --- Task 6: AUCTION phase (round-robin, engine-authoritative) ---
+
+func _start_auction(tile: int) -> void:
+	phase = PHASE_AUCTION
+	var active: Array = []
+	for i in players.size():
+		active.append(i)
+	_pending = {"tile": tile, "high": -1, "high_player": -1, "active": active, "bidder": turn_player}
+	log.append("auction_start", {"tile": tile, "auctioneer": turn_player})
+
+func _advance_bidder() -> void:
+	# after a successful bid: rotate to the next ACTIVE player (wrap around)
+	var active = _pending.get("active", [])
+	if active.size() == 0: return
+	var cur: int = _pending.get("bidder", -1)
+	var idx: int = active.find(cur)
+	if idx == -1:
+		_pending["bidder"] = active[0]
+		return
+	var next_idx: int = (idx + 1) % active.size()
+	_pending["bidder"] = active[next_idx]
+
+func _auction_pass(t: int) -> void:
+	var cur: int = _pending.get("bidder", -1)
+	log.append("auction_pass", {"player": cur, "tile": t})
+	var active: Array = _pending.get("active", [])
+	var idx: int = active.find(cur)   # position of the passer in turn order
+	active.erase(cur)
+	_pending["active"] = active
+	if active.size() == 0:
+		# everyone passed: unowned if no bid ever made, else the last bidder wins
+		var high: int = _pending.get("high", -1)
+		if high != -1:
+			var winner: int = _pending.get("high_player", -1)
+			_resolve_auction(winner, t, high)
+		else:
+			log.append("auction_unwon", {"tile": t})
+			_pending = {}
+			if _last_doubles: phase = PHASE_TURN_START
+			else: _next_turn()
+	elif active.size() == 1 and _pending.get("high", -1) != -1:
+		# one bidder left and someone has bid → they win at the current high
+		_resolve_auction(active[0], t, _pending.get("high", 0))
+	else:
+		# auction stays open: rotate to the next surviving player after the
+		# passer in turn order (wrap to the front if the passer was last)
+		if idx != -1 and idx < active.size():
+			_pending["bidder"] = active[idx]
+		else:
+			_pending["bidder"] = active[0]
+
+func _resolve_auction(winner: int, tile: int, pay: int) -> void:
+	var wp = players[winner]
+	wp.change_cash(-pay)
+	wp.add_ownership(tile)
+	log.append("cash", {"player": winner, "amount": -pay, "balance": wp.money})
+	log.append("auction_win", {"player": winner, "tile": tile, "amount": pay})
+	_pending = {}
+	if _last_doubles: phase = PHASE_TURN_START
+	else: _next_turn()
