@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><linearGradient id="copG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#37424f"/><stop offset="100%" stop-color="#1c232c"/></linearGradient></defs>
+<circle cx="16" cy="9" r="4.2" fill="#e8b98a" stroke="#0d0f14" stroke-width="1"/>
+<path d="M10 15 Q10 12 16 12 Q22 12 22 15 L22 22 L10 22 Z" fill="url(#copG)" stroke="#0d0f14" stroke-width="1.2"/>
+<path d="M13 22 L12 29 L15 29 L16 24 L17 29 L20 29 L19 22 Z" fill="#1c232c" stroke="#0d0f14" stroke-width="1"/>
+<path d="M8 8 Q16 4 24 8" stroke="#1c232c" stroke-width="2.4" fill="none"/>
+</svg>

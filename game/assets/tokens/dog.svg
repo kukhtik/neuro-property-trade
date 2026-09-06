@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<defs><linearGradient id="dogG" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#5a5a5a"/><stop offset="100%" stop-color="#2b2b2b"/>
+</linearGradient></defs>
+<ellipse cx="32" cy="54" rx="20" ry="4" fill="#000000" opacity="0.35"/>
+<rect x="12" y="10" width="6" height="8" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6"/>
+<rect x="16" y="8" width="6" height="10" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6"/>
+<rect x="16" y="16" width="26" height="16" rx="6" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6"/>
+<rect x="38" y="18" width="14" height="10" rx="4" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6"/>
+<rect x="49" y="15" width="7" height="9" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6"/>
+<rect x="18" y="30" width="6" height="16" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6"/>
+<rect x="30" y="30" width="6" height="16" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6"/>
+<path d="M14 22 Q6 20 8 30 Q12 28 16 26 Z" fill="url(#dogG)" stroke="#0d0f14" stroke-width="1.6" stroke-linejoin="round"/>
+<circle cx="49" cy="20" r="1.6" fill="#f1faee"/>
+</svg>

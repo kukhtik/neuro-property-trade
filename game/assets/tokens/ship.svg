@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="hull" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a8dadc"/><stop offset="100%" stop-color="#4a90a4"/></linearGradient><linearGradient id="sailG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#dfe7ec"/></linearGradient></defs>
+<ellipse cx="32" cy="54" rx="20" ry="4" fill="#000000" opacity="0.35"/>
+<path d="M10 42 Q32 50 54 42 L48 50 Q32 55 16 50 Z" fill="url(#hull)" stroke="#0d0f14" stroke-width="1.6"/>
+<rect x="30.4" y="10" width="2.2" height="32" fill="#3d2b1f" stroke="#0d0f14" stroke-width="0.8"/>
+<path d="M32.6 12 L48 26 L32.6 27.5 Z" fill="#e63946" stroke="#0d0f14" stroke-width="1.6"/>
+<path d="M30.4 16 L16 28 Q16 30 19 30 L30.4 30 Z" fill="url(#sailG)" stroke="#0d0f14" stroke-width="1.6"/>
+<path d="M30.4 18 L20 27 L30.4 27 Z" fill="url(#sailG)" stroke="#0d0f14" stroke-width="1.6" opacity="0.85"/>
+</svg>

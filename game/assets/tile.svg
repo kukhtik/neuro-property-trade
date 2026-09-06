@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><defs><linearGradient id="tileG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#20252f"/><stop offset="100%" stop-color="#151821"/></linearGradient></defs>
+<rect x="2" y="2" width="44" height="44" rx="5" fill="url(#tileG)" stroke="#39404e" stroke-width="1.6"/>
+<rect x="6.5" y="6.5" width="35" height="35" rx="3" fill="none" stroke="#2a303c" stroke-width="1"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="wbG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f0b429"/><stop offset="100%" stop-color="#c9861a"/></linearGradient></defs>
+<ellipse cx="30" cy="54" rx="20" ry="4" fill="#000000" opacity="0.35"/>
+<circle cx="16" cy="46" r="8" fill="#1c1c1c" stroke="#0d0f14" stroke-width="1.6"/>
+<circle cx="16" cy="46" r="3.2" fill="#c9ccd1"/>
+<path d="M20 28 L50 24 L46 42 L18 42 Z" fill="url(#wbG)" stroke="#0d0f14" stroke-width="1.6" stroke-linejoin="round"/>
+<path d="M46 42 L58 42 M46 26 L58 26 M58 26 L58 42" stroke="#3a3f47" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+</svg>

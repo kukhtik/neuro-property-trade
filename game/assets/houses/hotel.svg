@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><defs><linearGradient id="hotelG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f2545b"/><stop offset="100%" stop-color="#b5121b"/></linearGradient></defs>
+<rect x="4" y="10" width="16" height="11" fill="url(#hotelG)" stroke="#0d0f14" stroke-width="1"/>
+<path d="M2 11 L12 2.5 L22 11 Z" fill="#8a0f16" stroke="#0d0f14" stroke-width="1" stroke-linejoin="round"/>
+<rect x="6.5" y="13" width="3" height="3" fill="#0d1b26"/>
+<rect x="14.5" y="13" width="3" height="3" fill="#0d1b26"/>
+<rect x="10.2" y="17" width="3.6" height="4" fill="#0d1b26"/>
+</svg>
