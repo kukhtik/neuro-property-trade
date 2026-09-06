@@ -24,10 +24,18 @@ execute-a-listed-schema / tests/docs/aggregation → gemma4.
 
 ## Phase 0 — Skeleton (target: 2–3 sessions)
 
-- [ ] Godot 4 project skeleton in `game/` (headless-testable)
-- [ ] Core state model: 40 tiles, 2–4 players, money, position, phase enum
-- [ ] Deterministic RNG (seeded), full event log
-- [ ] Unit tests headless (`godot --headless --script tests/run.gd`)
+- [x] Godot 4.7.2 skeleton in `game/` (headless-testable) — done, 2026-09-06
+- [x] Core state model: 40 tiles (board.json + Board), Player, deterministic
+      RNG (Rng), full event log (EventLog) — done
+- [x] Unit tests headless (`godot --headless --path game --script res://tests/run.gd`)
+      — 23 tests green
+- [ ] Phase enum (turn-loop phases) — NOT yet done; first task of Phase 1
+- [x] ASCII renderer (`ui/ascii_board.gd`) + demo (`tools/ascii_demo.gd`)
+
+Status (handing off to a new session): Phase 0 core is committed. The clean
+next task is to design the phase enum / turn-loop model before dispatching
+parallel Phase 1 leaf agents — lock the phase machine first so leaves don't
+diverge.
 
 ## Phase 1 — Rules engine (target: 1–2 weeks)
 
