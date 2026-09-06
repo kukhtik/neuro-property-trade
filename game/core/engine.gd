@@ -32,6 +32,7 @@ var _card_depth: int = 0           # recursion guard for card-triggered moves
 var _forced_draw = null   # Variant: nullable Dictionary {kind, card} — test hook
 var _houses: Dictionary = {}   # tile index -> house count (0..5; 5 = hotel)
 var _mortgaged: Array = []   # tile indices currently mortgaged
+var _pending_trade = {}   # {proposer, recipient, give_tiles[], give_cash, want_tiles[], want_cash} or {} when none
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -64,6 +65,15 @@ func player(i: int):
 func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 	if pid < 0 or pid >= players.size():
 		return {"ok": false, "reason": "no such player", "legal": [], "events": []}
+	# responder path (cross-player action during the trade window): a pending
+	# trade may be answered by its recipient regardless of whose turn it is
+	# (the proposer's TURN_START). Validated here against _pending_trade.recipient,
+	# bypassing the not-your-turn guard below; _resolve_respond_trade re-checks.
+	if action == "respond_trade" and _pending_trade.size() != 0:
+		var t_rec: int = _pending_trade.get("recipient", -1)
+		if pid != t_rec:
+			return {"ok": false, "reason": "you are not the trade recipient", "legal": [], "events": []}
+		return _resolve_respond_trade(params)
 	# During an auction the acting player is tracked in _pending.bidder, not
 	# turn_player (the auctioneer still owns the turn slot), so the turn guard
 	# is bypassed there; the PHASE_AUCTION branch re-checks pid against bidder.
@@ -96,7 +106,11 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 				return _resolve_mortgage(params)
 			if action == "unmortgage_property":
 				return _resolve_unmortgage(params)
-			var legal: Array = ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property"]
+			if action == "propose_trade":
+				return _resolve_propose_trade(params)
+			if action == "respond_trade":
+				return _resolve_respond_trade(params)
+			var legal: Array = ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property", "propose_trade", "respond_trade"]
 			return {"ok": false, "reason": "roll, build, sell, mortgage, or unmortgage", "legal": legal, "events": []}
 		PHASE_PURCHASE_WAIT:
 			var tile = _pending.get("tile", -1)
@@ -403,6 +417,75 @@ func _resolve_unmortgage(params: Dictionary) -> Dictionary:
 	log.append("cash", {"player": turn_player, "amount": -owe, "balance": p.money})
 	log.append("unmortgage", {"player": turn_player, "tile": tile, "owe": owe})
 	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+# --- Task B5: TRADES (propose/respond during the proposer's TURN_START) ---
+
+func _resolve_propose_trade(params: Dictionary) -> Dictionary:
+	if not settings.trades:
+		return {"ok": false, "reason": "trades disabled", "legal": ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property"], "events": []}
+	if _pending_trade.size() != 0:
+		return {"ok": false, "reason": "a trade is already pending", "legal": ["roll", "respond_trade"], "events": []}
+	var recipient: int = int(params.get("to", -1))
+	if recipient < 0 or recipient >= players.size():
+		return {"ok": false, "reason": "invalid recipient", "legal": ["roll"], "events": []}
+	if recipient == turn_player:
+		return {"ok": false, "reason": "cannot trade with yourself", "legal": ["roll"], "events": []}
+	var give_tiles: Array = params.get("give_tiles", [])
+	var want_tiles: Array = params.get("want_tiles", [])
+	var give_cash: int = int(params.get("give_cash", 0))
+	var want_cash: int = int(params.get("want_cash", 0))
+	# validate proposer owns all give tiles, has enough cash
+	var p = players[turn_player]
+	for t in give_tiles:
+		if not p.owns(t):
+			return {"ok": false, "reason": "you do not own all offered tiles", "legal": ["roll"], "events": []}
+	if give_cash < 0 or p.money < give_cash:
+		return {"ok": false, "reason": "insufficient cash for offer", "legal": ["roll"], "events": []}
+	_pending_trade = {"proposer": turn_player, "recipient": recipient, "give_tiles": give_tiles.duplicate(), "give_cash": give_cash, "want_tiles": want_tiles.duplicate(), "want_cash": want_cash}
+	log.append("trade_proposed", {"proposer": turn_player, "to": recipient, "give_tiles": give_tiles, "give_cash": give_cash, "want_tiles": want_tiles, "want_cash": want_cash})
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+func _resolve_respond_trade(params: Dictionary) -> Dictionary:
+	if _pending_trade.size() == 0:
+		return {"ok": false, "reason": "no pending trade", "legal": ["roll"], "events": []}
+	var recipient: int = _pending_trade.get("recipient", -1)
+	if recipient < 0 or recipient >= players.size():
+		return {"ok": false, "reason": "invalid recipient", "legal": ["roll"], "events": []}
+	# pid == recipient is already enforced by the early responder path in
+	# submit_intent; only accept/decline resolution remains here.
+	var accept: bool = bool(params.get("accept", false))
+	if accept:
+		_execute_trade()
+	else:
+		log.append("trade_declined", {"proposer": _pending_trade.get("proposer"), "recipient": recipient})
+		_pending_trade = {}
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+func _execute_trade() -> void:
+	# mutual swap of tiles + cash. Mortgaged tiles transfer still mortgaged.
+	var proposer: int = _pending_trade.get("proposer")
+	var recipient: int = _pending_trade.get("recipient")
+	var give_tiles: Array = _pending_trade.get("give_tiles", [])
+	var want_tiles: Array = _pending_trade.get("want_tiles", [])
+	var give_cash: int = _pending_trade.get("give_cash", 0)
+	var want_cash: int = _pending_trade.get("want_cash", 0)
+	var a = players[proposer]
+	var b = players[recipient]
+	for t in give_tiles:
+		a.remove_ownership(t)
+		b.add_ownership(t)
+	for t in want_tiles:
+		b.remove_ownership(t)
+		a.add_ownership(t)
+	# cash: proposer gives give_cash to recipient; recipient gives want_cash to proposer
+	if give_cash > 0:
+		a.change_cash(-give_cash)
+		b.change_cash(give_cash)
+	if want_cash > 0:
+		b.change_cash(-want_cash)
+		a.change_cash(want_cash)
+	log.append("trade", {"proposer": proposer, "recipient": recipient, "give_tiles": give_tiles, "give_cash": give_cash, "want_tiles": want_tiles, "want_cash": want_cash})
+	_pending_trade = {}
 
 func _teleport(pid: int, tile: int) -> void:
 	# test hook: deterministically place a player before a forced roll

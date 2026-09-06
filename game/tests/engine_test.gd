@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -572,4 +572,61 @@ static func test_solvent_payment_no_bankruptcy() -> String:
 	e.submit_intent(0, "roll", {})
 	if e.player(0).bankrupt == true: return "solvent player should not be bankrupt"
 	if e.player(0).money != 1500 - 2: return "rent 2 charged, money=%d" % e.player(0).money
+	return ""
+
+static func test_trade_propose_and_accept_swaps() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	# player 0 owns railroad 5, player 1 owns railroad 15; trade 5 for 15
+	e.player(0).add_ownership(5)
+	e.player(1).add_ownership(15)
+	var res = e.submit_intent(0, "propose_trade", {"to": 1, "give_tiles": [5], "give_cash": 0, "want_tiles": [15], "want_cash": 0})
+	if res["ok"] != true: return "propose rejected: " + res.get("reason", "")
+	var res2 = e.submit_intent(1, "respond_trade", {"accept": true})
+	if res2["ok"] != true: return "accept rejected: " + res2.get("reason", "")
+	if e.player(0).owns(15) != true: return "player 0 should now own tile 15"
+	if e.player(1).owns(5) != true: return "player 1 should now own tile 5"
+	if e.player(0).owns(5) == true: return "player 0 should have given up tile 5"
+	return ""
+
+static func test_trade_decline_leaves_state() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).add_ownership(5)
+	e.player(1).add_ownership(15)
+	e.submit_intent(0, "propose_trade", {"to": 1, "give_tiles": [5], "give_cash": 0, "want_tiles": [15], "want_cash": 100})
+	var res = e.submit_intent(1, "respond_trade", {"accept": false})
+	if res["ok"] != true: return "decline rejected: " + res.get("reason", "")
+	if e.player(0).owns(5) != true: return "proposer should still own tile 5 after decline"
+	if e.player(1).owns(15) != true: return "recipient should still own tile 15 after decline"
+	return ""
+
+static func test_trade_requires_owning_offered() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	# player 0 does NOT own tile 5, tries to trade it away
+	var res = e.submit_intent(0, "propose_trade", {"to": 1, "give_tiles": [5], "give_cash": 0, "want_tiles": [], "want_cash": 0})
+	if res["ok"] == true: return "should reject offering a tile you don't own"
+	return ""
+
+static func test_trade_blocks_non_recipient_response() -> String:
+	var r = _make_engine(["Ada", "Bo", "Cy"])
+	var e = r["engine"]
+	e.player(0).add_ownership(5)
+	e.player(1).add_ownership(15)
+	e.player(2).add_ownership(3)   # Cy owns tile 3 to keep things simple
+	e.submit_intent(0, "propose_trade", {"to": 1, "give_tiles": [5], "give_cash": 0, "want_tiles": [15], "want_cash": 0})
+	# player 2 is NOT the recipient — only player 1 may respond
+	var res = e.submit_intent(2, "respond_trade", {"accept": true})
+	if res["ok"] == true: return "non-recipient should not be able to respond"
+	return ""
+
+static func test_trade_rejects_self_or_invalid_target() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).add_ownership(5)
+	var res = e.submit_intent(0, "propose_trade", {"to": 0, "give_tiles": [5], "give_cash": 0, "want_tiles": [], "want_cash": 0})
+	if res["ok"] == true: return "should reject trading with yourself"
+	var res2 = e.submit_intent(0, "propose_trade", {"to": 7, "give_tiles": [5], "give_cash": 0, "want_tiles": [], "want_cash": 0})
+	if res2["ok"] == true: return "should reject out-of-range recipient"
 	return ""
