@@ -7,6 +7,7 @@ static func test_list() -> Array[String]:
 		"test_go_tile_index_0",
 		"test_property_groups_counted",
 		"test_no_hasbro_names",
+		"test_every_tile_has_short_name",
 	]
 
 static func _load():
@@ -49,4 +50,18 @@ static func test_no_hasbro_names() -> String:
 		var nm: String = str(b.tile_at(i).get("name", "")).to_lower()
 		if nm in bad:
 			return "Hasbro/trade-dress name on tile %d: '%s'" % [i, nm]
+	return ""
+
+## P2: every tile must carry a `short` name (≤14 chars) for compact-mode
+## rendering (spec §4.2). The full name stays untouched; short is a display
+## hint only.
+static func test_every_tile_has_short_name() -> String:
+	var b = _load()
+	for i in b.tile_count():
+		var t = b.tile_at(i)
+		var short: String = str(t.get("short", ""))
+		if short == "":
+			return "tile %d has no 'short' name" % i
+		if short.length() > 14:
+			return "tile %d short name too long (%d chars): '%s'" % [i, short.length(), short]
 	return ""

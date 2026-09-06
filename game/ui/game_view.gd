@@ -294,6 +294,9 @@ func _refresh_journal() -> void:
 
 func _on_tile_clicked(idx: int) -> void:
 	_inspector.select(idx)
+	# P2: mark the selected tile on the board with a dashed accent frame
+	if _board_scene != null and _board_scene._board != null:
+		_board_scene._board.set_selected_tile(idx)
 	if engine == null:
 		return
 	var sp := ProjectionScript.new().for_spectator(engine)

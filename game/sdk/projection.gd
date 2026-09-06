@@ -25,6 +25,7 @@ func _board_view(engine) -> Array:
 		var entry := {
 			"index": i,
 			"name": t.get("name", ""),
+			"short": t.get("short", t.get("name", "")),
 			"type": t.get("type", "property"),
 			"group": t.get("group", ""),
 			"cost": int(t.get("cost", 0)),
@@ -32,6 +33,7 @@ func _board_view(engine) -> Array:
 			"rent": int(t.get("rent", 0)),
 			"rent_set": int(t.get("rent_set", 0)),
 			"owner": engine._owner_of(i),
+			"owner_name": _owner_name(engine, engine._owner_of(i)),
 			"houses": engine._houses_on(i),
 			"mortgaged": engine._mortgaged.has(i),
 		}
@@ -69,6 +71,12 @@ func _player_mortgaged(engine, tiles: Array) -> int:
 		if engine._mortgaged.has(t):
 			n += 1
 	return n
+
+## Resolve a player's display name from a pid (empty when unowned).
+func _owner_name(engine, pid: int) -> String:
+	if pid < 0 or pid >= engine.players.size():
+		return ""
+	return str(engine.players[pid].name)
 
 func _pending_view(engine) -> Dictionary:
 	var pending := {}

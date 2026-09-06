@@ -38,20 +38,34 @@ func build(tile_count: int, cell: int = 64) -> Control:
 	bkg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bkg)
 
-	for i in tile_count:
-		var tv: TileView = TileView.new()
-		tv.build(i, tile_count, cell)
-		tv.position = TL.pixel_pos(i, tile_count, cell) - Vector2(cell / 2.0, cell / 2.0)
-		tv.z_index = 1
-		tv.gui_input.connect(_on_tile_input.bind(i))
-		_tile_nodes.append(tv)
-		add_child(tv)
+	_rebuild()
 	return self
 
 ## Provide the seat list so tokens resolve their token_id + color from the
 ## seat (which was assigned from PlayerIdentity). Call before refresh_tokens.
 func set_seats(seats: Array) -> void:
 	_seats = seats
+
+## Rebuild the board at the current `_cell` (used by probes to test different
+## cell sizes / compact mode). Frees the old tile nodes and recreates them.
+func _rebuild() -> void:
+	for tv in _tile_nodes:
+		if is_instance_valid(tv):
+			tv.queue_free()
+	_tile_nodes.clear()
+	_tokens.clear()
+	var grid := TL.grid_cells(_tile_count)
+	var size := grid * _cell
+	custom_minimum_size = Vector2(size, size)
+	set_size(Vector2(size, size))
+	for i in _tile_count:
+		var tv: TileView = TileView.new()
+		tv.build(i, _tile_count, _cell)
+		tv.position = TL.pixel_pos(i, _tile_count, _cell) - Vector2(_cell / 2.0, _cell / 2.0)
+		tv.z_index = 1
+		tv.gui_input.connect(_on_tile_input.bind(i))
+		_tile_nodes.append(tv)
+		add_child(tv)
 
 ## Repaint from a spectator projection dictionary (for_spectator output).
 func refresh_state(proj: Dictionary) -> void:
@@ -64,6 +78,7 @@ func refresh_state(proj: Dictionary) -> void:
 	update_highlight(proj)
 
 ## Highlight the tile the given player index is on (spectacle active-player).
+## Uses a glowing accent FRAME (spec §4.2), not a modulate that yellows text.
 func update_highlight(proj: Dictionary) -> void:
 	_clear_highlights()
 	var tp: int = int(proj.get("turn_player", -1))
@@ -71,12 +86,21 @@ func update_highlight(proj: Dictionary) -> void:
 	if tp < 0 or tp >= players.size(): return
 	var pos: int = int(players[tp].get("position", -1))
 	if pos < 0 or pos >= _tile_nodes.size(): return
-	# draw a bright border around the active tile via a highlight overlay
-	_tile_nodes[pos].modulate = Color(1.25, 1.25, 1.0)
+	_tile_nodes[pos].set_active(true)
 
 func _clear_highlights() -> void:
 	for tv in _tile_nodes:
-		tv.modulate = Color.WHITE
+		tv.set_active(false)
+
+## Mark a tile as inspector-selected (dashed accent frame). Pass -1 to clear.
+func set_selected_tile(idx: int) -> void:
+	for i in _tile_nodes.size():
+		_tile_nodes[i].set_selected(i == idx)
+
+## Mark a set of tiles as valid management targets (soft fill). Pass [] to clear.
+func set_target_tiles(indices: Array) -> void:
+	for i in _tile_nodes.size():
+		_tile_nodes[i].set_target(indices.has(i))
 
 ## Sync all player tokens. Groups pieces by tile so co-located players fan out
 ## along an arc instead of stacking. Creates on first sight, moves on change.
