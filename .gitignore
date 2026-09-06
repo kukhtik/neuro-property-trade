@@ -22,3 +22,5 @@ build/
 # Windowed screenshot smoke artifacts
 visual_smoke_*.png
 visual_smoke_*.png.import
+ui_*.png
+ui_*.png.import
