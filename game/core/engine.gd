@@ -197,6 +197,25 @@ func _owner_of(tile: int) -> int:
 			return i
 	return -1
 
+func _group_of(tile: int) -> String:
+	return board.tile_at(tile).get("group", "")
+
+func _owns_set(owner: int, group: String) -> bool:
+	# true if 'owner' owns every tile in the color group
+	if group == "": return false
+	var group_tiles: Array = board.group_tiles(group)
+	if group_tiles.size() == 0: return false
+	for t in group_tiles:
+		if not players[owner].owns(t): return false
+	return true
+
+func _property_rent(tile: int, owner: int) -> int:
+	# returns rent owed when 'owner' collects from a lander on 'tile'.
+	# Houses not implemented yet (Task B2); for now base rent with monopoly ×2.
+	if settings.monopoly_rent_x2 and _owns_set(owner, _group_of(tile)):
+		return board.tile_at(tile).get("rent_set", board.tile_at(tile).get("rent", 0))
+	return board.tile_at(tile).get("rent", 0)
+
 func _teleport(pid: int, tile: int) -> void:
 	# test hook: deterministically place a player before a forced roll
 	players[pid].position = tile
@@ -226,7 +245,7 @@ func _move_and_resolve(roll: Dictionary) -> void:
 		elif owner == turn_player:
 			log.append("land_self", {"player": turn_player, "tile": new_pos})
 		else:
-			var rent: int = board.tile_at(new_pos).get("rent", 0)
+			var rent: int = _property_rent(new_pos, owner)
 			_transfer(turn_player, owner, rent)
 			log.append("rent", {"from": turn_player, "to": owner, "tile": new_pos, "amount": rent})
 	elif ttype == "railroad":
@@ -431,7 +450,7 @@ func _resolve_card_landing(tile: int) -> void:
 			elif owner == turn_player:
 				log.append("land_self", {"player": turn_player, "tile": tile})
 			else:
-				var rent: int = board.tile_at(tile).get("rent", 0)
+				var rent: int = _property_rent(tile, owner)
 				_transfer(turn_player, owner, rent)
 				log.append("rent", {"from": turn_player, "to": owner, "tile": tile, "amount": rent})
 		"railroad", "utility":

@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -359,4 +359,29 @@ static func test_card_go_to_jail() -> String:
 	e.submit_intent(0, "roll", {})
 	if e.player(0).in_jail != true: return "go_to_jail card should jail player"
 	if e.player(0).position != 10: return "jailed to tile 10, got %d" % e.player(0).position
+	return ""
+
+static func test_monopoly_rent_x2_doubled() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	# player 1 owns BOTH brown tiles (1 Sunset, 3 Palm) → monopoly for group "brown"
+	e.player(1).add_ownership(1)
+	e.player(1).add_ownership(3)
+	# land player 0 on tile 1 (Sunset, owned by player 1): base rent 2, rent_set 4
+	e._teleport(0, 0)  # at Start
+	# need to reach tile 1 with sum 1
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).money != 1500 - 4: return "monopoly rent should be rent_set 4, money=%d" % e.player(0).money
+	return ""
+
+static func test_monopoly_rent_not_without_full_set() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	# player 1 owns only tile 1 (NOT tile 3) → no monopoly → base rent 2
+	e.player(1).add_ownership(1)
+	e._teleport(0, 0)
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).money != 1500 - 2: return "without full set rent should be base 2, money=%d" % e.player(0).money
 	return ""
