@@ -20,6 +20,7 @@ func _init() -> void:
 		"res://tests/event_log_test.gd",
 		"res://tests/ascii_board_test.gd",
 		"res://tests/card_test.gd",
+		"res://tests/game_settings_test.gd",
 		"res://tests/engine_test.gd",
 	]
 	for path in modules:

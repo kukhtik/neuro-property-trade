@@ -39,12 +39,28 @@ diverge.
 
 ## Phase 1 — Rules engine (target: 1–2 weeks)
 
-- [ ] Turn loop: roll → move → resolve tile (buy/auction/rent/card/jail)
-- [ ] Doubles, jail 3-turns-or-pay, GO landing bonus
+- [x] Turn loop: roll → move → resolve tile (buy/auction/rent/jail) — core
+      in Tranche A: roll/move, GO bonus, doubles (extra turn),
+      triple-doubles→jail, tax, free_parking (OFF), go_to_jail, jail decision
+      (rule "both"), property purchase/pass→auction, railroad + utility rent,
+      both card decks (original names + 8 effect tokens). 59 headless tests green.
+- [x] Doubles, jail 3-turns-or-pay, GO landing bonus
 - [ ] Houses/hotels (even-build), mortgage/unmortgage, bankruptcy transfer
-- [ ] Auctions (all-pass fallback), rent with monopoly doubling
-- [ ] Card decks (original names, classic effects), Free Parking house-rule OFF
-- [ ] Property set definitions in `game/data/board.json` (renamable theme)
+      — next tranche (parallel leaves)
+- [x] Auctions (all-pass fallback), rent with railroad/utility multiplier
+- [x] Card decks (original names, classic effects), Free Parking house-rule OFF
+      (deck applied; card-triggered moves/rent/taxes resolve)
+- [ ] Property set definitions in `game/data/board.json` (group sets present;
+      monopoly doubling + even-build rents land with housing tranche)
+
+**Phase 1 status (Tranche A done 2026-09-06):** design + plan committed
+(`docs/superpowers/specs/2026-09-06-phase1-turn-loop-design.md`,
+`docs/superpowers/plans/2026-09-06-phase1-turn-loop.md`). Engine core built on
+feature branch `phase1/turn-loop-core` (GameSettings 5 blocks, CardDeck,
+fail-closed `submit_intent` intent API). Remaining Phase 1 rules
+(housing/mortgage, bankruptcy transfer, monopoly-rent ×2, trades, property-set
+grouping) are naturally parallel leaf tasks over the now-stable engine API —
+dispatch them next, one rule per leaf.
 
 ## Phase 2 — Neuro adapter
 
