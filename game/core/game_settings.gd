@@ -2,6 +2,8 @@ extends RefCounted
 ## Game configuration, 5 blocks from the spec. Defaults per DEFAULT column.
 
 var seat_count: int = 4
+var seat_assignments: Array = []   # per seat: {driver, name, token_color?, token_id?}
+var starting_order: String = "random"   # "random" | "manual"
 
 var starting_cash: int = 1500
 var go_bonus: int = 200
