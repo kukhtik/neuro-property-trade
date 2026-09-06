@@ -25,6 +25,7 @@ var consecutive_doubles: int = 0
 var _forced_roll = null   # Variant: nullable Dictionary for test hook
 var _last_roll = {}       # last roll dict, reused by tile resolution (Tasks 5-8)
 var _last_doubles: bool = false
+var _pending = {}         # decision context (e.g. {"tile": N} for purchase)
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -64,6 +65,35 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 			if action == "roll":
 				return _resolve_roll()
 			return {"ok": false, "reason": "must roll", "legal": ["roll"], "events": []}
+		PHASE_PURCHASE_WAIT:
+			var tile = _pending.get("tile", -1)
+			if tile == -1: return {"ok": false, "reason": "no pending purchase", "legal": [], "events": []}
+			if action == "buy":
+				var tile_data = board.tile_at(tile)
+				var cost: int = tile_data.get("cost", 0)
+				var p = players[pid]
+				if p.money < cost:
+					return {"ok": false, "reason": "insufficient funds", "legal": ["pass"], "events": []}
+				p.change_cash(-cost)
+				p.add_ownership(tile)
+				log.append("cash", {"player": pid, "amount": -cost, "balance": p.money})
+				log.append("purchase", {"player": pid, "tile": tile, "cost": cost})
+				_pending = {}
+				# after purchase, end the turn honoring doubles
+				if _last_doubles: phase = PHASE_TURN_START
+				else: _next_turn()
+				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+			elif action == "pass":
+				# auctions come in Task 6. For now, pass = tile stays unowned (auction stub).
+				if settings.auctions_on_refusal:
+					# TODO Task 6: _start_auction(tile). For now, treat as skip (no auction yet).
+					pass
+				log.append("pass", {"player": pid, "tile": tile})
+				_pending = {}
+				if _last_doubles: phase = PHASE_TURN_START
+				else: _next_turn()
+				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+			return {"ok": false, "reason": "must buy or pass", "legal": ["buy", "pass"], "events": []}
 	return {"ok": false, "reason": "phase %s not ready" % phase, "legal": [], "events": []}
 
 func _resolve_roll() -> Dictionary:
@@ -126,6 +156,12 @@ func _next_turn() -> void:
 	phase = PHASE_TURN_START
 	_last_roll = {}
 
+func _owner_of(tile: int) -> int:
+	for i in players.size():
+		if players[i].owns(tile):
+			return i
+	return -1
+
 func _move_and_resolve(roll: Dictionary) -> void:
 	var p = players[turn_player]
 	var old = p.position
@@ -137,9 +173,30 @@ func _move_and_resolve(roll: Dictionary) -> void:
 		log.append("go_bonus", {"player": turn_player, "amount": settings.go_bonus})
 	p.position = new_pos
 	log.append("move", {"player": turn_player, "from": old, "to": new_pos, "wrapped": wrapped})
-	# For Task 4, tile resolution is minimal: just log landing. purchase/rent/etc land in Tasks 5-8.
 	log.append("land", {"player": turn_player, "tile": new_pos, "type": board.type_at(new_pos)})
-	# End the turn on non-doubles; on doubles, the same player rolls again (stays TURN_START).
+	# Tile resolution dispatches on type. This task: property purchase/pass and base rent.
+	# All other tile types keep the current behavior (log land, then end/continue turn) —
+	# tax/jail/go_to_jail/free_parking/railroad/utility/community/chance arrive in Tasks 6-8.
+	if board.type_at(new_pos) == "property":
+		var owner = _owner_of(new_pos)
+		if owner == -1:
+			# unowned — offer a purchase; the current player stays turn_player
+			phase = PHASE_PURCHASE_WAIT
+			_pending = {"tile": new_pos}
+			return
+		elif owner == turn_player:
+			log.append("land_self", {"player": turn_player, "tile": new_pos})
+		else:
+			var rent: int = board.tile_at(new_pos).get("rent", 0)
+			_transfer(turn_player, owner, rent)
+			log.append("rent", {"from": turn_player, "to": owner, "tile": new_pos, "amount": rent})
+		# owned (by self or another): end the turn honoring doubles
+		if _last_doubles:
+			phase = PHASE_TURN_START   # same player again
+		else:
+			_next_turn()
+		return
+	# Non-property tiles: end the turn on non-doubles; on doubles, same player rolls again.
 	if _last_doubles:
 		phase = PHASE_TURN_START   # same player again; but ensure NOT in a decision phase
 	else:
