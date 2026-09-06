@@ -132,7 +132,7 @@ authoritative-engine + event-log invariant. Design+plan:
       `--export-debug "Web"` → `game/build/web/index.html|.wasm|.js` succeeds.
 - [x] Board art (original theme), SFX, camera, replay of last event — Phase 5
       visual/stream layer (below)
-- [ ] Voice-chat side-channel spike (optional, per API/VOICE_CHAT.md) — deferred
+- [x] Voice-chat side-channel spike (API/VOICE_CHAT.md) — DONE 2026-09-06
 - [ ] In-browser WebGL play smoke — deferred with the visual layer
 
 **Phase 4 (engine + test-ladder slice) DONE — 2026-09-06.** Admin console,
@@ -232,7 +232,11 @@ highlight, overlay. Design+plan:
   validated; the rendered-board pixels still need a human eye on a headed/real
   browser (a stream host's Chrome).** Do NOT treat "black/solid screenshots" as
   a build bug — check console for the `ready` line first.
-- Optional: voice-chat side-channel spike (API/VOICE_CHAT.md).
+- Voice-chat side-channel spike — **DONE (2026-09-06):** the vendored Neuro SDK
+  already ships a complete `NeuroVoiceChat` client
+  (`game/addons/neuro-sdk/voice/voice_chat.gd`). Spike validated it headless
+  (7 new tests in `tests/voice_test.gd`, 168 total green) and documented the
+  wiring in `API/VOICE_CHAT.md`. Live websocket path still needs a real server.
 
 **Known follow-ups queued (small):**
 - Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
