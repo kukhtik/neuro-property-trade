@@ -90,32 +90,32 @@ func _legal_changed(legal: Array) -> bool:
 func _make_button(act: String, proj: Dictionary, pid: int) -> Button:
 	match act:
 		"roll":
-			return UiTheme.button_accent("БРОСИТЬ КУБ")
+			return UiTheme.button_accent("БРОСИТЬ КУБ", "Бросить кубики и передвинуть фишку на выпавшее число клеток")
 		"buy":
-			return UiTheme.button_accent("КУПИТЬ")
+			return UiTheme.button_accent("КУПИТЬ", "Купить эту клетку за указанную цену")
 		"pass":
 			var label := "ПАСС"
 			if str(proj.get("pending", {}).get("type", "") == "purchase"):
 				label = "НЕ покупать"
-			return UiTheme.button(label)
+			return UiTheme.button(label, "Не покупать клетку — она уйдёт на аукцион")
 		"bid":
-			return UiTheme.button_accent("СТАВКА")
+			return UiTheme.button_accent("СТАВКА", "Сделать ставку на аукционе за эту клетку")
 		"pay":
-			return UiTheme.button("ОПЛАТИТЬ $%d" % int(proj.get("pending", {}).get("fine", 50)))
+			return UiTheme.button("ОПЛАТИТЬ $%d" % int(proj.get("pending", {}).get("fine", 50)), "Заплатить штраф и выйти из тюрьмы")
 		"use_card":
-			return UiTheme.button("КАРТА выхода")
+			return UiTheme.button("КАРТА выхода", "Использовать карту «Выход из тюрьмы»")
 		"build_house":
-			return UiTheme.button("СТРОИТЬ")
+			return UiTheme.button("СТРОИТЬ", "Построить дом на выбранной клетке (нужна вся группа)")
 		"sell_house":
-			return UiTheme.button("ПРОДАТЬ дом")
+			return UiTheme.button("ПРОДАТЬ дом", "Продать дом с выбранной клетки")
 		"mortgage_property":
-			return UiTheme.button("ЗАЛОЖИТЬ")
+			return UiTheme.button("ЗАЛОЖИТЬ", "Заложить клетку и получить 50% её стоимости")
 		"unmortgage_property":
-			return UiTheme.button("ВЫКУПИТЬ")
+			return UiTheme.button("ВЫКУПИТЬ", "Выкупить заложенную клетку (110% стоимости)")
 		"propose_trade":
-			return UiTheme.button("ТОРГ")
+			return UiTheme.button("ТОРГ", "Предложить сделку другому игроку (тайлы и/или деньги)")
 		"respond_trade":
-			return UiTheme.button_accent("ОТВЕТИТЬ на сделку")
+			return UiTheme.button_accent("ОТВЕТИТЬ на сделку", "Принять или отклонить входящее предложение сделки")
 	return null
 
 func _context_hint(proj: Dictionary) -> String:

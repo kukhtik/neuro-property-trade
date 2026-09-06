@@ -51,10 +51,14 @@ static func label(text: String, size: int = 14, color: Color = COL.text) -> Labe
 	l.add_theme_color_override("font_color", color)
 	return l
 
-## Standard styled Button.
-static func button(text: String) -> Button:
+## Standard styled Button. `tooltip` (optional) shows a styled description on
+## hover — every interactive button should pass one (A2 requirement).
+static func button(text: String, tooltip: String = "") -> Button:
 	var b := Button.new()
 	b.text = text
+	if tooltip != "":
+		b.tooltip_text = tooltip
+		_style_tooltip(b)
 	b.add_theme_font_size_override("font_size", 14)
 	b.add_theme_color_override("font_color", COL.text)
 	# normal / hover / pressed styleboxes
@@ -64,14 +68,20 @@ static func button(text: String) -> Button:
 	b.add_theme_stylebox_override("focus", box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	return b
 
-## Accent (primary) button — brighter + accent border.
-static func button_accent(text: String) -> Button:
-	var b := button(text)
+## Accent (primary) button — brighter + accent border. Optional tooltip.
+static func button_accent(text: String, tooltip: String = "") -> Button:
+	var b := button(text, tooltip)
 	b.add_theme_stylebox_override("normal", box(COL.accent, COL.border_accent, 1, 6))
 	b.add_theme_stylebox_override("hover", box(COL.accent_hover, COL.border_accent, 2, 6))
 	b.add_theme_stylebox_override("pressed", box(COL.accent_press, COL.border_accent, 2, 6))
 	b.add_theme_color_override("font_color", Color("0c1218"))
 	return b
+
+## Apply a dark, bordered tooltip style to a control that has a tooltip_text.
+static func _style_tooltip(c: Control) -> void:
+	c.add_theme_stylebox_override("TooltipPanel", box(Color("0d1117"), COL.border_accent, 1, 4))
+	c.add_theme_color_override("TooltipLabel/font_color", COL.text)
+	c.add_theme_font_size_override("TooltipLabel/font_size", 12)
 
 ## VBox with consistent margin + separation.
 static func vbox(sep: int = 8, margin: int = 12) -> VBoxContainer:

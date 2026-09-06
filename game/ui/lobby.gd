@@ -33,9 +33,24 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build()
 
+## A1: keep the centered lobby panel within the viewport so the inner
+## ScrollContainer can scroll instead of clipping on small screens.
+func _process(_delta: float) -> void:
+	if _root == null:
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var vs := vp.get_visible_rect().size
+	var target := Vector2(minf(_root.custom_minimum_size.x, vs.x), minf(_root.custom_minimum_size.y, vs.y))
+	if _root.size != target:
+		_root.size = target
+		_root.position = (vs - target) * 0.5
+
 func _build() -> void:
 	_build_background()
 	var root := UiTheme.panel()
+	_root = root
 	root.set_anchors_preset(Control.PRESET_CENTER)
 	root.custom_minimum_size = Vector2(720, 540)
 	root.reset_size()
@@ -44,12 +59,20 @@ func _build() -> void:
 	root.position = (get_viewport().get_visible_rect().size - root.size) * 0.5
 	add_child(root)
 
+	# A1: wrap the content in a ScrollContainer so the lobby scrolls on small
+	# screens instead of clipping (the panel keeps its min size; the scroll
+	# view shrinks to fit the viewport).
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(scroll)
+
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_right", 20)
 	margin.add_theme_constant_override("margin_top", 14)
 	margin.add_theme_constant_override("margin_bottom", 14)
-	root.add_child(margin)
+	scroll.add_child(margin)
 
 	var v := UiTheme.vbox(12)
 	margin.add_child(v)
@@ -76,7 +99,7 @@ func _build() -> void:
 	players_box.add_child(pm)
 	pm.add_child(_players_list)
 
-	var add_row := UiTheme.button("+ добавить игрока")
+	var add_row := UiTheme.button("+ добавить игрока", "Добавить ещё одного игрока (до 8)")
 	add_row.connect("pressed", Callable(self, "_add_row"))
 	add_row.custom_minimum_size.y = 30
 	v.add_child(add_row)
@@ -120,7 +143,7 @@ func _build() -> void:
 	set_grid.add_child(_h(UiTheme.label("Аукционы"), _auctions))
 
 	# help button
-	var help_btn := UiTheme.button("?")
+	var help_btn := UiTheme.button("?", "Показать справку по настройке партии")
 	help_btn.custom_minimum_size = Vector2(30, 24)
 	help_btn.connect("pressed", Callable(self, "_show_help"))
 	set_grid.add_child(_h(UiTheme.label("Справка"), help_btn))
@@ -151,7 +174,7 @@ func _build() -> void:
 	v.add_child(seed_row)
 
 	# start button
-	var start := UiTheme.button_accent("▶  СТАРТ ПАРТИЮ")
+	var start := UiTheme.button_accent("▶  СТАРТ ПАРТИЮ", "Начать партию с выбранными игроками и настройками")
 	start.custom_minimum_size.y = 44
 	start.connect("pressed", Callable(self, "_start_pressed"))
 	v.add_child(start)
@@ -161,6 +184,7 @@ func _build() -> void:
 		_add_row(i)
 
 var _players_list: VBoxContainer
+var _root: PanelContainer
 
 func _build_background() -> void:
 	var bg := ColorRect.new()
@@ -218,7 +242,7 @@ func _add_row(_unused: Variant = null) -> void:
 	h.add_child(name_edit)
 
 	# remove button (disabled for the host seat)
-	var remove_btn := UiTheme.button("✕")
+	var remove_btn := UiTheme.button("✕", "Удалить этого игрока из партии")
 	remove_btn.custom_minimum_size = Vector2(24, 20)
 	remove_btn.disabled = (idx == 0)
 	remove_btn.connect("pressed", Callable(self, "_remove_row").bind(idx))

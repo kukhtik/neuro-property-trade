@@ -9,6 +9,8 @@ const UiTheme := preload("res://ui/theme.gd")
 var selected := -1
 var _text: Label
 var _close: Button
+var _hide_timer := 0.0
+const _HIDE_AFTER := 3.0
 
 func _init() -> void:
 	custom_minimum_size = Vector2(320, 90)
@@ -23,7 +25,7 @@ func _init() -> void:
 	var lbl := UiTheme.label("КЛЕТКА", 12, UiTheme.COL.accent)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(lbl)
-	_close = UiTheme.button("✕")
+	_close = UiTheme.button("✕", "Закрыть справку по клетке")
 	_close.custom_minimum_size = Vector2(24, 20)
 	_close.connect("pressed", Callable(self, "clear"))
 	head.add_child(_close)
@@ -31,11 +33,20 @@ func _init() -> void:
 	_text = UiTheme.label("Кликните по тайлу доски", 13, UiTheme.COL.text_dim)
 	v.add_child(_text)
 
+func _process(delta: float) -> void:
+	# A3: auto-hide the inspector a few seconds after the last selection.
+	if selected >= 0:
+		_hide_timer -= delta
+		if _hide_timer <= 0.0:
+			clear()
+
 func select(idx: int) -> void:
 	selected = idx
+	_hide_timer = _HIDE_AFTER   # reset the auto-hide countdown
 
 func clear() -> void:
 	selected = -1
+	_hide_timer = 0.0
 	_text.text = "Кликните по тайлу доски"
 	_text.add_theme_color_override("font_color", UiTheme.COL.text_dim)
 

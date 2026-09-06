@@ -18,10 +18,10 @@ const ProjectionScript := preload("res://sdk/projection.gd")
 const EventMessages := preload("res://visual/event_messages.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 
-const _PANEL_W := 235
 const _TOP_H := 34
-const _JOURNAL_W := 300
 const _ACTION_H := 84
+const _MIN_PANEL_W := 200
+const _MIN_JOURNAL_W := 240
 
 var engine
 var manager
@@ -36,6 +36,8 @@ var _actions
 var _inspector
 var _modals
 var _journal
+var _jpanel: PanelContainer
+var _last_vp := Vector2.ZERO
 
 func setup(eng, mgr, seat_list: Array, s) -> void:
 	engine = eng
@@ -49,11 +51,7 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_build_layout()
 	# board fills the center region (between left panel, top bar, journal, action bar)
 	_board_scene.setup(engine, settings)
-	var vp_rect := get_viewport().get_visible_rect()
-	var board_rect := Rect2()
-	board_rect.position = Vector2(_PANEL_W + 8, _TOP_H + 8)
-	board_rect.size = Vector2(vp_rect.size.x - _PANEL_W - _JOURNAL_W - 16, vp_rect.size.y - _TOP_H - _ACTION_H - 16)
-	_board_scene.set_frame(board_rect)
+	_layout()
 	var bs = _board_scene
 	if bs.has_node("EventOverlay"):
 		bs.get_node("EventOverlay").visible = false
@@ -65,6 +63,15 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_modals.sound_toggled.connect(_on_sound_toggled)
 	_refresh_journal()
 	_sync_all()
+
+## Proportional panel sizes derived from the current viewport, so the layout
+## adapts to any resolution (A1). Left players panel and right journal are
+## fractions of the width; the board fills the remaining center region.
+func _panel_w() -> int:
+	return maxi(_MIN_PANEL_W, int(size.x * 0.16))
+
+func _journal_w() -> int:
+	return maxi(_MIN_JOURNAL_W, int(size.x * 0.20))
 
 func _build_layout() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -90,19 +97,17 @@ func _build_layout() -> void:
 	add_child(_players)
 
 	# right journal panel
-	var jpanel := UiTheme.panel()
-	jpanel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	jpanel.anchor_left = 1.0
-	jpanel.offset_left = -300
-	jpanel.offset_top = 34
-	jpanel.offset_bottom = -70
-	jpanel.offset_right = 0
-	jpanel.custom_minimum_size.x = 300
-	add_child(jpanel)
+	_jpanel = UiTheme.panel()
+	_jpanel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_jpanel.anchor_left = 1.0
+	_jpanel.offset_top = 34
+	_jpanel.offset_bottom = -70
+	_jpanel.offset_right = 0
+	add_child(_jpanel)
 	var jm := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		jm.add_theme_constant_override(edge, 8)
-	jpanel.add_child(jm)
+	_jpanel.add_child(jm)
 	var jv := UiTheme.vbox(4)
 	jm.add_child(jv)
 	jv.add_child(UiTheme.label("◆ ХОД СОБЫТИЙ", 12, UiTheme.COL.accent))
@@ -138,6 +143,35 @@ func _build_layout() -> void:
 	_inspector.offset_right = 360
 	_inspector.offset_bottom = -(_ACTION_H + 8)
 	add_child(_inspector)
+
+## Recompute the proportional panel sizes + board frame. Called on setup and
+## whenever the viewport size changes (A1).
+func _layout() -> void:
+	if _players == null or _jpanel == null or _board_scene == null:
+		return
+	var pw := _panel_w()
+	var jw := _journal_w()
+	# left players panel
+	_players.offset_right = pw
+	_players.offset_bottom = size.y - _ACTION_H
+	# right journal panel
+	_jpanel.offset_left = -jw
+	_jpanel.custom_minimum_size.x = jw
+	# board fills the center region between the panels
+	var board_rect := Rect2()
+	board_rect.position = Vector2(pw + 8, _TOP_H + 8)
+	board_rect.size = Vector2(size.x - pw - jw - 16, size.y - _TOP_H - _ACTION_H - 16)
+	_board_scene.set_frame(board_rect)
+
+func _process(delta: float) -> void:
+	# A1: re-layout when the viewport size changes (window resize / different screen)
+	var vp := get_viewport()
+	if vp != null:
+		var v := vp.get_visible_rect().size
+		if v != _last_vp:
+			_last_vp = v
+			_apply_rect()
+			_layout()
 
 func _apply_rect() -> void:
 	var vp = get_viewport()

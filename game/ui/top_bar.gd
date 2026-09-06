@@ -31,7 +31,7 @@ func _init() -> void:
 	h.add_child(_turn)
 	_phase = UiTheme.label("", 13, UiTheme.COL.text_dim)
 	h.add_child(_phase)
-	var settings_btn := UiTheme.button("⚙")
+	var settings_btn := UiTheme.button("⚙", "Открыть настройки и правила игры")
 	settings_btn.custom_minimum_size = Vector2(30, 24)
 	settings_btn.connect("pressed", Callable(self, "_on_settings"))
 	h.add_child(settings_btn)
