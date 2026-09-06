@@ -43,24 +43,27 @@ diverge.
       in Tranche A: roll/move, GO bonus, doubles (extra turn),
       triple-doubles→jail, tax, free_parking (OFF), go_to_jail, jail decision
       (rule "both"), property purchase/pass→auction, railroad + utility rent,
-      both card decks (original names + 8 effect tokens). 59 headless tests green.
+      both card decks (original names + 8 effect tokens).
 - [x] Doubles, jail 3-turns-or-pay, GO landing bonus
-- [ ] Houses/hotels (even-build), mortgage/unmortgage, bankruptcy transfer
-      — next tranche (parallel leaves)
-- [x] Auctions (all-pass fallback), rent with railroad/utility multiplier
+- [x] Houses/hotels (even-build), mortgage/unmortgage, bankruptcy transfer
+      — Tranche B: houses/hotels + even-build rent table, mortgage (50 loan /
+      110 repay) with rent-block + monopoly-break, bankruptcy
+      transfer-to-creditor with player removal + END_GAME winner detection,
+      player trades (propose/respond, tile+cash swap).
+- [x] Auctions (all-pass fallback), rent with railroad/utility multiplier,
+      monopoly rent ×2 on full set
 - [x] Card decks (original names, classic effects), Free Parking house-rule OFF
-      (deck applied; card-triggered moves/rent/taxes resolve)
-- [ ] Property set definitions in `game/data/board.json` (group sets present;
-      monopoly doubling + even-build rents land with housing tranche)
+- [x] Property set definitions in `game/data/board.json` (color groups;
+      monopoly doubling + house-rent tables + house_cost per set)
 
-**Phase 1 status (Tranche A done 2026-09-06):** design + plan committed
-(`docs/superpowers/specs/2026-09-06-phase1-turn-loop-design.md`,
-`docs/superpowers/plans/2026-09-06-phase1-turn-loop.md`). Engine core built on
-feature branch `phase1/turn-loop-core` (GameSettings 5 blocks, CardDeck,
-fail-closed `submit_intent` intent API). Remaining Phase 1 rules
-(housing/mortgage, bankruptcy transfer, monopoly-rent ×2, trades, property-set
-grouping) are naturally parallel leaf tasks over the now-stable engine API —
-dispatch them next, one rule per leaf.
+**Phase 1 COMPLETE — 2026-09-06.** All rules engine features done. Design +
+plans in `docs/superpowers/{specs,plans}/2026-09-06-phase1-*.md`. 81 headless
+tests green (`godot --headless --path game --script res://tests/run.gd`).
+Engine: authoritative state machine + fail-closed intent API
+(`submit_intent`) covering roll/move/GO/doubles/jail, purchase/auction,
+property/railroad/utility rent + monopoly doubling, houses/hotels (even-build),
+mortgage/unmortgage, bankruptcy+winner, trades, and both card decks. Phase 2
+(Neuro SDK adapter → `submit_intent`) is next, over this stable engine API.
 
 ## Phase 2 — Neuro adapter
 
