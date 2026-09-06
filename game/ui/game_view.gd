@@ -6,6 +6,9 @@ extends Control
 ## seats self-drive in the manager. HUD reads the spectator projection;
 ## the human seat's legal actions come from engine.legal_actions. Shape-only
 ## UI (UiTheme) so art can replace shapes later without logic changes.
+##
+## v2 one-screen: the board is always the root. Before START the board is
+## "cold" (no engine) and the action panel shows a single START button.
 
 const UiTheme := preload("res://ui/theme.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
@@ -23,11 +26,15 @@ const _ACTION_H := 64
 const _MIN_PANEL_W := 150
 const _MIN_JOURNAL_W := 180
 
+signal restart_requested
+signal settings_requested
+
 var engine
 var manager
 var seats: Array = []
 var settings
 
+var _launcher
 var _human_pid := -1
 var _board_scene
 var _top
@@ -39,17 +46,45 @@ var _journal
 var _jpanel: PanelContainer
 var _last_vp := Vector2.ZERO
 var _center: HBoxContainer   # players | board | journal (ties the panels together)
+var _cold := true
+var _game_over_shown := false
 
+## Cold setup: build the layout with no engine. The board renders empty and the
+## action panel shows a single START button. Called once at launch.
+func setup_cold(launcher) -> void:
+	_launcher = launcher
+	_cold = true
+	_build_layout()
+	_layout()
+	# cold board: no engine, so just build the empty board scene
+	_board_scene.setup(null, null)
+	_top.set_cold(true)
+	_actions.set_cold(true)
+	_sync_cold()
+
+## Full setup after the engine is built (START / restart).
 func setup(eng, mgr, seat_list: Array, s) -> void:
+	# restart: this same GameView instance is re-setup, so disconnect any
+	# previously-connected signals before reconnecting (avoids duplicate errors)
+	if _board_scene != null and _board_scene.tile_clicked.is_connected(_on_tile_clicked):
+		_board_scene.tile_clicked.disconnect(_on_tile_clicked)
+	if _top != null and _top.settings_requested.is_connected(_on_settings_requested):
+		_top.settings_requested.disconnect(_on_settings_requested)
+	if _modals != null and _modals.sound_toggled.is_connected(_on_sound_toggled):
+		_modals.sound_toggled.disconnect(_on_sound_toggled)
+	if manager != null and manager.state_changed.is_connected(_on_state_changed):
+		manager.state_changed.disconnect(_on_state_changed)
+
 	engine = eng
 	manager = mgr
 	seats = seat_list
 	settings = s
+	_cold = false
+	_game_over_shown = false
 	for seat in seats:
 		if str(seat.input_driver) in ["LOCAL", "ADMIN"]:
 			_human_pid = int(seat.pid)
 			break
-	_build_layout()
 	# board fills the center region (between left panel, top bar, journal, action bar)
 	_board_scene.setup(engine, settings)
 	_layout()
@@ -61,8 +96,41 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	manager.state_changed.connect(_on_state_changed)
 	_top.settings_requested.connect(_on_settings_requested)
 	_modals.sound_toggled.connect(_on_sound_toggled)
+	_top.set_cold(false)
+	_actions.set_cold(false)
 	_refresh_journal()
 	_sync_all()
+
+## Called by main.gd after the engine is built and setup() ran.
+func on_game_started() -> void:
+	_sync_all()
+
+## Called by main.gd when the overlay is closed without starting (ESC).
+func on_overlay_closed() -> void:
+	if _cold:
+		_sync_cold()
+
+## Show the game-over results banner (winner, turns, capital) with [Реванш]
+## and [Настройки] buttons.
+func show_game_over(winner_name: String) -> void:
+	if _game_over_shown:
+		return
+	_game_over_shown = true
+	var proj := ProjectionScript.new().for_spectator(engine)
+	var players: Array = proj.get("players", [])
+	var winner: Dictionary = {}
+	for p in players:
+		if str(p.get("name", "")) == winner_name:
+			winner = p
+			break
+	var turns: int = _count_turns()
+	var capital: int = int(winner.get("money", 0))
+	_modals.show_game_over(winner_name, turns, capital, players.size())
+
+func _count_turns() -> int:
+	if engine == null or engine.log == null:
+		return 0
+	return engine.log.entries_of_type("roll").size()
 
 ## Proportional panel sizes derived from the current viewport, so the layout
 ## adapts to any resolution (A1). Left players panel and right journal are
@@ -143,6 +211,7 @@ func _build_layout() -> void:
 	_actions.offset_right = 0
 	add_child(_actions)
 	_actions.action_requested.connect(_on_action_requested)
+	_actions.start_requested.connect(_on_start_requested)
 
 	# tile inspector above the action panel (bottom-left), clear of the buttons
 	_inspector = TileInspector.new()
@@ -186,11 +255,19 @@ func _apply_rect() -> void:
 	position = r.position
 	size = r.size
 
+func _sync_cold() -> void:
+	_top.sync_cold()
+	_players.sync_cold()
+	_actions.set_cold(true)
+	_inspector.clear()
+
 func _on_state_changed(_proj: Dictionary) -> void:
 	_sync_all()
 	_refresh_journal()
 
 func _sync_all() -> void:
+	if engine == null:
+		return
 	var sp := ProjectionScript.new().for_spectator(engine)
 	_sync_from_spectator(sp)
 
@@ -217,6 +294,8 @@ func _refresh_journal() -> void:
 
 func _on_tile_clicked(idx: int) -> void:
 	_inspector.select(idx)
+	if engine == null:
+		return
 	var sp := ProjectionScript.new().for_spectator(engine)
 	_inspector.sync(sp, seats)
 
@@ -226,6 +305,15 @@ func _connect_modals() -> void:
 	_modals.trade_responded.connect(_on_trade_responded)
 	_modals.auction_bid.connect(_on_auction_bid)
 	_modals.auction_pass.connect(_on_auction_pass)
+	_modals.restart_requested.connect(_on_restart_requested)
+	_modals.settings_requested.connect(_on_settings_requested)
+
+func _on_start_requested() -> void:
+	# cold state: the single START button opens the settings overlay
+	settings_requested.emit()
+
+func _on_restart_requested() -> void:
+	restart_requested.emit()
 
 func _on_action_requested(act: String, _params: Dictionary) -> void:
 	match act:
@@ -271,10 +359,7 @@ func _on_auction_pass() -> void:
 	_modals.close()
 
 func _on_settings_requested() -> void:
-	var cats: Array = [
-		{"key": "sfx", "label": "Звуковые эффекты", "on": _sfx_enabled},
-	]
-	_modals.open_settings(cats, _rules_text())
+	settings_requested.emit()
 
 func _on_sound_toggled(key: String, on: bool) -> void:
 	if key == "sfx":
@@ -283,27 +368,6 @@ func _on_sound_toggled(key: String, on: bool) -> void:
 			_board_scene._sfx.set_enabled(on)
 
 var _sfx_enabled := true
-
-func _rules_text() -> String:
-	var s = settings
-	var lines: Array[String] = []
-	lines.append("ПРАВИЛА (по текущим настройкам)")
-	lines.append("")
-	lines.append("Стартовый капитал: $%d" % s.starting_cash)
-	lines.append("Бонус за GO: $%d" % s.go_bonus)
-	lines.append("Тюрьма: %s (штраф $%d)" % [s.jail_rule, s.jail_fine])
-	lines.append("Бесплатная стоянка: %s" % ("вкл" if s.free_parking else "выкл"))
-	lines.append("Дубли: %s" % ("вкл" if s.doubles else "выкл"))
-	lines.append("Тройные дубли → тюрьма: %s" % ("вкл" if s.triple_doubles_to_jail else "выкл"))
-	lines.append("Аукционы при отказе: %s" % ("вкл" if s.auctions_on_refusal else "выкл"))
-	lines.append("Строительство: %s" % ("вкл" if s.housing else "выкл"))
-	lines.append("Равномерная застройка: %s" % ("вкл" if s.even_build else "выкл"))
-	lines.append("Монополия ×2 аренда: %s" % ("вкл" if s.monopoly_rent_x2 else "выкл"))
-	lines.append("Залог: %s (%d%% / %d%%)" % [("вкл" if s.mortgage else "выкл"), s.mortgage_loan_pct, s.mortgage_repay_pct])
-	lines.append("Торги: %s" % ("вкл" if s.trades else "выкл"))
-	lines.append("Таймер хода: %dс" % s.turn_timer)
-	lines.append("Таймер аукциона: %dс" % s.auction_timer)
-	return "\n".join(lines)
 
 func _submit(pid: int, action: String, params: Dictionary) -> void:
 	if manager == null:

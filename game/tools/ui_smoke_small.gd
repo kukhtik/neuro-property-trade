@@ -16,13 +16,13 @@ func _ready() -> void:
 	for _i in 20:
 		await get_tree().process_frame
 
-	var lobby = _launcher.get("_lobby")
-	if lobby == null:
-		print("FAIL: no lobby"); quit(1); return
-	print("PASS: lobby built at 800x600")
+	var overlay = _launcher.get("_overlay")
+	if overlay == null:
+		print("FAIL: no settings overlay"); quit(1); return
+	print("PASS: settings overlay built at 800x600")
 
 	# start the game
-	lobby.call("_start_pressed")
+	overlay.call("_start_pressed")
 	for _i in 15:
 		await get_tree().process_frame
 	var gv = _launcher.get("_game_view")

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://p0probe"]
+
+[ext_resource type="Script" path="res://tools/p0_probe.gd" id="1_p0"]
+
+[node name="P0Probe" type="Node"]
+script = ExtResource("1_p0")

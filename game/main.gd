@@ -1,14 +1,16 @@
 extends Node
-## Entry point / single launcher. Shows the Lobby first; on START builds the
-## engine + seat manager + full game view (board, HUD, action panel, journal).
-## F12 toggles the host-local admin panel (engine-authoritative, token-guarded).
+## Entry point / single launcher (v2 one-screen). Builds GameView immediately
+## (the board is always the root visual layer). The engine is created lazily on
+## START. The SettingsOverlay (ex-lobby) opens on first run and via ⚙/F1.
+## F12 toggles the host-local admin panel (engine-authoritative, token-guarded);
+## on WebGL / --spectator the panel is NOT created at all (is_host gate).
 
 const EngineScript := preload("res://core/engine.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const AdminController := preload("res://admin/admin_controller.gd")
 const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
-const Lobby := preload("res://ui/lobby.gd")
+const SettingsOverlay := preload("res://ui/settings_overlay.gd")
 const GameView := preload("res://ui/game_view.gd")
 
 var _engine
@@ -17,7 +19,9 @@ var _controller
 var _gate
 var _panel
 var _game_view
-var _lobby
+var _overlay
+var _is_host := true
+var _game_started := false
 
 func _ready() -> void:
 	# set window size for the playable shell (1440x900 gives the board room to
@@ -25,11 +29,63 @@ func _ready() -> void:
 	var vp = get_viewport()
 	if vp != null:
 		DisplayServer.window_set_size(Vector2i(1440, 900))
-	_lobby = Lobby.new()
-	add_child(_lobby)
-	_lobby.started.connect(_on_started)
 
+	# is_host: not web AND not a --spectator run. On WebGL the admin panel is
+	# not created at all and the F12 hint is not rendered.
+	_is_host = not OS.has_feature("web") and not _has_cli_flag("--spectator")
+
+	# one screen: build the game view immediately (cold board, no engine yet)
+	_game_view = GameView.new()
+	add_child(_game_view)
+	_game_view.setup_cold(self)
+	_game_view.restart_requested.connect(_on_restart_requested)
+	_game_view.settings_requested.connect(_open_overlay)
+
+	# settings overlay (ex-lobby) opens on first run, pre-game mode
+	_overlay = SettingsOverlay.new()
+	add_child(_overlay)
+	_overlay.set_mode(true)
+	_overlay.started.connect(_on_started)
+	_overlay.apply_requested.connect(_on_apply)
+	_overlay.closed.connect(_on_overlay_closed)
+
+	# host-only admin panel (created only when is_host)
+	if _is_host:
+		_panel = AdminPanel.new()
+		_panel.name = "AdminPanel"
+		add_child(_panel)
+		_panel.visible = false
+
+	print("Neuro Property Trade — ready. is_host=%s" % str(_is_host))
+
+func _has_cli_flag(flag: String) -> bool:
+	for a in OS.get_cmdline_user_args():
+		if a == flag:
+			return true
+	return false
+
+## Pre-game START: build engine + seats + manager, then start the game.
 func _on_started(settings, seats: Array) -> void:
+	_build_game(settings, seats)
+	_overlay.visible = false
+	_game_started = true
+	_game_view.on_game_started()
+
+## In-game restart (ПРИМЕНИТЬ): rebuild the engine with a new seed.
+func _on_apply(settings, seats: Array) -> void:
+	_build_game(settings, seats)
+	_overlay.visible = false
+	_game_started = true
+	_game_view.on_game_started()
+
+func _build_game(settings, seats: Array) -> void:
+	# tear down any previous engine/manager
+	if _manager != null and is_instance_valid(_manager):
+		_manager.queue_free()
+	# the engine is a RefCounted (not a Node) — dropping the reference lets GC
+	# reclaim it; do NOT call .free() on it.
+	_engine = null
+
 	_engine = EngineScript.new()
 	var names: Array = []
 	for s in seats:
@@ -46,31 +102,42 @@ func _on_started(settings, seats: Array) -> void:
 	_controller.setup(_engine, seats)
 	_gate = AdminGate.new()
 	_gate.setup(_controller, settings.admin_token)
-	_panel = AdminPanel.new()
-	_panel.name = "AdminPanel"
-	add_child(_panel)
-	_panel.setup(_gate)
-	_panel.visible = false
+	if _panel != null:
+		_panel.setup(_gate)
+		_panel.visible = false
 
-	# swap lobby for the game view
-	_lobby.visible = false
-	_game_view = GameView.new()
-	add_child(_game_view)
 	_game_view.setup(_engine, _manager, seats, settings)
-	print("Neuro Property Trade — ready. F12 toggles admin panel. Human seat: " + str(_human_names(seats)))
+	# game-over banner: seat_manager emits game_over when the engine reaches END_GAME
+	_manager.game_over.connect(_on_game_over)
 
-func _human_names(seats: Array) -> String:
-	var out: Array = []
-	for s in seats:
-		if str(s.input_driver) in ["LOCAL", "ADMIN"]:
-			out.append(str(s.name))
-	return ", ".join(out)
+func _on_game_over(winner_name: String) -> void:
+	_game_view.show_game_over(winner_name)
+
+func _on_overlay_closed() -> void:
+	# ESC closes the overlay without starting: the board stays "cold" with a
+	# single START button in the action panel.
+	_overlay.visible = false
+	_game_view.on_overlay_closed()
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F12:
 			if _panel != null:
 				_panel.visible = not _panel.visible
-				# keep the admin panel above any modal overlays
 				if _panel.visible:
 					_panel.move_to_front()
+		elif event.keycode == KEY_F1:
+			_open_overlay()
+		elif event.keycode == KEY_ESCAPE:
+			if _overlay.visible:
+				_on_overlay_closed()
+
+func _open_overlay() -> void:
+	_overlay.set_mode(not _game_started)
+	_overlay.visible = true
+	_overlay.move_to_front()
+
+## Game-over "РЕВАНШ" or TopBar "↻": reopen the settings overlay in apply mode
+## so the host can restart with a new seed.
+func _on_restart_requested() -> void:
+	_open_overlay()

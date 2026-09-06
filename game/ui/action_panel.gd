@@ -7,6 +7,7 @@ extends PanelContainer
 ## live event-feed on the right (the stream overlay moved here from mid-screen).
 
 signal action_requested(action: String, params: Dictionary)
+signal start_requested
 
 const UiTheme := preload("res://ui/theme.gd")
 
@@ -15,6 +16,7 @@ var _hint: Label
 var _status: Label
 var _current_pid := -1
 var _last_legal: Array = []   # cache so we only rebuild buttons when the set changes
+var _cold := false
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel, UiTheme.COL.border, 1, 0))
@@ -39,6 +41,29 @@ func _init() -> void:
 	_v.add_child(_hint)
 
 var _v: VBoxContainer
+
+## Cold state (pre-game): show a single START button that opens the settings
+## overlay. No engine yet.
+func set_cold(v: bool) -> void:
+	_cold = v
+	if _btn_row == null:
+		return
+	# clear any existing buttons
+	for c in _btn_row.get_children():
+		_btn_row.remove_child(c); c.queue_free()
+	_last_legal = []
+	if v:
+		_status.text = "Партия ещё не начата"
+		_hint.text = ""
+		var start := UiTheme.button_accent("▶  НАЧАТЬ ПАРТИЮ", "Открыть настройки и начать партию")
+		start.custom_minimum_size.y = 40
+		start.connect("pressed", Callable(self, "_on_start"))
+		_btn_row.add_child(start)
+	else:
+		_status.text = ""
+
+func _on_start() -> void:
+	start_requested.emit()
 
 ## Rebuild buttons for the given legal action names of a seat. `pid` is the
 ## seat whose decisions these resolve. `human` true => interactive; false =>

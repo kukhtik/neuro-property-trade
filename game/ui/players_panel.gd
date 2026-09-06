@@ -26,6 +26,14 @@ func _init() -> void:
 var _v: VBoxContainer
 var _list: VBoxContainer
 
+## Cold state (pre-game): show a placeholder list (no engine yet).
+func sync_cold() -> void:
+	for c in _list.get_children():
+		_list.remove_child(c); c.queue_free()
+	_rows.clear()
+	var ph := UiTheme.label("Партия ещё не начата", 13, UiTheme.COL.text_dim)
+	_list.add_child(ph)
+
 func sync(proj: Dictionary, seats: Array) -> void:
 	# rebuild rows each sync (simple, deterministic for MVP shell)
 	for c in _list.get_children():

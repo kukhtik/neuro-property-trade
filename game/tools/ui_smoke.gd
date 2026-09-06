@@ -1,8 +1,9 @@
 extends Node
 ## UI smoke + playability probe: instantiates the real launcher (main.tscn),
-## verifies the lobby builds, auto-starts via the lobby, then DRIVES the human
-## LOCAL seat one full turn by pushing "roll" through the game_view, and prints
-## engine phase/money to prove the human input path works end-to-end.
+## verifies the settings overlay builds, auto-starts via the overlay, then
+## DRIVES the human LOCAL seat one full turn by pushing "roll" through the
+## game_view, and prints engine phase/money to prove the human input path works
+## end-to-end.
 ## Run windowed: godot --path game res://tools/ui_smoke.tscn
 
 const MainScript := preload("res://main.gd")
@@ -16,14 +17,14 @@ func _ready() -> void:
 	for _i in 20:
 		await get_tree().process_frame
 
-	# 1) lobby present?
-	var lobby = _launcher.get("_lobby")
-	if lobby == null:
-		print("FAIL: no lobby"); quit(1); return
-	print("PASS: lobby built (players list has %d children)" % lobby._players_list.get_child_count())
+	# 1) overlay present?
+	var overlay = _launcher.get("_overlay")
+	if overlay == null:
+		print("FAIL: no settings overlay"); quit(1); return
+	print("PASS: settings overlay built (players list has %d children)" % overlay._players_list.get_child_count())
 
 	# 2) start the game
-	lobby.call("_start_pressed")
+	overlay.call("_start_pressed")
 	for _i in 15:
 		await get_tree().process_frame
 	var gv = _launcher.get("_game_view")

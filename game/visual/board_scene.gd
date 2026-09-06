@@ -68,20 +68,21 @@ func setup(engine, settings) -> void:
 
 	# spectacle pans the camera (frustum) to follow the action
 	_spectacle = Spectacle.new()
-	_spectacle.set_animations(_settings.animations)
+	_spectacle.set_animations(_settings.animations if _settings != null else true)
 	add_child(_spectacle)
 
 	# overlay + sfx are siblings of the camera so they stay fixed on screen
 	_overlay = EventOverlay.new()
 	_overlay.name = "EventOverlay"
-	_overlay.visible = _settings.event_overlay
+	_overlay.visible = _settings.event_overlay if _settings != null else true
 	add_child(_overlay)
 
 	_sfx = Sfx.new()
 	_sfx.set_enabled(true)
 	add_child(_sfx)
 
-	_engine.log.event_appended.connect(_on_engine_event)
+	if _engine != null:
+		_engine.log.event_appended.connect(_on_engine_event)
 
 	# build the board now (default cell) so it's never null; _resize_children
 	# will rebuild at the correct size once the container lays us out

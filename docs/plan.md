@@ -75,7 +75,7 @@ Key decisions already locked (do NOT re-litigate):
 |-------|-------|--------|
 | A | Adaptive layout, tooltips everywhere, inspector auto-hide, tile/token rework, bigger window | DONE (2026-09-06) |
 | G | SVG asset copy → `game/assets/`, AssetLoader seam in `theme.gd`, tile/token/button/dice/house/hotel/corner/type art wired in | assets copied + imported; **in progress** |
-| P0 | **Core UI skeleton** — `main.gd` boots straight to `GameView`, `SettingsOverlay` (ex-lobby) with full match config, restart + game-over flow from TopBar, host-only admin gate eats F12 | NEXT |
+| P0 | **Core UI skeleton** — `main.gd` boots straight to `GameView`, `SettingsOverlay` (ex-lobby) with full match config, restart + game-over flow from TopBar, host-only admin gate eats F12 | DONE (2026-09-07) — `tools/p0_probe.tscn` (host + `-- --spectator`) |
 | P1 | PlayerIdentity + token/halo/fan layout + walking token animation + player cards | after P0 |
 | P2 | Tile rework (SVG, short names, owner frame, compact mode, highlight frame) | after P0, can parallel P3 |
 | P3 | Toast stack + banners + timer ring + BG3 dice + inspector pin (auto-hide) + tooltip autotest | after P0, can parallel P2 |

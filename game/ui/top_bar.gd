@@ -1,16 +1,21 @@
 class_name TopBar
 extends PanelContainer
-## Fixed top bar: game title + current turn (player) + phase + F12 hint.
-## Reads a spectator-safe projection dict. Shape-only for future art swap.
+## Fixed top bar: game title + current turn (player) + phase + settings/restart
+## buttons + F12 hint (host-only). Reads a spectator-safe projection dict.
+## Shape-only for future art swap.
 
 const UiTheme := preload("res://ui/theme.gd")
 
 signal settings_requested
+signal restart_requested
 
 var _title: Label
 var _turn: Label
 var _phase: Label
 var _hint: Label
+var _restart_btn: Button
+var _settings_btn: Button
+var _is_host := true
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 0))
@@ -31,15 +36,37 @@ func _init() -> void:
 	h.add_child(_turn)
 	_phase = UiTheme.label("", 13, UiTheme.COL.text_dim)
 	h.add_child(_phase)
-	var settings_btn := UiTheme.button("⚙", "Открыть настройки и правила игры")
-	settings_btn.custom_minimum_size = Vector2(30, 24)
-	settings_btn.connect("pressed", Callable(self, "_on_settings"))
-	h.add_child(settings_btn)
+	_settings_btn = UiTheme.button("⚙", "Открыть настройки и правила игры")
+	_settings_btn.custom_minimum_size = Vector2(30, 24)
+	_settings_btn.connect("pressed", Callable(self, "_on_settings"))
+	h.add_child(_settings_btn)
+	_restart_btn = UiTheme.button("↻", "Пересобрать партию с новым сидом (рестарт)")
+	_restart_btn.custom_minimum_size = Vector2(30, 24)
+	_restart_btn.connect("pressed", Callable(self, "_on_restart"))
+	h.add_child(_restart_btn)
 	_hint = UiTheme.label("F12 — админ", 12, UiTheme.COL.text_dim)
 	h.add_child(_hint)
 
+## Host-only gate: hide the F12 hint on non-host (WebGL / spectator).
+func set_host(v: bool) -> void:
+	_is_host = v
+	_hint.visible = v
+
+func set_cold(v: bool) -> void:
+	_turn.text = ""
+	_phase.text = "до старта"
+	_restart_btn.visible = false
+
+func sync_cold() -> void:
+	_turn.text = ""
+	_phase.text = "до старта"
+	_restart_btn.visible = false
+
 func _on_settings() -> void:
 	settings_requested.emit()
+
+func _on_restart() -> void:
+	restart_requested.emit()
 
 func sync(proj: Dictionary, players: Array) -> void:
 	# proj = for_spectator(engine); players = the seat list (to resolve names+colors)
@@ -51,3 +78,4 @@ func sync(proj: Dictionary, players: Array) -> void:
 	else:
 		_turn.text = ""
 	_phase.text = "ФАЗА: " + str(proj.get("phase", ""))
+	_restart_btn.visible = true

@@ -12,6 +12,8 @@ signal trade_responded(accept: bool)
 signal auction_bid(amount: int)
 signal auction_pass()
 signal sound_toggled(category: String, on: bool)
+signal restart_requested
+signal settings_requested
 
 var _panel: PanelContainer
 var _content: Control
@@ -184,6 +186,30 @@ func show_message(title: String, msg: String) -> void:
 	ok.connect("pressed", Callable(self, "close"))
 	body.add_child(ok)
 	_panelize(body)
+
+## Game-over results banner: winner, turns, capital + [Реванш] [Настройки].
+func show_game_over(winner_name: String, turns: int, capital: int, player_count: int) -> void:
+	_show()
+	var body := UiTheme.vbox(10)
+	body.add_child(_heading("ПАРТИЯ ОКОНЧЕНА"))
+	body.add_child(UiTheme.label("Победитель: %s" % winner_name, 18, UiTheme.COL.gold))
+	body.add_child(UiTheme.label("Ходов: %d   ·   Игроков: %d   ·   Капитал: $%d" % [turns, player_count, capital], 14, UiTheme.COL.text_dim))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var rematch := UiTheme.button_accent("РЕВАНШ", "Начать новую партию с теми же настройками")
+	rematch.connect("pressed", Callable(self, "_emit_restart"))
+	row.add_child(rematch)
+	var set := UiTheme.button("НАСТРОЙКИ", "Открыть настройки матча")
+	set.connect("pressed", Callable(self, "_emit_settings"))
+	row.add_child(set)
+	body.add_child(row)
+	_panelize(body)
+
+func _emit_restart() -> void:
+	restart_requested.emit()
+
+func _emit_settings() -> void:
+	settings_requested.emit()
 
 ## In-game settings: per-category sound toggles + a rules button.
 func open_settings(sound_cats: Array, rules_text: String) -> void:
