@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -448,4 +448,63 @@ static func test_sell_house_refunds_half() -> String:
 	# refund = 25 (half of 50), only 1 house in group (tile3=0)... even-build on sell: tile3 has 0, selling tile1 from 1->0 is allowed since it becomes 0 = min.
 	if e.player(0).money != m1 + 25: return "refund should be +25, money=%d" % e.player(0).money
 	if e._houses_on(1) != 0: return "should be 0 houses after sell"
+	return ""
+
+static func test_mortgage_grants_loan() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).add_ownership(1)   # Sunset Blvd cost 60
+	var m0 = e.player(0).money
+	var res = e.submit_intent(0, "mortgage_property", {"tile": 1})
+	if res["ok"] != true: return "mortgage should succeed: " + res.get("reason", "")
+	# 50% of 60 = 30
+	if e.player(0).money != m0 + 30: return "mortgage loan should be +30, money=%d" % e.player(0).money
+	if e._mortgaged.has(1) != true: return "tile 1 should be mortgaged"
+	return ""
+
+static func test_mortgage_blocks_rent() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(1).add_ownership(1)   # player 1 owns tile 1, mortgaged
+	e._mortgaged.append(1)
+	e._teleport(0, 0)
+	e._force_dice(1, 1, 0, false)  # player 0 lands on tile 1 (mortgaged)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).money != 1500: return "mortgaged property should collect no rent, money=%d" % e.player(0).money
+	return ""
+
+static func test_mortgage_breaks_monopoly() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	# player 1 owns both brown tiles but tile 3 is mortgaged
+	e.player(1).add_ownership(1)
+	e.player(1).add_ownership(3)
+	e._mortgaged.append(3)
+	e._teleport(0, 0)
+	e._force_dice(1, 1, 0, false)  # land on tile 1 (owned by player 1)
+	e.submit_intent(0, "roll", {})
+	# base rent 2 (mortgage on tile 3 breaks the monopoly doubling)
+	if e.player(0).money != 1500 - 2: return "mortgaged set should use base rent 2, money=%d" % e.player(0).money
+	return ""
+
+static func test_unmortgage_repays_premium() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).add_ownership(1)
+	e._mortgaged.append(1)
+	var m0 = e.player(0).money
+	var res = e.submit_intent(0, "unmortgage_property", {"tile": 1})
+	if res["ok"] != true: return "unmortgage should succeed: " + res.get("reason", "")
+	# repay 110% of 60 = 66
+	if e.player(0).money != m0 - 66: return "unmortgage should repay 66, money=%d" % e.player(0).money
+	if e._mortgaged.has(1) == true: return "tile 1 should no longer be mortgaged"
+	return ""
+
+static func test_cannot_mortgage_with_houses() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(0).add_ownership(1)
+	e._houses[1] = 1   # has a house
+	var res = e.submit_intent(0, "mortgage_property", {"tile": 1})
+	if res["ok"] == true: return "cannot mortgage a property with houses"
 	return ""

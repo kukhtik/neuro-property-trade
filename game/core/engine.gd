@@ -30,6 +30,7 @@ var _no_extra_turn: bool = false   # set when the current turn must NOT grant a 
 var _card_depth: int = 0           # recursion guard for card-triggered moves
 var _forced_draw = null   # Variant: nullable Dictionary {kind, card} — test hook
 var _houses: Dictionary = {}   # tile index -> house count (0..5; 5 = hotel)
+var _mortgaged: Array = []   # tile indices currently mortgaged
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -88,8 +89,12 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 				return _resolve_build_house(params)
 			if action == "sell_house":
 				return _resolve_sell_house(params)
-			var legal: Array = ["roll", "build_house", "sell_house"]
-			return {"ok": false, "reason": "roll, build, or sell", "legal": legal, "events": []}
+			if action == "mortgage_property":
+				return _resolve_mortgage(params)
+			if action == "unmortgage_property":
+				return _resolve_unmortgage(params)
+			var legal: Array = ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property"]
+			return {"ok": false, "reason": "roll, build, sell, mortgage, or unmortgage", "legal": legal, "events": []}
 		PHASE_PURCHASE_WAIT:
 			var tile = _pending.get("tile", -1)
 			if tile == -1: return {"ok": false, "reason": "no pending purchase", "legal": [], "events": []}
@@ -213,11 +218,16 @@ func _owns_set(owner: int, group: String) -> bool:
 	if group_tiles.size() == 0: return false
 	for t in group_tiles:
 		if not players[owner].owns(t): return false
+		# a mortgaged tile in the group breaks the monopoly
+		# (group_tiles holds JSON floats (1.0); int() normalizes for Array.has)
+		if _mortgaged.has(int(t)): return false
 	return true
 
 func _property_rent(tile: int, owner: int) -> int:
 	# returns rent owed when 'owner' collects from a lander on 'tile'.
 	# Houses (count 1..5) take priority over monopoly doubling.
+	# A mortgaged property collects no rent.
+	if _mortgaged.has(tile): return 0
 	var houses_on: int = _houses_on(tile)
 	if houses_on > 0:
 		var rents: Array = board.tile_at(tile).get("houses", [])
@@ -296,6 +306,48 @@ func _resolve_sell_house(params: Dictionary) -> Dictionary:
 	_houses[tile] = houses_on - 1
 	log.append("cash", {"player": turn_player, "amount": refund, "balance": p.money})
 	log.append("sell", {"player": turn_player, "tile": tile, "houses": _houses_on(tile), "refund": refund})
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+func _resolve_mortgage(params: Dictionary) -> Dictionary:
+	if not settings.mortgage:
+		return {"ok": false, "reason": "mortgage disabled", "legal": ["roll", "build_house", "sell_house", "unmortgage_property"], "events": []}
+	var tile: int = int(params.get("tile", -1))
+	if tile == -1:
+		return {"ok": false, "reason": "tile required", "legal": ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property"], "events": []}
+	var p = players[turn_player]
+	if not p.owns(tile):
+		return {"ok": false, "reason": "you do not own that tile", "legal": ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property"], "events": []}
+	if _mortgaged.has(tile):
+		return {"ok": false, "reason": "already mortgaged", "legal": ["roll", "build_house", "sell_house", "unmortgage_property"], "events": []}
+	if _houses_on(tile) > 0:
+		return {"ok": false, "reason": "must sell houses first", "legal": ["roll", "sell_house"], "events": []}
+	var cost: int = board.tile_at(tile).get("cost", 0)
+	var loan: int = int(round(cost * (settings.mortgage_loan_pct / 100.0)))
+	p.change_cash(loan)
+	_mortgaged.append(tile)
+	log.append("cash", {"player": turn_player, "amount": loan, "balance": p.money})
+	log.append("mortgage", {"player": turn_player, "tile": tile, "loan": loan})
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+func _resolve_unmortgage(params: Dictionary) -> Dictionary:
+	if not settings.mortgage:
+		return {"ok": false, "reason": "mortgage disabled", "legal": ["roll", "build_house", "sell_house", "mortgage_property"], "events": []}
+	var tile: int = int(params.get("tile", -1))
+	if tile == -1:
+		return {"ok": false, "reason": "tile required", "legal": ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property"], "events": []}
+	var p = players[turn_player]
+	if not p.owns(tile):
+		return {"ok": false, "reason": "you do not own that tile", "legal": ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property"], "events": []}
+	if not _mortgaged.has(tile):
+		return {"ok": false, "reason": "not mortgaged", "legal": ["roll", "build_house", "sell_house", "mortgage_property"], "events": []}
+	var cost: int = board.tile_at(tile).get("cost", 0)
+	var owe: int = int(round(cost * (settings.mortgage_repay_pct / 100.0)))
+	if p.money < owe:
+		return {"ok": false, "reason": "insufficient funds", "legal": ["roll", "build_house", "sell_house", "mortgage_property"], "events": []}
+	p.change_cash(-owe)
+	_mortgaged.erase(tile)
+	log.append("cash", {"player": turn_player, "amount": -owe, "balance": p.money})
+	log.append("unmortgage", {"player": turn_player, "tile": tile, "owe": owe})
 	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 
 func _teleport(pid: int, tile: int) -> void:
