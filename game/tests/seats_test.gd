@@ -142,7 +142,8 @@ static func test_jail_timeout_priority() -> String:
 static func test_spectator_projection_no_private() -> String:
 	var e = _engine()
 	var Proj = load("res://sdk/projection.gd")
-	var p = Proj.for_spectator(e)
+	# for_spectator is NON-static — must call on an instance (.new()).
+	var p = Proj.new().for_spectator(e)
 	if p.has("private"):
 		return "spectator must not contain private info"
 	if p.board.size() != 40:
@@ -151,7 +152,7 @@ static func test_spectator_projection_no_private() -> String:
 		return "spectator must not contain legal (not a decision holder)"
 	# Give player 0 a jail card to prove it is NOT leaked.
 	e.player(0).get_out_of_jail_cards = 5
-	var p2 = Proj.for_spectator(e)
+	var p2 = Proj.new().for_spectator(e)
 	if str(p2.players[0]).find("jail_cards") != -1:
 		return "jail card leaked to spectator"
 	if str(p2).find("get_out_of_jail") != -1:
@@ -163,7 +164,8 @@ static func test_spectator_render_omits_private() -> String:
 	e.player(0).get_out_of_jail_cards = 5
 	var Proj = load("res://sdk/projection.gd")
 	var R = load("res://sdk/markdown_renderer.gd")
-	var md: String = R.render_spectator(Proj.for_spectator(e))
+	# render_spectator is NON-static — call on an instance (.new()).
+	var md: String = R.new().render_spectator(Proj.new().for_spectator(e))
 	if md.find("get-out-of-jail") != -1 or md.find("Your private") != -1:
 		return "spectator markdown leaks private section"
 	if md.find("Phase") == -1:
