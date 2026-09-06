@@ -29,6 +29,7 @@ var _pending = {}         # decision context (e.g. {"tile": N} for purchase)
 var _no_extra_turn: bool = false   # set when the current turn must NOT grant a bonus roll (jail-exit doubles, go-to-jail)
 var _card_depth: int = 0           # recursion guard for card-triggered moves
 var _forced_draw = null   # Variant: nullable Dictionary {kind, card} — test hook
+var _houses: Dictionary = {}   # tile index -> house count (0..5; 5 = hotel)
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -83,7 +84,12 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 				return {"ok": false, "reason": "in jail: roll doubles, pay, or use card", "legal": ["roll", "pay", "use_card"] if can_roll else ["pay", "use_card"], "events": []}
 			if action == "roll":
 				return _resolve_roll()
-			return {"ok": false, "reason": "must roll", "legal": ["roll"], "events": []}
+			if action == "build_house":
+				return _resolve_build_house(params)
+			if action == "sell_house":
+				return _resolve_sell_house(params)
+			var legal: Array = ["roll", "build_house", "sell_house"]
+			return {"ok": false, "reason": "roll, build, or sell", "legal": legal, "events": []}
 		PHASE_PURCHASE_WAIT:
 			var tile = _pending.get("tile", -1)
 			if tile == -1: return {"ok": false, "reason": "no pending purchase", "legal": [], "events": []}
@@ -211,10 +217,86 @@ func _owns_set(owner: int, group: String) -> bool:
 
 func _property_rent(tile: int, owner: int) -> int:
 	# returns rent owed when 'owner' collects from a lander on 'tile'.
-	# Houses not implemented yet (Task B2); for now base rent with monopoly ×2.
+	# Houses (count 1..5) take priority over monopoly doubling.
+	var houses_on: int = _houses_on(tile)
+	if houses_on > 0:
+		var rents: Array = board.tile_at(tile).get("houses", [])
+		var idx: int = houses_on - 1   # houses_on 1..5 -> rents[0..4]
+		if idx >= 0 and idx < rents.size():
+			return int(rents[idx])
+		return board.tile_at(tile).get("rent", 0)
 	if settings.monopoly_rent_x2 and _owns_set(owner, _group_of(tile)):
 		return board.tile_at(tile).get("rent_set", board.tile_at(tile).get("rent", 0))
 	return board.tile_at(tile).get("rent", 0)
+
+func _houses_on(tile: int) -> int:
+	return int(_houses.get(tile, 0))
+
+func _set_min_houses(group: String) -> int:
+	# min house count across a full group (even-build reference). Returns 99 if empty.
+	var tiles: Array = board.group_tiles(group)
+	var mn: int = 99
+	for t in tiles:
+		var h: int = _houses_on(t)
+		if h < mn: mn = h
+	return mn
+
+func _set_max_houses(group: String) -> int:
+	var tiles: Array = board.group_tiles(group)
+	var mx: int = 0
+	for t in tiles:
+		var h: int = _houses_on(t)
+		if h > mx: mx = h
+	return mx
+
+func _resolve_build_house(params: Dictionary) -> Dictionary:
+	if not settings.housing:
+		return {"ok": false, "reason": "housing disabled", "legal": ["roll", "sell_house"], "events": []}
+	var tile: int = int(params.get("tile", -1))
+	if tile == -1:
+		return {"ok": false, "reason": "tile required", "legal": ["roll", "build_house", "sell_house"], "events": []}
+	var p = players[turn_player]
+	if not p.owns(tile):
+		return {"ok": false, "reason": "you do not own that tile", "legal": ["roll", "build_house", "sell_house"], "events": []}
+	var group: String = _group_of(tile)
+	if group == "":
+		return {"ok": false, "reason": "not a buildable property", "legal": ["roll", "build_house", "sell_house"], "events": []}
+	if not _owns_set(turn_player, group):
+		return {"ok": false, "reason": "must own the full set to build", "legal": ["roll", "sell_house"], "events": []}
+	var houses_on: int = _houses_on(tile)
+	if houses_on >= 5:
+		return {"ok": false, "reason": "already a hotel", "legal": ["roll", "sell_house"], "events": []}
+	if settings.even_build and houses_on > _set_min_houses(group):
+		return {"ok": false, "reason": "even build required", "legal": ["roll", "build_house", "sell_house"], "events": []}
+	var unit_cost: int = board.tile_at(tile).get("house_cost", 0)
+	if p.money < unit_cost:
+		return {"ok": false, "reason": "insufficient funds", "legal": ["roll", "sell_house"], "events": []}
+	p.change_cash(-unit_cost)
+	_houses[tile] = houses_on + 1
+	log.append("cash", {"player": turn_player, "amount": -unit_cost, "balance": p.money})
+	log.append("build", {"player": turn_player, "tile": tile, "houses": _houses_on(tile), "cost": unit_cost})
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+
+func _resolve_sell_house(params: Dictionary) -> Dictionary:
+	var tile: int = int(params.get("tile", -1))
+	if tile == -1:
+		return {"ok": false, "reason": "tile required", "legal": ["roll", "build_house", "sell_house"], "events": []}
+	var p = players[turn_player]
+	if not p.owns(tile):
+		return {"ok": false, "reason": "you do not own that tile", "legal": ["roll", "build_house", "sell_house"], "events": []}
+	var houses_on: int = _houses_on(tile)
+	if houses_on <= 0:
+		return {"ok": false, "reason": "no houses to sell", "legal": ["roll", "build_house"], "events": []}
+	var group: String = _group_of(tile)
+	if settings.even_build and group != "" and _owns_set(turn_player, group) and houses_on < _set_max_houses(group):
+		return {"ok": false, "reason": "even build required", "legal": ["roll", "build_house", "sell_house"], "events": []}
+	var unit_cost: int = board.tile_at(tile).get("house_cost", 0)
+	var refund: int = unit_cost / 2
+	p.change_cash(refund)
+	_houses[tile] = houses_on - 1
+	log.append("cash", {"player": turn_player, "amount": refund, "balance": p.money})
+	log.append("sell", {"player": turn_player, "tile": tile, "houses": _houses_on(tile), "refund": refund})
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 
 func _teleport(pid: int, tile: int) -> void:
 	# test hook: deterministically place a player before a forced roll
