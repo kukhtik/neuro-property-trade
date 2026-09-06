@@ -874,3 +874,98 @@ func _resolve_auction(winner: int, tile: int, pay: int) -> void:
 	log.append("auction_win", {"player": winner, "tile": tile, "amount": pay})
 	_pending = {}
 	_end_turn_or_continue()
+
+# --- Phase 4: ADMIN overrides (spec §4). Host-local, engine-authoritative. ---
+## One admin entry — every edit validated, executed, and written to the SAME
+## append-only event log (spec §4 hard rule #1). Never gate by the turn-player
+## guard: an admin is host-local and may act any time, but every op range-checks
+## its params and rejects invalid ones BEFORE mutating. Mirrors submit_intent's
+## {ok, reason, legal, events} shape.
+func admin_override(op: String, params: Dictionary) -> Dictionary:
+	if settings == null or phase == PHASE_SETUP:
+		return _admin_fail("game not started")
+	match op:
+		"set_balance":
+			var pid: int = int(params.get("pid", -1))
+			var amount: int = int(params.get("amount", -1))
+			if pid < 0 or pid >= players.size():
+				return _admin_fail("bad pid")
+			if amount < 0:
+				return _admin_fail("negative balance")
+			players[pid].money = amount
+			return _admin_ok(op, params)
+		"teleport":
+			var pid: int = int(params.get("pid", -1))
+			var tile: int = int(params.get("tile", -1))
+			if pid < 0 or pid >= players.size():
+				return _admin_fail("bad pid")
+			if tile < 0 or tile >= board.tile_count():
+				return _admin_fail("bad tile")
+			players[pid].position = tile
+			return _admin_ok(op, params)
+		"force_dice":
+			var d1: int = int(params.get("d1", 0))
+			var d2: int = int(params.get("d2", 0))
+			# d1,d2 in 0..6; 0 marks a non-die (the engine's own _force_dice hook
+			# uses d2=0 to force a specific non-doubles sum). Reject an all-zero roll.
+			if d1 < 0 or d1 > 6 or d2 < 0 or d2 > 6 or (d1 == 0 and d2 == 0):
+				return _admin_fail("dice out of 0..6 (not both zero)")
+			_force_dice(d1 + d2, d1, d2, d1 == d2)
+			return _admin_ok(op, params)
+		"grant_property":
+			var gpid: int = int(params.get("pid", -1))
+			var gtile: int = int(params.get("tile", -1))
+			if gpid < 0 or gpid >= players.size():
+				return _admin_fail("bad pid")
+			if gtile < 0 or gtile >= board.tile_count():
+				return _admin_fail("bad tile")
+			players[gpid].add_ownership(gtile)
+			return _admin_ok(op, params)
+		"revoke_property":
+			var rpid: int = int(params.get("pid", -1))
+			var rtile: int = int(params.get("tile", -1))
+			if rpid < 0 or rpid >= players.size():
+				return _admin_fail("bad pid")
+			if rtile < 0 or rtile >= board.tile_count():
+				return _admin_fail("bad tile")
+			players[rpid].remove_ownership(rtile)
+			_houses.erase(rtile)
+			_mortgaged.erase(rtile)
+			return _admin_ok(op, params)
+		"set_houses":
+			var stile: int = int(params.get("tile", -1))
+			var count: int = int(params.get("count", -1))
+			if stile < 0 or stile >= board.tile_count():
+				return _admin_fail("bad tile")
+			if count < 0 or count > 5:
+				return _admin_fail("house count 0..5")
+			_houses[stile] = count
+			return _admin_ok(op, params)
+		"set_mortgage":
+			var mtile: int = int(params.get("tile", -1))
+			var on: bool = bool(params.get("on", false))
+			if mtile < 0 or mtile >= board.tile_count():
+				return _admin_fail("bad tile")
+			if on and not _mortgaged.has(mtile):
+				_mortgaged.append(mtile)
+			elif not on:
+				_mortgaged.erase(mtile)
+			return _admin_ok(op, params)
+		"set_go_jail":
+			var jpid: int = int(params.get("pid", -1))
+			if jpid < 0 or jpid >= players.size():
+				return _admin_fail("bad pid")
+			var p = players[jpid]
+			p.in_jail = true
+			p.jail_turns = 0
+			p.position = 10
+			return _admin_ok(op, params)
+		_:
+			return _admin_fail("unknown admin op %s" % op)
+
+func _admin_fail(reason: String) -> Dictionary:
+	return {"ok": false, "reason": reason, "legal": [], "events": []}
+
+func _admin_ok(op: String, params: Dictionary) -> Dictionary:
+	log.append("admin_override", {"op": op, "params": params})
+	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
