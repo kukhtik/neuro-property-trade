@@ -11,6 +11,9 @@ static func test_list() -> Array[String]:
 		"test_set_houses_rejects_range", "test_set_mortgage_on_off",
 		"test_set_go_jail", "test_admin_override_logged",
 		"test_unknown_op_fails",
+		"test_force_roll_advances", "test_force_roll_no_holder_fails",
+		"test_force_pass_purchase", "test_force_pass_response",
+		"test_rollback_decision_clears_pending",
 	]
 
 static func _make_engine(names: Array = ["Ada", "Bo"]):
@@ -140,4 +143,67 @@ static func test_unknown_op_fails() -> String:
 	var e = _make_engine()
 	var res = e.admin_override("nonsense", {})
 	if res.get("ok", false): return "should reject unknown op"
+	return ""
+
+# --- Unblocking ops (spec §4.A) ---
+
+static func _decision_holder(e) -> int:
+	# mirrors seat_manager.find_decision_holder
+	for pid in e.player_count():
+		if not e.legal_actions(pid).is_empty():
+			return pid
+	return -1
+
+static func test_force_roll_advances() -> String:
+	var e = _make_engine(["Ada", "Bo", "Cyd"])
+	var before: int = e.turn_player
+	var h: int = _decision_holder(e)
+	if h == -1: return "no decision holder at TURN_START"
+	var res = e.admin_override("force_roll", {})
+	if not res.get("ok", false): return "force_roll should be ok: %s" % str(res)
+	# a roll moves to ROLL_RESOLVE then onto a decision/next state; must leave
+	# TURN_START (the engine resolves automatically)
+	if e.phase == "TURN_START" and e.player(0).position == 0:
+		return "force_roll did not advance the turn"
+	if before != h: return "holder should equal turn_player at start"
+	if not _has_admin_event(e, "force_roll"): return "expected admin_override force_roll event"
+	return ""
+
+static func test_force_roll_no_holder_fails() -> String:
+	var e = _make_engine()
+	e.phase = "END_GAME"
+	var res = e.admin_override("force_roll", {})
+	if res.get("ok", false): return "should fail with no decision holder"
+	return ""
+
+static func test_force_pass_purchase() -> String:
+	var e = _make_engine(["Ada", "Bo"])
+	# put player 0 in PURCHASE_WAIT on tile 1 (unowned)
+	e.phase = "PURCHASE_WAIT"
+	e._pending = {"tile": 1}
+	var res = e.admin_override("force_pass", {})
+	if not res.get("ok", false): return "force_pass should be ok: %s" % str(res)
+	# minimal_action.pick on PURCHASE_WAIT -> "pass". With auctions on, that
+	# either starts an auction (phase AUCTION).
+	if e.phase != "AUCTION":
+		return "force_pass should leave AUCTION, got %s" % e.phase
+	return ""
+
+static func test_force_pass_response() -> String:
+	var e = _make_engine(["Ada", "Bo"])
+	e._pending_trade = {"proposer": 0, "recipient": 1, "give_tiles": [], "give_cash": 0, "want_tiles": [], "want_cash": 0}
+	var res = e.admin_override("force_pass", {})
+	if not res.get("ok", false): return "force_pass on trade recipient should be ok: %s" % str(res)
+	if e._pending_trade.size() != 0: return "trade should be cleared/declined"
+	return ""
+
+static func test_rollback_decision_clears_pending() -> String:
+	var e = _make_engine()
+	e.phase = "PURCHASE_WAIT"
+	e._pending = {"tile": 1}
+	e._pending_trade = {"proposer": 0, "recipient": 1, "give_tiles": [], "give_cash": 0, "want_tiles": [], "want_cash": 0}
+	var res = e.admin_override("rollback_decision", {})
+	if not res.get("ok", false): return "rollback should be ok: %s" % str(res)
+	if e._pending.size() != 0: return "pending should be cleared"
+	if e._pending_trade.size() != 0: return "pending trade should be cleared"
 	return ""

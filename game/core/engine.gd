@@ -960,8 +960,50 @@ func admin_override(op: String, params: Dictionary) -> Dictionary:
 			p.jail_turns = 0
 			p.position = 10
 			return _admin_ok(op, params)
+		"force_roll":
+			if _admin_decision_holder() == -1:
+				return _admin_fail("no active decision")
+			return _admin_submit_for_holder("roll", {}, "force_roll")
+		"force_pass":
+			var h: int = _admin_decision_holder()
+			if h == -1:
+				return _admin_fail("no active decision")
+			var ma = load("res://seats/minimal_action.gd").pick(self, h)
+			if ma.is_empty():
+				return _admin_fail("no passive action for holder")
+			return _admin_submit_for_holder(ma.get("action"), ma.get("params", {}), "force_pass")
+		"rollback_decision":
+			_pending = {}
+			_pending_trade = {}
+			return _admin_ok(op, params)
 		_:
 			return _admin_fail("unknown admin op %s" % op)
+
+## The seat that is genuinely WAITING on a decision right now — NOT just any
+## pid with nonzero legal_actions (the turn holder always has management
+## actions like roll/build, which would wrongly shadow a waiting recipient /
+## auction bidder). Priority: pending trade recipient > auction bidder > turn
+## holder. Returns -1 when nothing is awaiting input (e.g. END_GAME).
+func _admin_decision_holder() -> int:
+	if phase == PHASE_END_GAME or players.size() == 0:
+		return -1
+	if _pending_trade.size() != 0:
+		return _pending_trade.get("recipient", -1)
+	if phase == PHASE_AUCTION:
+		return _pending.get("bidder", -1)
+	return turn_player
+
+## Run the current decision holder's legal intent through the engine (the
+## "unblocking" path). Records an admin_override event after a successful submit.
+func _admin_submit_for_holder(action: String, params: Dictionary, tag: String) -> Dictionary:
+	var h: int = _admin_decision_holder()
+	if h == -1:
+		return _admin_fail("no active decision")
+	var res: Dictionary = submit_intent(h, action, params)
+	if res.get("ok", false):
+		log.append("admin_override", {"op": tag, "action": action, "params": params})
+		return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
+	return res
 
 func _admin_fail(reason: String) -> Dictionary:
 	return {"ok": false, "reason": reason, "legal": [], "events": []}
