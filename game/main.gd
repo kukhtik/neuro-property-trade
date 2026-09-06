@@ -9,11 +9,13 @@ const SeatConfig := preload("res://seats/seat_config.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const AdminController := preload("res://admin/admin_controller.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
+const BoardScene := preload("res://visual/board_scene.gd")
 
 var _engine
 var _manager
 var _controller
 var _panel
+var _board_scene
 
 func _ready() -> void:
 	var s = Settings.new()
@@ -31,6 +33,10 @@ func _ready() -> void:
 	add_child(_panel)
 	_panel.setup(_controller)
 	_panel.visible = false
+	_board_scene = BoardScene.new()
+	_board_scene.name = "BoardScene"
+	add_child(_board_scene)
+	_board_scene.setup(_engine, s)
 	print("Neuro Property Trade — ready. F12 toggles admin panel.")
 
 func _names(seats: Array) -> Array:

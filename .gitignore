@@ -18,3 +18,7 @@ mono_crash.*.json
 
 # Generated exports
 build/
+
+# Windowed screenshot smoke artifacts
+visual_smoke_*.png
+visual_smoke_*.png.import

@@ -41,10 +41,10 @@ func play_type(t: String) -> void:
 	play_tonal(FREQS[t], 0.16)
 
 func play_tonal(freq: float, dur: float) -> void:
-	if _gen == null or not playing:
+	if _gen == null or not is_playing():
 		play()
-	var pb: AudioStreamGeneratorPlayback = _gen.get_playback()
-	if pb == null or not pb.can_push_buffer(_gen.get_frames_available()):
+	var pb: AudioStreamGeneratorPlayback = get_stream_playback()
+	if pb == null or not pb.can_push_buffer(pb.get_frames_available()):
 		return
 	var frames: int = int(dur * _gen.mix_rate)
 	var buf := PackedVector2Array()
