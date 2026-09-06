@@ -11,6 +11,7 @@ static func test_list() -> Array[String]:
 		"test_jail_timeout_priority",
 		"test_spectator_projection_no_private",
 		"test_spectator_render_omits_private",
+		"test_trade_accept_rejects",
 	]
 
 static func _make_settings():
@@ -166,4 +167,19 @@ static func test_spectator_render_omits_private() -> String:
 		return "spectator markdown leaks private section"
 	if md.find("Phase") == -1:
 		return "spectator markdown should show phase"
+	return ""
+
+# --- TradeEvaluator ---
+
+static func test_trade_accept_rejects() -> String:
+	var e = _engine()
+	var TE = load("res://seats/trade_evaluator.gd")
+	# Give tile 1 (cost 60) for tile 6 (cost 100), no cash -> good deal, accept.
+	var ok: bool = TE.accept_with(e, 1, {"give_tiles": [1], "give_cash": 0, "want_tiles": [6], "want_cash": 0})
+	if not ok:
+		return "should accept a clearly good deal (give 60, want 100)"
+	# Give tile 6 (cost 100) for tile 1 (cost 60) -> bad deal, reject.
+	var bad: bool = TE.accept_with(e, 1, {"give_tiles": [6], "give_cash": 0, "want_tiles": [1], "want_cash": 0})
+	if bad:
+		return "should reject a clearly bad deal (give 100, want 60)"
 	return ""
