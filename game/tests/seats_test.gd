@@ -7,6 +7,8 @@ static func test_list() -> Array[String]:
 		"test_assignment_parsing",
 		"test_resolve_driver_sdk_second_falls_back_to_ai",
 		"test_starting_order_manual_keeps_order",
+		"test_auto_pass_phases",
+		"test_jail_timeout_priority",
 	]
 
 static func _make_settings():
@@ -81,4 +83,52 @@ static func test_starting_order_manual_keeps_order() -> String:
 		return "manual order, seat0 should be Host, got %s" % seats[0].name
 	if seats[2].name != "AI Seat #3":
 		return "manual order kept, seat2 name unexpected: %s" % seats[2].name
+	return ""
+
+# --- MinimalAction (timeout auto-pass) ---
+
+static func _engine(settings=null):
+	var S = load("res://core/game_settings.gd")
+	var s = settings if settings != null else S.new()
+	var E = load("res://core/engine.gd")
+	var e = E.new()
+	e.setup(s, ["A", "B"])
+	return e
+
+static func test_auto_pass_phases() -> String:
+	var MA = load("res://seats/minimal_action.gd")
+	var e = _engine()
+	# TURN_START player 0 (not in jail) -> roll
+	var p = MA.pick(e, 0)
+	if p.get("action", "") != "roll":
+		return "turn start -> roll, got %s" % p.get("action", "")
+	# Force a purchase: land player 0 on tile 6 (unowned Cedar Ave), auctions off
+	e.settings.auctions_on_refusal = false
+	e._force_dice(6, 3, 3, false)
+	e.submit_intent(0, "roll", {})
+	if e.phase != "PURCHASE_WAIT":
+		return "expected PURCHASE_WAIT, got %s" % e.phase
+	var p2 = MA.pick(e, 0)
+	if p2.get("action", "") != "pass":
+		return "purchase -> pass, got %s" % p2.get("action", "")
+	return ""
+
+static func test_jail_timeout_priority() -> String:
+	var MA = load("res://seats/minimal_action.gd")
+	var S = load("res://core/game_settings.gd")
+	var settings = S.new()
+	settings.jail_fine = 50
+	var e = _engine(settings)
+	# Jail player 0 with 0 attempts left -> engine legal omits "roll",
+	# has money -> pay.
+	e._send_to_jail()
+	e.player(0).jail_turns = 3
+	var p = MA.pick(e, 0)
+	if p.get("action", "") != "pay":
+		return "jailed, 3 attempts, has money -> pay, got %s" % p.get("action", "")
+	# No money, no card -> nothing available (pick returns {})
+	e.player(0).money = 0
+	var p2 = MA.pick(e, 0)
+	if not p2.is_empty():
+		return "jailed, broke, no card -> {} expected, got %s" % str(p2)
 	return ""
