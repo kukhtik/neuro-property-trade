@@ -165,3 +165,43 @@ WebGL validation. Design+plan:
   best-practices, tdd, WebSocket, board-game-master, hermes-agent.
 - Profile AGENTS.md holds model routing table and domain invariants.
 - Local clone moved to `~/projects/neuro-property-trade` (persistent), SSH remote.
+
+## Handoff — next session (2026-09-06 evening)
+
+**Current state:** `main` at `e77cbd1`, clean working tree. **146 headless
+tests green, 0 script errors** (`godot --headless --path game --script
+res://tests/run.gd`). Tony runner exits 0. WebGL build succeeds to
+`game/build/web/` (`--export-debug "Web"`). Phases 0–4 all committed on `main`.
+
+**Phase 4 delivered** (spec §4 admin console + test-ladder rungs 3–4): pure
+`admin/admin_controller.gd` + F12 `admin/admin_panel.gd` wired in
+`main.gd/main.tscn`; `engine.admin_override` (unblocking force_roll/force_pass/
+rollback_decision + state-edit set_balance/teleport/force_dice/grant+revoke/
+set_houses/set_mortgage/set_go_jail), all through the engine + same event log;
+`engine.to_snapshot()/from_snapshot()` full round-trip + `core/snapshot.gd`;
+`tests/tony_test.gd` + `tools/tony.tscn` runner. Design+plan in
+`docs/superpowers/{specs,plans}/2026-09-06-phase4-admin-console*`.
+
+**Next up (Phase 5 — visual/stream layer, deferred from Phase 4):** this is the
+remaining big work and needs a real stream / GUI validation, so hand it to a
+session that can run a windowed Godot + OBS. Scope per plan.md Phase 4:
+- Board scene + original-themed art (board.json theme blocks exist; no Hasbro).
+  Current `main.tscn` is code-built UI only (seat_manager + admin_panel).
+- Camera/spectacle auto-focus (spec `spectacle` default on), highlight active
+  player.
+- SFX; replay of last event; `event_overlay` stream overlay (projection
+  `for_spectator` + `markdown_renderer.render_spectator` already emit the data).
+- In-browser WebGL play smoke (build works; not yet validated in-browser).
+- Optional: voice-chat spike (API/VOICE_CHAT.md).
+
+**Known follow-ups queued (small):**
+- Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
+  redo-turn-with-seed admin ops (need deeper board/deck mutation + snapshot).
+- Token-guarded remote admin panel (spec §4 "later possible").
+- Real `evil` over a second SDK connection (needs SDK re-vendor; the engine and
+  `seat_config.resolve_driver` are already single-swap-point ready).
+
+**Model routing reminder:** ARCH/design/review → deepseek-v4-flash; bulk
+GDScript on fixed interface → minimax-m2.7; crisply-specified leaf execution
+(tests/docs/aggregation) → gemma4. `gh` CLI segfaults — use git over SSH or the
+GitHub API. SDK addon parse errors in `--script` mode are expected/harmless.
