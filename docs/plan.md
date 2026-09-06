@@ -8,14 +8,19 @@ a full game (his words: creative/intellectual work stays with people).
 
 ## Model routing (this profile)
 
+Game-concept decisions (seat model, full config schema, Vedal admin console)
+are in `docs/specs/game-concept-spec.md` — authoritative before seat/lobby work.
+
 | Role | Model | Note |
 |---|---|---|
-| DEV (heavy code) | deepseek-v4-flash | smartest of the equal-cost pair |
+| DEV (heavy code / ARCH / REVIEW) | deepseek-v4-flash | smartest of the equal-cost pair; default of this profile |
 | DEV (parallel) | minimax-m2.7 | same usage/cost tier |
-| QA/DOCS/misc | gemma4 | cheapest |
+| Executor on a crisply-specified goal (QA/DOCS/aggregation) | gemma4 | cheapest; needs fully-specified goals |
 
-Rule of thumb: ARCH/REVIEW → deepseek-v4-flash; bulk GDScript tasks → minimax-m2.7;
-tests/docs/aggregation → gemma4.
+Rule of thumb: CREATE/design/undefined or investigate a discrepancy →
+deepseek-v4-flash; bulk GDScript on a fixed interface → minimax-m2.7;
+execute-a-listed-schema / tests/docs/aggregation → gemma4.
+`delegation.reasoning_effort: high` is set for creative review.
 
 ## Phase 0 — Skeleton (target: 2–3 sessions)
 
