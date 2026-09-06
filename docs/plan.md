@@ -130,8 +130,8 @@ authoritative-engine + event-log invariant. Design+plan:
 - [x] Test ladder rung 4 — WebGL export build (rung 4 artifact):
       `game/export_presets.cfg` + installed export templates; headless
       `--export-debug "Web"` → `game/build/web/index.html|.wasm|.js` succeeds.
-- [ ] Board art (original theme), SFX, camera, replay of last event — deferred
-      (needs stream validation, separate visual-layer pass)
+- [x] Board art (original theme), SFX, camera, replay of last event — Phase 5
+      visual/stream layer (below)
 - [ ] Voice-chat side-channel spike (optional, per API/VOICE_CHAT.md) — deferred
 - [ ] In-browser WebGL play smoke — deferred with the visual layer
 
@@ -143,6 +143,34 @@ tweak / deck-card insert-remove / player reorder / redo-turn-with-seed,
 token-guarded remote admin panel, second SDK connection (real evil), in-browser
 WebGL validation. Design+plan:
 `docs/superpowers/{specs,plans}/2026-09-06-phase4-admin-console*`.
+
+## Phase 5 — Visual / stream layer
+
+- [x] Code-built board scene from board.json (no asset files): `visual/tile_layout.gd`
+      pure 40-tile ring math, `visual/theme.gd` original non-Hasbro palette,
+      `visual/board_view.gd` (repaint from spectator projection, ownership tint,
+      houses/hotel labels, active-player highlight), `visual/token_panel.gd`
+      (animated tokens w/ outline + name).
+- [x] Spectacle camera (spec §4): `visual/spectacle.gd` pans a clip-contents
+      frustum over the board to the action tile on move/land/purchase; honors
+      `settings.animations` toggle (snap vs tween).
+- [x] Event overlay (spec §5 `event_overlay`): `visual/event_overlay.gd` +
+      `visual/event_messages.gd` (pure, spectator-safe — never reads private
+      keys), feeds from the engine event log; `visual/sfx.gd` procedural tones
+      via AudioStreamGenerator (no files) on roll/move/pay/build/card/etc.
+- [x] Assembly: `visual/board_scene.gd` + wiring into `main.gd` (sibling of
+      admin panel; F12 admin still works). Subscribes to `engine.log.event_appended`.
+- [x] Windowed screenshot smoke: `tools/visual_smoke.gd` + `tools/visual_smoke.tscn`;
+      drives 12 AI turns, saves PNGs, exit 0. **VALIDATED**: full 40-tile ring,
+      correct colors, tokens, active highlight, event overlay visible.
+- [ ] In-browser WebGL play smoke — still deferred (build works; not run in-browser)
+
+**Phase 5 COMPLETE — 2026-09-06.** Visual/stream layer on branch
+`phase5/visual-layer`; **161 headless tests green** (was 146). Original-themed,
+code-built (no asset pipeline, no Hasbro) board watchable + OBS-capturable;
+spectacle auto-focus, event overlay, procedural SFX, and a windowed screenshot
+smoke all in. Design+plan:
+`docs/superpowers/{specs,plans}/2026-09-06-phase5-visual-layer*`.
 
 ## Test ladder (per SDK best practices)
 
@@ -168,31 +196,28 @@ WebGL validation. Design+plan:
 
 ## Handoff — next session (2026-09-06 evening)
 
-**Current state:** `main` at `e77cbd1`, clean working tree. **146 headless
-tests green, 0 script errors** (`godot --headless --path game --script
-res://tests/run.gd`). Tony runner exits 0. WebGL build succeeds to
-`game/build/web/` (`--export-debug "Web"`). Phases 0–4 all committed on `main`.
+**Current state:** `main` at `e77cbd1` (+ Phase 5 merged below), clean working
+tree. **161 headless tests green, 0 script errors** (`godot --headless --path
+game --script res://tests/run.gd`). Tony runner exits 0. WebGL build succeeds to
+`game/build/web/` (`--export-debug "Web"`). Phases 0–5 committed on `main`.
 
-**Phase 4 delivered** (spec §4 admin console + test-ladder rungs 3–4): pure
-`admin/admin_controller.gd` + F12 `admin/admin_panel.gd` wired in
-`main.gd/main.tscn`; `engine.admin_override` (unblocking force_roll/force_pass/
-rollback_decision + state-edit set_balance/teleport/force_dice/grant+revoke/
-set_houses/set_mortgage/set_go_jail), all through the engine + same event log;
-`engine.to_snapshot()/from_snapshot()` full round-trip + `core/snapshot.gd`;
-`tests/tony_test.gd` + `tools/tony.tscn` runner. Design+plan in
-`docs/superpowers/{specs,plans}/2026-09-06-phase4-admin-console*`.
+**Phase 5 delivered — visual/stream layer (branch `phase5/visual-layer`):**
+code-built (no asset files, no Hasbro) board from board.json — `tile_layout.gd`
+(pure 40-tile ring math, headless-tested), `theme.gd` (original palette),
+`board_view.gd` (repaint from `for_spectator`, ownership tint, houses/HOTEL
+labels, active-player highlight), `token_panel.gd` (animated tokens w/ outline
++ name); `spectacle.gd` auto-focus camera (honors `settings.animations`);
+`event_overlay.gd` + `event_messages.gd` (spectator-safe stream overlay fed by
+the event log) + `sfx.gd` (procedural AudioStreamGenerator tones, no files);
+assembled in `board_scene.gd` and wired into `main.gd` (F12 admin still works).
+Windowed screenshot smoke `tools/visual_smoke.gd/.tscn` drives 12 AI turns and
+saves PNGs — **validated by eye**: full ring, correct colors, tokens, active
+highlight, overlay. Design+plan:
+`docs/superpowers/{specs,plans}/2026-09-06-phase5-visual-layer*`.
 
-**Next up (Phase 5 — visual/stream layer, deferred from Phase 4):** this is the
-remaining big work and needs a real stream / GUI validation, so hand it to a
-session that can run a windowed Godot + OBS. Scope per plan.md Phase 4:
-- Board scene + original-themed art (board.json theme blocks exist; no Hasbro).
-  Current `main.tscn` is code-built UI only (seat_manager + admin_panel).
-- Camera/spectacle auto-focus (spec `spectacle` default on), highlight active
-  player.
-- SFX; replay of last event; `event_overlay` stream overlay (projection
-  `for_spectator` + `markdown_renderer.render_spectator` already emit the data).
+**Remaining big work / next up:**
 - In-browser WebGL play smoke (build works; not yet validated in-browser).
-- Optional: voice-chat spike (API/VOICE_CHAT.md).
+- Optional: voice-chat side-channel spike (API/VOICE_CHAT.md).
 
 **Known follow-ups queued (small):**
 - Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
