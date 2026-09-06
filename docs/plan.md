@@ -72,3 +72,12 @@ tests/docs/aggregation → gemma4.
 - Hasbro trade dress → mitigated in `docs/licensing.md`, enforced by review.
 - Neuro action spam mid-animation → force only at decision points, engine queue.
 - WebGL export quirks with the SDK → POC in Phase 2, fallback native build.
+---
+
+## Setup log (2026-09-06)
+
+- Profile `monopoly` created (default: deepseek-v4-flash; delegation per-task).
+- 13 skills installed: superpowers stack (6), godot-gdscript + mastery +
+  best-practices, tdd, WebSocket, board-game-master, hermes-agent.
+- Profile AGENTS.md holds model routing table and domain invariants.
+- Local clone moved to `~/projects/neuro-property-trade` (persistent), SSH remote.
