@@ -242,8 +242,13 @@ highlight, overlay. Design+plan:
 - ~~Live tile-cost/rent tweak, deck-card insert/remove, player reorder,
   redo-turn-with-seed admin ops~~ — **DONE 2026-09-06** (see below).
 - ~~Token-guarded remote admin panel~~ — **DONE 2026-09-06** (see below).
-- Real `evil` over a second SDK connection (needs SDK re-vendor; the engine and
-  `seat_config.resolve_driver` are already single-swap-point ready).
+- Real `evil` over a second SDK connection — **NOT built; re-vendor plan
+  documented in the dev skill.** The vendored SDK wires `Websocket` +
+  `NeuroActionHandler` as ONE process-wide autoload singleton (9+5 global refs
+  across the addon); two sessions need deep re-vendoring + a live second SDK
+  server to verify (not headless-testable). Until then `sdk:evil`/2nd `sdk:*`
+  resolves to the internal AI driver (`seat_config.resolve_driver` is the single
+  swap point).
 
 **Live admin ops — DONE (2026-09-06, 181 headless tests green).** Added 5 new
 `engine.admin_override` ops (spec §4.B deferred, now built), each range-checks
