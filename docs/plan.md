@@ -77,7 +77,7 @@ Key decisions already locked (do NOT re-litigate):
 | G | SVG asset copy → `game/assets/`, AssetLoader seam in `theme.gd`, tile/token/button/dice/house/hotel/corner/type art wired in | assets copied + imported; **in progress** |
 | P0 | **Core UI skeleton** — `main.gd` boots straight to `GameView`, `SettingsOverlay` (ex-lobby) with full match config, restart + game-over flow from TopBar, host-only admin gate eats F12 | DONE (2026-09-07) — `tools/p0_probe.tscn` (host + `-- --spectator`) |
 | P1 | PlayerIdentity + token/halo/fan layout + walking token animation + player cards | DONE (2026-09-07) — `tools/p1_probe.tscn` (4 checks) |
-| P2 | Tile rework (SVG, short names, owner frame, compact mode, highlight frame) | after P0, can parallel P3 |
+| P2 | Tile rework (SVG, short names, owner frame, compact mode, highlight frame) | DONE (2026-09-07) — `tools/p2_probe.tscn` (8 checks) |
 | P3 | Toast stack + banners + timer ring + BG3 dice + inspector pin (auto-hide) + tooltip autotest | after P0, can parallel P2 |
 | P4 | Observer mode (host = not LOCAL), richer journal with filters/export, admin panel tabs + inline results | after P3 |
 | P5 | Full RU/EN i18n (dict-based), 5-breakpoint adaptivity (rails/drawers), SFX for dice/toasts/timer | last |
