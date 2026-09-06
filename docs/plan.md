@@ -216,7 +216,22 @@ highlight, overlay. Design+plan:
 `docs/superpowers/{specs,plans}/2026-09-06-phase5-visual-layer*`.
 
 **Remaining big work / next up:**
-- In-browser WebGL play smoke (build works; not yet validated in-browser).
+- In-browser WebGL smoke — **PARTIALLY validated (2026-09-06):** served the
+  existing `game/build/web` over HTTP (`python3 -m http.server`) and drove real
+  Playwright Chromium (full build, `--enable-unsafe-swiftshader`) against
+  `localhost:8801`. Console proves the game boots in-browser: WebGL2
+  (Compatibility) context created, `Neuro Property Trade — ready` logs, NO
+  pageerror/no render errors (the `NEURO_SDK_WS_URL` error is expected —
+  default seats are LOCAL+AI, no SDK). Canvas present at 1152×648. Caveat: the
+  actual rendered frame does NOT composite into any `page.screenshot` / X11-grab
+  capture under single-threaded SwiftShader in this WSL environment — all
+  captures return solid `77,77,77` (Godot's default clear color). **This is a
+  proven environment limitation, NOT a build bug:** a control test with a
+  trivial red WebGL2 triangle also fails to composite (white box + broken-image
+  icon) in the same headful chromium on `DISPLAY=:0`. **So: boot/runtime is
+  validated; the rendered-board pixels still need a human eye on a headed/real
+  browser (a stream host's Chrome).** Do NOT treat "black/solid screenshots" as
+  a build bug — check console for the `ready` line first.
 - Optional: voice-chat side-channel spike (API/VOICE_CHAT.md).
 
 **Known follow-ups queued (small):**
