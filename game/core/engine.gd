@@ -189,6 +189,11 @@ func _owner_of(tile: int) -> int:
 			return i
 	return -1
 
+func _teleport(pid: int, tile: int) -> void:
+	# test hook: deterministically place a player before a forced roll
+	players[pid].position = tile
+	log.append("teleport", {"player": pid, "tile": tile})
+
 func _move_and_resolve(roll: Dictionary) -> void:
 	var p = players[turn_player]
 	var old = p.position
@@ -199,12 +204,11 @@ func _move_and_resolve(roll: Dictionary) -> void:
 		_credit(turn_player, settings.go_bonus)
 		log.append("go_bonus", {"player": turn_player, "amount": settings.go_bonus})
 	p.position = new_pos
+	_last_roll = roll   # ensure last roll is set before resolution (it is set in _resolve_roll, but keep for safety)
 	log.append("move", {"player": turn_player, "from": old, "to": new_pos, "wrapped": wrapped})
-	log.append("land", {"player": turn_player, "tile": new_pos, "type": board.type_at(new_pos)})
-	# Tile resolution dispatches on type. This task: property purchase/pass and base rent.
-	# All other tile types keep the current behavior (log land, then end/continue turn) —
-	# tax/jail/go_to_jail/free_parking/railroad/utility/community/chance arrive in Tasks 6-8.
-	if board.type_at(new_pos) == "property":
+	var ttype: String = board.type_at(new_pos)
+	log.append("land", {"player": turn_player, "tile": new_pos, "type": ttype})
+	if ttype == "property":
 		var owner = _owner_of(new_pos)
 		if owner == -1:
 			# unowned — offer a purchase; the current player stays turn_player
@@ -217,13 +221,25 @@ func _move_and_resolve(roll: Dictionary) -> void:
 			var rent: int = board.tile_at(new_pos).get("rent", 0)
 			_transfer(turn_player, owner, rent)
 			log.append("rent", {"from": turn_player, "to": owner, "tile": new_pos, "amount": rent})
-		# owned (by self or another): end the turn honoring doubles
-		if _last_doubles:
-			phase = PHASE_TURN_START   # same player again
-		else:
-			_next_turn()
-		return
-	# Non-property tiles: end the turn on non-doubles; on doubles, same player rolls again.
+	elif ttype == "railroad":
+		var rowner = _owner_of(new_pos)
+		if rowner != -1 and rowner != turn_player:
+			var owned_count: int = 0
+			for ridx in [5, 15, 25, 35]:
+				if players[rowner].owns(ridx): owned_count += 1
+			var rtable: Dictionary = {1: 25, 2: 50, 3: 100, 4: 200}
+			var rrent: int = rtable.get(owned_count, 25)
+			_transfer(turn_player, rowner, rrent)
+			log.append("rent", {"from": turn_player, "to": rowner, "tile": new_pos, "amount": rrent})
+	elif ttype == "utility":
+		var uowner = _owner_of(new_pos)
+		if uowner != -1 and uowner != turn_player:
+			var owns_both: bool = players[uowner].owns(12) and players[uowner].owns(28)
+			var sum: int = roll.get("sum", _last_roll.get("sum", 7))
+			var urent: int = (10 if owns_both else 4) * sum
+			_transfer(turn_player, uowner, urent)
+			log.append("rent", {"from": turn_player, "to": uowner, "tile": new_pos, "amount": urent})
+	# end the turn honoring doubles (covers property owned / railroad / utility / other non-decision tiles)
 	if _last_doubles:
 		phase = PHASE_TURN_START   # same player again; but ensure NOT in a decision phase
 	else:

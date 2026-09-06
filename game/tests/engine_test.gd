@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -200,4 +200,55 @@ static func test_auction_winner_pays_bid() -> String:
 	e.submit_intent(1, "pass", {})            # bidder 1 out → active=[0], winner=0 pays 50
 	if e.player(0).money != 1500 - 50: return "winner must pay bid 50, got %d" % e.player(0).money
 	if not e.player(0).owns(1): return "winner should own tile"
+	return ""
+
+static func test_teleport_helper_moves() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e._teleport(0, 7)
+	if e.player(0).position != 7: return "teleport failed"
+	return ""
+
+static func test_railroad_rent_two_owned() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	# player 1 owns 2 railroads (5 and 15) → rent for landing on 15 = 25*2^(2-1)=50
+	e.player(1).add_ownership(5)
+	e.player(1).add_ownership(15)
+	e._teleport(0, 14)              # player 0 at 14
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 15 (railroad owned by player 1)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).money != 1500 - 50: return "railroad rent for 2 owned should be 50, money=%d" % e.player(0).money
+	if e.player(1).money != 1500 + 50: return "railroad owner not credited, money=%d" % e.player(1).money
+	return ""
+
+static func test_railroad_rent_single() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(1).add_ownership(15)   # player 1 owns 1 railroad (tile 15)
+	e._teleport(0, 14)
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})  # lands tile 15, owned by player 1, rent 25*(2^0)=25
+	if e.player(0).money != 1500 - 25: return "single railroad rent should be 25, money=%d" % e.player(0).money
+	return ""
+
+static func test_utility_rent_single_and_pair() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(1).add_ownership(12)   # player 1 owns ONE utility (12)
+	e._teleport(0, 11)
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 12 (utility), sum=1
+	e.submit_intent(0, "roll", {})
+	# single utility: rent = 4 * sum = 4 * 1 = 4
+	if e.player(0).money != 1500 - 4: return "single utility rent should be 4, money=%d" % e.player(0).money
+	# now test pair: reset engine fresh
+	var r2 = _make_engine()
+	var e2 = r2["engine"]
+	e2.player(1).add_ownership(12)
+	e2.player(1).add_ownership(28)  # player 1 owns BOTH utilities
+	e2._teleport(0, 11)
+	e2._force_dice(1, 1, 0, false)
+	e2.submit_intent(0, "roll", {})
+	# pair utility: rent = 10 * sum = 10 * 1 = 10
+	if e2.player(0).money != 1500 - 10: return "pair utility rent should be 10, money=%d" % e2.player(0).money
 	return ""
