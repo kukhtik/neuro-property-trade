@@ -12,6 +12,7 @@ const PHASE_RENT_SETTLE := "RENT_SETTLE"
 const PHASE_CARD_WAIT := "CARD_WAIT"
 const PHASE_JAIL_DECISION := "JAIL_DECISION"
 const PHASE_END_TURN := "END_TURN"
+const PHASE_END_GAME := "END_GAME"
 
 var settings
 var board
@@ -68,6 +69,8 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 	# is bypassed there; the PHASE_AUCTION branch re-checks pid against bidder.
 	if pid != turn_player and phase != PHASE_AUCTION:
 		return {"ok": false, "reason": "not your turn", "legal": [], "events": []}
+	if phase == PHASE_END_GAME:
+		return {"ok": false, "reason": "game over", "legal": [], "events": []}
 	match phase:
 		PHASE_TURN_START:
 			var cur = players[turn_player]
@@ -188,6 +191,56 @@ func _transfer(from_id: int, to_id: int, amount: int) -> void:
 	players[from_id].change_cash(-amount)
 	players[to_id].change_cash(amount)
 
+func _charge(payer: int, amount: int, creditor: int) -> Dictionary:
+	# Attempt to transfer 'amount' from payer to creditor (creditor = -1 means the bank).
+	# If payer goes insolvent, trigger bankruptcy. Returns {ok: bool, bankrupt: bool}.
+	if amount <= 0:
+		return {"ok": true, "bankrupt": false}
+	var p = players[payer]
+	if p.money >= amount:
+		if creditor >= 0:
+			_transfer(payer, creditor, amount)
+			log.append("pay", {"from": payer, "to": creditor, "amount": amount, "balance": players[payer].money})
+		else:
+			p.change_cash(-amount)
+			log.append("cash", {"player": payer, "amount": -amount, "balance": p.money})
+		return {"ok": true, "bankrupt": false}
+	# cannot cover full amount → insolvent
+	_go_bankrupt(payer, creditor)
+	return {"ok": false, "bankrupt": true}
+
+func _go_bankrupt(payer: int, creditor: int) -> void:
+	# transfer all assets to creditor (bank if creditor == -1). Then drop the player.
+	var p = players[payer]
+	p.bankrupt = true
+	log.append("bankrupt", {"player": payer, "creditor": creditor, "cash": p.money, "tiles": p.owned_tiles().size()})
+	var tile_list: Array = p.owned_tiles()
+	for t in tile_list:
+		p.remove_ownership(t)
+		if creditor >= 0:
+			players[creditor].add_ownership(t)
+	# transfer cash
+	if creditor >= 0:
+		players[creditor].change_cash(p.money)
+		p.change_cash(-p.money)
+	_remove_player(payer)
+	_check_winner()
+
+func _remove_player(idx: int) -> void:
+	players.remove_at(idx)
+	if turn_player > idx:
+		turn_player -= 1
+	elif turn_player == idx:
+		turn_player = turn_player % players.size()   # stays on same logical index now pointing at next player
+	# reset consecutive doubles for safety
+	consecutive_doubles = 0
+
+func _check_winner() -> void:
+	if players.size() <= 1:
+		phase = PHASE_END_GAME
+		if players.size() == 1:
+			log.append("winner", {"player": 0, "name": players[0].name})
+
 func _send_to_jail() -> void:
 	var p = players[turn_player]
 	p.position = 10
@@ -199,7 +252,8 @@ func _next_turn() -> void:
 	# advance to the next player, resetting turn state
 	turn_player = (turn_player + 1) % players.size()
 	consecutive_doubles = 0
-	phase = PHASE_TURN_START
+	if phase != PHASE_END_GAME:
+		phase = PHASE_TURN_START
 	_last_roll = {}
 
 func _owner_of(tile: int) -> int:
@@ -380,7 +434,8 @@ func _move_and_resolve(roll: Dictionary) -> void:
 			log.append("land_self", {"player": turn_player, "tile": new_pos})
 		else:
 			var rent: int = _property_rent(new_pos, owner)
-			_transfer(turn_player, owner, rent)
+			var c = _charge(turn_player, rent, owner)
+			if c.bankrupt: return
 			log.append("rent", {"from": turn_player, "to": owner, "tile": new_pos, "amount": rent})
 	elif ttype == "railroad":
 		var rowner = _owner_of(new_pos)
@@ -390,7 +445,8 @@ func _move_and_resolve(roll: Dictionary) -> void:
 				if players[rowner].owns(ridx): owned_count += 1
 			var rtable: Dictionary = {1: 25, 2: 50, 3: 100, 4: 200}
 			var rrent: int = rtable.get(owned_count, 25)
-			_transfer(turn_player, rowner, rrent)
+			var c2 = _charge(turn_player, rrent, rowner)
+			if c2.bankrupt: return
 			log.append("rent", {"from": turn_player, "to": rowner, "tile": new_pos, "amount": rrent})
 	elif ttype == "utility":
 		var uowner = _owner_of(new_pos)
@@ -398,11 +454,13 @@ func _move_and_resolve(roll: Dictionary) -> void:
 			var owns_both: bool = players[uowner].owns(12) and players[uowner].owns(28)
 			var sum: int = roll.get("sum", _last_roll.get("sum", 7))
 			var urent: int = (10 if owns_both else 4) * sum
-			_transfer(turn_player, uowner, urent)
+			var c3 = _charge(turn_player, urent, uowner)
+			if c3.bankrupt: return
 			log.append("rent", {"from": turn_player, "to": uowner, "tile": new_pos, "amount": urent})
 	elif ttype == "tax":
 		var amt: int = board.tile_at(new_pos).get("amount", 0)
-		_credit(turn_player, -amt)
+		var c4 = _charge(turn_player, amt, -1)
+		if c4.bankrupt: return
 		log.append("tax", {"player": turn_player, "tile": new_pos, "amount": amt})
 	elif ttype == "free_parking":
 		# house rule OFF by default — no money collected, nothing happens
@@ -428,6 +486,8 @@ func _move_and_resolve(roll: Dictionary) -> void:
 func _end_turn_or_continue() -> void:
 	# Unified end-of-turn. Normally doubles grant the same player another roll;
 	# _no_extra_turn (jail-exit doubles, going to jail) suppresses that.
+	if phase == PHASE_END_GAME:
+		return
 	if _no_extra_turn:
 		_no_extra_turn = false
 		_next_turn()
@@ -516,7 +576,8 @@ func _apply_card_effect(card: Dictionary) -> void:
 		"collect":
 			_credit(turn_player, value)
 		"pay":
-			_credit(turn_player, -value)
+			var c = _charge(turn_player, value, -1)
+			if c.bankrupt: return
 		"go_to_jail":
 			_send_to_jail()
 			_no_extra_turn = true
@@ -533,7 +594,8 @@ func _apply_card_effect(card: Dictionary) -> void:
 			for i in players.size():
 				if i != turn_player:
 					if p.money >= value:
-						_transfer(turn_player, i, value)
+						var c5 = _charge(turn_player, value, i)
+						if c5.bankrupt: break
 						log.append("rent", {"from": turn_player, "to": i, "amount": value, "tile": -1, "reason": "pay_each_player"})
 		"move_to":
 			_card_depth += 1
@@ -585,7 +647,8 @@ func _resolve_card_landing(tile: int) -> void:
 				log.append("land_self", {"player": turn_player, "tile": tile})
 			else:
 				var rent: int = _property_rent(tile, owner)
-				_transfer(turn_player, owner, rent)
+				var c = _charge(turn_player, rent, owner)
+				if c.bankrupt: return
 				log.append("rent", {"from": turn_player, "to": owner, "tile": tile, "amount": rent})
 		"railroad", "utility":
 			# unowned → nothing; owned by other → rent (reuse compact logic)
@@ -596,17 +659,20 @@ func _resolve_card_landing(tile: int) -> void:
 					for ridx in [5, 15, 25, 35]:
 						if players[r_owner].owns(ridx): n += 1
 					var rt: int = ({1:25, 2:50, 3:100, 4:200}).get(n, 25)
-					_transfer(turn_player, r_owner, rt)
+					var c2 = _charge(turn_player, rt, r_owner)
+					if c2.bankrupt: return
 					log.append("rent", {"from": turn_player, "to": r_owner, "tile": tile, "amount": rt})
 				else:
 					var both: bool = players[r_owner].owns(12) and players[r_owner].owns(28)
 					var usum: int = _last_roll.get("sum", 7)
 					var ur: int = (10 if both else 4) * usum
-					_transfer(turn_player, r_owner, ur)
+					var c3 = _charge(turn_player, ur, r_owner)
+					if c3.bankrupt: return
 					log.append("rent", {"from": turn_player, "to": r_owner, "tile": tile, "amount": ur})
 		"tax":
 			var amt2: int = board.tile_at(tile).get("amount", 0)
-			_credit(turn_player, -amt2)
+			var c4 = _charge(turn_player, amt2, -1)
+			if c4.bankrupt: return
 			log.append("tax", {"player": turn_player, "tile": tile, "amount": amt2})
 		"go_to_jail":
 			_send_to_jail()
@@ -672,7 +738,10 @@ func _auction_pass(t: int) -> void:
 
 func _resolve_auction(winner: int, tile: int, pay: int) -> void:
 	var wp = players[winner]
-	wp.change_cash(-pay)
+	var c = _charge(winner, pay, -1)
+	if c.bankrupt:
+		# winner shouldn't be able to bid more than they hold; unreachable, but stay safe
+		return
 	wp.add_ownership(tile)
 	log.append("cash", {"player": winner, "amount": -pay, "balance": wp.money})
 	log.append("auction_win", {"player": winner, "tile": tile, "amount": pay})

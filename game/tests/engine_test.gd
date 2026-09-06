@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -507,4 +507,69 @@ static func test_cannot_mortgage_with_houses() -> String:
 	e._houses[1] = 1   # has a house
 	var res = e.submit_intent(0, "mortgage_property", {"tile": 1})
 	if res["ok"] == true: return "cannot mortgage a property with houses"
+	return ""
+
+static func test_bankrupt_rent_transfers_assets() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	# player 1 owns tile 37 (Grand Avenue, green? actually darkblue group). Give them a pricey tile: 39 Grand Place (darkblue, rent base 50).
+	e.player(1).add_ownership(39)
+	# player 0 near the end with low cash
+	e.player(0).money = 30
+	e.player(0).position = 38   # Luxury Tax tile
+	e.player(0).add_ownership(5)  # player 0 owns railroad 5 (will be transferred to creditor on bankruptcy)
+	var ada = e.player(0)   # capture pre-removal references — the players array shrinks when Ada goes bankrupt
+	var bo = e.player(1)
+	e._force_dice(1, 1, 0, false)  # move 1 → tile 39 (darkblue, owned by player 1, rent 50)
+	e.submit_intent(0, "roll", {})
+	# player 0 can't pay 50 (has 30) → bankrupt, railroad 5 transfers to player 1 (creditor)
+	if ada.bankrupt != true: return "player 0 should be bankrupt"
+	if ada.owns(5) == true: return "bankrupt player should lose railroad 5"
+	if bo.owns(5) != true: return "railroad 5 should transfer to creditor player 1"
+	return ""
+
+static func test_bankrupt_removes_player() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(1).add_ownership(39)   # rent 50
+	e.player(0).money = 10
+	e.player(0).position = 38
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	if e.player_count() != 1: return "bankrupt player should be removed, count=%d" % e.player_count()
+	if e.player_count() == 1 and e.player(0).name != "Bo": return "remaining player should be Bo (player 1)"
+	return ""
+
+static func test_bankruptcy_turns_detect_winner() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(1).add_ownership(39)
+	e.player(0).money = 5
+	e.player(0).position = 38
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	if e.phase != e.PHASE_END_GAME: return "should reach END_GAME, phase=%s" % e.phase
+	return ""
+
+static func test_game_over_blocks_intents() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(1).add_ownership(39)
+	e.player(0).money = 5
+	e.player(0).position = 38
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	var res = e.submit_intent(1, "roll", {})
+	if res["ok"] == true: return "game over should block intents"
+	return ""
+
+static func test_solvent_payment_no_bankruptcy() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.player(1).add_ownership(1)   # Sunset Blvd rent 2
+	e._teleport(0, 0)
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	if e.player(0).bankrupt == true: return "solvent player should not be bankrupt"
+	if e.player(0).money != 1500 - 2: return "rent 2 charged, money=%d" % e.player(0).money
 	return ""
