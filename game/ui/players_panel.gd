@@ -10,6 +10,9 @@ extends PanelContainer
 const UiTheme := preload("res://ui/theme.gd")
 const PI := preload("res://core/player_identity.gd")
 
+## P4 observer: emitted when a player row is clicked (spectator follow).
+signal player_clicked(pid: int)
+
 var _rows: Array = []   # per pid: {name, money, pos, tiles, badges}
 
 func _init() -> void:
@@ -39,6 +42,8 @@ func sync_cold() -> void:
 	_list.add_child(ph)
 
 func sync(proj: Dictionary, seats: Array) -> void:
+	_last_proj = proj
+	_last_seats = seats
 	for c in _list.get_children():
 		_list.remove_child(c); c.queue_free()
 	_rows.clear()
@@ -49,6 +54,18 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		var pid: int = int(p.get("index", 0))
 		var row := _build_row(p, seats, pid, pid == tp, tile_names)
 		_list.add_child(row)
+
+## Observer follow: which pid is currently highlighted (visual feedback on rows).
+var _follow_pid := -1
+
+func set_follow(pid: int) -> void:
+	_follow_pid = pid
+	# cheap re-sync of the highlight only: re-run the last sync body via refresh
+	if _last_proj != null:
+		sync(_last_proj, _last_seats)
+
+var _last_proj = null
+var _last_seats: Array = []
 
 ## Map tile index -> short display name (from the projection board).
 func _tile_name_map(proj: Dictionary) -> Dictionary:
@@ -75,9 +92,16 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	var out := PanelContainer.new()
 	var bord: Color = UiTheme.COL.border_accent if active else UiTheme.COL.border
 	var w := 2 if active else 1
+	if pid == _follow_pid:
+		bord = UiTheme.COL.gold
+		w = 2
 	out.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, bord, w, 6))
 	if bankrupt:
 		out.modulate = Color(1, 1, 1, 0.5)
+	# P4 observer: a player row is clickable (follow them). Clicking an already
+	# followed player unfollows. Signal is always connected; consumers ignore it.
+	out.mouse_filter = Control.MOUSE_FILTER_STOP
+	out.connect("gui_input", Callable(self, "_on_row_input").bind(pid))
 
 	var m := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
@@ -140,6 +164,11 @@ func _driver_label(seat) -> String:
 	if seat == null:
 		return "?"
 	return str(seat.driver_label) if str(seat.driver_label) != "" else str(seat.input_driver)
+
+## P4 observer: left-click on a player row toggles follow for that pid.
+func _on_row_input(ev: InputEvent, pid: int) -> void:
+	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+		player_clicked.emit(pid)
 
 ## A small token avatar: a colored halo circle with the token sprite on top.
 func _avatar(token_id: String, col: Color, size: int, player_name: String) -> Control:

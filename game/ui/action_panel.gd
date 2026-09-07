@@ -17,6 +17,7 @@ var _status: Label
 var _current_pid := -1
 var _last_legal: Array = []   # cache so we only rebuild buttons when the set changes
 var _cold := false
+var _observer := false        # P4 §7: thin status bar, no buttons
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel, UiTheme.COL.border, 1, 0))
@@ -65,6 +66,22 @@ func set_cold(v: bool) -> void:
 func _on_start() -> void:
 	start_requested.emit()
 
+## P4 §7: observer mode — the panel collapses to a thin status bar: no buttons,
+## the hint line is hidden, and the status line shows the current decision
+## holder (fed by game_view through sync's holder name in proj-like data).
+func set_observer(v: bool) -> void:
+	_observer = v
+	if v:
+		_clear_buttons()
+		_last_legal = []
+	_hint.visible = not v
+
+func _clear_buttons() -> void:
+	if _btn_row == null:
+		return
+	for c in _btn_row.get_children():
+		_btn_row.remove_child(c); c.queue_free()
+
 ## Rebuild buttons for the given legal action names of a seat. `pid` is the
 ## seat whose decisions these resolve. `human` true => interactive; false =>
 ## read-only status (AI/CHAT auto-drive). `extra` is a dict describing the
@@ -78,13 +95,28 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 			seat = s
 	var nm: String = str(seat.name if seat != null else ("P%d" % pid))
 
+	if _observer:
+		# thin spectator status bar: whose decision is pending + timer hint
+		var holder_txt: String = nm if pid >= 0 else "—"
+		var window := float(proj.get("timer_window", 0.0))
+		var elapsed := float(proj.get("timer_elapsed", 0.0))
+		var timer_txt := ""
+		if window > 0.0:
+			timer_txt = " · авто-через 0:%02d" % maxi(0, int(window - elapsed))
+		var drv: String = str(seat.input_driver if seat != null else "")
+		var drv_txt := ""
+		if drv == "SDK":
+			drv_txt = " · ожидание Neuro…"
+		_status.text = "ход: %s · решение за %s%s%s" % [
+			str(proj.get("phase", "")), holder_txt, drv_txt, timer_txt]
+		_clear_buttons()
+		return
+
 	if not human:
 		_status.text = "%s: управляется ИИ — ход выполняется автоматически" % nm
 		_hint.text = ""
 		# clear buttons when control passes to an AI seat
-		if _btn_row.get_child_count() > 0:
-			for c in _btn_row.get_children():
-				_btn_row.remove_child(c); c.queue_free()
+		_clear_buttons()
 		return
 
 	var drv: String = str(seat.input_driver if seat != null else "AI")
@@ -92,9 +124,14 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 
 	# only rebuild buttons when the legal set actually changed (avoids hover lag)
 	if _legal_changed(legal):
-		for c in _btn_row.get_children():
-			_btn_row.remove_child(c); c.queue_free()
+		_clear_buttons()
 		for act in legal:
+			# risk-table fix: legal_actions always lists respond_trade on a
+			# TURN_START — show the button only when a trade is really pending
+			# for ANY recipient (a LOCAL player may be asked to respond during
+			# another player's turn).
+			if act == "respond_trade" and str(proj.get("pending", {}).get("type", "")) != "trade":
+				continue
 			var btn = _make_button(act, proj, pid)
 			if btn != null:
 				btn.connect("pressed", Callable(self, "_on_pressed").bind(act))

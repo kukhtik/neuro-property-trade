@@ -21,11 +21,13 @@ const ProjectionScript := preload("res://sdk/projection.gd")
 const EventMessages := preload("res://visual/event_messages.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const ToastStack := preload("res://ui/toast.gd")
+const JournalPanel := preload("res://ui/journal_panel.gd")
 
 const _TOP_H := 34
 const _ACTION_H := 64
 const _MIN_PANEL_W := 150
 const _MIN_JOURNAL_W := 180
+const _OBSERVER_JOURNAL_W := 380   # spec §7: observer layout widens the journal
 
 signal restart_requested
 signal settings_requested
@@ -43,13 +45,16 @@ var _players
 var _actions
 var _inspector
 var _modals
-var _journal
+var _journal           # JournalPanel now (was a bare Label)
 var _jpanel: PanelContainer
 var _last_vp := Vector2.ZERO
 var _center: HBoxContainer   # players | board | journal (ties the panels together)
 var _cold := true
 var _game_over_shown := false
 var _toast_stack: ToastStack
+var _observer := false         # spec §7: match has no LOCAL seat (host watches)
+var _follow_pid := -1          # spectator follow target (clicked player row)
+var _holder_name := ""         # current decision holder display name
 
 ## Cold setup: build the layout with no engine. The board renders empty and the
 ## action panel shows a single START button. Called once at launch.
@@ -101,12 +106,22 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	var bs = _board_scene
 	if bs.has_node("EventOverlay"):
 		bs.get_node("EventOverlay").visible = false
+	if _board_scene != null and _board_scene.tile_hovered.is_connected(_on_tile_hovered):
+		_board_scene.tile_hovered.disconnect(_on_tile_hovered)
 	_board_scene.tile_clicked.connect(_on_tile_clicked)
+	_board_scene.tile_hovered.connect(_on_tile_hovered)
 	# HUD refresh on every seat-manager tick
 	manager.state_changed.connect(_on_state_changed)
+	# P4 observer: click a player row to follow them
+	if _players.player_clicked.is_connected(_on_player_row_clicked):
+		_players.player_clicked.disconnect(_on_player_row_clicked)
+	_players.player_clicked.connect(_on_player_row_clicked)
 	# P3: connect events to toast stack
 	manager.events_emitted.connect(_on_events_emitted)
 	_top.settings_requested.connect(_on_settings_requested)
+	if _top.observer_toggle_requested.is_connected(_on_eye_requested):
+		_top.observer_toggle_requested.disconnect(_on_eye_requested)
+	_top.observer_toggle_requested.connect(_on_eye_requested)
 	_modals.sound_toggled.connect(_on_sound_toggled)
 	_top.set_cold(false)
 	_actions.set_cold(false)
@@ -151,6 +166,9 @@ func _panel_w() -> int:
 	return maxi(_MIN_PANEL_W, int(size.x * 0.12))
 
 func _journal_w() -> int:
+	# observer layout (spec §7): the journal widens to carry 100+ lines
+	if _observer:
+		return _OBSERVER_JOURNAL_W
 	return maxi(_MIN_JOURNAL_W, int(size.x * 0.14))
 
 func _build_layout() -> void:
@@ -188,23 +206,18 @@ func _build_layout() -> void:
 	_board_scene.set_managed_by_container(true)
 	_center.add_child(_board_scene)
 
-	# right journal panel (fixed proportional width)
+	# right journal panel (fixed proportional width) — P4: full JournalPanel
+	# (filters + export + auto-scroll), replaces the bare 10-line label.
 	_jpanel = UiTheme.panel()
 	_jpanel.custom_minimum_size.x = _journal_w()
 	_jpanel.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_center.add_child(_jpanel)
-	var jm := MarginContainer.new()
-	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		jm.add_theme_constant_override(edge, 8)
-	_jpanel.add_child(jm)
-	var jv := UiTheme.vbox(4)
-	jm.add_child(jv)
-	jv.add_child(UiTheme.label("◆ ХОД СОБЫТИЙ", 12, UiTheme.COL.accent))
-	_journal = UiTheme.label("", 12)
-	_journal.custom_minimum_size.y = 0
+	_journal = JournalPanel.new()
+	_journal.name = "JournalPanel"
+	_journal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_journal.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_journal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	jv.add_child(_journal)
+	_journal.exported.connect(_on_journal_exported)
+	_jpanel.add_child(_journal)
 
 	# modal host (above everything)
 	_modals = ModalHost.new()
@@ -288,25 +301,95 @@ func _sync_from_spectator(proj: Dictionary) -> void:
 	_players.sync(proj, seats)
 	_inspector.sync(proj, seats)
 	var holder: int = SeatManager.find_decision_holder(engine, engine.player_count())
+
+	# P4 §7: observer mode = no LOCAL seat in the match. Detect from seats.
+	var has_local := false
+	for s in seats:
+		if str(s.input_driver) == "LOCAL":
+			has_local = true
+			break
+	_set_observer(not has_local)
+	_top.set_observer(not has_local)
+
 	var is_human: bool = (holder == _human_pid)
 	var legal: Array = []
 	if holder >= 0:
 		legal = engine.legal_actions(holder)
 	_actions.sync(holder, legal, is_human, proj, seats)
 
+	# observer extras: decision-holder status + follow-highlight of tiles
+	if _observer:
+		_holder_name = _holder_display_name(holder, proj)
+		# follow: highlight the followed player's tiles on the board
+		var targets: Array = []
+		if _follow_pid >= 0:
+			var players: Array = proj.get("players", [])
+			for p in players:
+				if int(p.get("index", -1)) == _follow_pid:
+					targets = (p.get("tiles", []) as Array).duplicate()
+					break
+		if _board_scene != null and _board_scene._board != null:
+			_board_scene._board.set_target_tiles(targets)
+	elif _board_scene != null and _board_scene._board != null:
+		# clear stale follow-highlight when returning to a LOCAL match
+		_board_scene._board.set_target_tiles([])
+
+## Display name of the current decision holder (or an idle/waiting label).
+func _holder_display_name(holder: int, proj: Dictionary) -> String:
+	if holder < 0:
+		return "—"
+	var players: Array = proj.get("players", [])
+	for p in players:
+		if int(p.get("index", -1)) == holder:
+			return str(p.get("name", "?"))
+	return "P%d" % holder
+
+## Spectator control: click a player row in the left panel to follow them
+## (their tiles get the soft target highlight on the board).
+func follow_player(pid: int) -> void:
+	_follow_pid = pid
+	_sync_all()
+
 func _refresh_journal() -> void:
 	if engine == null or _journal == null:
 		return
-	var entries: Array = engine.log.entries()
-	var start: int = maxi(0, entries.size() - 10)
-	var lines: Array[String] = []
-	for i in range(start, entries.size()):
-		lines.append(EventMessages.describe(entries[i]))
-	_journal.text = "\n".join(lines)
+	var names: Array = []
+	for i in engine.player_count():
+		names.append(str(engine.player(i).name))
+	_journal.set_entries(engine.log.entries(), names)
+
+func _on_journal_exported(path: String) -> void:
+	if path == "":
+		_modals.show_message("Экспорт журнала", "Не удалось записать файл.")
+	else:
+		_modals.show_message("Журнал экспортирован", "Файл: " + path)
+
+## P4 spec §7: observer layout — the match has no LOCAL seat. The action panel
+## collapses to a thin status bar (0 buttons), the journal widens, and the
+## human seat list disables "your turn" affordances.
+func _set_observer(v: bool) -> void:
+	if _observer == v:
+		return
+	_observer = v
+	_follow_pid = -1
+	_layout()
+	if _actions != null and _actions.has_method("set_observer"):
+		_actions.set_observer(v)
 
 func _on_tile_clicked(idx: int) -> void:
 	_inspector.select(idx)
 	_mark_selected_tile(idx)
+
+## P4 observer: clicking a player row follows (or unfollows) that player.
+func _on_player_row_clicked(pid: int) -> void:
+	follow_player(-1 if _follow_pid == pid else pid)
+
+## P4 §7: hover a tile → the inspector opens on it (observer layout; hover is
+## also fine in a LOCAL match — it's a non-destructive preview).
+func _on_tile_hovered(idx: int) -> void:
+	if engine == null:
+		return
+	_inspector.select(idx)
 
 ## P3: Handle events from seat manager for toast/banner display
 func _on_events_emitted(events: Array) -> void:
@@ -411,6 +494,10 @@ func _on_auction_pass() -> void:
 	_modals.close()
 
 func _on_settings_requested() -> void:
+	settings_requested.emit()
+
+## P4 §7: 👁 in TopBar (observer match) → back to the settings overlay.
+func _on_eye_requested() -> void:
 	settings_requested.emit()
 
 func _on_sound_toggled(key: String, on: bool) -> void:

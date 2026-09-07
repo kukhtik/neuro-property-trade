@@ -10,6 +10,7 @@ extends Control
 ## marker, the piece halo and the players-panel row can never disagree.
 
 signal tile_clicked(index: int)
+signal tile_hovered(index: int)   # P4 §7: observer inspector on hover
 
 const TL := preload("res://visual/tile_layout.gd")
 const BT := preload("res://visual/theme.gd")
@@ -162,3 +163,7 @@ func _player_color(pid: int) -> Color:
 func _on_tile_input(ev: InputEvent, i: int) -> void:
 	if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 		tile_clicked.emit(i)
+	elif ev is InputEventMouseMotion:
+		# P4 §7: hovering a tile opens the inspector (used by observer layout;
+		# game_view decides whether to act on it)
+		tile_hovered.emit(i)

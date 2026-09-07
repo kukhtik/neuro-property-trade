@@ -9,6 +9,7 @@ const TimerRing := preload("res://ui/timer_ring.gd")
 
 signal settings_requested
 signal restart_requested
+signal observer_toggle_requested
 
 var _title: Label
 var _turn: Label
@@ -18,6 +19,7 @@ var _restart_btn: Button
 var _settings_btn: Button
 var _timer_ring: TimerRing
 var _is_host := true
+var _eye_btn: Button
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 0))
@@ -51,6 +53,13 @@ func _init() -> void:
 	_restart_btn.custom_minimum_size = Vector2(30, 24)
 	_restart_btn.connect("pressed", Callable(self, "_on_restart"))
 	h.add_child(_restart_btn)
+	# P4 §7: observer button — shown only when the match has no LOCAL seat
+	# (otherwise it would "disconnect" the live human player).
+	_eye_btn = UiTheme.button("👁", "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)")
+	_eye_btn.custom_minimum_size = Vector2(30, 24)
+	_eye_btn.visible = false
+	_eye_btn.connect("pressed", Callable(self, "_on_eye"))
+	h.add_child(_eye_btn)
 	_hint = UiTheme.label("F12 — админ", 12, UiTheme.COL.text_dim)
 	h.add_child(_hint)
 
@@ -74,6 +83,15 @@ func _on_settings() -> void:
 
 func _on_restart() -> void:
 	restart_requested.emit()
+
+func _on_eye() -> void:
+	observer_toggle_requested.emit()
+
+## P4 §7: the 👁 button exists only in a match WITHOUT a LOCAL seat (host is a
+## pure spectator) — clicking it returns to the settings overlay.
+func set_observer(v: bool) -> void:
+	if _eye_btn != null:
+		_eye_btn.visible = v
 
 func sync(proj: Dictionary, players: Array) -> void:
 	# proj = for_spectator(engine); players = the seat list (to resolve names+colors)

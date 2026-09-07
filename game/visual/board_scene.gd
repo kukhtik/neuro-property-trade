@@ -176,12 +176,14 @@ func _rebuild_board() -> void:
 	_board.set_seats(_seats)
 	_camera.add_child(_board)
 	_board.tile_clicked.connect(_on_tile_clicked)
+	_board.tile_hovered.connect(func(i: int) -> void: tile_hovered.emit(i))
 	_spectacle.setup(_camera, _board, _cell, BOARD_TILES)
 
 func _on_tile_clicked(idx: int) -> void:
 	tile_clicked.emit(idx)
 
 signal tile_clicked(index: int)
+signal tile_hovered(index: int)   # P4 §7: observer inspector on hover
 
 func _process(delta: float) -> void:
 	# keep our rect synced to the viewport (root is a plain Node)

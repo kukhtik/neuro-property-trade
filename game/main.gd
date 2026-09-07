@@ -55,6 +55,7 @@ func _ready() -> void:
 		_panel.name = "AdminPanel"
 		add_child(_panel)
 		_panel.visible = false
+		_panel.game_rebuilt.connect(_on_admin_rebuilt)
 
 	print("Neuro Property Trade — ready. is_host=%s" % str(_is_host))
 
@@ -108,10 +109,27 @@ func _build_game(settings, seats: Array) -> void:
 
 	_game_view.setup(_engine, _manager, seats, settings)
 	# game-over banner: seat_manager emits game_over when the engine reaches END_GAME
+	if _manager.game_over.is_connected(_on_game_over):
+		_manager.game_over.disconnect(_on_game_over)
 	_manager.game_over.connect(_on_game_over)
 
 func _on_game_over(winner_name: String) -> void:
 	_game_view.show_game_over(winner_name)
+
+## P4: admin snapshot load — the panel hot-swapped the engine in the
+## controller; re-wire the seat manager + game view to the restored engine.
+func _on_admin_rebuilt(eng) -> void:
+	_engine = eng
+	if _manager != null and is_instance_valid(_manager):
+		_manager.queue_free()
+	_manager = SeatManager.new()
+	_manager.name = "SeatManager"
+	add_child(_manager)
+	_manager.setup(_engine, _controller.seats)
+	_game_view.setup(_engine, _manager, _controller.seats, _engine.settings)
+	if _manager.game_over.is_connected(_on_game_over):
+		_manager.game_over.disconnect(_on_game_over)
+	_manager.game_over.connect(_on_game_over)
 
 func _on_overlay_closed() -> void:
 	# ESC closes the overlay without starting: the board stays "cold" with a

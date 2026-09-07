@@ -436,12 +436,22 @@ func _remove_row(i: int) -> void:
 	_refresh_buttons()
 
 func _collect_settings() -> Settings:
+	# host role: "только наблюдаю" => the host seat (row 0) is not driven by a
+	# human, it's an AI seat (observer mode). Computed at collection time —
+	# we do NOT mutate the row widgets, so toggling host_role back to
+	# "играю" restores the host's LOCAL seat.
+	var observer: bool = (_host_role.selected == 1)
 	var s = Settings.new()
 	s.seat_count = _rows.size()
 	s.seat_assignments = []
+	var first := true
 	for r in _rows:
+		var drv: String = str(r["driver"].get_item_text(r["driver"].selected))
+		if first and observer and drv == "LOCAL":
+			drv = "AI"
+		first = false
 		s.seat_assignments.append({
-			"driver": str(r["driver"].get_item_text(r["driver"].selected)),
+			"driver": drv,
 			"name": str(r["name"].text),
 			"token_color": (r["color"] as ColorRect).color.to_html(),
 			"token_id": str(r["token"].get_item_text(r["token"].selected)),
@@ -471,11 +481,6 @@ func _collect_settings() -> Settings:
 	s.trades = _trades.button_pressed
 	s.ai_aggression = int(_ai_aggression.value)
 	s.timeout_action = "auto-pass" if _timeout_action.selected == 0 else "mark-away"
-	# host role: "только наблюдаю" => no LOCAL seat (observer mode)
-	if _host_role.selected == 1:
-		for r in _rows:
-			if str(r["driver"].get_item_text(r["driver"].selected)) == "LOCAL":
-				r["driver"].select(1)   # switch the host seat to AI
 	return s
 
 func _selected_seconds(o: OptionButton) -> int:
