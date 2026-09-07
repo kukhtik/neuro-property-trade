@@ -1,10 +1,11 @@
 class_name TopBar
 extends PanelContainer
-## Fixed top bar: game title + current turn (player) + phase + settings/restart
-## buttons + F12 hint (host-only). Reads a spectator-safe projection dict.
-## Shape-only for future art swap.
+## Fixed top bar: game title + current turn (player) + phase + timer ring +
+## settings/restart buttons + F12 hint (host-only). Reads a spectator-safe
+## projection dict. Shape-only for future art swap.
 
 const UiTheme := preload("res://ui/theme.gd")
+const TimerRing := preload("res://ui/timer_ring.gd")
 
 signal settings_requested
 signal restart_requested
@@ -15,6 +16,7 @@ var _phase: Label
 var _hint: Label
 var _restart_btn: Button
 var _settings_btn: Button
+var _timer_ring: TimerRing
 var _is_host := true
 
 func _init() -> void:
@@ -36,6 +38,11 @@ func _init() -> void:
 	h.add_child(_turn)
 	_phase = UiTheme.label("", 13, UiTheme.COL.text_dim)
 	h.add_child(_phase)
+	
+	# P3: Timer ring next to phase
+	_timer_ring = TimerRing.new()
+	h.add_child(_timer_ring)
+	
 	_settings_btn = UiTheme.button("⚙", "Открыть настройки и правила игры")
 	_settings_btn.custom_minimum_size = Vector2(30, 24)
 	_settings_btn.connect("pressed", Callable(self, "_on_settings"))
@@ -79,3 +86,10 @@ func sync(proj: Dictionary, players: Array) -> void:
 		_turn.text = ""
 	_phase.text = "ФАЗА: " + str(proj.get("phase", ""))
 	_restart_btn.visible = true
+	
+	# P3: Update timer ring
+	if _timer_ring != null:
+		var window: float = float(proj.get("timer_window", 0.0))
+		var elapsed: float = float(proj.get("timer_elapsed", 0.0))
+		var active: bool = bool(proj.get("timer_active", false))
+		_timer_ring.set_state(window, elapsed, active)

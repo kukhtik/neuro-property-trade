@@ -19,6 +19,7 @@ const BoardView := preload("res://visual/board_view.gd")
 const Spectacle := preload("res://visual/spectacle.gd")
 const EventOverlay := preload("res://visual/event_overlay.gd")
 const Sfx := preload("res://visual/sfx.gd")
+const DiceStage := preload("res://ui/dice_stage.gd")
 
 const MIN_CELL := 24
 const MAX_CELL := 72
@@ -32,6 +33,7 @@ var _camera: Control          # clip_contents frustum holding the board
 var _spectacle: Spectacle
 var _overlay: EventOverlay
 var _sfx: Sfx
+var _dice_stage: DiceStage
 var _timer := 0.0
 var _cell := 0
 var _frame_override: Rect2 = Rect2(-1, -1, -1, -1)   # when set, fill this rect instead of the viewport
@@ -73,7 +75,7 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_spectacle.set_animations(_settings.animations if _settings != null else true)
 	add_child(_spectacle)
 
-	# overlay + sfx are siblings of the camera so they stay fixed on screen
+	# overlay + sfx + dice are siblings of the camera so they stay fixed on screen
 	_overlay = EventOverlay.new()
 	_overlay.name = "EventOverlay"
 	_overlay.visible = _settings.event_overlay if _settings != null else true
@@ -82,6 +84,16 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_sfx = Sfx.new()
 	_sfx.set_enabled(true)
 	add_child(_sfx)
+
+	# P3: dice stage (center-screen BG3 dice)
+	_dice_stage = DiceStage.new()
+	_dice_stage.name = "DiceStage"
+	_dice_stage.set_animations(_settings.animations if _settings != null else true)
+	_dice_stage.dice_rolled.connect(_on_dice_rolled)
+	add_child(_dice_stage)
+
+	# P3: board center SVG background (shown behind the board when empty)
+	_add_board_center()
 
 	if _engine != null:
 		_engine.log.event_appended.connect(_on_engine_event)
@@ -140,6 +152,7 @@ func _resize_children() -> void:
 	var cx := maxf(0.0, (frustum_w - board_px) * 0.5)
 	var cy := maxf(0.0, (frustum_h - board_px) * 0.5)
 	_board.position = Vector2(cx, cy)
+	_place_board_center()
 	# background covers our rect
 	for child in get_children():
 		if child is ColorRect and child != _board:   # our bg
@@ -184,6 +197,15 @@ func _on_engine_event(entry: Dictionary) -> void:
 	_sfx.play_type(entry.get("type", ""))
 	_overlay.append(entry)
 	_spectacle.on_event(entry)
+	
+	# P3: Trigger dice animation on roll events
+	if entry.get("type", "") == "roll":
+		var d: Dictionary = entry.get("data", {})
+		var d1: int = int(d.get("d1", 1))
+		var d2: int = int(d.get("d2", 1))
+		if _dice_stage != null:
+			_dice_stage.roll(d1, d2)
+	
 	_paint(true)
 
 func _paint(animate: bool) -> void:
@@ -193,3 +215,37 @@ func _paint(animate: bool) -> void:
 	_board.refresh_tokens(proj.get("players", []))
 	if not animate:
 		_board.update_highlight(proj)
+
+## P3: Add board center SVG background (behind the board tiles — decorative
+## fill of the 6×6 interior so the middle doesn't look empty)
+func _add_board_center() -> void:
+	var center := TextureRect.new()
+	center.name = "BoardCenter"
+	center.texture = load("res://assets/board_center.svg")
+	center.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	center.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_camera.add_child(center)
+	_place_board_center()
+
+## Position/size the center art inside the board's inner area (between the
+## tile ring). Called after every layout pass.
+func _place_board_center() -> void:
+	if not is_instance_valid(_camera):
+		return
+	var center = _camera.get_node_or_null("BoardCenter")
+	if center == null or _board == null:
+		return
+	var grid := TL.grid_cells(BOARD_TILES)
+	var inner := float(grid - 2) * float(_cell)   # interior ring area
+	var art := inner * 0.92   # small margin from the ring
+	center.size = Vector2(art, art)
+	center.position = (Vector2(float(board_px()), float(board_px())) - Vector2(art, art)) * 0.5
+
+func board_px() -> int:
+	return TL.grid_cells(BOARD_TILES) * _cell
+
+## P3: dice stage finished presenting — nothing to do engine-side (the engine
+## already advanced); kept as the presentation-completion hook.
+func _on_dice_rolled(d1: int, d2: int, sum: int) -> void:
+	pass  # presentation-completion hook

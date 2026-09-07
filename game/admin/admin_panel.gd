@@ -53,8 +53,10 @@ func _build() -> void:
 	for op in OPS:
 		_op.add_item(op)
 	_op.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_op.tooltip_text = "Какую админ-операцию применить (изменение баланса, телепорт и т.д.)."
 	oprow.add_child(_op)
 	_apply = Button.new(); _apply.text = "Apply"
+	_apply.tooltip_text = "Применить выбранную админ-операцию с текущими параметрами."
 	_apply.pressed.connect(_apply_op)
 	oprow.add_child(_apply)
 
@@ -70,11 +72,13 @@ func _build() -> void:
 	_param_flag = OptionButton.new()
 	_param_flag.add_item("on"); _param_flag.add_item("off")
 	_param_flag.selected = 0
+	_param_flag.tooltip_text = "Включено или выключено (для операций-переключателей)."
 	grid.add_child(_param_flag)
 	_param_d1 = _spin(0, 6, "d1", grid)
 	_param_d2 = _spin(0, 6, "d2", grid)
 
 	_reset_away = Button.new(); _reset_away.text = "Reset 'away' for pid"
+	_reset_away.tooltip_text = "Сбросить пометку 'away' у указанного игрока (вернуть ему право хода)."
 	_reset_away.pressed.connect(_reset_away_pressed)
 	v.add_child(_reset_away)
 
@@ -100,6 +104,7 @@ func _spin(minv: int, maxv: int, label_text: String, parent: Control) -> SpinBox
 	sb.max_value = maxv
 	sb.value = minv
 	sb.editable = true
+	sb.tooltip_text = "Параметр «%s» для выбранной админ-операции." % label_text
 	var wrap = HBoxContainer.new()
 	var lab = Label.new()
 	lab.text = label_text + ":"

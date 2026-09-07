@@ -61,6 +61,7 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	_show()
 	var recipient: OptionButton = OptionButton.new()
 	recipient.tooltip_text = "Кому вы предлагаете сделку."
+	recipient.custom_minimum_size.x = 140
 	for s in seats:
 		if int(s.pid) != proposer_pid:
 			recipient.add_item(str(s.name), int(s.pid))
@@ -222,6 +223,7 @@ func open_settings(sound_cats: Array, rules_text: String) -> void:
 		var cb := CheckButton.new()
 		cb.text = str(cat.get("label", ""))
 		cb.button_pressed = bool(cat.get("on", true))
+		cb.tooltip_text = "Включить/выключить звук: " + str(cat.get("label", ""))
 		cb.connect("toggled", Callable(self, "_on_sound_toggled").bind(str(cat.get("key", ""))))
 		body.add_child(cb)
 

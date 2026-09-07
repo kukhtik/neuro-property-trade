@@ -20,6 +20,7 @@ const ModalHost := preload("res://ui/modal_host.gd")
 const ProjectionScript := preload("res://sdk/projection.gd")
 const EventMessages := preload("res://visual/event_messages.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
+const ToastStack := preload("res://ui/toast.gd")
 
 const _TOP_H := 34
 const _ACTION_H := 64
@@ -48,6 +49,7 @@ var _last_vp := Vector2.ZERO
 var _center: HBoxContainer   # players | board | journal (ties the panels together)
 var _cold := true
 var _game_over_shown := false
+var _toast_stack: ToastStack
 
 ## Cold setup: build the layout with no engine. The board renders empty and the
 ## action panel shows a single START button. Called once at launch.
@@ -61,6 +63,11 @@ func setup_cold(launcher) -> void:
 	_top.set_cold(true)
 	_actions.set_cold(true)
 	_sync_cold()
+	
+	# P3: Create toast stack (always on top)
+	_toast_stack = ToastStack.new()
+	_toast_stack.name = "ToastStack"
+	add_child(_toast_stack)
 
 ## Full setup after the engine is built (START / restart).
 func setup(eng, mgr, seat_list: Array, s) -> void:
@@ -74,6 +81,9 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 		_modals.sound_toggled.disconnect(_on_sound_toggled)
 	if manager != null and manager.state_changed.is_connected(_on_state_changed):
 		manager.state_changed.disconnect(_on_state_changed)
+	# P3: disconnect toast stack events
+	if manager != null and manager.events_emitted.is_connected(_on_events_emitted):
+		manager.events_emitted.disconnect(_on_events_emitted)
 
 	engine = eng
 	manager = mgr
@@ -94,6 +104,8 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_board_scene.tile_clicked.connect(_on_tile_clicked)
 	# HUD refresh on every seat-manager tick
 	manager.state_changed.connect(_on_state_changed)
+	# P3: connect events to toast stack
+	manager.events_emitted.connect(_on_events_emitted)
 	_top.settings_requested.connect(_on_settings_requested)
 	_modals.sound_toggled.connect(_on_sound_toggled)
 	_top.set_cold(false)
@@ -294,13 +306,50 @@ func _refresh_journal() -> void:
 
 func _on_tile_clicked(idx: int) -> void:
 	_inspector.select(idx)
-	# P2: mark the selected tile on the board with a dashed accent frame
+	_mark_selected_tile(idx)
+
+## P3: Handle events from seat manager for toast/banner display
+func _on_events_emitted(events: Array) -> void:
+	for ev in events:
+		var type: String = ev.get("type", "")
+		var data: Dictionary = ev.get("data", {})
+		var msg: String = ""
+		
+		# Generate user-friendly messages for common event types
+		match type:
+			"purchase":
+				msg = "%s купил %s за %s" % [data.get("player", "Игрок"), data.get("tile", "клетку"), data.get("price", "0")]
+			"rent":
+				msg = "%s платит аренду %s: %s" % [data.get("player", "Игрок"), data.get("owner", "владельцу"), data.get("amount", "0")]
+			"pass_go":
+				msg = "%s проходит Старт и получает %s" % [data.get("player", "Игрок"), data.get("amount", "200")]
+			"jail":
+				msg = "%s попал в тюрьму" % [data.get("player", "Игрок")]
+			"mortgage":
+				msg = "%s заложил %s за %s" % [data.get("player", "Игрок"), data.get("tile", "клетку"), data.get("amount", "0")]
+			"unmortgage":
+				msg = "%s выкупил %s за %s" % [data.get("player", "Игрок"), data.get("tile", "клетку"), data.get("amount", "0")]
+			"build_house":
+				msg = "%s построил дом на %s" % [data.get("player", "Игрок"), data.get("tile", "клетке")]
+			"trade":
+				msg = "%s обменялся с %s" % [data.get("player", "Игрок"), data.get("other", "игроком")]
+			"bankrupt":
+				msg = "%s обанкротился" % [data.get("player", "Игрок")]
+			"turn_start":
+				msg = "Ход: %s" % [data.get("player", "Игрок")]
+			"roll":
+				msg = "%s бросает: %s + %s = %s" % [data.get("player", "Игрок"), data.get("d1", 1), data.get("d2", 1), data.get("sum", 2)]
+			"_":
+				if data.has("message"):
+					msg = str(data["message"])
+		
+		if msg != "":
+			_toast_stack.show_toast(msg, type)
+
+## P2: mark the selected tile on the board with a dashed accent frame
+func _mark_selected_tile(idx: int) -> void:
 	if _board_scene != null and _board_scene._board != null:
 		_board_scene._board.set_selected_tile(idx)
-	if engine == null:
-		return
-	var sp := ProjectionScript.new().for_spectator(engine)
-	_inspector.sync(sp, seats)
 
 func _connect_modals() -> void:
 	_modals.build_requested.connect(_on_build)

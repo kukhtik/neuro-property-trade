@@ -3,14 +3,17 @@ extends PanelContainer
 ## Bottom-left inspector showing the currently selected tile: name, type,
 ## cost, rent, houses, owner. Reads a spectator projection. `selected` holds
 ## the last clicked tile index (set via select()).
+## P3: pin button (📌) to keep open, 5s auto-hide when unpinned, selection frame.
 
 const UiTheme := preload("res://ui/theme.gd")
 
 var selected := -1
 var _text: Label
 var _close: Button
+var _pin: Button
 var _hide_timer := 0.0
-const _HIDE_AFTER := 3.0
+const _HIDE_AFTER := 5.0
+var _pinned := false
 
 func _init() -> void:
 	custom_minimum_size = Vector2(320, 90)
@@ -25,6 +28,11 @@ func _init() -> void:
 	var lbl := UiTheme.label("КЛЕТКА", 12, UiTheme.COL.accent)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(lbl)
+	_pin = UiTheme.button("📌", "Закрепить справку (не скрывать автоматически)")
+	_pin.custom_minimum_size = Vector2(24, 20)
+	_pin.toggle_mode = true
+	_pin.connect("toggled", Callable(self, "_on_pin_toggled"))
+	head.add_child(_pin)
 	_close = UiTheme.button("✕", "Закрыть справку по клетке")
 	_close.custom_minimum_size = Vector2(24, 20)
 	_close.connect("pressed", Callable(self, "clear"))
@@ -36,8 +44,9 @@ func _init() -> void:
 	visible = false
 
 func _process(delta: float) -> void:
-	# A3: auto-hide the inspector a few seconds after the last selection.
-	if selected >= 0:
+	# P3: auto-hide the inspector a few seconds after the last selection,
+	# unless pinned.
+	if selected >= 0 and not _pinned:
 		_hide_timer -= delta
 		if _hide_timer <= 0.0:
 			clear()
@@ -47,9 +56,25 @@ func select(idx: int) -> void:
 	_hide_timer = _HIDE_AFTER   # reset the auto-hide countdown
 	visible = true              # show the panel
 
+func _on_pin_toggled(pressed: bool) -> void:
+	_pinned = pressed
+	if pressed:
+		_hide_timer = _HIDE_AFTER  # keep alive while pinned
+	# Update pin button appearance
+	if _pinned:
+		_pin.add_theme_color_override("font_color", UiTheme.COL.accent)
+		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.accent, UiTheme.COL.border_accent, 2, 6))
+	else:
+		_pin.add_theme_color_override("font_color", UiTheme.COL.text)
+		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 6))
+
 func clear() -> void:
 	selected = -1
 	_hide_timer = 0.0
+	_pinned = false
+	_pin.button_pressed = false
+	_pin.add_theme_color_override("font_color", UiTheme.COL.text)
+	_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 6))
 	visible = false             # hide the whole panel (A3)
 	_text.text = "Кликните по тайлу доски"
 	_text.add_theme_color_override("font_color", UiTheme.COL.text_dim)

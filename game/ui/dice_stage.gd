@@ -1,0 +1,153 @@
+class_name DiceStage
+extends Control
+## BG3-style dice animation (P3) — centered overlay showing 2 dice tumbling
+## and settling on the rolled result. Honors settings.animations: when
+## animations=false the result shows instantly (probe requirement: "dice with
+## animations=false shows result instantly"). Purely visual — the engine
+## already decided the outcome; this stage only presents it.
+
+signal dice_rolled(d1: int, d2: int, sum: int)
+
+const UiTheme := preload("res://ui/theme.gd")
+
+var _dice1: int = 1
+var _dice2: int = 1
+var _animating := false
+var _tween: Tween
+var _dice_nodes: Array = []
+var _animations_enabled := true
+var _settle_time := 1.2
+
+func _init() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	visible = false
+
+## Enable/disable animations (from settings.animations).
+func set_animations(on: bool) -> void:
+	_animations_enabled = on
+
+## Present a decided roll. animations=false → instant result (no tween),
+## signal fires on the same frame.
+func roll(d1: int, d2: int) -> void:
+	_dice1 = clampi(d1, 1, 6)
+	_dice2 = clampi(d2, 1, 6)
+	visible = true
+	# CanvasLayer-free: raise above siblings inside the board scene
+	if get_parent() != null:
+		get_parent().move_child(self, get_parent().get_child_count() - 1)
+
+	if not _animations_enabled:
+		_build_dice()      # final faces immediately
+		_finish_instantly()
+		return
+
+	_animating = true
+	_build_dice()
+	_animate_roll()
+
+func _finish_instantly() -> void:
+	_animating = false
+	dice_rolled.emit(_dice1, _dice2, _dice1 + _dice2)
+	_auto_hide()
+
+func _auto_hide() -> void:
+	var timer = get_tree().create_timer(1.0)
+	timer.timeout.connect(_hide)
+
+func _build_dice() -> void:
+	for n in _dice_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	_dice_nodes.clear()
+
+	var vp := get_viewport().get_visible_rect().size
+	var center := vp * 0.5
+	var dice_size: float = clampf(minf(vp.x, vp.y) * 0.15, 64.0, 140.0)
+
+	for i in 2:
+		var dice := PanelContainer.new()
+		dice.name = "Dice%d" % i
+		dice.custom_minimum_size = Vector2(dice_size, dice_size)
+		dice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dice.add_theme_stylebox_override("panel", UiTheme.box(
+			Color("#f2f6fa"), UiTheme.COL.border_accent, 2, 12))
+		dice.pivot_offset = Vector2(dice_size, dice_size) * 0.5
+
+		var label := Label.new()
+		label.name = "Face"
+		label.text = str(_dice1) if i == 0 else str(_dice2)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", int(dice_size * 0.5))
+		label.add_theme_color_override("font_color", Color("#16191f"))
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		dice.add_child(label)
+
+		dice.position = center - Vector2(dice_size * 1.15, dice_size * 0.5) \
+			+ Vector2(i * dice_size * 1.3, 0)
+		add_child(dice)
+		_dice_nodes.append(dice)
+
+func _animate_roll() -> void:
+	# Tumble: decreasing position jitter + rotation, face flickers, then settle.
+	var steps := 8
+	var step_time := _settle_time / steps
+
+	_tween = create_tween()
+	_tween.set_parallel(true)
+
+	for i in 2:
+		var dice = _dice_nodes[i]
+		var label = dice.get_node("Face")
+		var start_pos: Vector2 = dice.position
+
+		for s in steps:
+			var t := float(s + 1) / float(steps)
+
+			# Position jitter (decreases over time)
+			var jitter_range: float = 40.0 * (1.0 - t)
+			var target_pos: Vector2 = start_pos + Vector2(
+				randf_range(-jitter_range, jitter_range),
+				randf_range(-jitter_range, jitter_range))
+			_tween.tween_property(dice, "position", target_pos, step_time)
+
+			# Rotation tumble (dampens over time)
+			var target_rot: float = randf_range(-PI * 2.0, PI * 2.0) * (1.0 - t)
+			_tween.tween_property(dice, "rotation", target_rot, step_time)
+
+			# Face flicker during tumble
+			if s < steps - 1:
+				var rand_face := randi_range(1, 6)
+				_tween.tween_callback(_set_face.bind(label, rand_face))
+				_tween.tween_interval(step_time * 0.5)
+
+	# Final settle: correct faces, zero rotation
+	_tween.tween_callback(_settle_faces)
+	_tween.finished.connect(_on_tween_finished)
+
+func _set_face(label: Label, face: int) -> void:
+	if is_instance_valid(label):
+		label.text = str(face)
+
+func _settle_faces() -> void:
+	for i in 2:
+		var dice = _dice_nodes[i]
+		var label = dice.get_node("Face")
+		label.text = str(_dice1) if i == 0 else str(_dice2)
+		dice.rotation = 0.0
+
+func _on_tween_finished() -> void:
+	_animating = false
+	dice_rolled.emit(_dice1, _dice2, _dice1 + _dice2)
+	_auto_hide()
+
+func is_animating() -> bool:
+	return _animating
+
+func _hide() -> void:
+	visible = false
+	for n in _dice_nodes:
+		if is_instance_valid(n):
+			n.queue_free()
+	_dice_nodes.clear()

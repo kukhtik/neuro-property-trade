@@ -121,6 +121,8 @@ func push_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 		return {"ok": false, "reason": "engine not ready", "legal": [], "events": []}
 	var res: Dictionary = engine.submit_intent(pid, action, params)
 	emit_spectator()
+	if res.get("events", []).size() > 0:
+		events_emitted.emit(res["events"])
 	return res
 
 ## Chat seat entry: enqueue a viewer command/vote.
@@ -136,11 +138,26 @@ func push_admin_intent(action: String, params: Dictionary) -> Dictionary:
 	var holder: int = find_decision_holder(engine, engine.player_count())
 	if holder == -1:
 		return {"ok": false, "reason": "no active decision", "legal": [], "events": []}
-	return push_intent(holder, action, params)
+	var res: Dictionary = push_intent(holder, action, params)
+	if res.get("events", []).size() > 0:
+		events_emitted.emit(res["events"])
+	return res
 
 func emit_spectator() -> void:
 	if engine == null:
 		return
 	var ProjScript = load("res://sdk/projection.gd")
 	var proj = ProjScript.new()
-	state_changed.emit(proj.for_spectator(engine))
+	var spec = proj.for_spectator(engine)
+	# P3: add timer fields for timer ring
+	var holder: int = find_decision_holder(engine, engine.player_count())
+	if holder >= 0:
+		var seat = _seat(holder)
+		if seat != null:
+			var window: float = float(engine.settings.turn_timer)
+			if engine.phase == "AUCTION":
+				window = float(engine.settings.auction_timer)
+			spec["timer_window"] = window
+			spec["timer_elapsed"] = seat.decision_waiting
+			spec["timer_active"] = window > 0.0
+	state_changed.emit(spec)
