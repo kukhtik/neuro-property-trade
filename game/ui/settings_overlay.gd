@@ -15,6 +15,7 @@ const UiTheme := preload("res://ui/theme.gd")
 const Settings := preload("res://core/game_settings.gd")
 const SeatConfig := preload("res://seats/seat_config.gd")
 const PI := preload("res://core/player_identity.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 const DRIVERS := ["LOCAL", "AI", "CHAT", "sdk:neuro", "sdk:evil"]
 const NAMES := ["Host", "AI-2", "AI-3", "AI-4", "AI-5", "AI-6", "AI-7", "AI-8"]
@@ -71,11 +72,89 @@ var _rng_seed: SpinBox
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build()
+	# P5: language switch → retranslate in place (no scene rebuild). OptionButton
+	# items that carry data (driver/token/dice/deck) keep their stable values; we
+	# only re-apply text labels collected via i18n_key/i18n_tip metadata.
+	I18n.inst().locale_changed.connect(_on_locale_changed)
 
 ## Pre-game (START button) vs in-game (ПРИМЕНИТЬ / restart) mode.
 func set_mode(pre_game: bool) -> void:
 	_pre_game = pre_game
 	_refresh_buttons()
+
+## P5: retranslate in place when the locale changes (no scene rebuild). Any
+## Control carrying i18n_key/i18n_tip metadata is re-labelled; localized
+## OptionButton items are rebuilt with current-locale text, preserving the
+## selected index so the user's choice doesn't jump.
+func _retranslate() -> void:
+	I18n.relabel(self)
+	# host role (option texts localized; values derived from selected index)
+	_host_role.clear()
+	_host_role.add_item(I18n.t("settings.host_playing"))
+	_host_role.add_item(I18n.t("settings.host_obs"))
+	# starting order
+	_starting_order.clear()
+	_starting_order.add_item(I18n.t("settings.order_random"))
+	_starting_order.add_item(I18n.t("settings.order_manual"))
+	# jail rule — values fixed by index (both/fine/card), labels localized
+	_jail_rule.clear()
+	_jail_rule.add_item(I18n.t("settings.jail_both"))
+	_jail_rule.add_item(I18n.t("settings.jail_fine_only"))
+	_jail_rule.add_item(I18n.t("settings.jail_card_only"))
+	# free parking on/off
+	_free_parking.clear()
+	_free_parking.add_item(I18n.t("settings.fp_on"))
+	_free_parking.add_item(I18n.t("settings.fp_off"))
+	# auctions on/off  (index 0 = on, index 1 = off, matching _collect_settings)
+	_auctions.clear()
+	_auctions.add_item(I18n.t("settings.fp_on"))
+	_auctions.add_item(I18n.t("settings.fp_off"))
+	# turn/auction timer options — re-add with localized suffix + no-limit label
+	_rebuild_seconds(_turn_timer, [0, 5, 10, 15, 20, 30, 45, 60], 30)
+	_rebuild_seconds(_auction_timer, [0, 5, 8, 10, 12, 15, 20], 15)
+	_turn_timer.tooltip_text = I18n.t("settings.turn_timer_tip")
+	_auction_timer.tooltip_text = I18n.t("settings.auction_timer_tip")
+	# timeout action
+	_timeout_action.clear()
+	_timeout_action.add_item(I18n.t("settings.timeout_auto_pass"))
+	_timeout_action.add_item(I18n.t("settings.timeout_away"))
+	_timeout_action.tooltip_text = I18n.t("settings.timeout_tip")
+	# static tooltips that aren't metadata-tagged
+	_doubles.tooltip_text = I18n.t("settings.doubles_tip")
+	_triple_doubles.tooltip_text = I18n.t("settings.triple_doubles_tip")
+	_housing.tooltip_text = I18n.t("settings.housing_tip")
+	_even_build.tooltip_text = I18n.t("settings.even_build_tip")
+	_monopoly_x2.tooltip_text = I18n.t("settings.monopoly_x2_tip")
+	_mortgage.tooltip_text = I18n.t("settings.mortgage_tip")
+	_trades.tooltip_text = I18n.t("settings.trades_tip")
+	_animations.tooltip_text = I18n.t("settings.animations_tip")
+	_event_overlay.tooltip_text = I18n.t("settings.event_overlay_tip")
+	_spectacle.tooltip_text = I18n.t("settings.spectacle_tip")
+	_sound.tooltip_text = I18n.t("settings.sound_tip")
+	_language.tooltip_text = I18n.t("settings.language_tip")
+	_rng_seed.tooltip_text = I18n.t("settings.rng_seed_tip")
+	_start_btn.tooltip_text = I18n.t("settings.start_tip")
+	_apply_btn.tooltip_text = I18n.t("settings.apply_tip")
+	_rules_btn.tooltip_text = I18n.t("settings.rules_tip")
+	_refresh_buttons()
+
+func _rebuild_seconds(o: OptionButton, vals: Array, def: int) -> void:
+	var keep: int = _selected_seconds(o)
+	o.clear()
+	o.add_item(I18n.t("settings.no_limit"), 0)
+	for value in vals:
+		if value == 0:
+			continue
+		o.add_item(str(value) + sec_suffix(), value)
+	# restore the previously selected seconds value
+	for i in o.item_count:
+		if o.get_item_id(i) == keep:
+			o.selected = i
+			return
+	o.selected = 0
+
+func _on_locale_changed(_locale: String) -> void:
+	_retranslate()
 
 func _build() -> void:
 	# dim background under the overlay
@@ -104,13 +183,18 @@ func _build() -> void:
 	# header
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
-	var title := UiTheme.label("НАСТРОЙКИ МАТЧА", 20, UiTheme.COL.gold)
+	var title := UiTheme.label(I18n.t("settings.title"), 20, UiTheme.COL.gold)
+	I18n.key_on(title, "settings.title")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	var reset_btn := UiTheme.button("сброс", "Сбросить все настройки к значениям по умолчанию")
+	var reset_btn := UiTheme.button(I18n.t("settings.reset_btn"), I18n.t("settings.reset_tip"))
+	I18n.key_on(reset_btn, "settings.reset_btn")
+	I18n.tip_on(reset_btn, "settings.reset_tip")
 	reset_btn.connect("pressed", Callable(self, "_reset_all"))
 	head.add_child(reset_btn)
-	var close_btn := UiTheme.button("✕ ESC", "Закрыть настройки (ESC)")
+	var close_btn := UiTheme.button(I18n.t("settings.close_btn"), I18n.t("settings.close_tip"))
+	I18n.key_on(close_btn, "settings.close_btn")
+	I18n.tip_on(close_btn, "settings.close_tip")
 	close_btn.connect("pressed", Callable(self, "_on_close"))
 	head.add_child(close_btn)
 	v.add_child(head)
@@ -118,14 +202,19 @@ func _build() -> void:
 	# presets row
 	var presets := HBoxContainer.new()
 	presets.add_theme_constant_override("separation", 8)
-	presets.add_child(UiTheme.label("ПРЕСЕТЫ:", 13, UiTheme.COL.text_dim))
-	var p_classic := UiTheme.button("Классика", "Стандартные правила Monopoly")
+	var presets_lbl := UiTheme.label(I18n.t("settings.presets_lbl"), 13, UiTheme.COL.text_dim)
+	I18n.key_on(presets_lbl, "settings.presets_lbl")
+	presets.add_child(presets_lbl)
+	var p_classic := UiTheme.button(I18n.t("settings.preset_classic"), I18n.t("settings.preset_classic_tip"))
+	I18n.key_on(p_classic, "settings.preset_classic"); I18n.tip_on(p_classic, "settings.preset_classic_tip")
 	p_classic.connect("pressed", Callable(self, "_preset_classic"))
 	presets.add_child(p_classic)
-	var p_fast := UiTheme.button("Быстрая партия", "Таймер 10с, капитал 1000")
+	var p_fast := UiTheme.button(I18n.t("settings.preset_fast"), I18n.t("settings.preset_fast_tip"))
+	I18n.key_on(p_fast, "settings.preset_fast"); I18n.tip_on(p_fast, "settings.preset_fast_tip")
 	p_fast.connect("pressed", Callable(self, "_preset_fast"))
 	presets.add_child(p_fast)
-	var p_hard := UiTheme.button("Хардкор", "Без залога/торгов, агрессия 80")
+	var p_hard := UiTheme.button(I18n.t("settings.preset_hard"), I18n.t("settings.preset_hard_tip"))
+	I18n.key_on(p_hard, "settings.preset_hard"); I18n.tip_on(p_hard, "settings.preset_hard_tip")
 	p_hard.connect("pressed", Callable(self, "_preset_hard"))
 	presets.add_child(p_hard)
 	v.add_child(presets)
@@ -145,15 +234,15 @@ func _build() -> void:
 	v.add_child(_status_lbl)
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 10)
-	_start_btn = UiTheme.button_accent("▶  СТАРТ ПАРТИЮ", "Начать партию с выбранными игроками и настройками")
+	_start_btn = UiTheme.button_accent(I18n.t("settings.start_btn"), I18n.t("settings.start_tip"))
 	_start_btn.custom_minimum_size.y = 40
 	_start_btn.connect("pressed", Callable(self, "_start_pressed"))
 	actions.add_child(_start_btn)
-	_apply_btn = UiTheme.button_accent("ПРИМЕНИТЬ: новая партия", "Пересобрать движок с этими настройками (нужен рестарт)")
+	_apply_btn = UiTheme.button_accent(I18n.t("settings.apply_btn"), I18n.t("settings.apply_tip"))
 	_apply_btn.custom_minimum_size.y = 40
 	_apply_btn.connect("pressed", Callable(self, "_apply_pressed"))
 	actions.add_child(_apply_btn)
-	_rules_btn = UiTheme.button("📜 ПРАВИЛА", "Показать полные правила по текущим настройкам")
+	_rules_btn = UiTheme.button(I18n.t("settings.rules_btn"), I18n.t("settings.rules_tip"))
 	_rules_btn.connect("pressed", Callable(self, "_show_rules"))
 	actions.add_child(_rules_btn)
 	v.add_child(actions)
@@ -166,7 +255,7 @@ func _build() -> void:
 func _build_players_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Игроки")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("settings.tab_players"))
 
 	var players_box := UiTheme.panel()
 	tab.add_child(players_box)
@@ -177,7 +266,7 @@ func _build_players_tab() -> void:
 	players_box.add_child(pm)
 	pm.add_child(_players_list)
 
-	var add_row := UiTheme.button("+ добавить игрока", "Добавить ещё одного игрока (до 8)")
+	var add_row := UiTheme.button(I18n.t("settings.add_player"), I18n.t("settings.add_player_tip"))
 	add_row.connect("pressed", Callable(self, "_add_row"))
 	add_row.custom_minimum_size.y = 28
 	tab.add_child(add_row)
@@ -185,97 +274,97 @@ func _build_players_tab() -> void:
 	# host role + starting order
 	var opts := HBoxContainer.new()
 	opts.add_theme_constant_override("separation", 20)
-	opts.add_child(UiTheme.label("Роль хоста:", 13))
+	opts.add_child(UiTheme.label(I18n.t("ui.host_role"), 13))
 	_host_role = OptionButton.new()
-	_host_role.add_item("играю (LOCAL)"); _host_role.add_item("только наблюдаю (без LOCAL)")
+	_host_role.add_item(I18n.t("settings.host_playing")); _host_role.add_item(I18n.t("settings.host_obs"))
 	_host_role.selected = 0
-	_host_role.tooltip_text = "«только наблюдаю» = в матче нет LOCAL-места, ИИ играют сами (режим наблюдателя)."
+	_host_role.tooltip_text = I18n.t("settings.host_role_tip")
 	opts.add_child(_host_role)
-	opts.add_child(UiTheme.label("Нач. порядок:", 13))
+	opts.add_child(UiTheme.label(I18n.t("ui.starting_order"), 13))
 	_starting_order = OptionButton.new()
-	_starting_order.add_item("случайный"); _starting_order.add_item("вручную")
+	_starting_order.add_item(I18n.t("settings.order_random")); _starting_order.add_item(I18n.t("settings.order_manual"))
 	_starting_order.selected = 0
-	_starting_order.tooltip_text = "Случайный порядок ходов или порядок в списке игроков."
+	_starting_order.tooltip_text = I18n.t("settings.starting_order_tip")
 	opts.add_child(_starting_order)
 	tab.add_child(opts)
 
 func _build_rules_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Правила")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("settings.tab_rules"))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 8)
 	tab.add_child(grid)
 
-	_starting_cash = _spin(100, 100000, 1500, "Стартовый капитал", "Сколько денег у каждого игрока в начале.")
-	grid.add_child(_h("Стартовый капитал", _starting_cash))
-	_go_bonus = _spin(0, 10000, 200, "Бонус за GO", "Сколько получает игрок, проходя через GO.")
-	grid.add_child(_h("Бонус за GO", _go_bonus))
+	_starting_cash = _spin(100, 100000, 1500, I18n.t("settings.starting_cash"), I18n.t("settings.starting_cash_tip"))
+	grid.add_child(_h("settings.starting_cash", _starting_cash))
+	_go_bonus = _spin(0, 10000, 200, I18n.t("settings.go_bonus"), I18n.t("settings.go_bonus_tip"))
+	grid.add_child(_h("settings.go_bonus", _go_bonus))
 
 	_jail_rule = OptionButton.new()
-	_jail_rule.add_item("оба"); _jail_rule.add_item("штраф"); _jail_rule.add_item("карта")
+	_jail_rule.add_item(I18n.t("settings.jail_both")); _jail_rule.add_item(I18n.t("settings.jail_fine_only")); _jail_rule.add_item(I18n.t("settings.jail_card_only"))
 	_jail_rule.selected = 0
-	_jail_rule.tooltip_text = "Как можно выйти из тюрьмы: оба способа, только штраф или только карта."
-	grid.add_child(_h("Тюрьма", _jail_rule))
-	_jail_fine = _spin(0, 10000, 50, "Штраф тюрьмы", "Сколько стоит выйти из тюрьмы за деньги.")
-	grid.add_child(_h("Штраф тюрьмы", _jail_fine))
+	_jail_rule.tooltip_text = I18n.t("settings.jail_rule_tip")
+	grid.add_child(_h("settings.jail_rule", _jail_rule))
+	_jail_fine = _spin(0, 10000, 50, I18n.t("settings.jail_fine"), I18n.t("settings.jail_fine_tip"))
+	grid.add_child(_h("settings.jail_fine", _jail_fine))
 
 	_free_parking = OptionButton.new()
-	_free_parking.add_item("выкл"); _free_parking.add_item("вкл")
+	_free_parking.add_item(I18n.t("settings.fp_off")); _free_parking.add_item(I18n.t("settings.fp_on"))
 	_free_parking.selected = 0
-	_free_parking.tooltip_text = "Собирать ли налоги в «Бесплатную стоянку» и отдавать их приземлившемуся."
-	grid.add_child(_h("Беспл. стоянка", _free_parking))
-	_doubles = CheckButton.new(); _doubles.text = "дубли"
+	_free_parking.tooltip_text = I18n.t("settings.free_parking_tip")
+	grid.add_child(_h("settings.free_parking", _free_parking))
+	_doubles = CheckButton.new(); _doubles.text = I18n.t("settings.doubles_lbl")
 	_doubles.button_pressed = true
-	_doubles.tooltip_text = "Повторный ход при выпадении дублей."
-	grid.add_child(_h("Дубли", _doubles))
+	_doubles.tooltip_text = I18n.t("settings.doubles_tip")
+	grid.add_child(_h("settings.doubles", _doubles))
 
-	_triple_doubles = CheckButton.new(); _triple_doubles.text = "3 дубля → тюрьма"
+	_triple_doubles = CheckButton.new(); _triple_doubles.text = I18n.t("settings.triple_doubles_lbl")
 	_triple_doubles.button_pressed = true
-	_triple_doubles.tooltip_text = "Три дубля подряд отправляют в тюрьму."
-	grid.add_child(_h("3 дубля → тюрьма", _triple_doubles))
+	_triple_doubles.tooltip_text = I18n.t("settings.triple_doubles_tip")
+	grid.add_child(_h("settings.triple_doubles", _triple_doubles))
 	_auctions = OptionButton.new()
-	_auctions.add_item("вкл"); _auctions.add_item("выкл")
+	_auctions.add_item(I18n.t("settings.fp_on")); _auctions.add_item(I18n.t("settings.fp_off"))
 	_auctions.selected = 0
-	_auctions.tooltip_text = "Проводить ли аукцион, когда игрок отказывается покупать клетку."
-	grid.add_child(_h("Аукционы", _auctions))
+	_auctions.tooltip_text = I18n.t("settings.auctions_tip")
+	grid.add_child(_h("settings.auctions", _auctions))
 
-	_housing = CheckButton.new(); _housing.text = "застройка"
+	_housing = CheckButton.new(); _housing.text = I18n.t("settings.housing_lbl")
 	_housing.button_pressed = true
-	_housing.tooltip_text = "Разрешить строительство домов и отелей."
-	grid.add_child(_h("Застройка", _housing))
-	_even_build = CheckButton.new(); _even_build.text = "ровная застройка"
+	_housing.tooltip_text = I18n.t("settings.housing_tip")
+	grid.add_child(_h("settings.housing", _housing))
+	_even_build = CheckButton.new(); _even_build.text = I18n.t("settings.even_build_lbl")
 	_even_build.button_pressed = true
-	_even_build.tooltip_text = "Строить можно только равномерно по группе."
-	grid.add_child(_h("Ровная застройка", _even_build))
+	_even_build.tooltip_text = I18n.t("settings.even_build_tip")
+	grid.add_child(_h("settings.even_build", _even_build))
 
-	_monopoly_x2 = CheckButton.new(); _monopoly_x2.text = "монополия ×2"
+	_monopoly_x2 = CheckButton.new(); _monopoly_x2.text = I18n.t("settings.monopoly_x2_lbl")
 	_monopoly_x2.button_pressed = true
-	_monopoly_x2.tooltip_text = "Владелец всей группы получает двойную аренду."
-	grid.add_child(_h("Монополия ×2", _monopoly_x2))
-	_mortgage = CheckButton.new(); _mortgage.text = "залог"
+	_monopoly_x2.tooltip_text = I18n.t("settings.monopoly_x2_tip")
+	grid.add_child(_h("settings.monopoly_x2", _monopoly_x2))
+	_mortgage = CheckButton.new(); _mortgage.text = I18n.t("settings.mortgage_lbl")
 	_mortgage.button_pressed = true
-	_mortgage.tooltip_text = "Разрешить залог клеток."
-	grid.add_child(_h("Залог", _mortgage))
+	_mortgage.tooltip_text = I18n.t("settings.mortgage_tip")
+	grid.add_child(_h("settings.mortgage", _mortgage))
 
-	_loan_pct = _spin(0, 100, 50, "Залог %", "Какой процент стоимости даёт залог.")
-	grid.add_child(_h("Залог %", _loan_pct))
-	_repay_pct = _spin(0, 300, 110, "Выкуп %", "Какой процент стоимости стоит выкуп залога.")
-	grid.add_child(_h("Выкуп %", _repay_pct))
+	_loan_pct = _spin(0, 100, 50, I18n.t("settings.loan_pct"), I18n.t("settings.loan_pct_tip"))
+	grid.add_child(_h("settings.loan_pct", _loan_pct))
+	_repay_pct = _spin(0, 300, 110, I18n.t("settings.repay_pct"), I18n.t("settings.repay_pct_tip"))
+	grid.add_child(_h("settings.repay_pct", _repay_pct))
 
-	_trades = CheckButton.new(); _trades.text = "торги"
+	_trades = CheckButton.new(); _trades.text = I18n.t("settings.trades_lbl")
 	_trades.button_pressed = true
-	_trades.tooltip_text = "Разрешить сделки между игроками."
-	grid.add_child(_h("Торги", _trades))
-	_ai_aggression = _spin(0, 100, 50, "Агрессия ИИ", "Насколько агрессивно ИИ торгуется и строит.")
-	grid.add_child(_h("Агрессия ИИ", _ai_aggression))
+	_trades.tooltip_text = I18n.t("settings.trades_tip")
+	grid.add_child(_h("settings.trades", _trades))
+	_ai_aggression = _spin(0, 100, 50, I18n.t("settings.ai_aggression"), I18n.t("settings.ai_aggression_tip"))
+	grid.add_child(_h("settings.ai_aggression", _ai_aggression))
 
 func _build_tempo_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Темп")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("settings.tab_tempo"))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 24)
@@ -283,65 +372,70 @@ func _build_tempo_tab() -> void:
 	tab.add_child(grid)
 
 	_turn_timer = _seconds_option([0, 5, 10, 15, 20, 30, 45, 60], 30)
-	_turn_timer.tooltip_text = "Сколько секунд у игрока на ход. 0 = без лимита."
-	grid.add_child(_h("Таймер хода", _turn_timer))
+	_turn_timer.tooltip_text = I18n.t("settings.turn_timer_tip")
+	grid.add_child(_h("settings.turn_timer", _turn_timer))
 	_auction_timer = _seconds_option([0, 5, 8, 10, 12, 15, 20], 15)
-	_auction_timer.tooltip_text = "Сколько секунд на ставку в аукционе. 0 = без лимита."
-	grid.add_child(_h("Таймер аукциона", _auction_timer))
+	_auction_timer.tooltip_text = I18n.t("settings.auction_timer_tip")
+	grid.add_child(_h("settings.auction_timer", _auction_timer))
 
 	_timeout_action = OptionButton.new()
-	_timeout_action.add_item("авто-пас"); _timeout_action.add_item("пометить away")
+	_timeout_action.add_item(I18n.t("settings.timeout_auto_pass")); _timeout_action.add_item(I18n.t("settings.timeout_away"))
 	_timeout_action.selected = 0
-	_timeout_action.tooltip_text = "Что делать, когда игрок не успел сходить за таймер."
-	grid.add_child(_h("Тайм-аут", _timeout_action))
+	_timeout_action.tooltip_text = I18n.t("settings.timeout_tip")
+	grid.add_child(_h("settings.timeout", _timeout_action))
 
 func _build_interface_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Интерфейс")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("settings.tab_interface"))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 24)
 	grid.add_theme_constant_override("v_separation", 8)
 	tab.add_child(grid)
 
-	_animations = CheckButton.new(); _animations.text = "анимации"
+	_animations = CheckButton.new(); _animations.text = I18n.t("settings.animations_lbl")
 	_animations.button_pressed = true
-	_animations.tooltip_text = "Плавные анимации фишек и камеры. Выключите для слабых машин."
-	grid.add_child(_h("Анимации", _animations))
-	_event_overlay = CheckButton.new(); _event_overlay.text = "журнал событий"
+	_animations.tooltip_text = I18n.t("settings.animations_tip")
+	grid.add_child(_h("settings.animations", _animations))
+	_event_overlay = CheckButton.new(); _event_overlay.text = I18n.t("settings.event_overlay_lbl")
 	_event_overlay.button_pressed = true
-	_event_overlay.tooltip_text = "Показывать ли журнал событий поверх доски."
-	grid.add_child(_h("Журнал событий", _event_overlay))
+	_event_overlay.tooltip_text = I18n.t("settings.event_overlay_tip")
+	grid.add_child(_h("settings.event_overlay", _event_overlay))
 
-	_spectacle = CheckButton.new(); _spectacle.text = "камера-«кино»"
+	_spectacle = CheckButton.new(); _spectacle.text = I18n.t("settings.spectacle_lbl")
 	_spectacle.button_pressed = false
-	_spectacle.tooltip_text = "Камера, следящая за действием. По умолчанию выключена — доска всегда целиком."
-	grid.add_child(_h("Камера-«кино»", _spectacle))
-	_sound = CheckButton.new(); _sound.text = "звук"
+	_spectacle.tooltip_text = I18n.t("settings.spectacle_tip")
+	grid.add_child(_h("settings.spectacle", _spectacle))
+	_sound = CheckButton.new(); _sound.text = I18n.t("settings.sound_lbl")
 	_sound.button_pressed = true
-	_sound.tooltip_text = "Звуковые эффекты (кубики, тосты, таймер)."
-	grid.add_child(_h("Звук", _sound))
+	_sound.tooltip_text = I18n.t("settings.sound_tip")
+	grid.add_child(_h("settings.sound", _sound))
 
 	_language = OptionButton.new()
 	_language.add_item("Русский"); _language.add_item("English")
 	_language.selected = 0
-	_language.tooltip_text = "Язык интерфейса (полная локализация — в фазе P5)."
-	grid.add_child(_h("Язык", _language))
+	_language.tooltip_text = I18n.t("settings.language_tip")
+	_language.connect("item_selected", Callable(self, "_on_language"))
+	grid.add_child(_h("ui.language", _language))
+
+## P5: language selected → switch locale (retranslate via _on_locale_changed).
+func _on_language(idx: int) -> void:
+	I18n.set_locale("en" if idx == 1 else "ru")
 
 func _build_data_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Данные")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("settings.tab_data"))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	row.add_child(UiTheme.label("RNG-сид (0 = случайно):", 13))
+	row.add_child(UiTheme.label(I18n.t("settings.rng_seed"), 13))
 	_rng_seed = SpinBox.new()
 	_rng_seed.min_value = 0
 	_rng_seed.max_value = 99999
 	_rng_seed.value = 0
 	_rng_seed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rng_seed.tooltip_text = "Число для воспроизводимой партии. 0 = случайная."
+	_rng_seed.tooltip_text = I18n.t("settings.rng_seed_tip")
 	row.add_child(_rng_seed)
 	tab.add_child(row)
 
@@ -363,12 +457,18 @@ func _spin(minv: int, maxv: int, def: int, _lbl: String, tip: String) -> SpinBox
 
 func _seconds_option(vals: Array, def: int) -> OptionButton:
 	var o := OptionButton.new()
+	o.add_item(I18n.t("settings.no_limit"), 0)
 	for value in vals:
-		var txt: String = str(value) + "с"
-		o.add_item(txt if value > 0 else "нет лимита")
+		if value == 0:
+			continue
+		o.add_item(str(value) + sec_suffix(), value)
 		if value == def:
 			o.selected = o.item_count - 1
 	return o
+
+## Seconds suffix localized: RU uses "с", EN uses "s".
+static func sec_suffix() -> String:
+	return "с" if I18n.current == "ru" else "s"
 
 func _add_row(_unused: Variant = null) -> void:
 	if _rows.size() >= 8:
@@ -385,7 +485,7 @@ func _add_row(_unused: Variant = null) -> void:
 	for d in DRIVERS:
 		driver.add_item(d)
 	driver.selected = 0 if idx == 0 else 1
-	driver.tooltip_text = "LOCAL = человек за этим компьютером, AI = компьютер, CHAT = чат, sdk:neuro = Neuro, sdk:evil = второй SDK (играет как ИИ)."
+	driver.tooltip_text = I18n.t("settings.driver_tip")
 	if idx == 0:
 		driver.disabled = true
 	h.add_child(driver)
@@ -399,17 +499,17 @@ func _add_row(_unused: Variant = null) -> void:
 	var name_edit := LineEdit.new()
 	name_edit.text = NAMES[idx % NAMES.size()]
 	name_edit.custom_minimum_size.x = 180
-	name_edit.tooltip_text = "Имя игрока, отображаемое на доске и в списке."
+	name_edit.tooltip_text = I18n.t("settings.name_tip")
 	h.add_child(name_edit)
 
 	var token := OptionButton.new()
 	for t in TOKENS:
 		token.add_item(t)
 	token.selected = idx % TOKENS.size()
-	token.tooltip_text = "Фишка игрока (уникальная)."
+	token.tooltip_text = I18n.t("settings.token_tip")
 	h.add_child(token)
 
-	var remove_btn := UiTheme.button("✕", "Удалить этого игрока из партии")
+	var remove_btn := UiTheme.button("✕", I18n.t("settings.remove_tip"))
 	remove_btn.custom_minimum_size = Vector2(24, 20)
 	remove_btn.disabled = (idx == 0)
 	remove_btn.connect("pressed", Callable(self, "_remove_row").bind(idx))
@@ -468,7 +568,8 @@ func _collect_settings() -> Settings:
 	s.language = "ru" if _language.selected == 0 else "en"
 	s.starting_cash = int(_starting_cash.value)
 	s.go_bonus = int(_go_bonus.value)
-	s.jail_rule = _jail_rule.get_item_text(_jail_rule.selected).to_lower()
+	# engine expects stable ids; read by index (option labels are localized)
+	s.jail_rule = ["both", "fine", "card"][_jail_rule.selected if _jail_rule.selected >= 0 else 0]
 	s.jail_fine = int(_jail_fine.value)
 	s.doubles = _doubles.button_pressed
 	s.triple_doubles_to_jail = _triple_doubles.button_pressed
@@ -484,34 +585,38 @@ func _collect_settings() -> Settings:
 	return s
 
 func _selected_seconds(o: OptionButton) -> int:
-	var item: int = o.selected
-	if item < 0:
+	var idx: int = o.selected
+	if idx < 0:
 		return 0
-	var txt: String = o.get_item_text(item)
-	if txt == "нет лимита":
-		return 0
-	return int(txt.trim_suffix("с"))
+	# item ID encodes the seconds value (0 = no limit) so it's locale-independent
+	return maxi(0, o.get_item_id(idx))
+
+func _index_of_seconds(o: OptionButton, target: int) -> int:
+	for i in o.item_count:
+		if o.get_item_id(i) == target:
+			return i
+	return 0
 
 func _validation_error() -> String:
 	if _rows.size() < 2:
-		return "Нужно минимум 2 игрока."
+		return I18n.t("settings.err_min2")
 	var names := {}
 	var colors := {}
 	var tokens := {}
 	for r in _rows:
 		var nm: String = str(r["name"].text).strip_edges()
 		if nm == "":
-			return "Имя игрока не может быть пустым."
+			return I18n.t("settings.err_empty_name")
 		if names.has(nm):
-			return "Имена игроков должны быть уникальными."
+			return I18n.t("settings.err_dup_name")
 		names[nm] = true
 		var col: String = (r["color"] as ColorRect).color.to_html()
 		if colors.has(col):
-			return "Цвета игроков должны быть уникальными."
+			return I18n.t("settings.err_dup_color")
 		colors[col] = true
 		var tok: String = str(r["token"].get_item_text(r["token"].selected))
 		if tokens.has(tok):
-			return "Фишки игроков должны быть уникальными."
+			return I18n.t("settings.err_dup_token")
 		tokens[tok] = true
 	return ""
 
@@ -520,8 +625,8 @@ func _refresh_buttons() -> void:
 	_status_lbl.text = err
 	_start_btn.disabled = err != ""
 	_apply_btn.disabled = err != ""
-	_start_btn.tooltip_text = err if err != "" else "Начать партию с выбранными игроками и настройками"
-	_apply_btn.tooltip_text = err if err != "" else "Пересобрать движок с этими настройками (нужен рестарт)"
+	_start_btn.tooltip_text = err if err != "" else I18n.t("settings.start_tip")
+	_apply_btn.tooltip_text = err if err != "" else I18n.t("settings.apply_tip")
 	_start_btn.visible = _pre_game
 	_apply_btn.visible = not _pre_game
 
@@ -540,32 +645,36 @@ func _on_close() -> void:
 
 func _show_rules() -> void:
 	var s := _collect_settings()
+	var on := I18n.t("rules.on")
+	var off := I18n.t("rules.off")
+	var jail_lbl: String = {"both": I18n.t("settings.jail_both"), "fine": I18n.t("settings.jail_fine_only"), "card": I18n.t("settings.jail_card_only")}.get(s.jail_rule, s.jail_rule)
+	var ta_lbl: String = I18n.t("settings.timeout_auto_pass") if s.timeout_action == "auto-pass" else I18n.t("settings.timeout_away")
 	var lines: Array[String] = []
-	lines.append("ПРАВИЛА (по текущим настройкам)")
+	lines.append(I18n.t("rules.title"))
 	lines.append("")
-	lines.append("Стартовый капитал: $%d" % s.starting_cash)
-	lines.append("Бонус за GO: $%d" % s.go_bonus)
-	lines.append("Тюрьма: %s (штраф $%d)" % [s.jail_rule, s.jail_fine])
-	lines.append("Бесплатная стоянка: %s" % ("вкл" if s.free_parking else "выкл"))
-	lines.append("Дубли: %s" % ("вкл" if s.doubles else "выкл"))
-	lines.append("Тройные дубли → тюрьма: %s" % ("вкл" if s.triple_doubles_to_jail else "выкл"))
-	lines.append("Аукционы при отказе: %s" % ("вкл" if s.auctions_on_refusal else "выкл"))
-	lines.append("Строительство: %s" % ("вкл" if s.housing else "выкл"))
-	lines.append("Равномерная застройка: %s" % ("вкл" if s.even_build else "выкл"))
-	lines.append("Монополия ×2 аренда: %s" % ("вкл" if s.monopoly_rent_x2 else "выкл"))
-	lines.append("Залог: %s (%d%% / %d%%)" % [("вкл" if s.mortgage else "выкл"), s.mortgage_loan_pct, s.mortgage_repay_pct])
-	lines.append("Торги: %s" % ("вкл" if s.trades else "выкл"))
-	lines.append("Таймер хода: %dс" % s.turn_timer)
-	lines.append("Таймер аукциона: %dс" % s.auction_timer)
-	lines.append("Тайм-аут: %s" % s.timeout_action)
-	lines.append("Агрессия ИИ: %d" % s.ai_aggression)
+	lines.append(I18n.t("rules.starting_cash", [s.starting_cash]))
+	lines.append(I18n.t("rules.go_bonus", [s.go_bonus]))
+	lines.append(I18n.t("rules.jail", [jail_lbl, s.jail_fine]))
+	lines.append(I18n.t("rules.free_parking", [on if s.free_parking else off]))
+	lines.append(I18n.t("rules.doubles", [on if s.doubles else off]))
+	lines.append(I18n.t("rules.triple_doubles", [on if s.triple_doubles_to_jail else off]))
+	lines.append(I18n.t("rules.auctions", [on if s.auctions_on_refusal else off]))
+	lines.append(I18n.t("rules.housing", [on if s.housing else off]))
+	lines.append(I18n.t("rules.even_build", [on if s.even_build else off]))
+	lines.append(I18n.t("rules.monopoly_x2", [on if s.monopoly_rent_x2 else off]))
+	lines.append(I18n.t("rules.mortgage", [on if s.mortgage else off, s.mortgage_loan_pct, s.mortgage_repay_pct]))
+	lines.append(I18n.t("rules.trades", [on if s.trades else off]))
+	lines.append(I18n.t("rules.turn_timer", [s.turn_timer]))
+	lines.append(I18n.t("rules.auction_timer", [s.auction_timer]))
+	lines.append(I18n.t("rules.timeout", [ta_lbl]))
+	lines.append(I18n.t("rules.ai_aggression", [s.ai_aggression]))
 	_show_rules_modal("\n".join(lines))
 
 func _show_rules_modal(text: String) -> void:
 	var popup := AcceptDialog.new()
-	popup.title = "ПРАВИЛА"
+	popup.title = I18n.t("rules.dialog_title")
 	popup.dialog_text = text
-	popup.ok_button_text = "OK"
+	popup.ok_button_text = I18n.t("ui.ok")
 	popup.size = Vector2(520, 420)
 	add_child(popup)
 	popup.popup_centered()
@@ -583,13 +692,6 @@ func _preset_hard() -> void:
 	_mortgage.button_pressed = false
 	_trades.button_pressed = false
 	_ai_aggression.value = 80
-
-func _index_of_seconds(o: OptionButton, target: int) -> int:
-	for i in o.item_count:
-		var txt: String = o.get_item_text(i)
-		if txt == str(target) + "с":
-			return i
-	return 0
 
 func _reset_all() -> void:
 	_starting_cash.value = 1500

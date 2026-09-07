@@ -11,6 +11,7 @@ extends PanelContainer
 signal exported(path: String)
 
 const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 var _log: RichTextLabel
 var _player_filter: OptionButton
@@ -41,13 +42,16 @@ func _init() -> void:
 	# header: title + live count + export
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
-	var title := UiTheme.label("◆ ХОД СОБЫТИЙ", 12, UiTheme.COL.accent)
+	var title := UiTheme.label(I18n.t("jrn.title"), 12, UiTheme.COL.accent)
+	I18n.key_on(title, "jrn.title")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	_count_lbl = UiTheme.label("0", 11, UiTheme.COL.text_dim)
-	_count_lbl.tooltip_text = "Сколько событий показано из общего числа в журнале."
+	_count_lbl.tooltip_text = I18n.t("jrn.count_tip")
+	I18n.tip_on(_count_lbl, "jrn.count_tip")
 	head.add_child(_count_lbl)
-	_export_btn = UiTheme.button("⭳", "Экспортировать весь журнал в JSONL-файл (user://journal_export.jsonl)")
+	_export_btn = UiTheme.button("⭳", I18n.t("jrn.export_tip"))
+	I18n.tip_on(_export_btn, "jrn.export_tip")
 	_export_btn.custom_minimum_size = Vector2(26, 22)
 	_export_btn.connect("pressed", Callable(self, "_on_export"))
 	head.add_child(_export_btn)
@@ -56,27 +60,34 @@ func _init() -> void:
 	# filter row: player | type | money-only
 	var filters := HBoxContainer.new()
 	filters.add_theme_constant_override("separation", 6)
-	var plbl := UiTheme.label("игрок", 11, UiTheme.COL.text_dim)
-	plbl.tooltip_text = "Фильтр журнала по игроку"
+	var plbl := UiTheme.label(I18n.t("jrn.player_lbl"), 11, UiTheme.COL.text_dim)
+	I18n.key_on(plbl, "jrn.player_lbl")
+	plbl.tooltip_text = I18n.t("jrn.player_tip")
+	I18n.tip_on(plbl, "jrn.player_tip")
 	filters.add_child(plbl)
 	_player_filter = OptionButton.new()
-	_player_filter.tooltip_text = "Показывать события только этого игрока (или всех)."
+	_player_filter.tooltip_text = I18n.t("jrn.player_filter_tip")
+	I18n.tip_on(_player_filter, "jrn.player_filter_tip")
 	_player_filter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_player_filter.clip_text = true
 	_player_filter.connect("item_selected", Callable(self, "_on_filter_changed"))
 	filters.add_child(_player_filter)
-	var tlbl := UiTheme.label("тип", 11, UiTheme.COL.text_dim)
-	tlbl.tooltip_text = "Фильтр журнала по типу события"
+	var tlbl := UiTheme.label(I18n.t("jrn.type_lbl"), 11, UiTheme.COL.text_dim)
+	I18n.key_on(tlbl, "jrn.type_lbl")
+	tlbl.tooltip_text = I18n.t("jrn.type_tip")
+	I18n.tip_on(tlbl, "jrn.type_tip")
 	filters.add_child(tlbl)
 	_type_filter = OptionButton.new()
-	_type_filter.tooltip_text = "Показывать события только этого типа (или все)."
+	_type_filter.tooltip_text = I18n.t("jrn.type_filter_tip")
+	I18n.tip_on(_type_filter, "jrn.type_filter_tip")
 	_type_filter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_type_filter.clip_text = true
 	_type_filter.connect("item_selected", Callable(self, "_on_filter_changed"))
 	filters.add_child(_type_filter)
 	_money_only = CheckButton.new()
 	_money_only.text = "$"
-	_money_only.tooltip_text = "Показывать только события, связанные с деньгами (покупки, аренда, налоги, выплаты)."
+	_money_only.tooltip_text = I18n.t("jrn.money_tip")
+	I18n.tip_on(_money_only, "jrn.money_tip")
 	_money_only.connect("toggled", Callable(self, "_on_filter_changed"))
 	filters.add_child(_money_only)
 	v.add_child(filters)
@@ -96,6 +107,13 @@ func sync_cold() -> void:
 	set_entries([], [])
 	_filters_dirty = true
 
+## P5: re-apply localized static labels after a locale change. Dynamic filter
+## options are rebuilt (in the current locale) by a re-render.
+func retranslate() -> void:
+	I18n.relabel(self)
+	if _entries.size() > 0 or _player_names.size() > 0:
+		set_entries(_entries, _player_names)
+
 ## Full refresh: replace the entry list + player names, rebuild if needed.
 ## entries = engine.log.entries(); player_names[i] = display name of pid i.
 func set_entries(entries: Array, player_names: Array) -> void:
@@ -109,15 +127,17 @@ func refresh(entries: Array, player_names: Array) -> void:
 	set_entries(entries, player_names)
 
 func _sync_filter_options() -> void:
-	var want: Array[String] = ["все"]
+	# index 0 is always the "all" display option (I18n.t("jrn.all")); the
+	# comparison logic below relies on that position, not on the literal.
+	var want: Array[String] = [I18n.t("jrn.all")]
 	for i in _player_names.size():
 		want.append("%d·%s" % [i, str(_player_names[i])])
 	var cur_p: int = _player_filter.selected
 	if _options_changed(_player_filter, want):
 		_fill_options(_player_filter, want)
 		_restore_selection(_player_filter, cur_p)
-	# type filter: "все" + unique types present in the log
-	var types: Array[String] = ["все"]
+	# type filter: "all" + unique types present in the log
+	var types: Array[String] = [I18n.t("jrn.all")]
 	var seen := {}
 	for e in _entries:
 		var t: String = str(e.get("type", "?"))
@@ -172,8 +192,11 @@ func _selected_pid() -> int:
 	return _player_filter.selected - 1
 
 func _selected_type() -> String:
-	var t := _selected_text(_type_filter)
-	return "" if t == "все" else t
+	# index 0 is the "all" option — compare by position, not by the
+	# locale-dependent display text.
+	if _type_filter.selected <= 0:
+		return ""
+	return _selected_text(_type_filter)
 
 func _money_only_on() -> bool:
 	return _money_only.button_pressed

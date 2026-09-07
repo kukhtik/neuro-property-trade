@@ -9,6 +9,12 @@ var _timer_elapsed: float = 0.0
 var _timer_active: bool = false
 var _size: int = 28
 var _thickness: int = 3
+var _last_second := -1
+var _on_tick: Callable = Callable()   # optional: called each second boundary
+
+## Set a callback invoked on each whole-second countdown change (for SFX ticks).
+func set_tick_callback(cb: Callable) -> void:
+	_on_tick = cb
 
 func _init() -> void:
 	custom_minimum_size = Vector2(_size, _size)
@@ -19,6 +25,14 @@ func set_state(window: float, elapsed: float, active: bool) -> void:
 	_timer_elapsed = elapsed
 	_timer_active = active
 	visible = active and window > 0.0
+	if active and window > 0.0:
+		var sec := maxi(0, int(ceil(window - elapsed)))
+		if sec != _last_second:
+			if _last_second > 0 and sec < _last_second and _on_tick.is_valid():
+				_on_tick.call()
+			_last_second = sec
+	else:
+		_last_second = -1
 	queue_redraw()
 
 func _draw() -> void:

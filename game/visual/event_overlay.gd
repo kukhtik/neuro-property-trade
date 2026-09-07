@@ -5,8 +5,10 @@ extends PanelContainer
 ## per-seat private info ever reaches this.
 
 const EventMessages := preload("res://visual/event_messages.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 var _list: Label
+var _head: Label
 var _max_lines := 6
 
 func _init() -> void:
@@ -25,10 +27,12 @@ func _init() -> void:
 	custom_minimum_size = Vector2(432, 202)
 
 	var head := Label.new()
-	head.text = "◆ EVENT LOG ◆"
+	head.text = I18n.t("jrn.title")
+	head.name = "Head"
 	head.add_theme_font_size_override("font_size", 12)
 	head.add_theme_color_override("font_color", Color("9fd0ff"))
 	add_child(head)
+	_head = head
 
 	_list = Label.new()
 	_list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

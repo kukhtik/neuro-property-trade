@@ -19,6 +19,7 @@ signal game_rebuilt(engine)   # after a snapshot load (main rebuilds the view)
 const UiTheme := preload("res://ui/theme.gd")
 const Snapshot := preload("res://core/snapshot.gd")
 const EventMessages := preload("res://visual/event_messages.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 const TAB_QUICK := 0
 const TAB_STATE := 1
@@ -59,22 +60,29 @@ var _edit_rows: Array = []   # {op, widgets: Dictionary, row: Control}
 var _pid_options: Array = [] # OptionButtons that need the live pid list
 
 ## Operations for the Правки tab. Each row shows ONLY the fields the op needs;
-## `confirm` marks destructive operations that ask before executing.
+## `confirm` marks destructive operations that ask before executing. Labels and
+## tips are localized via I18n keys (`_op_label`/`_op_tip`).
 const EDIT_OPS := [
-	{"op": "set_balance", "label": "💰 баланс", "tip": "Установить игроку точный баланс. Применять, когда нужно компенсировать ошибку или исправить деньги вручную.", "fields": ["pid", "amount"]},
-	{"op": "teleport", "label": "📍 телепорт", "tip": "Поставить игрока на выбранную клетку без броска кубов. Используйте между ходами.", "fields": ["pid", "tile"]},
-	{"op": "force_dice", "label": "🎲 форс-кубы", "tip": "Подменить следующий бросок кубов. d1/d2 в 0..6, 0 = «не настоящий» куб (можно задать сумму без дубля).", "fields": ["d1", "d2"]},
-	{"op": "grant_property", "label": "🏠 дать тайл", "tip": "Передать клетку игроку без оплаты. Дома/залог на клетке не меняются.", "fields": ["pid", "tile"]},
-	{"op": "revoke_property", "label": "🏠 отнять тайл", "tip": "Забрать клетку у игрока. Дома и залог на клетке сбрасываются.", "fields": ["pid", "tile"]},
-	{"op": "set_houses", "label": "🏗 домики", "tip": "Задать число домов на клетке: 0..4, 5 = отель. Игнорирует правило ровной застройки.", "fields": ["tile", "count"]},
-	{"op": "set_mortgage", "label": "🚫 залог", "tip": "Включить или снять залог на клетке без денежных операций.", "fields": ["tile", "flag"]},
-	{"op": "tweak_tile", "label": "✏ правка клетки", "tip": "Живая правка цены/аренды клетки (цена, базовая аренда, аренда монополии, стоимость дома). Действует до конца партии; board.json не меняется.", "fields": ["tile", "cost", "rent", "rent_set", "house_cost"]},
-	{"op": "deck_insert", "label": "🃏 вставить карту", "tip": "Положить карту наверх колоды (будет вытянута следующей). kind = community или chance, effect = collect/pay/advance/move_to/go_to_jail/jail_card/collect_from_all/pay_each_player.", "fields": ["deck", "card_name", "effect", "value"]},
-	{"op": "deck_remove", "label": "🃏 убрать карту", "tip": "Убрать верхнюю карту колоды или карту по имени.", "fields": ["deck", "card_name"]},
-	{"op": "set_go_jail", "label": "⚖ в тюрьму", "tip": "Отправить игрока в тюрьму немедленно (позиция = тюрьма, попытки = 0).", "fields": ["pid"]},
-	{"op": "reorder_players", "label": "🔀 порядок", "tip": "Порядок хода: перечислите ВСЕ pid через запятую. ДЕСТРУКТИВНО: подтверждение.", "fields": ["order"], "confirm": true},
-	{"op": "redo_turn", "label": "🔁 переиграть ход", "tip": "Пере-сидировать RNG и сбросить текущий ход в начало. ДЕСТРУКТИВНО: подтверждение.", "fields": ["seed"], "confirm": true},
+	{"op": "set_balance", "label_key": "admin.op_set_balance", "fields": ["pid", "amount"]},
+	{"op": "teleport", "label_key": "admin.op_teleport", "fields": ["pid", "tile"]},
+	{"op": "force_dice", "label_key": "admin.op_force_dice", "fields": ["d1", "d2"]},
+	{"op": "grant_property", "label_key": "admin.op_grant", "fields": ["pid", "tile"]},
+	{"op": "revoke_property", "label_key": "admin.op_revoke", "fields": ["pid", "tile"]},
+	{"op": "set_houses", "label_key": "admin.op_set_houses", "fields": ["tile", "count"]},
+	{"op": "set_mortgage", "label_key": "admin.op_set_mortgage", "fields": ["tile", "flag"]},
+	{"op": "tweak_tile", "label_key": "admin.op_tweak_tile", "fields": ["tile", "cost", "rent", "rent_set", "house_cost"]},
+	{"op": "deck_insert", "label_key": "admin.op_deck_insert", "fields": ["deck", "card_name", "effect", "value"]},
+	{"op": "deck_remove", "label_key": "admin.op_deck_remove", "fields": ["deck", "card_name"]},
+	{"op": "set_go_jail", "label_key": "admin.op_set_go_jail", "fields": ["pid"]},
+	{"op": "reorder_players", "label_key": "admin.op_reorder", "fields": ["order"], "confirm": true},
+	{"op": "redo_turn", "label_key": "admin.op_redo_turn", "fields": ["seed"], "confirm": true},
 ]
+
+static func _op_label(def: Dictionary) -> String:
+	return I18n.t(str(def.get("label_key", def.get("op", ""))))
+
+static func _op_tip(def: Dictionary) -> String:
+	return I18n.t(str(def.get("label_key", def.get("op", ""))) + "_tip")
 
 func setup(controller) -> void:
 	_controller = controller
@@ -104,13 +112,13 @@ func _build() -> void:
 	# header: title + search + close
 	var head = HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
-	var title = UiTheme.label("АДМИН (host-local)", 16, UiTheme.COL.gold)
+	var title = UiTheme.label(I18n.t("admin.title"), 16, UiTheme.COL.gold)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	_search = LineEdit.new()
-	_search.placeholder_text = "🔍 поиск операции…"
+	_search.placeholder_text = I18n.t("admin.search_ph")
 	_search.custom_minimum_size.x = 170
-	_search.tooltip_text = "Фильтр операций на вкладке «Правки» по подстроке."
+	_search.tooltip_text = I18n.t("admin.search_tip")
 	_search.connect("text_changed", Callable(self, "_on_search"))
 	head.add_child(_search)
 	v.add_child(head)
@@ -124,7 +132,7 @@ func _build() -> void:
 	_build_edits_tab()
 
 	# admin log at the bottom (spec §8.2)
-	var log_head := UiTheme.label("ЖУРНАЛ АДМИНА", 11, UiTheme.COL.text_dim)
+	var log_head := UiTheme.label(I18n.t("admin.log_head"), 11, UiTheme.COL.text_dim)
 	v.add_child(log_head)
 	_admin_log = RichTextLabel.new()
 	_admin_log.bbcode_enabled = true
@@ -156,31 +164,31 @@ func _spin(minv: int, maxv: int, tip: String) -> SpinBox:
 func _build_quick_tab() -> void:
 	var tab := UiTheme.vbox(10)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Быстрые")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_quick"))
 
-	var hint := UiTheme.label("Разблокировка партии: принудительные действия для текущего держателя решения.", 12, UiTheme.COL.text_dim)
+	var hint := UiTheme.label(I18n.t("admin.quick_hint"), 12, UiTheme.COL.text_dim)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tab.add_child(hint)
 
-	_b_force_roll = UiTheme.button_accent("▶ форс-ролл (holder)", "Заставить текущего держателя решения бросить кубы. Когда применять: партия стоит на начале хода.")
+	_b_force_roll = UiTheme.button_accent(I18n.t("admin.quick_force_roll"), I18n.t("admin.quick_force_roll_tip"))
 	_b_force_roll.custom_minimum_size.y = 32
 	_b_force_roll.connect("pressed", Callable(self, "_quick_force_roll"))
 	tab.add_child(_b_force_roll)
-	_b_force_pass = UiTheme.button("⏭ форс-пас", "Пропустить текущее решение держателя (покупка/аукцион/ход).")
+	_b_force_pass = UiTheme.button(I18n.t("admin.quick_force_pass"), I18n.t("admin.quick_force_pass_tip"))
 	_b_force_pass.custom_minimum_size.y = 32
 	_b_force_pass.connect("pressed", Callable(self, "_quick_force_pass"))
 	tab.add_child(_b_force_pass)
-	_b_rollback = UiTheme.button("↩ откат решения", "Сбросить зависшее ожидание решения (очистить pending-состояние без изменения денег/владений).")
+	_b_rollback = UiTheme.button(I18n.t("admin.quick_rollback"), I18n.t("admin.quick_rollback_tip"))
 	_b_rollback.custom_minimum_size.y = 32
 	_b_rollback.connect("pressed", Callable(self, "_quick_rollback"))
 	tab.add_child(_b_rollback)
 
 	var away_row := HBoxContainer.new()
 	away_row.add_theme_constant_override("separation", 8)
-	_away_pid = _spin(0, 999, "pid игрока, которому вернуть право хода после «away».")
-	away_row.add_child(UiTheme.label("♻ сброс away: pid", 12))
+	_away_pid = _spin(0, 999, I18n.t("admin.away_pid_tip"))
+	away_row.add_child(UiTheme.label(I18n.t("admin.away_pid_lbl"), 12))
 	away_row.add_child(_away_pid)
-	_b_reset_away = UiTheme.button("применить", "Снять пометку «away» с места, чтобы менеджер снова ждал его решения.")
+	_b_reset_away = UiTheme.button(I18n.t("admin.reset_away"), I18n.t("admin.reset_away_tip"))
 	_b_reset_away.connect("pressed", Callable(self, "_quick_reset_away"))
 	away_row.add_child(_b_reset_away)
 	tab.add_child(away_row)
@@ -198,7 +206,7 @@ func _status_summary_label() -> Label:
 func _build_state_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Состояние")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_state"))
 
 	_state = RichTextLabel.new()
 	_state.bbcode_enabled = true
@@ -207,13 +215,13 @@ func _build_state_tab() -> void:
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	_b_copy = UiTheme.button("копировать JSON-дамп", "Скопировать полный дамп состояния в буфер обмена (для отладки).")
+	_b_copy = UiTheme.button(I18n.t("admin.copy_dump"), I18n.t("admin.copy_dump_tip"))
 	_b_copy.connect("pressed", Callable(self, "_copy_dump"))
 	row.add_child(_b_copy)
-	_b_save_snap = UiTheme.button("снапшот → файл", "Сохранить полное состояние партии в user://admin_snapshot.json.")
+	_b_save_snap = UiTheme.button(I18n.t("admin.save_snap"), I18n.t("admin.save_snap_tip"))
 	_b_save_snap.connect("pressed", Callable(self, "_save_snapshot"))
 	row.add_child(_b_save_snap)
-	_b_load_snap = UiTheme.button("загрузить снапшот", "ЗАГРУЗИТЬ партию из user://admin_snapshot.json. Перезаписывает текущее состояние. ДЕСТРУКТИВНО: спросит подтверждение.")
+	_b_load_snap = UiTheme.button(I18n.t("admin.load_snap"), I18n.t("admin.load_snap_tip"))
 	_b_load_snap.connect("pressed", Callable(self, "_load_snapshot"))
 	row.add_child(_b_load_snap)
 	tab.add_child(row)
@@ -223,17 +231,17 @@ func _build_state_tab() -> void:
 func _build_events_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "События")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_events"))
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	row.add_child(UiTheme.label("тип:", 12))
+	row.add_child(UiTheme.label(I18n.t("admin.ev_type_lbl"), 12))
 	_ev_filter = OptionButton.new()
-	_ev_filter.tooltip_text = "Показывать события только выбранного типа (лента live, обновляется сама)."
+	_ev_filter.tooltip_text = I18n.t("admin.ev_filter_tip")
 	_ev_filter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_ev_filter.connect("item_selected", Callable(self, "_on_ev_filter"))
 	row.add_child(_ev_filter)
-	_ev_export = UiTheme.button("экспорт .jsonl", "Экспортировать ПОЛНЫЙ журнал событий в user://admin_events_export.jsonl.")
+	_ev_export = UiTheme.button(I18n.t("admin.ev_export"), I18n.t("admin.ev_export_tip"))
 	_ev_export.connect("pressed", Callable(self, "_export_events"))
 	row.add_child(_ev_export)
 	tab.add_child(row)
@@ -250,9 +258,9 @@ func _build_edits_tab() -> void:
 	var tab := VBoxContainer.new()
 	tab.add_theme_constant_override("separation", 6)
 	_tabs.add_child(tab)
-	_tabs.set_tab_title(_tabs.get_tab_count() - 1, "Правки")
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_edits"))
 
-	var note := UiTheme.label("Каждая операция — строка только со СВОИМИ полями. Результат показывается инлайн.", 11, UiTheme.COL.text_dim)
+	var note := UiTheme.label(I18n.t("admin.edits_note"), 11, UiTheme.COL.text_dim)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tab.add_child(note)
 
@@ -285,8 +293,8 @@ func _build_edit_row(def: Dictionary) -> Control:
 	m.add_child(h)
 
 	# op label with tooltip = the full "what it does / when to use" text
-	var lbl := UiTheme.label(str(def["label"]), 13)
-	lbl.tooltip_text = str(def["tip"])
+	var lbl := UiTheme.label(_op_label(def), 13)
+	lbl.tooltip_text = _op_tip(def)
 	lbl.custom_minimum_size.x = 120
 	h.add_child(lbl)
 
@@ -296,55 +304,56 @@ func _build_edit_row(def: Dictionary) -> Control:
 		match key:
 			"pid":
 				var ob := OptionButton.new()
-				ob.tooltip_text = "Игрок (pid). Список обновляется живьём."
+				ob.tooltip_text = I18n.t("admin.tip_pid")
 				ob.custom_minimum_size.x = 110
 				ob.clip_text = true
 				widgets["pid"] = ob
 				_pid_options.append(ob)
 				h.add_child(ob)
 			"tile":
-				var ts := _spin(0, 39, "Индекс клетки 0..39 (0 = СТАРТ, 10 = тюрьма, 20 = стоянка, 30 = «иди в тюрьму»).")
+				var ts := _spin(0, 39, I18n.t("admin.tip_tile"))
 				widgets["tile"] = ts
-				h.add_child(_labeled("клетка", ts, ts.tooltip_text))
+				h.add_child(_labeled(I18n.t("admin.lbl_tile"), ts, ts.tooltip_text))
 			"amount":
-				var am := _spin(0, 1000000, "Сумма денег (для баланса — абсолютное значение).")
+				var am := _spin(0, 1000000, I18n.t("admin.tip_amount"))
 				am.value = 1500
 				widgets["amount"] = am
-				h.add_child(_labeled("сумма", am, am.tooltip_text))
+				h.add_child(_labeled(I18n.t("admin.lbl_amount"), am, am.tooltip_text))
 			"count":
-				var cn := _spin(0, 5, "Число домов 0..4, 5 = отель.")
+				var cn := _spin(0, 5, I18n.t("admin.tip_count"))
 				widgets["count"] = cn
-				h.add_child(_labeled("домов", cn, cn.tooltip_text))
+				h.add_child(_labeled(I18n.t("admin.lbl_count"), cn, cn.tooltip_text))
 			"flag":
 				var fl := OptionButton.new()
-				fl.add_item("заложить")
-				fl.add_item("выкупить")
+				fl.add_item(I18n.t("admin.flag_mortgage"))
+				fl.add_item(I18n.t("admin.flag_unmortgage"))
 				fl.selected = 0
-				fl.tooltip_text = "заложить = ставит залог, выкупить = снимает."
+				fl.tooltip_text = I18n.t("admin.tip_flag")
 				widgets["flag"] = fl
 				h.add_child(fl)
 			"d1", "d2":
-				var dv := _spin(0, 6, "Значение куба 0..6; 0 = «не настоящий» куб (позволяет задать сумму без дубля).")
+				var dv := _spin(0, 6, I18n.t("admin.tip_die"))
 				widgets[key] = dv
 				h.add_child(_labeled(key, dv, dv.tooltip_text))
 			"cost", "rent", "rent_set", "house_cost":
-				var mv := _spin(0, 1000000, "Новое значение поля клетки (пустые поля не меняются).")
+				var mv := _spin(0, 1000000, I18n.t("admin.tip_field"))
 				mv.value = 0
 				widgets[key] = mv
 				h.add_child(_labeled(key, mv, mv.tooltip_text))
 			"deck":
 				var dk := OptionButton.new()
+				# item VALUES are engine `kind` identifiers — must stay ASCII
 				dk.add_item("community")
 				dk.add_item("chance")
 				dk.selected = 0
-				dk.tooltip_text = "Какая колода: community (общество) или chance (шанс)."
+				dk.tooltip_text = I18n.t("admin.tip_deck")
 				widgets["deck"] = dk
 				h.add_child(dk)
 			"card_name":
 				var cn := LineEdit.new()
-				cn.placeholder_text = "имя карты"
+				cn.placeholder_text = I18n.t("admin.card_name_ph")
 				cn.custom_minimum_size.x = 120
-				cn.tooltip_text = "Точное имя карты. Пусто = верхняя карта колоды (для удаления)."
+				cn.tooltip_text = I18n.t("admin.tip_card_name")
 				widgets["card_name"] = cn
 				h.add_child(cn)
 			"effect":
@@ -352,26 +361,26 @@ func _build_edit_row(def: Dictionary) -> Control:
 				for e in ["collect", "pay", "advance", "move_to", "go_to_jail", "jail_card", "collect_from_all", "pay_each_player"]:
 					ef.add_item(e)
 				ef.selected = 0
-				ef.tooltip_text = "Эффект карты (какие движковые эффекты существуют)."
+				ef.tooltip_text = I18n.t("admin.tip_effect")
 				widgets["effect"] = ef
 				h.add_child(ef)
 			"value":
-				var vv := _spin(-1000, 1000000, "Числовое значение эффекта: сумма денег или смещение/клетка для advance/move_to.")
+				var vv := _spin(-1000, 1000000, I18n.t("admin.tip_value"))
 				vv.value = 50
 				widgets["value"] = vv
-				h.add_child(_labeled("значение", vv, vv.tooltip_text))
+				h.add_child(_labeled(I18n.t("admin.lbl_value"), vv, vv.tooltip_text))
 			"order":
 				var od := LineEdit.new()
-				od.placeholder_text = "напр. 1,0,2,3"
+				od.placeholder_text = I18n.t("admin.order_ph")
 				od.custom_minimum_size.x = 120
-				od.tooltip_text = "Новый порядок хода: ВСЕ pid через запятую, каждый ровно один раз."
+				od.tooltip_text = I18n.t("admin.tip_order")
 				widgets["order"] = od
 				h.add_child(od)
 			"seed":
-				var sd := _spin(1, 999999999, "Новый сид RNG для переигрывания хода (1..999999).")
+				var sd := _spin(1, 999999999, I18n.t("admin.tip_seed"))
 				sd.value = 1
 				widgets["seed"] = sd
-				h.add_child(_labeled("сид", sd, sd.tooltip_text))
+				h.add_child(_labeled(I18n.t("admin.lbl_seed"), sd, sd.tooltip_text))
 
 	var result := UiTheme.label("", 12, UiTheme.COL.text_dim)
 	result.custom_minimum_size.x = 150
@@ -380,7 +389,7 @@ func _build_edit_row(def: Dictionary) -> Control:
 	widgets["result"] = result
 	h.add_child(result)
 
-	var apply := UiTheme.button("Применить", str(def["tip"]))
+	var apply := UiTheme.button(I18n.t("admin.apply_btn"), _op_tip(def))
 	apply.custom_minimum_size.y = 24
 	apply.connect("pressed", Callable(self, "_on_edit_apply").bind(op))
 	widgets["apply"] = apply
@@ -406,18 +415,18 @@ func _gate_reset_away(pid: int) -> Dictionary:
 	return _controller.reset_seat_away(pid)
 
 func _quick_force_roll() -> void:
-	_run_op("force_roll", {}, "Быстрые/форс-ролл")
+	_run_op("force_roll", {}, I18n.t("admin.quick_tag_roll"))
 
 func _quick_force_pass() -> void:
-	_run_op("force_pass", {}, "Быстрые/форс-пас")
+	_run_op("force_pass", {}, I18n.t("admin.quick_tag_pass"))
 
 func _quick_rollback() -> void:
-	_run_op("rollback_decision", {}, "Быстрые/откат")
+	_run_op("rollback_decision", {}, I18n.t("admin.quick_tag_rollback"))
 
 func _quick_reset_away() -> void:
 	var pid := int(_away_pid.value)
 	var res := _gate_reset_away(pid)
-	_log_admin("сброс away pid=%d" % pid, res)
+	_log_admin(I18n.t("admin.log_reset_away", [pid]), res)
 	_refresh_all()
 
 func _on_edit_apply(op: String) -> void:
@@ -427,14 +436,14 @@ func _on_edit_apply(op: String) -> void:
 		return
 	# destructive ops ask for confirmation first (spec §8.2)
 	if def.has("confirm") and bool(def["confirm"]):
-		var ok: bool = await _confirm_dialog("Операция «%s» переписывает состояние партии. Продолжить?" % str(def["label"]))
+		var ok: bool = await _confirm_dialog(I18n.t("admin.confirm_op", [_op_label(def)]))
 		if not ok:
-			_set_inline(op, "отменено", UiTheme.COL.text_dim)
+			_set_inline(op, I18n.t("admin.cancelled"), UiTheme.COL.text_dim)
 			return
 	var params := _params_from_widgets(op, widgets)
 	var res := _gate_call(op, params)
 	var col: Color = UiTheme.COL.success if bool(res.get("ok", false)) else UiTheme.COL.danger
-	var txt: String = "ok" if bool(res.get("ok", false)) else "ошибка: " + str(res.get("reason", "?"))
+	var txt: String = I18n.t("admin.ok") if bool(res.get("ok", false)) else I18n.t("admin.error", [str(res.get("reason", "?"))])
 	_set_inline(op, txt, col)
 	_log_admin(op, res)
 	_refresh_all()
@@ -521,41 +530,41 @@ func _run_op(op: String, params: Dictionary, tag: String) -> void:
 # ----------------------------------------------------------- state tab ----
 
 func _dump_text(d: Dictionary) -> String:
-	var lines: Array[String] = ["фаза %s · ход p%s · away-ожидание видно в списке" % [
-		str(d.get("phase", "?")), str(d.get("turn_player", "?"))]]
+	var lines: Array[String] = [I18n.t("admin.dump_header", [
+		str(d.get("phase", "?")), str(d.get("turn_player", "?"))])]
 	for p in (d.get("players", []) as Array):
-		lines.append("p%d %-10s $%-6d @%-2d дом:%-2d залог:%-2d тюрьма:%s банкрот:%s tiles:%s" % [
+		lines.append(I18n.t("admin.dump_row", [
 			int(p.get("pid", 0)), str(p.get("name", "")), int(p.get("money", 0)),
 			int(p.get("position", 0)), int(p.get("houses", 0)), int(p.get("mortgaged", 0)),
-			str(p.get("in_jail", false)), str(p.get("bankrupt", false)), str(p.get("tiles", []))])
+			str(p.get("in_jail", false)), str(p.get("bankrupt", false)), str(p.get("tiles", []))]))
 	return "\n".join(lines)
 
 func _copy_dump() -> void:
 	var d: Dictionary = _controller.dump_state() if _controller != null else {}
-	DisplayServer.clipboard_set(JSON.stringify(d, "\t"))
-	_log_admin("копия JSON-дампа", {"ok": true, "reason": "clipboard"})
+	DisplayServer.clipboard_set(JSON.stringify(d, "	"))
+	_log_admin(I18n.t("admin.log_copy"), {"ok": true, "reason": "clipboard"})
 
 func _save_snapshot() -> void:
 	if _controller == null:
 		return
 	var engine = _controller.engine
 	var ok: bool = Snapshot.save("user://admin_snapshot.json", engine)
-	_log_admin("снапшот → файл", {"ok": ok, "reason": "" if ok else "не удалось записать"})
+	_log_admin(I18n.t("admin.log_save_snap"), {"ok": ok, "reason": "" if ok else I18n.t("admin.reason_write_fail")})
 	_refresh_all()
 
 func _load_snapshot() -> void:
-	var ok: bool = await _confirm_dialog("Загрузка снапшота ПОЛНОСТЬЮ заменит текущую партию. Продолжить?")
+	var ok: bool = await _confirm_dialog(I18n.t("admin.confirm_snap"))
 	if not ok:
 		return
 	var eng = Snapshot.load("user://admin_snapshot.json")
 	if eng == null:
-		_log_admin("загрузка снапшота", {"ok": false, "reason": "файл не найден или повреждён"})
+		_log_admin(I18n.t("admin.log_export"), {"ok": false, "reason": I18n.t("admin.reason_load_fail")})
 		_refresh_all()
 		return
 	# hot-swap: hand the restored engine to the controller + notify main
 	_controller.engine = eng
 	game_rebuilt.emit(eng)
-	_log_admin("загрузка снапшота", {"ok": true, "reason": "движок заменён; сцена переустановлена"})
+	_log_admin(I18n.t("admin.log_export"), {"ok": true, "reason": I18n.t("admin.load_snap_done")})
 	_refresh_all()
 
 # ---------------------------------------------------------- events tab ----
@@ -569,12 +578,12 @@ func _export_events() -> void:
 	var entries: Array = _controller.list_events("")
 	var f := FileAccess.open("user://admin_events_export.jsonl", FileAccess.WRITE)
 	if f == null:
-		_log_admin("экспорт событий", {"ok": false, "reason": "не удалось записать файл"})
+		_log_admin(I18n.t("admin.log_export"), {"ok": false, "reason": I18n.t("admin.export_fail")})
 		return
 	for e in entries:
 		f.store_line(JSON.stringify(e))
 	f.close()
-	_log_admin("экспорт событий", {"ok": true, "reason": ProjectSettings.globalize_path("user://admin_events_export.jsonl")})
+	_log_admin(I18n.t("admin.log_export"), {"ok": true, "reason": ProjectSettings.globalize_path("user://admin_events_export.jsonl")})
 	_refresh_all()
 
 func _refresh_events() -> void:
@@ -585,7 +594,7 @@ func _refresh_events() -> void:
 		flt = _ev_filter.get_item_text(_ev_filter.selected)
 	var entries: Array = _controller.list_events(flt)
 	# rebuild the type options (once per refresh is cheap at 40 ops scale)
-	var types: Array[String] = ["все типы"]
+	var types: Array[String] = [I18n.t("admin.ev_all_types")]
 	var seen := {}
 	for e in ( _controller.list_events("") as Array):
 		var t: String = str(e.get("type", "?"))
@@ -598,7 +607,7 @@ func _refresh_events() -> void:
 		for t in types:
 			_ev_filter.add_item(t)
 		for i in _ev_filter.item_count:
-			if _ev_filter.get_item_text(i) == (keep if keep != "" else "все типы"):
+			if _ev_filter.get_item_text(i) == (keep if keep != "" else I18n.t("admin.ev_all_types")):
 				_ev_filter.select(i)
 				break
 	# feed: newest last, colored, human-readable (EventMessages wording)
@@ -651,7 +660,7 @@ func _filter_rows(query: String) -> void:
 	for r in _edit_rows:
 		var row: Control = r["row"]
 		var def := _edit_def(str(r["op"]))
-		var haystack := (str(r["op"]) + " " + str(def.get("label", "")) + " " + str(def.get("tip", ""))).to_lower()
+		var haystack := (str(r["op"]) + " " + _op_label(def) + " " + _op_tip(def)).to_lower()
 		row.visible = (q == "") or haystack.contains(q)
 
 func _refresh_all() -> void:
@@ -666,7 +675,7 @@ func _refresh_all() -> void:
 		var keep: int = ob.selected
 		ob.clear()
 		if names.is_empty():
-			ob.add_item("— нет игроков —")
+			ob.add_item(I18n.t("admin.no_players"))
 			ob.selected = 0
 		else:
 			for i in names.size():
@@ -677,7 +686,7 @@ func _refresh_all() -> void:
 	# quick tab summary
 	var qs := _tabs.get_tab_control(TAB_QUICK).get_node_or_null("QuickSummary")
 	if qs != null:
-		qs.text = "сводка: фаза %s · ход p%s" % [str(dump.get("phase", "?")), str(dump.get("turn_player", "?"))]
+		qs.text = I18n.t("admin.quick_summary", [str(dump.get("phase", "?")), str(dump.get("turn_player", "?"))])
 	_refresh_events()
 
 # -------------------------------------------------- confirmation modal ----
@@ -691,9 +700,9 @@ func _confirm_dialog(text: String) -> bool:
 	# modal confirmation via ConfirmationDialog (works in windowed runs too)
 	var dlg := ConfirmationDialog.new()
 	dlg.dialog_text = text
-	dlg.ok_button_text = "Продолжить"
-	dlg.cancel_button_text = "Отмена"
-	dlg.title = "Подтверждение"
+	dlg.ok_button_text = I18n.t("admin.confirm_yes")
+	dlg.cancel_button_text = I18n.t("admin.confirm_no")
+	dlg.title = I18n.t("admin.confirm_dlg")
 	var done := [false, false]   # [answered, accepted]
 	dlg.confirmed.connect(func() -> void:
 		done[0] = true

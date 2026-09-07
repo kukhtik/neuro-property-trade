@@ -8,12 +8,18 @@ extends CanvasLayer
 ## both stacks avoids layering headaches).
 
 const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 signal dismissed(id: int)
 
 var _toast_container: VBoxContainer
 var _banner_container: VBoxContainer
 var _next_id := 1
+var _sfx = null   # optional Sfx for a soft pop on new toasts
+
+## Provide the procedural Sfx node so new toasts play a soft pop sound.
+func set_sfx(sfx) -> void:
+	_sfx = sfx
 
 func _init() -> void:
 	# Toast stack: top-right, newest on top, auto-dismiss
@@ -61,6 +67,8 @@ func show_toast(text: String, kind: String = "info", duration: float = 4.0) -> i
 	_toast_container.add_child(item)
 	_toast_container.move_child(item, 0)  # newest on top
 	_remember_toast(text, now)
+	if _sfx != null and _sfx.has_method("play_toast_pop"):
+		_sfx.play_toast_pop()
 	return item.id
 
 ## Show a persistent banner (stays until user clicks ✕ or dismiss_all()).
@@ -120,43 +128,43 @@ func _last_toast_time() -> float:
 
 ## Convenience: show a toast/banner from an engine event entry (spectator-safe;
 ## reads only type + data, never engine internals). Uses the same wording as
-## the journal (EventMessages) so the two stay consistent.
+## the journal (EventMessages) so the two stay consistent. P5: localized.
 func show_event_toast(entry: Dictionary) -> void:
 	var t: String = entry.get("type", "")
 	var d: Dictionary = entry.get("data", {})
 	match t:
 		"purchase":
-			show_toast("%s купил «%s» за $%d" % [_who(d, "player"), _tile_name(d), int(d.get("cost", 0))], "success")
+			show_toast(I18n.t("toast.purchase", [_who(d, "player"), _tile_name(d), int(d.get("cost", 0))]), "success")
 		"pass":
-			show_toast("%s не купил «%s»" % [_who(d, "player"), _tile_name(d)], "info")
+			show_toast(I18n.t("toast.pass", [_who(d, "player"), _tile_name(d)]), "info")
 		"pay":
-			show_toast("%s заплатил $%d" % [_who(d, "from"), int(d.get("amount", 0))], "warning")
+			show_toast(I18n.t("toast.pay", [_who(d, "from"), int(d.get("amount", 0))]), "warning")
 		"rent":
-			show_toast("%s заплатил аренду" % _who(d, "from"), "warning")
+			show_toast(I18n.t("toast.rent", [_who(d, "from")]), "warning")
 		"build":
-			show_toast("%s построил на «%s»" % [_who(d, "player"), _tile_name(d)], "success")
+			show_toast(I18n.t("toast.build", [_who(d, "player"), _tile_name(d)]), "success")
 		"sell":
-			show_toast("%s продал с «%s»" % [_who(d, "player"), _tile_name(d)], "info")
+			show_toast(I18n.t("toast.sell", [_who(d, "player"), _tile_name(d)]), "info")
 		"mortgage":
-			show_toast("%s заложил «%s»" % [_who(d, "player"), _tile_name(d)], "warning")
+			show_toast(I18n.t("toast.mortgage", [_who(d, "player"), _tile_name(d)]), "warning")
 		"bankrupt":
-			show_banner("%s обанкротился!" % _who(d, "player"), "error")
+			show_banner(I18n.t("toast.bankrupt", [_who(d, "player")]), "error")
 		"jail":
-			show_toast("%s попал в тюрьму" % _who(d, "player"), "warning")
+			show_toast(I18n.t("toast.jail", [_who(d, "player")]), "warning")
 		"go_bonus":
-			show_toast("%s получает бонус GO" % _who(d, "player"), "success")
+			show_toast(I18n.t("toast.go_bonus", [_who(d, "player")]), "success")
 		"tax":
-			show_toast("%s заплатил налог" % _who(d, "from"), "warning")
+			show_toast(I18n.t("toast.tax", [_who(d, "from")]), "warning")
 		"winner":
-			show_banner("%s ПОБЕДИЛ!" % _who(d, "player"), "success", [{"text": "РЕВАНШ", "action": "rematch"}])
+			show_banner(I18n.t("toast.winner", [_who(d, "player")]), "success", [{"text": I18n.t("toast.rematch"), "action": "rematch"}])
 		"trade":
-			show_toast("Сделка завершена", "info")
+			show_toast(I18n.t("toast.trade"), "info")
 		"auction_win":
-			show_toast("%s выиграл аукцион «%s»" % [_who(d, "player"), _tile_name(d)], "success")
+			show_toast(I18n.t("toast.auction_win", [_who(d, "player"), _tile_name(d)]), "success")
 		"auction_start":
-			show_banner("Аукцион: «%s»" % _tile_name(d), "neutral")
+			show_banner(I18n.t("toast.auction_start", [_tile_name(d)]), "neutral")
 		"admin_override":
-			show_toast("Админ: %s" % _who(d, "op"), "neutral")
+			show_toast(I18n.t("toast.admin_override", [_who(d, "op")]), "neutral")
 		_:
 			pass  # unknown event types stay silent (journal still shows them)
 
@@ -167,7 +175,7 @@ func _who(d: Dictionary, key: String) -> String:
 
 func _tile_name(d: Dictionary) -> String:
 	var tile := int(d.get("tile", -1))
-	return "тайл %d" % tile if tile >= 0 else "?"
+	return I18n.t("event.tile_name", [tile]) if tile >= 0 else "?"
 
 
 class ToastItem extends PanelContainer:
@@ -267,7 +275,8 @@ class BannerItem extends PanelContainer:
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		head.add_child(lbl)
-		var close = UiTheme.button("✕", "Закрыть")
+		var close = UiTheme.button("✕", I18n.t("toast.dismiss_tip"))
+		I18n.tip_on(close, "toast.dismiss_tip")   # re-localize on locale change
 		close.custom_minimum_size = Vector2(28, 28)
 		close.connect("pressed", Callable(self, "dismiss"))
 		head.add_child(close)
@@ -277,7 +286,7 @@ class BannerItem extends PanelContainer:
 			var act_row = HBoxContainer.new()
 			act_row.add_theme_constant_override("separation", 8)
 			for a in actions:
-				var btn = UiTheme.button_accent(str(a.get("text", "?")), "Действие баннера")
+				var btn = UiTheme.button_accent(str(a.get("text", "?")), I18n.t("modal.banner_action_tip"))
 				btn.connect("pressed", Callable(self, "_on_action").bind(str(a.get("action", ""))))
 				act_row.add_child(btn)
 			act_row.add_child(Control.new())  # spacer

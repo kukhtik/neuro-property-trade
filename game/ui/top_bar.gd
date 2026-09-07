@@ -5,6 +5,7 @@ extends PanelContainer
 ## projection dict. Shape-only for future art swap.
 
 const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
 const TimerRing := preload("res://ui/timer_ring.gd")
 
 signal settings_requested
@@ -20,6 +21,18 @@ var _settings_btn: Button
 var _timer_ring: TimerRing
 var _is_host := true
 var _eye_btn: Button
+var _sfx = null   # optional Sfx for the per-second timer tick
+
+## Provide the procedural Sfx node so the timer ring can play a tick each second.
+func set_sfx(sfx) -> void:
+	_sfx = sfx
+	if _timer_ring != null:
+		_timer_ring.set_tick_callback(_timer_tick)
+
+## P5 SFX: one tick per elapsed decision-timer second (routed by TimerRing).
+func _timer_tick() -> void:
+	if _sfx != null and _sfx.has_method("play_timer_tick"):
+		_sfx.play_timer_tick()
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 0))
@@ -45,22 +58,22 @@ func _init() -> void:
 	_timer_ring = TimerRing.new()
 	h.add_child(_timer_ring)
 	
-	_settings_btn = UiTheme.button("⚙", "Открыть настройки и правила игры")
+	_settings_btn = UiTheme.button("⚙", I18n.t("top.settings_tip"))
 	_settings_btn.custom_minimum_size = Vector2(30, 24)
 	_settings_btn.connect("pressed", Callable(self, "_on_settings"))
 	h.add_child(_settings_btn)
-	_restart_btn = UiTheme.button("↻", "Пересобрать партию с новым сидом (рестарт)")
+	_restart_btn = UiTheme.button("↻", I18n.t("top.restart_tip"))
 	_restart_btn.custom_minimum_size = Vector2(30, 24)
 	_restart_btn.connect("pressed", Callable(self, "_on_restart"))
 	h.add_child(_restart_btn)
 	# P4 §7: observer button — shown only when the match has no LOCAL seat
 	# (otherwise it would "disconnect" the live human player).
-	_eye_btn = UiTheme.button("👁", "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)")
+	_eye_btn = UiTheme.button("👁", I18n.t("top.eye_tip"))
 	_eye_btn.custom_minimum_size = Vector2(30, 24)
 	_eye_btn.visible = false
 	_eye_btn.connect("pressed", Callable(self, "_on_eye"))
 	h.add_child(_eye_btn)
-	_hint = UiTheme.label("F12 — админ", 12, UiTheme.COL.text_dim)
+	_hint = UiTheme.label(I18n.t("top.admin_hint"), 12, UiTheme.COL.text_dim)
 	h.add_child(_hint)
 
 ## Host-only gate: hide the F12 hint on non-host (WebGL / spectator).
@@ -68,14 +81,25 @@ func set_host(v: bool) -> void:
 	_is_host = v
 	_hint.visible = v
 
+## P5: re-apply static localized labels after a locale change.
+func retranslate() -> void:
+	if _settings_btn != null:
+		_settings_btn.tooltip_text = I18n.t("top.settings_tip")
+	if _restart_btn != null:
+		_restart_btn.tooltip_text = I18n.t("top.restart_tip")
+	if _eye_btn != null:
+		_eye_btn.tooltip_text = I18n.t("top.eye_tip")
+	if _hint != null:
+		_hint.text = I18n.t("top.admin_hint")
+
 func set_cold(v: bool) -> void:
 	_turn.text = ""
-	_phase.text = "до старта"
+	_phase.text = I18n.t("top.cold")
 	_restart_btn.visible = false
 
 func sync_cold() -> void:
 	_turn.text = ""
-	_phase.text = "до старта"
+	_phase.text = I18n.t("top.cold")
 	_restart_btn.visible = false
 
 func _on_settings() -> void:
@@ -98,11 +122,11 @@ func sync(proj: Dictionary, players: Array) -> void:
 	var tp: int = int(proj.get("turn_player", -1))
 	if tp >= 0 and tp < players.size():
 		var s = players[tp]
-		_turn.text = "ХОД: " + str(s.name)
+		_turn.text = I18n.t("top.turn") + str(s.name)
 		_turn.add_theme_color_override("font_color", s.color)
 	else:
 		_turn.text = ""
-	_phase.text = "ФАЗА: " + str(proj.get("phase", ""))
+	_phase.text = I18n.t("top.phase") + str(proj.get("phase", ""))
 	_restart_btn.visible = true
 	
 	# P3: Update timer ring

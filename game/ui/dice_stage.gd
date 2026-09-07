@@ -17,6 +17,11 @@ var _tween: Tween
 var _dice_nodes: Array = []
 var _animations_enabled := true
 var _settle_time := 1.2
+var _sfx = null   # optional Sfx instance for dice sounds (whoosh + bounce clicks)
+
+## Set the procedural Sfx node so the tumble can play whoosh/bounce sounds.
+func set_sfx(sfx) -> void:
+	_sfx = sfx
 
 func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -44,6 +49,8 @@ func roll(d1: int, d2: int) -> void:
 
 	_animating = true
 	_build_dice()
+	if _sfx != null and _sfx.has_method("play_dice_whoosh"):
+		_sfx.play_dice_whoosh()
 	_animate_roll()
 
 func _finish_instantly() -> void:
@@ -105,8 +112,10 @@ func _animate_roll() -> void:
 		for s in steps:
 			var t := float(s + 1) / float(steps)
 
-			# Position jitter (decreases over time)
+			# Position jitter (decreases over time) + a bounce click sound
 			var jitter_range: float = 40.0 * (1.0 - t)
+			if _sfx != null and _sfx.has_method("play_dice_bounce"):
+				_tween.tween_callback(_sfx.play_dice_bounce)
 			var target_pos: Vector2 = start_pos + Vector2(
 				randf_range(-jitter_range, jitter_range),
 				randf_range(-jitter_range, jitter_range))

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://p5probe00000000000000000"]
+
+[ext_resource type="Script" path="res://tools/p5_probe.gd" id="1_p5"]
+
+[node name="P5Probe" type="Node"]
+script = ExtResource("1_p5")

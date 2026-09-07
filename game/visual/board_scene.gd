@@ -89,6 +89,7 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_dice_stage = DiceStage.new()
 	_dice_stage.name = "DiceStage"
 	_dice_stage.set_animations(_settings.animations if _settings != null else true)
+	_dice_stage.set_sfx(_sfx)
 	_dice_stage.dice_rolled.connect(_on_dice_rolled)
 	add_child(_dice_stage)
 

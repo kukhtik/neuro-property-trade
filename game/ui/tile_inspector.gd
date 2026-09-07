@@ -6,6 +6,7 @@ extends PanelContainer
 ## P3: pin button (📌) to keep open, 5s auto-hide when unpinned, selection frame.
 
 const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 var selected := -1
 var _text: Label
@@ -25,20 +26,20 @@ func _init() -> void:
 	var v := UiTheme.vbox(4)
 	m.add_child(v)
 	var head := HBoxContainer.new()
-	var lbl := UiTheme.label("КЛЕТКА", 12, UiTheme.COL.accent)
+	var lbl := UiTheme.label(I18n.t("ins.title"), 12, UiTheme.COL.accent)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(lbl)
-	_pin = UiTheme.button("📌", "Закрепить справку (не скрывать автоматически)")
+	_pin = UiTheme.button("📌", I18n.t("ins.pin_tip"))
 	_pin.custom_minimum_size = Vector2(24, 20)
 	_pin.toggle_mode = true
 	_pin.connect("toggled", Callable(self, "_on_pin_toggled"))
 	head.add_child(_pin)
-	_close = UiTheme.button("✕", "Закрыть справку по клетке")
+	_close = UiTheme.button("✕", I18n.t("ins.close_tip"))
 	_close.custom_minimum_size = Vector2(24, 20)
 	_close.connect("pressed", Callable(self, "clear"))
 	head.add_child(_close)
 	v.add_child(head)
-	_text = UiTheme.label("Кликните по тайлу доски", 13, UiTheme.COL.text_dim)
+	_text = UiTheme.label(I18n.t("ins.placeholder"), 13, UiTheme.COL.text_dim)
 	v.add_child(_text)
 	# A3: hidden until a tile is selected
 	visible = false
@@ -76,7 +77,7 @@ func clear() -> void:
 	_pin.add_theme_color_override("font_color", UiTheme.COL.text)
 	_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 6))
 	visible = false             # hide the whole panel (A3)
-	_text.text = "Кликните по тайлу доски"
+	_text.text = I18n.t("ins.placeholder")
 	_text.add_theme_color_override("font_color", UiTheme.COL.text_dim)
 
 func sync(proj: Dictionary, seats: Array) -> void:
@@ -92,19 +93,18 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		var mortgaged: bool = bool(t.get("mortgaged", false))
 		var owner: int = int(t.get("owner", -1))
 		var base_rent: int = _base_rent(t)
-		var owner_txt := "— свободен"
+		var owner_txt := I18n.t("ins.free")
 		var owner_col: Color = UiTheme.COL.success
 		if owner >= 0:
 			for s in seats:
 				if int(s.pid) == owner:
-					owner_txt = "владелец: " + str(s.name)
+					owner_txt = I18n.t("ins.owner") + str(s.name)
 					owner_col = s.color
 		var house_txt := ""
 		if typ == "property":
-			house_txt = " · дом: %s" % ("HOTEL" if houses >= 5 else str(houses))
-		var mort := " · ЗАЛОЖЕН" if mortgaged else ""
-		_text.text = "«%s»  %s%s\nцена $%d · аренда $%d · %s%s" % [
-			nm, typ, mort, cost, base_rent, owner_txt, house_txt]
+			house_txt = I18n.t("ins.house", [I18n.t("ins.hotel") if houses >= 5 else str(houses)])
+		var mort := I18n.t("ins.mortgaged") if mortgaged else ""
+		_text.text = I18n.t("ins.body", [nm, typ, mort, cost, base_rent, owner_txt, house_txt])
 		_text.add_theme_color_override("font_color", owner_col if owner >= 0 else UiTheme.COL.text)
 		return
 

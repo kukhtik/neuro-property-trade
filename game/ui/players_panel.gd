@@ -9,6 +9,7 @@ extends PanelContainer
 
 const UiTheme := preload("res://ui/theme.gd")
 const PI := preload("res://core/player_identity.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 ## P4 observer: emitted when a player row is clicked (spectator follow).
 signal player_clicked(pid: int)
@@ -25,7 +26,7 @@ func _init() -> void:
 	_v = UiTheme.vbox(8)
 	outer.add_child(_v)
 
-	var head := UiTheme.label("ИГРОКИ", 14, UiTheme.COL.accent)
+	var head := UiTheme.label(I18n.t("ui.players"), 14, UiTheme.COL.accent)
 	_v.add_child(head)
 	_list = UiTheme.vbox(6)
 	_v.add_child(_list)
@@ -38,7 +39,7 @@ func sync_cold() -> void:
 	for c in _list.get_children():
 		_list.remove_child(c); c.queue_free()
 	_rows.clear()
-	var ph := UiTheme.label("Партия ещё не начата", 13, UiTheme.COL.text_dim)
+	var ph := UiTheme.label(I18n.t("plr.cold"), 13, UiTheme.COL.text_dim)
 	_list.add_child(ph)
 
 func sync(proj: Dictionary, seats: Array) -> void:
@@ -126,7 +127,7 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 
 	# row 2: position by tile name + tile count
 	var pos_name: String = str(tile_names.get(int(p.get("position", 0)), "?"))
-	var info := UiTheme.label("@ %s · %d тайл." % [pos_name, int(p.get("tiles", []).size())],
+	var info := UiTheme.label(I18n.t("plr.pos_tiles", [pos_name, int(p.get("tiles", []).size())]),
 		12, UiTheme.COL.text_dim)
 	v.add_child(info)
 
@@ -142,21 +143,21 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	if bool(p.get("in_jail", false)):
 		badges.add_child(UiTheme.label("⚖ %d" % int(p.get("jail_turns", 0)), 12, UiTheme.COL.jail))
 	if away:
-		badges.add_child(UiTheme.label("авто-пас", 12, UiTheme.COL.text_dim))
+		badges.add_child(UiTheme.label(I18n.t("plr.auto_pass"), 12, UiTheme.COL.text_dim))
 	if bankrupt:
-		badges.add_child(UiTheme.label("БАНКРОТ", 12, UiTheme.COL.danger))
+		badges.add_child(UiTheme.label(I18n.t("plr.bankrupt"), 12, UiTheme.COL.danger))
 	if badges.get_child_count() > 0:
 		v.add_child(badges)
 
 	# active marker ▶
 	if active:
-		var act := UiTheme.label("▶ ход", 12, UiTheme.COL.accent)
+		var act := UiTheme.label(I18n.t("plr.active"), 12, UiTheme.COL.accent)
 		v.add_child(act)
 
 	# tooltip: full summary
-	var tooltip := "Игрок: %s\nДрайвер: %s\nДеньги: $%d\nПозиция: %s\nТайлы: %d\nДома: %d · Залоги: %d" % [
+	var tooltip := I18n.t("plr.tooltip", [
 		name, _driver_label(seat), int(p.get("money", 0)), pos_name,
-		int(p.get("tiles", []).size()), h, mg]
+		int(p.get("tiles", []).size()), h, mg])
 	out.tooltip_text = tooltip
 	return out
 

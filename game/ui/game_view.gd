@@ -22,6 +22,7 @@ const EventMessages := preload("res://visual/event_messages.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const ToastStack := preload("res://ui/toast.gd")
 const JournalPanel := preload("res://ui/journal_panel.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 const _TOP_H := 34
 const _ACTION_H := 64
@@ -102,6 +103,8 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 			break
 	# board fills the center region (between left panel, top bar, journal, action bar)
 	_board_scene.setup(engine, settings, seats)
+	if _toast_stack != null and _board_scene != null and _board_scene._sfx != null:
+		_toast_stack.set_sfx(_board_scene._sfx)
 	_layout()
 	var bs = _board_scene
 	if bs.has_node("EventOverlay"):
@@ -127,6 +130,25 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_actions.set_cold(false)
 	_refresh_journal()
 	_sync_all()
+	# P5: re-sync the persistent HUD when the interface language changes (the
+	# panels re-run their I18n.t() calls on the next sync).
+	if _locale_hooked and I18n.inst().locale_changed.is_connected(_on_locale_changed):
+		I18n.inst().locale_changed.disconnect(_on_locale_changed)
+	I18n.inst().locale_changed.connect(_on_locale_changed)
+	_locale_hooked = true
+
+var _locale_hooked := false
+
+## P5: interface language changed → retranslate static HUD labels + resync.
+func _on_locale_changed(_locale: String) -> void:
+	I18n.relabel(self)
+	if _top != null and _top.has_method("retranslate"):
+		_top.retranslate()
+	if _journal != null and _journal.has_method("retranslate"):
+		_journal.retranslate()
+	if engine != null:
+		_sync_all()
+		_refresh_journal()
 
 ## Called by main.gd after the engine is built and setup() ran.
 func on_game_started() -> void:
@@ -160,16 +182,29 @@ func _count_turns() -> int:
 	return engine.log.entries_of_type("roll").size()
 
 ## Proportional panel sizes derived from the current viewport, so the layout
-## adapts to any resolution (A1). Left players panel and right journal are
-## fractions of the width; the board fills the remaining center region.
+## adapts to any resolution (A1 + P5 §10 breakpoints). Left players panel and
+## right journal are width-based per the §3.4 breakpoint table; the board fills
+## the remaining center region.
 func _panel_w() -> int:
-	return maxi(_MIN_PANEL_W, int(size.x * 0.12))
+	return _bpl().left
 
 func _journal_w() -> int:
 	# observer layout (spec §7): the journal widens to carry 100+ lines
 	if _observer:
 		return _OBSERVER_JOURNAL_W
-	return maxi(_MIN_JOURNAL_W, int(size.x * 0.14))
+	return _bpl().right
+
+## P5 §10 / §3.4 breakpoint table (LEFT, RIGHT) from the current width.
+func _bpl() -> Dictionary:
+	if size.x >= 1600.0:
+		return {"left": 260, "right": 320}
+	if size.x >= 1280.0:
+		return {"left": 240, "right": 300}
+	if size.x >= 1024.0:
+		# dense mode: left becomes a 56px rail, right becomes a drawer — see
+		# _layout() which collapses the panels so the board dominates.
+		return {"left": 56, "right": 60}
+	return {"left": 56, "right": 60}
 
 func _build_layout() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -360,9 +395,9 @@ func _refresh_journal() -> void:
 
 func _on_journal_exported(path: String) -> void:
 	if path == "":
-		_modals.show_message("Экспорт журнала", "Не удалось записать файл.")
+		_modals.show_message(I18n.t("gv.journal_export_fail_title"), I18n.t("gv.journal_export_fail_body"))
 	else:
-		_modals.show_message("Журнал экспортирован", "Файл: " + path)
+		_modals.show_message(I18n.t("gv.journal_export_ok_title"), I18n.t("gv.journal_export_ok_body", [path]))
 
 ## P4 spec §7: observer layout — the match has no LOCAL seat. The action panel
 ## collapses to a thin status bar (0 buttons), the journal widens, and the
@@ -391,43 +426,12 @@ func _on_tile_hovered(idx: int) -> void:
 		return
 	_inspector.select(idx)
 
-## P3: Handle events from seat manager for toast/banner display
+## P3: Handle events from seat manager for toast/banner display. P5: wording
+## is centralized + localized in ToastStack.show_event_toast (same I18n dict
+## as the journal via EventMessages), so journal / overlay / toasts agree.
 func _on_events_emitted(events: Array) -> void:
 	for ev in events:
-		var type: String = ev.get("type", "")
-		var data: Dictionary = ev.get("data", {})
-		var msg: String = ""
-		
-		# Generate user-friendly messages for common event types
-		match type:
-			"purchase":
-				msg = "%s купил %s за %s" % [data.get("player", "Игрок"), data.get("tile", "клетку"), data.get("price", "0")]
-			"rent":
-				msg = "%s платит аренду %s: %s" % [data.get("player", "Игрок"), data.get("owner", "владельцу"), data.get("amount", "0")]
-			"pass_go":
-				msg = "%s проходит Старт и получает %s" % [data.get("player", "Игрок"), data.get("amount", "200")]
-			"jail":
-				msg = "%s попал в тюрьму" % [data.get("player", "Игрок")]
-			"mortgage":
-				msg = "%s заложил %s за %s" % [data.get("player", "Игрок"), data.get("tile", "клетку"), data.get("amount", "0")]
-			"unmortgage":
-				msg = "%s выкупил %s за %s" % [data.get("player", "Игрок"), data.get("tile", "клетку"), data.get("amount", "0")]
-			"build_house":
-				msg = "%s построил дом на %s" % [data.get("player", "Игрок"), data.get("tile", "клетке")]
-			"trade":
-				msg = "%s обменялся с %s" % [data.get("player", "Игрок"), data.get("other", "игроком")]
-			"bankrupt":
-				msg = "%s обанкротился" % [data.get("player", "Игрок")]
-			"turn_start":
-				msg = "Ход: %s" % [data.get("player", "Игрок")]
-			"roll":
-				msg = "%s бросает: %s + %s = %s" % [data.get("player", "Игрок"), data.get("d1", 1), data.get("d2", 1), data.get("sum", 2)]
-			"_":
-				if data.has("message"):
-					msg = str(data["message"])
-		
-		if msg != "":
-			_toast_stack.show_toast(msg, type)
+		_toast_stack.show_event_toast(ev)
 
 ## P2: mark the selected tile on the board with a dashed accent frame
 func _mark_selected_tile(idx: int) -> void:
@@ -459,7 +463,7 @@ func _on_action_requested(act: String, _params: Dictionary) -> void:
 				var sp := ProjectionScript.new().for_spectator(engine)
 				_modals.open_build(_inspector.selected, sp, "")
 			else:
-				_modals.show_message("Выберите тайл", "Кликните по тайлу на доске, который хотите изменить.")
+				_modals.show_message(I18n.t("gv.select_tile"), I18n.t("gv.select_tile_body"))
 		"propose_trade":
 			var sp2 := ProjectionScript.new().for_spectator(engine)
 			_modals.open_trade(sp2, seats, _human_pid)
@@ -513,4 +517,4 @@ func _submit(pid: int, action: String, params: Dictionary) -> void:
 		return
 	var res: Dictionary = manager.push_intent(pid, action, params)
 	if not res.get("ok", false):
-		_modals.show_message("Действие отклонено", "Причина: " + str(res.get("reason", "?")))
+		_modals.show_message(I18n.t("gv.rejected_title"), I18n.t("gv.rejected_body", [str(res.get("reason", "?"))]))

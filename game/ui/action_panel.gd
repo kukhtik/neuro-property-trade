@@ -10,6 +10,7 @@ signal action_requested(action: String, params: Dictionary)
 signal start_requested
 
 const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 var _btn_row: HBoxContainer
 var _hint: Label
@@ -54,9 +55,9 @@ func set_cold(v: bool) -> void:
 		_btn_row.remove_child(c); c.queue_free()
 	_last_legal = []
 	if v:
-		_status.text = "Партия ещё не начата"
+		_status.text = I18n.t("act.cold_status")
 		_hint.text = ""
-		var start := UiTheme.button_accent("▶  НАЧАТЬ ПАРТИЮ", "Открыть настройки и начать партию")
+		var start := UiTheme.button_accent(I18n.t("act.start_btn"), I18n.t("act.start_tip"))
 		start.custom_minimum_size.y = 40
 		start.connect("pressed", Callable(self, "_on_start"))
 		_btn_row.add_child(start)
@@ -102,25 +103,25 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 		var elapsed := float(proj.get("timer_elapsed", 0.0))
 		var timer_txt := ""
 		if window > 0.0:
-			timer_txt = " · авто-через 0:%02d" % maxi(0, int(window - elapsed))
+			timer_txt = I18n.t("act.observer_timer", [maxi(0, int(window - elapsed))])
 		var drv: String = str(seat.input_driver if seat != null else "")
 		var drv_txt := ""
 		if drv == "SDK":
-			drv_txt = " · ожидание Neuro…"
-		_status.text = "ход: %s · решение за %s%s%s" % [
-			str(proj.get("phase", "")), holder_txt, drv_txt, timer_txt]
+			drv_txt = I18n.t("act.observer_sdk")
+		_status.text = I18n.t("act.observer_status", [
+			str(proj.get("phase", "")), holder_txt, drv_txt, timer_txt])
 		_clear_buttons()
 		return
 
 	if not human:
-		_status.text = "%s: управляется ИИ — ход выполняется автоматически" % nm
+		_status.text = I18n.t("act.ai_status", [nm])
 		_hint.text = ""
 		# clear buttons when control passes to an AI seat
 		_clear_buttons()
 		return
 
 	var drv: String = str(seat.input_driver if seat != null else "AI")
-	_status.text = "%s  ·  ваш ход — выберите действие" % nm
+	_status.text = I18n.t("act.human_status", [nm])
 
 	# only rebuild buttons when the legal set actually changed (avoids hover lag)
 	if _legal_changed(legal):
@@ -152,32 +153,32 @@ func _legal_changed(legal: Array) -> bool:
 func _make_button(act: String, proj: Dictionary, pid: int) -> Button:
 	match act:
 		"roll":
-			return UiTheme.button_accent("БРОСИТЬ КУБ", "Бросить кубики и передвинуть фишку на выпавшее число клеток")
+			return UiTheme.button_accent(I18n.t("act.roll"), I18n.t("act.roll_tip"))
 		"buy":
-			return UiTheme.button_accent("КУПИТЬ", "Купить эту клетку за указанную цену")
+			return UiTheme.button_accent(I18n.t("act.buy"), I18n.t("act.buy_tip"))
 		"pass":
-			var label := "ПАСС"
+			var label := I18n.t("act.pass")
 			if str(proj.get("pending", {}).get("type", "") == "purchase"):
-				label = "НЕ покупать"
-			return UiTheme.button(label, "Не покупать клетку — она уйдёт на аукцион")
+				label = I18n.t("act.no_buy")
+			return UiTheme.button(label, I18n.t("act.pass_tip"))
 		"bid":
-			return UiTheme.button_accent("СТАВКА", "Сделать ставку на аукционе за эту клетку")
+			return UiTheme.button_accent(I18n.t("act.bid"), I18n.t("act.bid_tip"))
 		"pay":
-			return UiTheme.button("ОПЛАТИТЬ $%d" % int(proj.get("pending", {}).get("fine", 50)), "Заплатить штраф и выйти из тюрьмы")
+			return UiTheme.button(I18n.t("act.pay", [int(proj.get("pending", {}).get("fine", 50))]), I18n.t("act.pay_tip"))
 		"use_card":
-			return UiTheme.button("КАРТА выхода", "Использовать карту «Выход из тюрьмы»")
+			return UiTheme.button(I18n.t("act.use_card"), I18n.t("act.use_card_tip"))
 		"build_house":
-			return UiTheme.button("СТРОИТЬ", "Построить дом на выбранной клетке (нужна вся группа)")
+			return UiTheme.button(I18n.t("act.build"), I18n.t("act.build_tip"))
 		"sell_house":
-			return UiTheme.button("ПРОДАТЬ дом", "Продать дом с выбранной клетки")
+			return UiTheme.button(I18n.t("act.sell"), I18n.t("act.sell_tip"))
 		"mortgage_property":
-			return UiTheme.button("ЗАЛОЖИТЬ", "Заложить клетку и получить 50% её стоимости")
+			return UiTheme.button(I18n.t("act.mortgage"), I18n.t("act.mortgage_tip"))
 		"unmortgage_property":
-			return UiTheme.button("ВЫКУПИТЬ", "Выкупить заложенную клетку (110% стоимости)")
+			return UiTheme.button(I18n.t("act.unmortgage"), I18n.t("act.unmortgage_tip"))
 		"propose_trade":
-			return UiTheme.button("ТОРГ", "Предложить сделку другому игроку (тайлы и/или деньги)")
+			return UiTheme.button(I18n.t("act.trade"), I18n.t("act.trade_tip"))
 		"respond_trade":
-			return UiTheme.button_accent("ОТВЕТИТЬ на сделку", "Принять или отклонить входящее предложение сделки")
+			return UiTheme.button_accent(I18n.t("act.respond_trade"), I18n.t("act.respond_trade_tip"))
 	return null
 
 func _context_hint(proj: Dictionary) -> String:
@@ -186,12 +187,12 @@ func _context_hint(proj: Dictionary) -> String:
 	if ph == "PURCHASE_WAIT" and str(pending.get("type", "")) == "purchase":
 		var tile: int = int(pending.get("tile", -1))
 		var t: Dictionary = _tile_info(proj, tile)
-		return "Можно купить «%s» за $%d или не покупать" % [t.get("name", "тайл %d" % tile), int(t.get("cost", 0))]
+		return I18n.t("act.hint_purchase", [t.get("name", I18n.t("event.tile_name", [tile])), int(t.get("cost", 0))])
 	if ph == "AUCTION":
 		var high: int = int(pending.get("high", -1))
-		return "Аукцион — текущая ставка $%d" % high if high > 0 else "Аукцион — сделайте первую ставку"
+		return I18n.t("act.hint_auction", [high]) if high > 0 else I18n.t("act.hint_auction_first")
 	if pending.get("type", "") == "trade":
-		return "Входящее предложение — принять или отклонить"
+		return I18n.t("act.hint_trade")
 	return ""
 
 func _tile_info(proj: Dictionary, idx: int) -> Dictionary:

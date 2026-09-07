@@ -5,6 +5,7 @@ extends Control
 ## closes it. Shape-only widgets (theme).
 
 const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 signal build_requested(tile: int, op: String)
 signal trade_proposed(to: int, give_tiles: Array, give_cash: int, want_tiles: Array, want_cash: int)
@@ -34,23 +35,23 @@ func open_build(tile: int, proj: Dictionary, seat_name: String) -> void:
 	_show()
 	_content = UiTheme.vbox(10)
 	var body := VBoxContainer.new()
-	body.add_child(_heading("СТРОЙКА / ЗАЛОГ"))
-	body.add_child(UiTheme.label("Тайл: «%s» (%d)" % [t.get("name", tile), tile], 14))
-	body.add_child(UiTheme.label("Дом: %s  ·  стоимость дома $%s" % [
-		str(t.get("houses", 0)), str(t.get("house_cost", 0))], 13, UiTheme.COL.text_dim))
+	body.add_child(_heading(I18n.t("modal.build_title")))
+	body.add_child(UiTheme.label(I18n.t("modal.tile_header", [t.get("name", tile), tile]), 14))
+	body.add_child(UiTheme.label(I18n.t("modal.house_cost", [
+		str(t.get("houses", 0)), str(t.get("house_cost", 0))]), 13, UiTheme.COL.text_dim))
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	var btn_build := UiTheme.button_accent("СТРОИТЬ", "Построить дом на этой клетке (нужна вся группа)")
+	var btn_build := UiTheme.button_accent(I18n.t("act.build"), I18n.t("act.build_tip"))
 	btn_build.connect("pressed", Callable(self, "_emit_build").bind(tile, "build_house"))
 	row.add_child(btn_build)
-	var btn_sell := UiTheme.button("ПРОДАТЬ дом", "Продать дом с этой клетки")
+	var btn_sell := UiTheme.button(I18n.t("act.sell"), I18n.t("act.sell_tip"))
 	btn_sell.connect("pressed", Callable(self, "_emit_build").bind(tile, "sell_house"))
 	row.add_child(btn_sell)
-	var btn_mort := UiTheme.button("ЗАЛОЖИТЬ", "Заложить клетку и получить 50% её стоимости")
+	var btn_mort := UiTheme.button(I18n.t("act.mortgage"), I18n.t("act.mortgage_tip"))
 	btn_mort.connect("pressed", Callable(self, "_emit_build").bind(tile, "mortgage_property"))
 	row.add_child(btn_mort)
-	var btn_unmort := UiTheme.button("ВЫКУПИТЬ", "Выкупить заложенную клетку (110% стоимости)")
+	var btn_unmort := UiTheme.button(I18n.t("act.unmortgage"), I18n.t("act.unmortgage_tip"))
 	btn_unmort.connect("pressed", Callable(self, "_emit_build").bind(tile, "unmortgage_property"))
 	row.add_child(btn_unmort)
 	body.add_child(row)
@@ -60,45 +61,45 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	# proposer (the human) builds an offer to one other player.
 	_show()
 	var recipient: OptionButton = OptionButton.new()
-	recipient.tooltip_text = "Кому вы предлагаете сделку."
+	recipient.tooltip_text = I18n.t("modal.recipient_tip")
 	recipient.custom_minimum_size.x = 140
 	for s in seats:
 		if int(s.pid) != proposer_pid:
 			recipient.add_item(str(s.name), int(s.pid))
 
 	var body := UiTheme.vbox(8)
-	body.add_child(_heading("ТОРГ"))
+	body.add_child(_heading(I18n.t("modal.trade_title")))
 
 	var to_row := HBoxContainer.new()
 	to_row.add_theme_constant_override("separation", 8)
-	to_row.add_child(UiTheme.label("Получатель:"))
+	to_row.add_child(UiTheme.label(I18n.t("modal.recipient")))
 	to_row.add_child(recipient)
 	body.add_child(to_row)
 
-	body.add_child(UiTheme.label("Даёте (ваши тайлы выбирайте кликом по доске):", 12, UiTheme.COL.text_dim))
-	var give_list := UiTheme.label("— выберите:  [ СТРОЙКА/ЗАЛОГ выбирает тайл ]", 12)
+	body.add_child(UiTheme.label(I18n.t("modal.give_hint"), 12, UiTheme.COL.text_dim))
+	var give_list := UiTheme.label(I18n.t("modal.give_placeholder"), 12)
 	body.add_child(give_list)
 
-	body.add_child(UiTheme.label("Просите (его тайлы):", 12, UiTheme.COL.text_dim))
-	var want_list := UiTheme.label("— укажите тайлы / деньги ниже", 12)
+	body.add_child(UiTheme.label(I18n.t("modal.want_hint"), 12, UiTheme.COL.text_dim))
+	var want_list := UiTheme.label(I18n.t("modal.want_placeholder"), 12)
 	body.add_child(want_list)
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	body.add_child(row)
-	row.add_child(UiTheme.label("Даю $"))
+	row.add_child(UiTheme.label(I18n.t("modal.give_cash")))
 	var give_cash := SpinBox.new()
 	give_cash.min_value = 0; give_cash.max_value = 99999; give_cash.value = 0
-	give_cash.tooltip_text = "Сколько денег вы отдаёте в сделке."
+	give_cash.tooltip_text = I18n.t("modal.give_cash_tip")
 	row.add_child(give_cash)
 
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 8)
 	body.add_child(row2)
-	row2.add_child(UiTheme.label("Хочу $"))
+	row2.add_child(UiTheme.label(I18n.t("modal.want_cash")))
 	var want_cash := SpinBox.new()
 	want_cash.min_value = 0; want_cash.max_value = 99999; want_cash.value = 0
-	want_cash.tooltip_text = "Сколько денег вы просите в сделке."
+	want_cash.tooltip_text = I18n.t("modal.want_cash_tip")
 	row2.add_child(want_cash)
 
 	# NOTE: MVP trade flow selects give_tiles from clicked tiles; want_tiles here
@@ -112,11 +113,11 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 
 	var btn_row := HBoxContainer.new()
 	btn_row.add_theme_constant_override("separation", 10)
-	var ok := UiTheme.button_accent("ПРЕДЛОЖИТЬ", "Отправить это предложение выбранному игроку")
+	var ok := UiTheme.button_accent(I18n.t("modal.offer"), I18n.t("modal.offer_tip"))
 	ok.connect("pressed", Callable(self, "_emit_trade").bind(
 		recipient, give_cash, want_cash, give_tiles, want_tiles))
 	btn_row.add_child(ok)
-	var cancel := UiTheme.button("Отмена", "Закрыть окно без отправки")
+	var cancel := UiTheme.button(I18n.t("ui.cancel"), I18n.t("modal.cancel_tip"))
 	cancel.connect("pressed", Callable(self, "close"))
 	btn_row.add_child(cancel)
 	body.add_child(btn_row)
@@ -135,16 +136,16 @@ func open_trade_response(proj: Dictionary, seats: Array) -> void:
 	var pn := _name_of(seats, proposer)
 	var rn := _name_of(seats, recipient)
 	var body := UiTheme.vbox(8)
-	body.add_child(_heading("ВХОДЯЩАЯ СДЕЛКА"))
-	body.add_child(UiTheme.label("%s предлагает %s:" % [pn, rn], 14))
-	body.add_child(UiTheme.label("Даёт: $%d + %d тайл(а)   ·   Просит: $%d + %d тайл(а)" % [
-		gcash, give.size(), wcash, want.size()], 13, UiTheme.COL.text_dim))
+	body.add_child(_heading(I18n.t("modal.trade_response")))
+	body.add_child(UiTheme.label(I18n.t("modal.trade_offers", [pn, rn]), 14))
+	body.add_child(UiTheme.label(I18n.t("modal.trade_terms", [
+		gcash, give.size(), wcash, want.size()]), 13, UiTheme.COL.text_dim))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	var yes := UiTheme.button_accent("ПРИНЯТЬ", "Принять предложение — обмен выполнится")
+	var yes := UiTheme.button_accent(I18n.t("modal.accept"), I18n.t("modal.accept_tip"))
 	yes.connect("pressed", Callable(self, "_emit_trade_response").bind(true))
 	row.add_child(yes)
-	var no := UiTheme.button("ОТКЛОНИТЬ", "Отклонить предложение — сделка не состоится")
+	var no := UiTheme.button(I18n.t("modal.decline"), I18n.t("modal.decline_tip"))
 	no.connect("pressed", Callable(self, "_emit_trade_response").bind(false))
 	row.add_child(no)
 	body.add_child(row)
@@ -157,22 +158,22 @@ func open_auction(proj: Dictionary, seats: Array) -> void:
 	var high: int = int(pending.get("high", -1))
 	var t := _find_tile(proj, tile)
 	var body := UiTheme.vbox(8)
-	body.add_child(_heading("АУКЦИОН"))
-	body.add_child(UiTheme.label("Лот: «%s»" % t.get("name", tile), 14))
-	body.add_child(UiTheme.label("Текущая ставка: $%d" % high if high > 0 else "Ставок ещё нет", 13, UiTheme.COL.text_dim))
+	body.add_child(_heading(I18n.t("modal.auction_title")))
+	body.add_child(UiTheme.label(I18n.t("modal.lot_name", [t.get("name", tile)]), 14))
+	body.add_child(UiTheme.label(I18n.t("modal.auction_high", [high]) if high > 0 else I18n.t("modal.auction_none"), 13, UiTheme.COL.text_dim))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
-	row.add_child(UiTheme.label("Ставка $"))
+	row.add_child(UiTheme.label(I18n.t("modal.bid_lbl")))
 	var amt := SpinBox.new()
 	amt.min_value = high + 1
 	amt.max_value = 99999
 	amt.value = high + 1
-	amt.tooltip_text = "Ваша ставка. Должна быть выше текущей."
+	amt.tooltip_text = I18n.t("modal.bid_tip")
 	row.add_child(amt)
-	var bid := UiTheme.button_accent("СТАВКА", "Сделать ставку на эту клетку")
+	var bid := UiTheme.button_accent(I18n.t("modal.bid_btn"), I18n.t("modal.bid_btn_tip"))
 	bid.connect("pressed", Callable(self, "_emit_bid").bind(amt))
 	row.add_child(bid)
-	var apos := UiTheme.button("ПАСС", "Выйти из аукциона — больше не участвуете в этом лоте")
+	var apos := UiTheme.button(I18n.t("modal.pass_btn"), I18n.t("modal.pass_tip"))
 	apos.connect("pressed", Callable(self, "_emit_auction_pass"))
 	row.add_child(apos)
 	body.add_child(row)
@@ -183,7 +184,7 @@ func show_message(title: String, msg: String) -> void:
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(title))
 	body.add_child(UiTheme.label(msg, 14))
-	var ok := UiTheme.button("OK", "Закрыть это сообщение")
+	var ok := UiTheme.button("OK", I18n.t("modal.msg_ok_tip"))
 	ok.connect("pressed", Callable(self, "close"))
 	body.add_child(ok)
 	_panelize(body)
@@ -192,15 +193,15 @@ func show_message(title: String, msg: String) -> void:
 func show_game_over(winner_name: String, turns: int, capital: int, player_count: int) -> void:
 	_show()
 	var body := UiTheme.vbox(10)
-	body.add_child(_heading("ПАРТИЯ ОКОНЧЕНА"))
-	body.add_child(UiTheme.label("Победитель: %s" % winner_name, 18, UiTheme.COL.gold))
-	body.add_child(UiTheme.label("Ходов: %d   ·   Игроков: %d   ·   Капитал: $%d" % [turns, player_count, capital], 14, UiTheme.COL.text_dim))
+	body.add_child(_heading(I18n.t("modal.game_over")))
+	body.add_child(UiTheme.label(I18n.t("modal.winner", [winner_name]), 18, UiTheme.COL.gold))
+	body.add_child(UiTheme.label(I18n.t("modal.stats", [turns, player_count, capital]), 14, UiTheme.COL.text_dim))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	var rematch := UiTheme.button_accent("РЕВАНШ", "Начать новую партию с теми же настройками")
+	var rematch := UiTheme.button_accent(I18n.t("modal.rematch"), I18n.t("modal.rematch_tip"))
 	rematch.connect("pressed", Callable(self, "_emit_restart"))
 	row.add_child(rematch)
-	var set := UiTheme.button("НАСТРОЙКИ", "Открыть настройки матча")
+	var set := UiTheme.button(I18n.t("modal.settings"), I18n.t("modal.settings_tip"))
 	set.connect("pressed", Callable(self, "_emit_settings"))
 	row.add_child(set)
 	body.add_child(row)
@@ -216,22 +217,22 @@ func _emit_settings() -> void:
 func open_settings(sound_cats: Array, rules_text: String) -> void:
 	_show()
 	var body := UiTheme.vbox(8)
-	body.add_child(_heading("НАСТРОЙКИ"))
+	body.add_child(_heading(I18n.t("modal.settings")))
 
-	body.add_child(UiTheme.label("ЗВУК", 13, UiTheme.COL.accent))
+	body.add_child(UiTheme.label(I18n.t("modal.sound_title"), 13, UiTheme.COL.accent))
 	for cat in sound_cats:
 		var cb := CheckButton.new()
 		cb.text = str(cat.get("label", ""))
 		cb.button_pressed = bool(cat.get("on", true))
-		cb.tooltip_text = "Включить/выключить звук: " + str(cat.get("label", ""))
+		cb.tooltip_text = I18n.t("modal.sound_tip", [str(cat.get("label", ""))])
 		cb.connect("toggled", Callable(self, "_on_sound_toggled").bind(str(cat.get("key", ""))))
 		body.add_child(cb)
 
-	var rules_btn := UiTheme.button("ПРАВИЛА", "Показать полные правила игры по текущим настройкам")
+	var rules_btn := UiTheme.button(I18n.t("modal.rules_btn"), I18n.t("modal.rules_tip"))
 	rules_btn.connect("pressed", Callable(self, "_open_rules").bind(rules_text))
 	body.add_child(rules_btn)
 
-	var close_btn := UiTheme.button("ЗАКРЫТЬ", "Закрыть окно настроек")
+	var close_btn := UiTheme.button(I18n.t("modal.close_btn"), I18n.t("modal.settings_panel_tip"))
 	close_btn.connect("pressed", Callable(self, "close"))
 	body.add_child(close_btn)
 	_panelize(body)
@@ -245,12 +246,12 @@ func _open_rules(rules_text: String) -> void:
 		_panel.free()
 	_panel = null
 	var body := UiTheme.vbox(8)
-	body.add_child(_heading("ПРАВИЛА"))
+	body.add_child(_heading(I18n.t("modal.rules_btn")))
 	var txt := UiTheme.label(rules_text, 13)
 	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	txt.custom_minimum_size = Vector2(420, 300)
 	body.add_child(txt)
-	var back := UiTheme.button("НАЗАД", "Вернуться к настройкам")
+	var back := UiTheme.button(I18n.t("ui.back"), I18n.t("modal.rules_back_tip"))
 	back.connect("pressed", Callable(self, "close"))
 	body.add_child(back)
 	_panelize(body)
