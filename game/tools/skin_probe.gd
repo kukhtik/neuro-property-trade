@@ -42,9 +42,11 @@ func _check_no_hardcoded_paths(path: String) -> void:
 		if l.contains("res://assets/") and not l.contains("SkinManager") and not l.contains("skin"):
 			bad_paths += 1
 		# Color("...") or Color(r, g, b) literals (not Color.TRANSPARENT/WHITE/BLACK
-		# which are semantic, and not a call into a theme/skin manager)
+		# which are semantic, not a call into a theme/skin manager, and not a
+		# Color(c.r, ...) reconstruction from existing components)
 		if l.contains("Color(") and not l.contains("Color.TRANSPARENT") and \
 		   not l.contains("Color.WHITE") and not l.contains("Color.BLACK") and \
+		   not l.contains("Color(c.r") and \
 		   not l.contains("SkinManager") and not l.contains("ThemeManager") and \
 		   not l.contains("skin") and not l.contains("theme"):
 			bad_colors += 1

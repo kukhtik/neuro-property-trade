@@ -1,0 +1,116 @@
+{
+  "id": "classic",
+  "name": "Classic",
+  "name_ru": "Классика",
+  "version": 1,
+  "assets": {
+    "tile_bg": "res://assets/tile.svg",
+    "board_center": "res://assets/board_center.svg",
+    "button": "res://assets/button.svg",
+    "corner_icons": {
+      "go": "res://assets/corner_icons/go_arrow.svg",
+      "jail": "res://assets/corner_icons/jail.svg",
+      "go_to_jail": "res://assets/corner_icons/go_to_jail.svg",
+      "free_parking": "res://assets/corner_icons/free_parking.svg"
+    },
+    "type_icons": {
+      "tax": "res://assets/type_icons/tax.svg",
+      "railroad": "res://assets/type_icons/railroad.svg",
+      "utility": "res://assets/type_icons/utility.svg",
+      "chance": "res://assets/type_icons/chance.svg",
+      "community": "res://assets/type_icons/community_chest.svg"
+    },
+    "houses": {
+      "house": "res://assets/houses/house.svg",
+      "hotel": "res://assets/houses/hotel.svg"
+    },
+    "tokens": {
+      "ship": "res://assets/tokens/ship.svg",
+      "top_hat": "res://assets/tokens/top_hat.svg",
+      "dog": "res://assets/tokens/dog.svg",
+      "cat": "res://assets/tokens/cat.svg",
+      "race_car": "res://assets/tokens/race_car.svg",
+      "boot": "res://assets/tokens/boot.svg",
+      "iron": "res://assets/tokens/iron.svg",
+      "wheelbarrow": "res://assets/tokens/wheelbarrow.svg"
+    },
+    "dice": {
+      "1": "res://assets/dice/die_1.svg",
+      "2": "res://assets/dice/die_2.svg",
+      "3": "res://assets/dice/die_3.svg",
+      "4": "res://assets/dice/die_4.svg",
+      "5": "res://assets/dice/die_5.svg",
+      "6": "res://assets/dice/die_6.svg"
+    }
+  },
+  "colors": {
+    "board_bg": "22303c",
+    "board_center_bg": "101820",
+    "tile_bg": "20252f",
+    "tile_text": "e8edf3",
+    "tile_price": "c8d0dc",
+    "group": {
+      "brown": "6b3a2a",
+      "lightblue": "7bb8d4",
+      "pink": "d98aa8",
+      "orange": "e08a3c",
+      "red": "b3403d",
+      "yellow": "d9c44a",
+      "green": "3f8f5f",
+      "darkblue": "2f4a7a"
+    },
+    "type": {
+      "go": "3f8f5f",
+      "jail": "8a8f9a",
+      "go_to_jail": "8a8f9a",
+      "free_parking": "5a6a4a",
+      "tax": "6a3a3a",
+      "railroad": "4a4a4a",
+      "utility": "3a6a7a",
+      "chance": "a05a2a",
+      "community": "7a9a4a",
+      "property": "c8ccd4"
+    },
+    "ui": {
+      "bg": "16191f",
+      "panel": "1e242e",
+      "panel_dark": "171c24",
+      "border": "39404d",
+      "border_accent": "4fb3d9",
+      "text": "e8edf3",
+      "text_dim": "8b95a5",
+      "accent": "4fb3d9",
+      "accent_hover": "5fc4ea",
+      "accent_press": "3a95bd",
+      "danger": "d9534f",
+      "success": "5cb85c",
+      "gold": "ffd34d",
+      "jail": "9a86c9"
+    },
+    "highlight": {
+      "active": "4fb3d9",
+      "active_alpha": 0.9,
+      "selected_alpha": 0.6,
+      "target_alpha": 0.12,
+      "pulse_min_alpha": 0.5,
+      "pulse_amp": 0.4
+    },
+    "mortgage": {
+      "dim": "999999",
+      "dim_alpha": 1.0
+    },
+    "bankrupt_dim_alpha": 0.5
+  },
+  "proportions": {
+    "band_thickness": 0.25,
+    "icon_max_frac": 0.35,
+    "name_font_frac": 0.20,
+    "name_font_min": 9,
+    "name_font_max": 13,
+    "price_font_frac": 0.16,
+    "price_font_min": 7,
+    "badge_frac": 0.20,
+    "house_frac": 0.20,
+    "compact_threshold": 44
+  }
+}

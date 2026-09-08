@@ -73,7 +73,7 @@ func _check_color_consistency(gv) -> void:
 
 	# owner marker color on tile 1
 	var tv = board._tile_nodes[1]
-	var marker_color: Color = tv._owner_marker.color
+	var marker_color: Color = tv._owner_frame.color
 
 	# players-panel row color for player 0
 	var row_color := _row_color(players_panel, 0)

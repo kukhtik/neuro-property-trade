@@ -10,13 +10,17 @@ extends PanelContainer
 const UiTheme := preload("res://ui/theme.gd")
 const PI := preload("res://core/player_identity.gd")
 const I18n := preload("res://i18n/i18n.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 
 ## P4 observer: emitted when a player row is clicked (spectator follow).
 signal player_clicked(pid: int)
 
 var _rows: Array = []   # per pid: {name, money, pos, tiles, badges}
+var _skin: SkinManager
 
 func _init() -> void:
+	_skin = SkinManager.new()
+	_skin.load_skin()
 	custom_minimum_size.x = 235
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel, UiTheme.COL.border, 1, 0))
 	var outer := MarginContainer.new()
@@ -98,7 +102,7 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 		w = 2
 	out.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, bord, w, 6))
 	if bankrupt:
-		out.modulate = Color(1, 1, 1, 0.5)
+		out.modulate = Color(1, 1, 1, _skin.proportion("bankrupt_dim_alpha", 0.5))
 	# P4 observer: a player row is clickable (follow them). Clicking an already
 	# followed player unfollows. Signal is always connected; consumers ignore it.
 	out.mouse_filter = Control.MOUSE_FILTER_STOP

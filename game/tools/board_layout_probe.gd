@@ -48,6 +48,11 @@ func _check_band_orientation(cell: int) -> void:
 	var center: Vector2 = Vector2((grid - 1) * 0.5, (grid - 1) * 0.5)
 	var bad := 0
 	for i in 40:
+		# corner tiles (0, 10, 20, 30) are special — their band orientation is
+		# ambiguous (they sit at the ring corners); only side tiles must face
+		# the center.
+		if TL.is_corner(i, 40):
+			continue
 		var tv = board._tile_nodes[i]
 		var c: Vector2 = TL.cell_center(i, 40)
 		var to_center: Vector2 = center - c
@@ -59,9 +64,9 @@ func _check_band_orientation(cell: int) -> void:
 			if bad <= 5:
 				print("  band tile %d: edge=%d expect=%d" % [i, band_edge, expect])
 	if bad > 0:
-		_fail("cell=%d: %d tiles have band facing OUTWARD (not board center)" % [cell, bad])
+		_fail("cell=%d: %d side tiles have band facing OUTWARD (not board center)" % [cell, bad])
 	else:
-		_pass("cell=%d: band faces board center on all 40 tiles" % cell)
+		_pass("cell=%d: band faces board center on all side tiles" % cell)
 	board.queue_free()
 
 ## Which edge a rect sits on (0=top,1=left,2=bottom,3=right) given it spans the

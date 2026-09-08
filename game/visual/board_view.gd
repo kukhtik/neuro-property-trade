@@ -13,28 +13,31 @@ signal tile_clicked(index: int)
 signal tile_hovered(index: int)   # P4 §7: observer inspector on hover
 
 const TL := preload("res://visual/tile_layout.gd")
-const BT := preload("res://visual/theme.gd")
 const PI := preload("res://core/player_identity.gd")
 const TileView := preload("res://visual/tile_view.gd")
 const TokenPanel := preload("res://visual/token_panel.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 
 var _tile_nodes: Array[TileView] = []
 var _tokens := {}              # pid -> TokenPanel
 var _cell := 64
 var _tile_count := 40
 var _seats: Array = []         # of Seat (for token_id + color resolution)
+var _skin: SkinManager
 
 ## Build the board control. tile_count + cell size.
-func build(tile_count: int, cell: int = 64) -> Control:
+func build(tile_count: int, cell: int = 64, skin: SkinManager = null) -> Control:
 	_cell = cell
 	_tile_count = tile_count
+	_skin = skin if skin != null else SkinManager.new()
+	_skin.load_skin()
 	var grid := TL.grid_cells(tile_count)
 	var size := grid * cell
 	custom_minimum_size = Vector2(size, size)
 	set_size(Vector2(size, size))
 
 	var bkg = ColorRect.new()
-	bkg.color = Color("22303c")
+	bkg.color = _skin.color("board_bg", Color("22303c"))
 	bkg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bkg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bkg)
@@ -61,7 +64,7 @@ func _rebuild() -> void:
 	set_size(Vector2(size, size))
 	for i in _tile_count:
 		var tv: TileView = TileView.new()
-		tv.build(i, _tile_count, _cell)
+		tv.build(i, _tile_count, _cell, _skin)
 		tv.position = TL.pixel_pos(i, _tile_count, _cell) - Vector2(_cell / 2.0, _cell / 2.0)
 		tv.z_index = 1
 		tv.gui_input.connect(_on_tile_input.bind(i))
@@ -136,6 +139,10 @@ func refresh_tokens(players: Array) -> void:
 				_tile_count, _cell, idx, pid)
 			tok.set_active(active)
 			tok.set_compact(_cell < 44)
+			# P6: a freshly-created token must be fanned out with the correct
+			# fan_index/fan_count, not stacked at the tile center (setup() only
+			# knows fan_index=0, fan_count=1).
+			tok.move_to(idx, fan_index, fan_count, in_jail, false)
 			add_child(tok)
 			_tokens[pid] = tok
 

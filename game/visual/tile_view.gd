@@ -1,12 +1,21 @@
 class_name TileView
 extends Control
-## A single board tile rendered as a structured widget (spec §4.2, P2).
-## The base is the dark `assets/tile.svg` (light text). A colored group band
-## sits on the edge facing the board center; houses/hotel are SVG sprites on
-## the band; the name is up to 2 lines (auto-fit 9..13px) in full mode, one
-## line with ellipsis in compact mode; the price sits at the bottom. Ownership
-## is a 2px frame around the tile + a round badge with the owner's initial in
-## the corner at the OUTER edge. A mortgaged tile is desaturated + hatched.
+## A single board tile rendered as a structured widget (spec §4.2, P2, P6).
+## The base is the dark `tile.svg` (light text). A colored group band sits on
+## the edge facing the board center; houses/hotel are SVG sprites on the band;
+## the name is up to 2 lines (auto-fit) in full mode, one line with ellipsis in
+## compact mode; the price sits at the bottom. Ownership is a 2px frame + a
+## round badge with the owner's initial at the OUTER edge. A mortgaged tile is
+## desaturated + hatched.
+##
+## SKINNING (P6): every asset path and color is resolved through SkinManager
+## (skin.json) — no hardcoded `res://assets/...` or `Color(...)` literals here.
+## Swapping the look = replacing the skin directory + config.
+##
+## ORIENTATION (P6): the band always faces the board CENTER. tile_layout seg 1
+## is the LEFT column (x=0) and seg 3 the RIGHT column (x=s), so seg 1 -> band
+## on the RIGHT edge (3) and seg 3 -> band on the LEFT edge (1). The old
+## `[0,1,2,3][seg]` mapping put both vertical bands OUTWARD (the bug).
 ##
 ## Highlights (spec §4.2): active tile = glowing accent frame (pulse 0.8 Hz);
 ## inspector-selected = dashed accent frame; valid management targets = soft
@@ -14,34 +23,17 @@ extends Control
 ## any board scale.
 
 const TL := preload("res://visual/tile_layout.gd")
-const BT := preload("res://visual/theme.gd")
 const PI := preload("res://core/player_identity.gd")
-const UiTheme := preload("res://ui/theme.gd")
-
-const TILE_SVG := "res://assets/tile.svg"
-const HOUSE_SVG := "res://assets/houses/house.svg"
-const HOTEL_SVG := "res://assets/houses/hotel.svg"
-const CORNER_ICON_PATHS := {
-	"go":            "res://assets/corner_icons/go_arrow.svg",
-	"jail":          "res://assets/corner_icons/jail.svg",
-	"go_to_jail":    "res://assets/corner_icons/go_to_jail.svg",
-	"free_parking":  "res://assets/corner_icons/free_parking.svg",
-}
-const TYPE_ICON_PATHS := {
-	"tax":           "res://assets/type_icons/tax.svg",
-	"railroad":      "res://assets/type_icons/railroad.svg",
-	"utility":       "res://assets/type_icons/utility.svg",
-	"chance":        "res://assets/type_icons/chance.svg",
-	"community":     "res://assets/type_icons/community_chest.svg",
-}
+const SkinManager := preload("res://visual/skin_manager.gd")
 
 const COMPACT_THRESHOLD := 44   # below this cell, compact mode (spec §4.2)
 
 var _cell := 64
 var _tile_count := 40
 var _index := 0
-var _band_edge := 0   # 0=top,1=right,2=bottom,3=left (edge facing board center)
+var _band_edge := 0   # 0=top,1=left,2=bottom,3=right (edge facing board center)
 var _compact := false
+var _skin: SkinManager
 
 # children
 var _base: TextureRect
@@ -64,11 +56,13 @@ var _target := false
 var _pulse_phase := 0.0
 
 ## Build the tile widget for `index`. `cell` is the tile size in px.
-func build(index: int, tile_count: int, cell: int) -> void:
+func build(index: int, tile_count: int, cell: int, skin: SkinManager = null) -> void:
 	_index = index
 	_tile_count = tile_count
 	_cell = cell
-	_compact = cell < COMPACT_THRESHOLD
+	_skin = skin if skin != null else SkinManager.new()
+	_skin.load_skin()
+	_compact = cell < _skin.compact_threshold()
 	custom_minimum_size = Vector2(cell, cell)
 	size = Vector2(cell, cell)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -76,7 +70,7 @@ func build(index: int, tile_count: int, cell: int) -> void:
 	# base: dark tile.svg (light text). Fall back to a flat dark panel if the
 	# asset is missing (code-built seam so art can swap without logic changes).
 	_base = TextureRect.new()
-	_base.texture = _load_or_null(TILE_SVG)
+	_base.texture = _skin.texture("tile_bg")
 	_base.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_base.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_base.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -84,7 +78,7 @@ func build(index: int, tile_count: int, cell: int) -> void:
 	add_child(_base)
 	if _base.texture == null:
 		var flat := ColorRect.new()
-		flat.color = Color("20252f")
+		flat.color = _skin.color("tile_bg", Color("20252f"))
 		flat.set_anchors_preset(Control.PRESET_FULL_RECT)
 		flat.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_base.add_child(flat)
@@ -116,9 +110,7 @@ func build(index: int, tile_count: int, cell: int) -> void:
 	_badge_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_owner_badge.add_child(_badge_label)
 
-	# mortgage hatch: diagonal stripes overlay (drawn via a shader-free
-	# approach — a set of thin rotated ColorRects is too heavy; use a
-	# repeating pattern via a custom draw). We use a Control with _draw().
+	# mortgage hatch: diagonal stripes overlay (drawn via _draw)
 	_mortgage_hatch = _make_hatch()
 	_mortgage_hatch.visible = false
 	_mortgage_hatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -132,7 +124,7 @@ func build(index: int, tile_count: int, cell: int) -> void:
 	_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if not _compact else TextServer.AUTOWRAP_OFF
 	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_name.add_theme_font_size_override("font_size", _font_for_name())
-	_name.add_theme_color_override("font_color", Color("e8edf3"))
+	_name.add_theme_color_override("font_color", _skin.color("tile_text", Color("e8edf3")))
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_name)
 
@@ -140,12 +132,13 @@ func build(index: int, tile_count: int, cell: int) -> void:
 	_price = Label.new()
 	_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_price.add_theme_font_size_override("font_size", _font_for_price())
-	_price.add_theme_color_override("font_color", Color("c8d0dc"))
+	_price.add_theme_color_override("font_color", _skin.color("tile_price", Color("c8d0dc")))
 	_price.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_price.visible = not _compact
 	add_child(_price)
 
-	# corner / type icon (SVG sprite)
+	# corner / type icon (SVG sprite) — sized <= 0.35*cell, centered in the
+	# content area so it never overlaps the name/price (P6)
 	_icon = TextureRect.new()
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -170,9 +163,10 @@ func build(index: int, tile_count: int, cell: int) -> void:
 	_select_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_select_frame.visible = false
 	add_child(_select_frame)
-	# soft 12% fill for valid management targets
+	# soft fill for valid management targets (P6: color from skin)
 	_target_fill = ColorRect.new()
-	_target_fill.color = Color(0.31, 0.70, 0.85, 0.12)
+	_target_fill.color = _with_alpha(_skin.color("highlight.active", Color("4fb3d9")),
+		_skin.proportion("highlight.target_alpha", 0.12))
 	_target_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_target_fill.visible = false
 	add_child(_target_fill)
@@ -184,15 +178,8 @@ func _font_for_name() -> int:
 	# auto-fit 9..13px (spec §4.2): scale with cell, clamped
 	return clampi(int(_cell * 0.20), 9, 13)
 func _font_for_price() -> int:
-	return maxi(7, int(_cell * 0.16))
-func _font_for_icon() -> int:
-	return maxi(14, int(_cell * 0.42))
-
-## Load a texture, returning null if the asset is missing (code-built seam).
-func _load_or_null(path: String) -> Texture2D:
-	if ResourceLoader.exists(path):
-		return load(path)
-	return null
+	# small enough that the label's line height fits the price band (P6)
+	return maxi(7, int(_cell * 0.13))
 
 ## Build the mortgage hatch overlay (diagonal stripes via _draw).
 func _make_hatch() -> Control:
@@ -206,16 +193,22 @@ const _HatchScript := preload("res://visual/tile_hatch.gd")
 ## highlight frames based on which edge faces the board center.
 func _layout_edges() -> void:
 	var c := float(_cell)
-	var band_w := maxf(9.0, c * 0.25)   # proportional band thickness
+	var band_w := maxf(9.0, c * _skin.proportion("band_thickness", 0.25))
 	var pad := maxf(2.0, c * 0.05)
-	var price_h := maxf(10.0, c * 0.20)
+	# The price label's minimum height is ~23px (default font line height), so
+	# the price band must be at least that tall or the label overflows (P6).
+	var price_h := maxf(23.0, c * 0.22)
 	var seg := _index / (_tile_count / 4)
-	# bottom row (0): band on top; right col (1): band on left; top row (2):
-	# band on bottom; left col (3): band on right.
-	_band_edge = [0, 1, 2, 3][seg]
+	# P6 band orientation fix: seg 1 is the LEFT column (x=0) and seg 3 the
+	# RIGHT column (x=s). The band must face the board CENTER, so:
+	#   seg 0 (bottom row)  -> band on TOP    (0)
+	#   seg 1 (left col)    -> band on RIGHT  (3)   [center is to the right]
+	#   seg 2 (top row)     -> band on BOTTOM (2)
+	#   seg 3 (right col)   -> band on LEFT   (1)   [center is to the left]
+	_band_edge = [0, 3, 2, 1][seg]
 
 	# owner badge sits at the OUTER edge (opposite the band)
-	var badge_d := maxf(10.0, c * 0.20)   # ⌀12px-ish, proportional
+	var badge_d := maxf(10.0, c * _skin.proportion("badge_frac", 0.20))
 	var badge_off := maxf(2.0, c * 0.04)
 
 	# highlight frames cover the whole tile
@@ -223,16 +216,28 @@ func _layout_edges() -> void:
 		f.position = Vector2.ZERO
 		f.size = Vector2(c, c)
 
+	# icon: proportional, <= 0.35*cell, centered in the content area (P6).
+	# The floor is small (8px) so it never exceeds 0.35*cell on small tiles.
+	var icon_max := c * _skin.proportion("icon_max_frac", 0.35)
+	var icon_d := maxf(8.0, icon_max)
+
+	# Force exact label rects so a label's font minimum height can't push it
+	# past the tile edge (P6 overflow fix). clip_text keeps the text inside.
+	_name.clip_text = true
+	_price.clip_text = true
+
 	match _band_edge:
 		0:  # top band
 			_band.position = Vector2(0, 0)
 			_band.size = Vector2(c, band_w)
 			_name.position = Vector2(pad, band_w + pad)
 			_name.size = Vector2(c - pad * 2, c - band_w - price_h - pad * 2)
+			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(0, c - price_h)
 			_price.size = Vector2(c, price_h)
-			_icon.position = Vector2(0, 0)
-			_icon.size = Vector2(c, c)
+			_price.custom_minimum_size = _price.size
+			_icon.position = Vector2((c - icon_d) * 0.5, band_w + pad)
+			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(pad, band_w + pad)
 			_house_row.size = Vector2(c - pad * 2, 8)
 			_owner_badge.position = Vector2(c - badge_d - badge_off, c - badge_d - badge_off)
@@ -242,10 +247,12 @@ func _layout_edges() -> void:
 			_band.size = Vector2(band_w, c)
 			_name.position = Vector2(band_w + pad, pad)
 			_name.size = Vector2(c - band_w - pad * 2, c - price_h - pad * 2)
+			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(band_w, c - price_h)
 			_price.size = Vector2(c - band_w, price_h)
-			_icon.position = Vector2(0, 0)
-			_icon.size = Vector2(c, c)
+			_price.custom_minimum_size = _price.size
+			_icon.position = Vector2(band_w + pad, (c - icon_d) * 0.5)
+			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(band_w + pad, pad)
 			_house_row.size = Vector2(c - band_w - pad * 2, 8)
 			_owner_badge.position = Vector2(c - badge_d - badge_off, c - badge_d - badge_off)
@@ -255,10 +262,12 @@ func _layout_edges() -> void:
 			_band.size = Vector2(c, band_w)
 			_name.position = Vector2(pad, pad)
 			_name.size = Vector2(c - pad * 2, c - band_w - price_h - pad * 2)
+			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(0, c - price_h)
 			_price.size = Vector2(c, price_h)
-			_icon.position = Vector2(0, 0)
-			_icon.size = Vector2(c, c)
+			_price.custom_minimum_size = _price.size
+			_icon.position = Vector2((c - icon_d) * 0.5, pad)
+			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(pad, c - band_w - 10)
 			_house_row.size = Vector2(c - pad * 2, 8)
 			_owner_badge.position = Vector2(badge_off, badge_off)
@@ -268,10 +277,12 @@ func _layout_edges() -> void:
 			_band.size = Vector2(band_w, c)
 			_name.position = Vector2(pad, pad)
 			_name.size = Vector2(c - band_w - pad * 2, c - price_h - pad * 2)
+			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(0, c - price_h)
 			_price.size = Vector2(c - band_w, price_h)
-			_icon.position = Vector2(0, 0)
-			_icon.size = Vector2(c, c)
+			_price.custom_minimum_size = _price.size
+			_icon.position = Vector2(pad, (c - icon_d) * 0.5)
+			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(pad, pad)
 			_house_row.size = Vector2(c - band_w - pad * 2, 8)
 			_owner_badge.position = Vector2(badge_off, badge_off)
@@ -284,7 +295,7 @@ func refresh(entry: Dictionary) -> void:
 	var is_property: bool = (typ == "property")
 
 	# band color: group color for properties, type color otherwise
-	_band.color = BT.tile_color(entry)
+	_band.color = _tile_color(entry)
 
 	# name: use `short` in compact mode, full name in full mode (spec §4.2)
 	var short: String = str(entry.get("short", entry.get("name", "")))
@@ -296,22 +307,21 @@ func refresh(entry: Dictionary) -> void:
 	if is_corner:
 		_price.text = ""
 		_icon.visible = true
-		_icon.texture = _load_or_null(CORNER_ICON_PATHS.get(typ, ""))
+		_icon.texture = _skin.texture("corner_icons." + typ)
 	elif is_property:
 		_price.text = "$%d" % int(entry.get("cost", 0))
 		_icon.visible = false
 	elif typ == "tax":
 		_price.text = "$%d" % int(entry.get("amount", 0))
 		_icon.visible = true
-		_icon.texture = _load_or_null(TYPE_ICON_PATHS.get(typ, ""))
+		_icon.texture = _skin.texture("type_icons." + typ)
 	else:
 		# railroad / utility / chance / community: show cost or icon
 		var cost: int = int(entry.get("cost", 0))
 		_price.text = ("$%d" % cost) if cost > 0 else ""
 		_icon.visible = true
-		_icon.texture = _load_or_null(TYPE_ICON_PATHS.get(typ, ""))
-	# compact mode hides the price (spec §4.2) — the label's minimum height
-	# would otherwise overflow the small tile
+		_icon.texture = _skin.texture("type_icons." + typ)
+	# compact mode hides the price (spec §4.2)
 	_price.visible = not _compact
 
 	# owner frame + badge
@@ -332,23 +342,32 @@ func refresh(entry: Dictionary) -> void:
 	_clear_houses()
 	var h: int = int(entry.get("houses", 0))
 	if is_property and h > 0:
-		var hs := maxi(8, int(_cell * 0.20))
+		var hs := maxi(8, int(_cell * _skin.proportion("house_frac", 0.20)))
 		var n: int = mini(h, 4)
 		for i in n:
-			_house_row.add_child(_make_house_sprite(HOUSE_SVG, hs))
+			_house_row.add_child(_make_house_sprite(_skin.path("houses.house"), hs))
 		if h >= 5:
-			_house_row.add_child(_make_house_sprite(HOTEL_SVG, hs + 2))
+			_house_row.add_child(_make_house_sprite(_skin.path("houses.hotel"), hs + 2))
 
-	# mortgage: desaturate the base + hatch overlay
+	# mortgage: desaturate the base + hatch overlay (P6: dim color from skin)
 	var mortgaged: bool = bool(entry.get("mortgaged", false))
 	_mortgage_hatch.visible = mortgaged
 	if mortgaged:
-		_base.modulate = Color(0.6, 0.6, 0.6, 1.0)
-		_band.modulate = Color(0.6, 0.6, 0.6, 1.0)
+		var dim: Color = _skin.color("mortgage.dim", Color("999999"))
+		_base.modulate = dim
+		_band.modulate = dim
 		_owner_frame.color = _owner_frame.color.darkened(0.4)
 	else:
 		_base.modulate = Color.WHITE
 		_band.modulate = Color.WHITE
+
+## Tile fill color from the skin (group color for properties, type otherwise).
+func _tile_color(entry: Dictionary) -> Color:
+	var t: String = str(entry.get("type", "property"))
+	if t == "property":
+		var g: String = str(entry.get("group", ""))
+		return _skin.color("group." + g, _skin.color("type.property", Color("c8ccd4")))
+	return _skin.color("type." + t, Color.WHITE)
 
 ## A house/hotel SVG sprite sized to `px`.
 func _make_house_sprite(path: String, px: int) -> TextureRect:
@@ -360,6 +379,12 @@ func _make_house_sprite(path: String, px: int) -> TextureRect:
 	t.size = Vector2(px, px)
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return t
+
+## Load a texture by path, returning null if missing.
+func _load_or_null(path: String) -> Texture2D:
+	if path != "" and ResourceLoader.exists(path):
+		return load(path)
+	return null
 
 func _clear_houses() -> void:
 	for c in _house_row.get_children():
@@ -379,12 +404,13 @@ func _contrast(bg: Color) -> Color:
 	return Color.BLACK if lum > 0.6 else Color.WHITE
 
 ## Highlight state setters (spec §4.2). Active = glowing accent frame,
-## selected = dashed accent frame, target = soft fill.
+## selected = dashed accent frame, target = soft fill. Colors from skin (P6).
 func set_active(v: bool) -> void:
 	_active = v
 	_active_frame.visible = v
 	if v:
-		_active_frame.color = Color(0.31, 0.70, 0.85, 0.9)
+		_active_frame.color = _with_alpha(_skin.color("highlight.active", Color("4fb3d9")),
+			_skin.proportion("highlight.active_alpha", 0.9))
 	else:
 		_active_frame.color = Color.TRANSPARENT
 
@@ -392,7 +418,8 @@ func set_selected(v: bool) -> void:
 	_selected = v
 	_select_frame.visible = v
 	if v:
-		_select_frame.color = Color(0.31, 0.70, 0.85, 0.6)
+		_select_frame.color = _with_alpha(_skin.color("highlight.active", Color("4fb3d9")),
+			_skin.proportion("highlight.selected_alpha", 0.6))
 	else:
 		_select_frame.color = Color.TRANSPARENT
 
@@ -404,5 +431,11 @@ func _process(delta: float) -> void:
 	# active frame pulse (0.8 Hz) — spec §4.2
 	if _active:
 		_pulse_phase += delta * TAU * 0.8
-		var a := 0.5 + 0.4 * (0.5 + 0.5 * sin(_pulse_phase))
-		_active_frame.color = Color(0.31, 0.70, 0.85, a)
+		var min_a: float = _skin.proportion("highlight.pulse_min_alpha", 0.5)
+		var amp: float = _skin.proportion("highlight.pulse_amp", 0.4)
+		var a := min_a + amp * (0.5 + 0.5 * sin(_pulse_phase))
+		_active_frame.color = _with_alpha(_skin.color("highlight.active", Color("4fb3d9")), a)
+
+## Set a color's alpha (Godot 4.7 Color has no with_alpha()).
+func _with_alpha(c: Color, a: float) -> Color:
+	return Color(c.r, c.g, c.b, a)
