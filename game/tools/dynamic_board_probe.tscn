@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://dynamicboardprobe"]
+
+[ext_resource type="Script" path="res://tools/dynamic_board_probe.gd" id="1_dbp"]
+
+[node name="DynamicBoardProbe" type="Node"]
+script = ExtResource("1_dbp")

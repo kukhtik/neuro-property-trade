@@ -89,6 +89,11 @@ static func key_count() -> int:
 	_ensure()
 	return _data.size()
 
+## All collected keys (probe sanity / coverage iteration).
+static func keys() -> Array:
+	_ensure()
+	return _data.keys()
+
 ## Switch locale and notify every panel. `ru` | `en`. No-op if unchanged.
 static func set_locale(l: String) -> void:
 	if current == l or not LOCALES.has(l):

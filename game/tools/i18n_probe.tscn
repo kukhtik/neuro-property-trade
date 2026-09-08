@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://i18nprobe"]
+
+[ext_resource type="Script" path="res://tools/i18n_probe.gd" id="1_ip"]
+
+[node name="I18nProbe" type="Node"]
+script = ExtResource("1_ip")
