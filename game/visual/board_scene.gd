@@ -70,9 +70,11 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_camera.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_camera)
 
-	# spectacle pans the camera (frustum) to follow the action
+	# spectacle pans the camera (frustum) to follow the action. P6 CS-7: it is
+	# gated by settings.spectacle (off by default — the board is always whole).
 	_spectacle = Spectacle.new()
 	_spectacle.set_animations(_settings.animations if _settings != null else true)
+	_spectacle.set_enabled(_settings.spectacle if _settings != null else false)
 	add_child(_spectacle)
 
 	# overlay + sfx + dice are siblings of the camera so they stay fixed on screen

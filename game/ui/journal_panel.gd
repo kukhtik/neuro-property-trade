@@ -268,8 +268,13 @@ func _line_bbcode(e: Dictionary, names: Array) -> String:
 	var t: String = str(e.get("type", "?"))
 	var txt: String = EventMessagesScript.describe(e)
 	var col: Color = _kind_color(t)
+	# MD-4: the [type] tag is localized (event_type.* keys), falling back to the
+	# raw engine type if no label exists.
+	var type_lbl: String = I18n.t("event_type." + t)
+	if type_lbl.begins_with("{event_type."):
+		type_lbl = t
 	return "[color=#%s]#%d[/color] [color=#8b95a5][%s][/color] %s\n" % [
-		col.to_html(false), idx, t, txt]
+		col.to_html(false), idx, type_lbl, txt]
 
 const EventMessagesScript := preload("res://visual/event_messages.gd")
 

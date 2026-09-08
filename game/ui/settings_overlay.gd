@@ -69,6 +69,11 @@ var _sound: CheckButton
 # data tab
 var _rng_seed: SpinBox
 
+# preset buttons (CR-4: retranslated on locale change)
+var _p_classic: Button
+var _p_fast: Button
+var _p_hard: Button
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build()
@@ -88,6 +93,17 @@ func set_mode(pre_game: bool) -> void:
 ## selected index so the user's choice doesn't jump.
 func _retranslate() -> void:
 	I18n.relabel(self)
+	# CR-3: tab titles must be re-applied on locale change (set_tab_title is
+	# only called in _build_*_tab, so re-apply here).
+	if _tabs != null:
+		var tab_keys := ["settings.tab_players", "settings.tab_rules",
+			"settings.tab_tempo", "settings.tab_interface", "settings.tab_data"]
+		for i in mini(_tabs.get_tab_count(), tab_keys.size()):
+			_tabs.set_tab_title(i, I18n.t(tab_keys[i]))
+	# CR-2: driver items are localized — rebuild them in the current locale,
+	# preserving each row's selected index.
+	for r in _rows:
+		_rebuild_driver_items(r["driver"])
 	# host role (option texts localized; values derived from selected index)
 	_host_role.clear()
 	_host_role.add_item(I18n.t("settings.host_playing"))
@@ -107,8 +123,8 @@ func _retranslate() -> void:
 	_free_parking.add_item(I18n.t("settings.fp_off"))
 	# auctions on/off  (index 0 = on, index 1 = off, matching _collect_settings)
 	_auctions.clear()
-	_auctions.add_item(I18n.t("settings.fp_on"))
-	_auctions.add_item(I18n.t("settings.fp_off"))
+	_auctions.add_item(I18n.t("settings.auctions_on"))
+	_auctions.add_item(I18n.t("settings.auctions_off"))
 	# turn/auction timer options — re-add with localized suffix + no-limit label
 	_rebuild_seconds(_turn_timer, [0, 5, 10, 15, 20, 30, 45, 60], 30)
 	_rebuild_seconds(_auction_timer, [0, 5, 8, 10, 12, 15, 20], 15)
@@ -205,18 +221,18 @@ func _build() -> void:
 	var presets_lbl := UiTheme.label(I18n.t("settings.presets_lbl"), 13, UiTheme.COL.text_dim)
 	I18n.key_on(presets_lbl, "settings.presets_lbl")
 	presets.add_child(presets_lbl)
-	var p_classic := UiTheme.button(I18n.t("settings.preset_classic"), I18n.t("settings.preset_classic_tip"))
-	I18n.key_on(p_classic, "settings.preset_classic"); I18n.tip_on(p_classic, "settings.preset_classic_tip")
-	p_classic.connect("pressed", Callable(self, "_preset_classic"))
-	presets.add_child(p_classic)
-	var p_fast := UiTheme.button(I18n.t("settings.preset_fast"), I18n.t("settings.preset_fast_tip"))
-	I18n.key_on(p_fast, "settings.preset_fast"); I18n.tip_on(p_fast, "settings.preset_fast_tip")
-	p_fast.connect("pressed", Callable(self, "_preset_fast"))
-	presets.add_child(p_fast)
-	var p_hard := UiTheme.button(I18n.t("settings.preset_hard"), I18n.t("settings.preset_hard_tip"))
-	I18n.key_on(p_hard, "settings.preset_hard"); I18n.tip_on(p_hard, "settings.preset_hard_tip")
-	p_hard.connect("pressed", Callable(self, "_preset_hard"))
-	presets.add_child(p_hard)
+	_p_classic = UiTheme.button(I18n.t("settings.preset_classic"), I18n.t("settings.preset_classic_tip"))
+	I18n.key_on(_p_classic, "settings.preset_classic"); I18n.tip_on(_p_classic, "settings.preset_classic_tip")
+	_p_classic.connect("pressed", Callable(self, "_preset_classic"))
+	presets.add_child(_p_classic)
+	_p_fast = UiTheme.button(I18n.t("settings.preset_fast"), I18n.t("settings.preset_fast_tip"))
+	I18n.key_on(_p_fast, "settings.preset_fast"); I18n.tip_on(_p_fast, "settings.preset_fast_tip")
+	_p_fast.connect("pressed", Callable(self, "_preset_fast"))
+	presets.add_child(_p_fast)
+	_p_hard = UiTheme.button(I18n.t("settings.preset_hard"), I18n.t("settings.preset_hard_tip"))
+	I18n.key_on(_p_hard, "settings.preset_hard"); I18n.tip_on(_p_hard, "settings.preset_hard_tip")
+	_p_hard.connect("pressed", Callable(self, "_preset_hard"))
+	presets.add_child(_p_hard)
 	v.add_child(presets)
 
 	# tabs
@@ -326,7 +342,7 @@ func _build_rules_tab() -> void:
 	_triple_doubles.tooltip_text = I18n.t("settings.triple_doubles_tip")
 	grid.add_child(_h("settings.triple_doubles", _triple_doubles))
 	_auctions = OptionButton.new()
-	_auctions.add_item(I18n.t("settings.fp_on")); _auctions.add_item(I18n.t("settings.fp_off"))
+	_auctions.add_item(I18n.t("settings.auctions_on")); _auctions.add_item(I18n.t("settings.auctions_off"))
 	_auctions.selected = 0
 	_auctions.tooltip_text = I18n.t("settings.auctions_tip")
 	grid.add_child(_h("settings.auctions", _auctions))
@@ -427,6 +443,25 @@ func _build_data_tab() -> void:
 	var tab := UiTheme.vbox(8)
 	_tabs.add_child(tab)
 	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("settings.tab_data"))
+	# MD-1: preset quick-select (fast input for the common rule presets)
+	var presets_row := HBoxContainer.new()
+	presets_row.add_theme_constant_override("separation", 8)
+	var plbl := UiTheme.label(I18n.t("settings.presets_lbl"), 13, UiTheme.COL.text_dim)
+	I18n.key_on(plbl, "settings.presets_lbl")
+	presets_row.add_child(plbl)
+	var d_classic := UiTheme.button(I18n.t("settings.preset_classic"), I18n.t("settings.preset_classic_tip"))
+	I18n.key_on(d_classic, "settings.preset_classic"); I18n.tip_on(d_classic, "settings.preset_classic_tip")
+	d_classic.connect("pressed", Callable(self, "_preset_classic"))
+	presets_row.add_child(d_classic)
+	var d_fast := UiTheme.button(I18n.t("settings.preset_fast"), I18n.t("settings.preset_fast_tip"))
+	I18n.key_on(d_fast, "settings.preset_fast"); I18n.tip_on(d_fast, "settings.preset_fast_tip")
+	d_fast.connect("pressed", Callable(self, "_preset_fast"))
+	presets_row.add_child(d_fast)
+	var d_hard := UiTheme.button(I18n.t("settings.preset_hard"), I18n.t("settings.preset_hard_tip"))
+	I18n.key_on(d_hard, "settings.preset_hard"); I18n.tip_on(d_hard, "settings.preset_hard_tip")
+	d_hard.connect("pressed", Callable(self, "_preset_hard"))
+	presets_row.add_child(d_hard)
+	tab.add_child(presets_row)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	row.add_child(UiTheme.label(I18n.t("settings.rng_seed"), 13))
@@ -470,6 +505,25 @@ func _seconds_option(vals: Array, def: int) -> OptionButton:
 static func sec_suffix() -> String:
 	return "с" if I18n.current == "ru" else "s"
 
+## Localized label for a driver id (CR-2). Falls back to the raw id if the
+## key is missing so the engine identifier is never lost.
+static func _driver_label(d: String) -> String:
+	var key: String = "settings.driver." + d.to_lower().replace(":", "_")
+	return I18n.t(key) if I18n.has(key) else d
+
+## Rebuild a driver OptionButton's items in the current locale, preserving the
+## selected index (CR-2). Items carry the raw driver id as their item id so
+## _collect_settings can read by id, not by localized text.
+static func _rebuild_driver_items(o: OptionButton) -> void:
+	var keep: int = o.selected
+	o.clear()
+	for d in DRIVERS:
+		o.add_item(_driver_label(d), DRIVERS.find(d))
+	if keep >= 0 and keep < o.item_count:
+		o.selected = keep
+	else:
+		o.selected = 0
+
 func _add_row(_unused: Variant = null) -> void:
 	if _rows.size() >= 8:
 		return
@@ -482,8 +536,7 @@ func _add_row(_unused: Variant = null) -> void:
 	h.add_child(num)
 
 	var driver := OptionButton.new()
-	for d in DRIVERS:
-		driver.add_item(d)
+	_rebuild_driver_items(driver)
 	driver.selected = 0 if idx == 0 else 1
 	driver.tooltip_text = I18n.t("settings.driver_tip")
 	if idx == 0:
@@ -546,7 +599,7 @@ func _collect_settings() -> Settings:
 	s.seat_assignments = []
 	var first := true
 	for r in _rows:
-		var drv: String = str(r["driver"].get_item_text(r["driver"].selected))
+		var drv: String = _driver_id_at(r["driver"])
 		if first and observer and drv == "LOCAL":
 			drv = "AI"
 		first = false
@@ -583,6 +636,15 @@ func _collect_settings() -> Settings:
 	s.ai_aggression = int(_ai_aggression.value)
 	s.timeout_action = "auto-pass" if _timeout_action.selected == 0 else "mark-away"
 	return s
+
+## Read the raw driver id for a driver OptionButton by its selected item id
+## (CR-2 / MD-7). The item id encodes the DRIVERS index, so it is
+## locale-independent — never read the localized item text.
+func _driver_id_at(o: OptionButton) -> String:
+	var idx: int = o.selected
+	if idx < 0 or idx >= DRIVERS.size():
+		return "AI"
+	return DRIVERS[idx]
 
 func _selected_seconds(o: OptionButton) -> int:
 	var idx: int = o.selected
@@ -685,12 +747,15 @@ func _preset_classic() -> void:
 func _preset_fast() -> void:
 	_reset_all()
 	_turn_timer.selected = _index_of_seconds(_turn_timer, 10)
+	_auction_timer.selected = _index_of_seconds(_auction_timer, 10)
 	_starting_cash.value = 1000
 
 func _preset_hard() -> void:
 	_reset_all()
 	_mortgage.button_pressed = false
 	_trades.button_pressed = false
+	_housing.button_pressed = false
+	_doubles.button_pressed = false
 	_ai_aggression.value = 80
 
 func _reset_all() -> void:

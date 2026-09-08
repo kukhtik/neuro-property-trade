@@ -108,8 +108,13 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 		var drv_txt := ""
 		if drv == "SDK":
 			drv_txt = I18n.t("act.observer_sdk")
+		# CS-3: localize the phase name (phase.* keys), fall back to the raw enum.
+		var ph: String = str(proj.get("phase", ""))
+		var ph_lbl: String = I18n.t("phase." + ph)
+		if ph_lbl.begins_with("{phase."):
+			ph_lbl = ph
 		_status.text = I18n.t("act.observer_status", [
-			str(proj.get("phase", "")), holder_txt, drv_txt, timer_txt])
+			ph_lbl, holder_txt, drv_txt, timer_txt])
 		_clear_buttons()
 		return
 

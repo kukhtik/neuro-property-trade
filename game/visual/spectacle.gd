@@ -55,3 +55,10 @@ func on_event(entry: Dictionary) -> void:
 
 func set_animations(on: bool) -> void:
 	animations = on
+
+## P6 CS-7: enable/disable the spectacle entirely (settings.spectacle). When
+## disabled the camera stays put and the board is always fully visible.
+func set_enabled(on: bool) -> void:
+	_enabled = on
+	if not on and _viewport != null:
+		_viewport.position = Vector2.ZERO

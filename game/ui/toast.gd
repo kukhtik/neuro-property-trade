@@ -17,6 +17,12 @@ var _banner_container: VBoxContainer
 var _next_id := 1
 var _sfx = null   # optional Sfx for a soft pop on new toasts
 
+# P6 CR-8: rent/pay anti-spam merge. Accumulates rent/pay events for the same
+# player within a short window and flushes them as ONE merged toast (spec §6.2:
+# "Neuro платит $48: рента Host ×2, налог $20"). Keyed by player id.
+var _rent_pay_buffer: Dictionary = {}   # pid -> {name, amounts:Array, total:int, timer:float}
+const _RENT_PAY_WINDOW := 1.2
+
 ## Provide the procedural Sfx node so new toasts play a soft pop sound.
 func set_sfx(sfx) -> void:
 	_sfx = sfx
@@ -107,6 +113,42 @@ func toast_count() -> int:
 func banner_count() -> int:
 	return _banner_container.get_child_count()
 
+func _process(delta: float) -> void:
+	# P6 CR-8: flush the rent/pay merge buffer when its window elapses.
+	if _rent_pay_buffer.is_empty():
+		return
+	var expired: Array = []
+	for pid in _rent_pay_buffer:
+		var e: Dictionary = _rent_pay_buffer[pid]
+		e["timer"] = float(e.get("timer", 0.0)) - delta
+		if float(e.get("timer", 0.0)) <= 0.0:
+			expired.append(pid)
+	for pid in expired:
+		_flush_rent_pay(pid)
+
+## P6 CR-8: accumulate a rent/pay event for a player; flush as one merged toast
+## when the window elapses (or immediately if it's the only one).
+func _buffer_rent_pay(pid: int, name: String, amount: int) -> void:
+	if not _rent_pay_buffer.has(pid):
+		_rent_pay_buffer[pid] = {"name": name, "amounts": [], "total": 0, "timer": _RENT_PAY_WINDOW}
+	var e: Dictionary = _rent_pay_buffer[pid]
+	e["amounts"].append(amount)
+	e["total"] = int(e.get("total", 0)) + amount
+	e["timer"] = _RENT_PAY_WINDOW
+
+func _flush_rent_pay(pid: int) -> void:
+	if not _rent_pay_buffer.has(pid):
+		return
+	var e: Dictionary = _rent_pay_buffer[pid]
+	_rent_pay_buffer.erase(pid)
+	var amounts: Array = e.get("amounts", [])
+	var total: int = int(e.get("total", 0))
+	var name: String = str(e.get("name", "?"))
+	if amounts.size() > 1:
+		show_toast(I18n.t("toast.rent_merged", [name, total, amounts.size()]), "warning")
+	else:
+		show_toast(I18n.t("toast.pay", [name, total]), "warning")
+
 func _on_toast_dismissed(id: int) -> void:
 	dismissed.emit(id)
 
@@ -138,9 +180,12 @@ func show_event_toast(entry: Dictionary) -> void:
 		"pass":
 			show_toast(I18n.t("toast.pass", [_who(d, "player"), _tile_name(d)]), "info")
 		"pay":
-			show_toast(I18n.t("toast.pay", [_who(d, "from"), int(d.get("amount", 0))]), "warning")
+			# P6 CR-8: buffer rent/pay so multiple payments in one turn merge.
+			_buffer_rent_pay(_pid_of(d, "from"), _who(d, "from"), int(d.get("amount", 0)))
 		"rent":
-			show_toast(I18n.t("toast.rent", [_who(d, "from")]), "warning")
+			# rent has no amount in the event data; buffer with 0 so it merges
+			# with a following pay for the same player.
+			_buffer_rent_pay(_pid_of(d, "from"), _who(d, "from"), 0)
 		"build":
 			show_toast(I18n.t("toast.build", [_who(d, "player"), _tile_name(d)]), "success")
 		"sell":
@@ -167,6 +212,14 @@ func show_event_toast(entry: Dictionary) -> void:
 			show_toast(I18n.t("toast.admin_override", [_who(d, "op")]), "neutral")
 		_:
 			pass  # unknown event types stay silent (journal still shows them)
+
+## Resolve a player id from a data field (int pid or string name). Used to
+## key the rent/pay merge buffer.
+func _pid_of(d: Dictionary, key: String) -> int:
+	var v = d.get(key, -1)
+	if v is int:
+		return v
+	return -1
 
 func _who(d: Dictionary, key: String) -> String:
 	var v = d.get(key, "?")

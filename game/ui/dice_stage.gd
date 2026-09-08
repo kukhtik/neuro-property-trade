@@ -10,6 +10,10 @@ signal dice_rolled(d1: int, d2: int, sum: int)
 
 const UiTheme := preload("res://ui/theme.gd")
 
+## P6 CS-5: SVG dice faces (assets/dice/die_1..6.svg). Falls back to a plain
+## number Label if the SVG isn't imported yet.
+const DIE_SVG := "res://assets/dice/die_%d.svg"
+
 var _dice1: int = 1
 var _dice2: int = 1
 var _animating := false
@@ -81,20 +85,40 @@ func _build_dice() -> void:
 			Color("#f2f6fa"), UiTheme.COL.border_accent, 2, 12))
 		dice.pivot_offset = Vector2(dice_size, dice_size) * 0.5
 
-		var label := Label.new()
-		label.name = "Face"
-		label.text = str(_dice1) if i == 0 else str(_dice2)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", int(dice_size * 0.5))
-		label.add_theme_color_override("font_color", Color("#16191f"))
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		dice.add_child(label)
+		var face := _make_face(i, dice_size)
+		dice.add_child(face)
 
 		dice.position = center - Vector2(dice_size * 1.15, dice_size * 0.5) \
 			+ Vector2(i * dice_size * 1.3, 0)
 		add_child(dice)
 		_dice_nodes.append(dice)
+
+## Build a die face: an SVG TextureRect when the asset is imported, else a
+## plain number Label (CS-5). The face node is named "Face" so the tumble
+## code can update it.
+func _make_face(i: int, dice_size: float) -> Control:
+	var face_val: int = _dice1 if i == 0 else _dice2
+	var svg_path: String = DIE_SVG % face_val
+	if ResourceLoader.exists(svg_path):
+		var tex: Texture2D = load(svg_path)
+		if tex != null:
+			var tr := TextureRect.new()
+			tr.name = "Face"
+			tr.texture = tex
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			return tr
+	var label := Label.new()
+	label.name = "Face"
+	label.text = str(face_val)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", int(dice_size * 0.5))
+	label.add_theme_color_override("font_color", Color("#16191f"))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
 
 func _animate_roll() -> void:
 	# Tumble: decreasing position jitter + rotation, face flickers, then settle.
@@ -135,15 +159,21 @@ func _animate_roll() -> void:
 	_tween.tween_callback(_settle_faces)
 	_tween.finished.connect(_on_tween_finished)
 
-func _set_face(label: Label, face: int) -> void:
-	if is_instance_valid(label):
-		label.text = str(face)
+func _set_face(node: Control, face: int) -> void:
+	if not is_instance_valid(node):
+		return
+	if node is Label:
+		(node as Label).text = str(face)
+	elif node is TextureRect:
+		var svg_path: String = DIE_SVG % face
+		if ResourceLoader.exists(svg_path):
+			(node as TextureRect).texture = load(svg_path)
 
 func _settle_faces() -> void:
 	for i in 2:
 		var dice = _dice_nodes[i]
-		var label = dice.get_node("Face")
-		label.text = str(_dice1) if i == 0 else str(_dice2)
+		var face: Control = dice.get_node("Face")
+		_set_face(face, _dice1 if i == 0 else _dice2)
 		dice.rotation = 0.0
 
 func _on_tween_finished() -> void:

@@ -84,8 +84,10 @@ func _check_toast_on_purchase(gv) -> void:
 func _check_toast_anti_spam(gv) -> void:
 	var stack = gv._toast_stack
 	stack.dismiss_all()
+	# Use a non-rent/pay event type: rent/pay now go through the CR-8 merge
+	# buffer, so this test exercises the generic anti-spam dedup path.
 	for i in 4:
-		stack.show_event_toast({"type": "rent", "data": {"from": "Tester", "amount": 40}})
+		stack.show_event_toast({"type": "build", "data": {"player": "Tester", "tile": 3}})
 	var count: int = stack.toast_count()
 	if count > 3:
 		_fail("anti-spam: 4 events produced %d toasts (> 3)" % count)
@@ -161,8 +163,20 @@ func _check_dice_instant(gv) -> void:
 func _dice_faces(ds) -> Array:
 	var out: Array = []
 	for n in ds._dice_nodes:
-		if is_instance_valid(n):
-			out.append(int(n.get_node("Face").text))
+		if not is_instance_valid(n):
+			continue
+		var face: Node = n.get_node("Face")
+		if face is Label:
+			out.append(int((face as Label).text))
+		elif face is TextureRect:
+			# SVG face: the texture path is res://assets/dice/die_N.svg
+			var tex: Texture2D = (face as TextureRect).texture
+			var path: String = tex.resource_path if tex != null else ""
+			var m := path.rfind("die_")
+			if m >= 0:
+				out.append(int(path.substr(m + 4, 1)))
+			else:
+				out.append(-1)
 	return out
 
 ## Inspector: select shows it; pin keeps it past 5s; unpinned auto-hides.

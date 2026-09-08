@@ -55,7 +55,6 @@ var _game_over_shown := false
 var _toast_stack: ToastStack
 var _observer := false         # spec §7: match has no LOCAL seat (host watches)
 var _follow_pid := -1          # spectator follow target (clicked player row)
-var _holder_name := ""         # current decision holder display name
 
 ## Cold setup: build the layout with no engine. The board renders empty and the
 ## action panel shows a single START button. Called once at launch.
@@ -146,6 +145,9 @@ func _on_locale_changed(_locale: String) -> void:
 		_top.retranslate()
 	if _journal != null and _journal.has_method("retranslate"):
 		_journal.retranslate()
+	# CR-5: the tile inspector's placeholder is localized too
+	if _inspector != null and _inspector.has_method("retranslate"):
+		_inspector.retranslate()
 	if engine != null:
 		_sync_all()
 		_refresh_journal()
@@ -196,15 +198,15 @@ func _journal_w() -> int:
 
 ## P5 §10 / §3.4 breakpoint table (LEFT, RIGHT) from the current width.
 func _bpl() -> Dictionary:
+	# P6 CR-7: the 1024px "dense" branch (56px rail + 60px drawer) was removed
+	# because the panels don't implement rail/drawer — it just rendered two
+	# near-empty strips. Below 1280 the panels clamp to their minimum usable
+	# width so the board still dominates.
 	if size.x >= 1600.0:
 		return {"left": 260, "right": 320}
 	if size.x >= 1280.0:
 		return {"left": 240, "right": 300}
-	if size.x >= 1024.0:
-		# dense mode: left becomes a 56px rail, right becomes a drawer — see
-		# _layout() which collapses the panels so the board dominates.
-		return {"left": 56, "right": 60}
-	return {"left": 56, "right": 60}
+	return {"left": 150, "right": 180}
 
 func _build_layout() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -354,7 +356,6 @@ func _sync_from_spectator(proj: Dictionary) -> void:
 
 	# observer extras: decision-holder status + follow-highlight of tiles
 	if _observer:
-		_holder_name = _holder_display_name(holder, proj)
 		# follow: highlight the followed player's tiles on the board
 		var targets: Array = []
 		if _follow_pid >= 0:
@@ -368,16 +369,6 @@ func _sync_from_spectator(proj: Dictionary) -> void:
 	elif _board_scene != null and _board_scene._board != null:
 		# clear stale follow-highlight when returning to a LOCAL match
 		_board_scene._board.set_target_tiles([])
-
-## Display name of the current decision holder (or an idle/waiting label).
-func _holder_display_name(holder: int, proj: Dictionary) -> String:
-	if holder < 0:
-		return "—"
-	var players: Array = proj.get("players", [])
-	for p in players:
-		if int(p.get("index", -1)) == holder:
-			return str(p.get("name", "?"))
-	return "P%d" % holder
 
 ## Spectator control: click a player row in the left panel to follow them
 ## (their tiles get the soft target highlight on the board).

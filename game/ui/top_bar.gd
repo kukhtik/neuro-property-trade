@@ -46,7 +46,8 @@ func _init() -> void:
 	add_child(m)
 	m.add_child(h)
 
-	_title = UiTheme.label("● NEURO PROPERTY TRADE", 15, UiTheme.COL.gold)
+	_title = UiTheme.label(I18n.t("top.title"), 15, UiTheme.COL.gold)
+	I18n.key_on(_title, "top.title")
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(_title)
 	_turn = UiTheme.label("", 15)
@@ -126,7 +127,12 @@ func sync(proj: Dictionary, players: Array) -> void:
 		_turn.add_theme_color_override("font_color", s.color)
 	else:
 		_turn.text = ""
-	_phase.text = I18n.t("top.phase") + str(proj.get("phase", ""))
+	# CS-1: localize the phase name (phase.* keys), fall back to the raw enum.
+	var ph: String = str(proj.get("phase", ""))
+	var ph_lbl: String = I18n.t("phase." + ph)
+	if ph_lbl.begins_with("{phase."):
+		ph_lbl = ph
+	_phase.text = I18n.t("top.phase") + ph_lbl
 	_restart_btn.visible = true
 	
 	# P3: Update timer ring

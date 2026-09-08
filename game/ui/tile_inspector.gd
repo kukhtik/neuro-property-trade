@@ -69,6 +69,12 @@ func _on_pin_toggled(pressed: bool) -> void:
 		_pin.add_theme_color_override("font_color", UiTheme.COL.text)
 		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 6))
 
+## P6 CR-5: re-apply the localized placeholder when the locale changes.
+func retranslate() -> void:
+	if _text != null:
+		_text.text = I18n.t("ins.placeholder")
+		_text.add_theme_color_override("font_color", UiTheme.COL.text_dim)
+
 func clear() -> void:
 	selected = -1
 	_hide_timer = 0.0
