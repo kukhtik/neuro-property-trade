@@ -23,7 +23,7 @@ const DiceStage := preload("res://ui/dice_stage.gd")
 
 const MIN_CELL := 24
 const MAX_CELL := 72
-const BOARD_TILES := 40
+const BOARD_TILES := 40   # default; overridden by settings.tile_count in setup()
 
 var _engine
 var _settings
@@ -36,6 +36,7 @@ var _sfx: Sfx
 var _dice_stage: DiceStage
 var _timer := 0.0
 var _cell := 0
+var _tile_count := BOARD_TILES
 var _frame_override: Rect2 = Rect2(-1, -1, -1, -1)   # when set, fill this rect instead of the viewport
 var _managed_by_container := false   # when true, a parent container sets our size
 
@@ -54,6 +55,9 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_engine = engine
 	_settings = settings
 	_seats = seats
+	# parametric board: read the tile count from settings (default 40)
+	if settings != null and "tile_count" in settings:
+		_tile_count = int(settings.tile_count)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_viewport_rect()
 
@@ -134,7 +138,7 @@ func _resize_children() -> void:
 	var h := size.y
 	if w <= 0 or h <= 0:
 		return
-	var grid := TL.grid_cells(BOARD_TILES)
+	var grid := TL.grid_cells(_tile_count)
 	var bx := 8.0
 	var by := 8.0
 	var frustum_w := w - bx - 8.0
@@ -175,12 +179,12 @@ func _rebuild_board() -> void:
 		_board.queue_free()
 	_board = BoardView.new()
 	_board.name = "BoardView"
-	_board.build(BOARD_TILES, _cell)
+	_board.build(_tile_count, _cell)
 	_board.set_seats(_seats)
 	_camera.add_child(_board)
 	_board.tile_clicked.connect(_on_tile_clicked)
 	_board.tile_hovered.connect(func(i: int) -> void: tile_hovered.emit(i))
-	_spectacle.setup(_camera, _board, _cell, BOARD_TILES)
+	_spectacle.setup(_camera, _board, _cell, _tile_count)
 
 func _on_tile_clicked(idx: int) -> void:
 	tile_clicked.emit(idx)
@@ -241,14 +245,14 @@ func _place_board_center() -> void:
 	var center = _camera.get_node_or_null("BoardCenter")
 	if center == null or _board == null:
 		return
-	var grid := TL.grid_cells(BOARD_TILES)
+	var grid := TL.grid_cells(_tile_count)
 	var inner := float(grid - 2) * float(_cell)   # interior ring area
 	var art := inner * 0.92   # small margin from the ring
 	center.size = Vector2(art, art)
 	center.position = (Vector2(float(board_px()), float(board_px())) - Vector2(art, art)) * 0.5
 
 func board_px() -> int:
-	return TL.grid_cells(BOARD_TILES) * _cell
+	return TL.grid_cells(_tile_count) * _cell
 
 ## P3: dice stage finished presenting — nothing to do engine-side (the engine
 ## already advanced); kept as the presentation-completion hook.

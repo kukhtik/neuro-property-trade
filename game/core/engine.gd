@@ -37,7 +37,13 @@ var _pending_trade = {}   # {proposer, recipient, give_tiles[], give_cash, want_
 func setup(s, names: Array) -> void:
 	settings = s
 	board = load("res://core/board.gd").new()
-	var board_file = FileAccess.open("res://data/board.json", FileAccess.READ)
+	# Load a board file matching the configured tile count (parametric board).
+	# Falls back to the classic 40-tile board if a matching file is missing.
+	var tc: int = int(settings.tile_count) if settings != null and "tile_count" in settings else 40
+	var board_path := "res://data/board_%d.json" % tc
+	if not FileAccess.file_exists(board_path):
+		board_path = "res://data/board.json"
+	var board_file = FileAccess.open(board_path, FileAccess.READ)
 	board.load_from_json(JSON.parse_string(board_file.get_as_text()))
 	log = load("res://core/event_log.gd").new()
 	rng = load("res://core/rng.gd").new()
@@ -539,8 +545,9 @@ func _teleport(pid: int, tile: int) -> void:
 func _move_and_resolve(roll: Dictionary) -> void:
 	var p = players[turn_player]
 	var old = p.position
-	var new_pos = (old + roll.sum) % 40
-	# sum is always 2..12 < 40, so new_pos < old exactly means the move crossed tile 0
+	var n: int = board.tile_count()
+	var new_pos = (old + roll.sum) % n
+	# sum is always 2..12 < n, so new_pos < old exactly means the move crossed tile 0
 	var wrapped = new_pos < old
 	if wrapped:
 		_credit(turn_player, settings.go_bonus)
@@ -732,7 +739,7 @@ func _apply_card_effect(card: Dictionary) -> void:
 		"advance":
 			_card_depth += 1
 			if _card_depth <= 5:
-				var target = (p.position + value) % 40  # value may be negative
+				var target = (p.position + value) % board.tile_count()  # value may be negative
 				_card_move_to_mod(target, value)
 			_card_depth -= 1
 

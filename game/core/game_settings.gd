@@ -38,6 +38,7 @@ var animations: bool = true   # master toggle for cosmetic tweens (spec control)
 var admin_token: String = ""  # token required by admin_gate for remote/override auth
 var language: String = "ru"  # UI language ("ru" | "en"); full localization is a follow-up
 var rng_seed: int = 0
+var tile_count: int = 40  # board perimeter tiles (16..64, multiple of 4)
 
 func from_data(d: Dictionary) -> void:
 	for k in d:
