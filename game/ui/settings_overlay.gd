@@ -68,6 +68,7 @@ var _sound: CheckButton
 
 # data tab
 var _rng_seed: SpinBox
+var _tile_count: SpinBox
 
 # preset buttons (CR-4: retranslated on locale change)
 var _p_classic: Button
@@ -435,6 +436,16 @@ func _build_interface_tab() -> void:
 	_language.connect("item_selected", Callable(self, "_on_language"))
 	grid.add_child(_h("ui.language", _language))
 
+	# P6 Phase 3: parametric board size (16..64, step 4). Changing it rebuilds
+	# the board at the new tile count on the next START/ПРИМЕНИТЬ.
+	_tile_count = SpinBox.new()
+	_tile_count.min_value = 16
+	_tile_count.max_value = 64
+	_tile_count.step = 4
+	_tile_count.value = 40
+	_tile_count.tooltip_text = I18n.t("settings.tile_count_tip")
+	grid.add_child(_h("settings.tile_count", _tile_count))
+
 ## P5: language selected → switch locale (retranslate via _on_locale_changed).
 func _on_language(idx: int) -> void:
 	I18n.set_locale("en" if idx == 1 else "ru")
@@ -610,6 +621,7 @@ func _collect_settings() -> Settings:
 			"token_id": str(r["token"].get_item_text(r["token"].selected)),
 		})
 	s.rng_seed = int(_rng_seed.value)
+	s.tile_count = int(_tile_count.value) if _tile_count != null else 40
 	s.starting_order = "random" if _starting_order.selected == 0 else "manual"
 	s.turn_timer = _selected_seconds(_turn_timer)
 	s.auction_timer = _selected_seconds(_auction_timer)

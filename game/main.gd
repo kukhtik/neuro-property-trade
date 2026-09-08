@@ -41,9 +41,16 @@ func _ready() -> void:
 	_game_view.restart_requested.connect(_on_restart_requested)
 	_game_view.settings_requested.connect(_open_overlay)
 
-	# settings overlay (ex-lobby) opens on first run, pre-game mode
+	# settings overlay (ex-lobby) opens on first run, pre-game mode. It lives
+	# on its own top CanvasLayer (layer 50) so it is cleanly separated from the
+	# GameView tree — no white-frame/collapse artifacts from being a sibling of
+	# the board (P6 Phase 3).
+	var _overlay_layer := CanvasLayer.new()
+	_overlay_layer.name = "OverlayLayer"
+	_overlay_layer.layer = 50
+	add_child(_overlay_layer)
 	_overlay = SettingsOverlay.new()
-	add_child(_overlay)
+	_overlay_layer.add_child(_overlay)
 	_overlay.set_mode(true)
 	_overlay.started.connect(_on_started)
 	_overlay.apply_requested.connect(_on_apply)

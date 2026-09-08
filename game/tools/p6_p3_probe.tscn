@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://p6p3probe"]
+
+[ext_resource type="Script" path="res://tools/p6_p3_probe.gd" id="1_p6p3"]
+
+[node name="P6P3Probe" type="Node"]
+script = ExtResource("1_p6p3")

@@ -127,6 +127,8 @@ const D := {
 	"settings.tab_data":       {"ru": "Данные", "en": "Data"},
 	"settings.rng_seed":       {"ru": "RNG-сид (0 = случайно):", "en": "RNG seed (0 = random):"},
 	"settings.rng_seed_tip":   {"ru": "Число для воспроизводимой партии. 0 = случайная.", "en": "Number for a reproducible match. 0 = random."},
+	"settings.tile_count":     {"ru": "Клеток на доске:", "en": "Board tiles:"},
+	"settings.tile_count_tip": {"ru": "Размер периметра доски (16–64, кратно 4). Меньше — компактнее, больше — длиннее партия.", "en": "Board perimeter size (16–64, multiple of 4). Smaller = more compact, larger = longer match."},
 
 	# validation
 	"settings.err_min2":       {"ru": "Нужно минимум 2 игрока.", "en": "Need at least 2 players."},
