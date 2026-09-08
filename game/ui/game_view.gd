@@ -53,6 +53,7 @@ var _center: HBoxContainer   # players | board | journal (ties the panels togeth
 var _cold := true
 var _game_over_shown := false
 var _toast_stack: ToastStack
+var _event_overlay: Control   # P6 Phase 5: reparented stream feed (over journal)
 var _observer := false         # spec §7: match has no LOCAL seat (host watches)
 var _follow_pid := -1          # spectator follow target (clicked player row)
 
@@ -96,6 +97,11 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	settings = s
 	_cold = false
 	_game_over_shown = false
+	# P6 Phase 5: free a previously-reparented event overlay before the board
+	# scene builds a fresh one (restart path), so we don't leak duplicates.
+	if _event_overlay != null and is_instance_valid(_event_overlay):
+		_event_overlay.queue_free()
+		_event_overlay = null
 	for seat in seats:
 		if str(seat.input_driver) in ["LOCAL", "ADMIN"]:
 			_human_pid = int(seat.pid)
@@ -105,9 +111,22 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	if _toast_stack != null and _board_scene != null and _board_scene._sfx != null:
 		_toast_stack.set_sfx(_board_scene._sfx)
 	_layout()
+	# P6 Phase 5: the event overlay must NOT float over the board center. It is
+	# reparented to the full viewport and anchored bottom-right (over the
+	# journal), so it reads as a stream feed, not a board artifact. Visibility
+	# is gated by settings.event_overlay (not unconditionally hidden).
 	var bs = _board_scene
-	if bs.has_node("EventOverlay"):
-		bs.get_node("EventOverlay").visible = false
+	if bs != null and bs.has_node("EventOverlay"):
+		var ov = bs.get_node("EventOverlay")
+		bs.remove_child(ov)
+		add_child(ov)
+		ov.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		ov.offset_left = -440
+		ov.offset_top = -210
+		ov.offset_right = -8
+		ov.offset_bottom = -8
+		ov.visible = bool(settings.event_overlay) if settings != null else true
+		_event_overlay = ov
 	if _board_scene != null and _board_scene.tile_hovered.is_connected(_on_tile_hovered):
 		_board_scene.tile_hovered.disconnect(_on_tile_hovered)
 	_board_scene.tile_clicked.connect(_on_tile_clicked)
