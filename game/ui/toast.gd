@@ -27,6 +27,12 @@ const _RENT_PAY_WINDOW := 1.2
 func set_sfx(sfx) -> void:
 	_sfx = sfx
 
+## C3: position the toast stack BELOW the top row of board tiles so toasts
+## never cover the board. `board_top` = the y of the board's top edge (top bar
+## + margin); `cell` = the tile size. Toasts start one cell below the top edge.
+func set_board_top(board_top: float, cell: float) -> void:
+	_toast_container.offset_top = int(board_top + cell + 8.0)
+
 func _init() -> void:
 	# Toast stack: top-right, newest on top, auto-dismiss
 	_toast_container = VBoxContainer.new()

@@ -18,6 +18,8 @@ signal settings_requested
 
 var _panel: PanelContainer
 var _content: Control
+var _current_kind: String = ""
+var _current_args: Array = []
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -29,8 +31,16 @@ func _init() -> void:
 	add_child(bg)
 	# clicking the dim closes (clickaway)
 	bg.connect("gui_input", Callable(self, "_on_dim_input"))
+	# C5: re-render the open modal when the locale changes (100% i18n)
+	I18n.inst().locale_changed.connect(_on_locale_changed)
+
+func _on_locale_changed(_locale: String) -> void:
+	if _current_kind != "" and visible:
+		_rebuild_current()
 
 func open_build(tile: int, proj: Dictionary, seat_name: String) -> void:
+	_current_kind = "build"
+	_current_args = [tile, proj, seat_name]
 	var t := _find_tile(proj, tile)
 	_show()
 	_content = UiTheme.vbox(10)
@@ -59,6 +69,8 @@ func open_build(tile: int, proj: Dictionary, seat_name: String) -> void:
 
 func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	# proposer (the human) builds an offer to one other player.
+	_current_kind = "trade"
+	_current_args = [proj, seats, proposer_pid]
 	_show()
 	var recipient: OptionButton = OptionButton.new()
 	recipient.tooltip_text = I18n.t("modal.recipient_tip")
@@ -124,6 +136,8 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	_panelize(body)
 
 func open_trade_response(proj: Dictionary, seats: Array) -> void:
+	_current_kind = "trade_response"
+	_current_args = [proj, seats]
 	_show()
 	var pending: Dictionary = proj.get("pending", {})
 	var proposer: int = int(pending.get("proposer", -1))
@@ -152,6 +166,8 @@ func open_trade_response(proj: Dictionary, seats: Array) -> void:
 	_panelize(body)
 
 func open_auction(proj: Dictionary, seats: Array) -> void:
+	_current_kind = "auction"
+	_current_args = [proj, seats]
 	_show()
 	var pending: Dictionary = proj.get("pending", {})
 	var tile: int = int(pending.get("tile", -1))
@@ -180,6 +196,8 @@ func open_auction(proj: Dictionary, seats: Array) -> void:
 	_panelize(body)
 
 func show_message(title: String, msg: String) -> void:
+	_current_kind = "message"
+	_current_args = [title, msg]
 	_show()
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(title))
@@ -191,6 +209,8 @@ func show_message(title: String, msg: String) -> void:
 
 ## Game-over results banner: winner, turns, capital + [Реванш] [Настройки].
 func show_game_over(winner_name: String, turns: int, capital: int, player_count: int) -> void:
+	_current_kind = "game_over"
+	_current_args = [winner_name, turns, capital, player_count]
 	_show()
 	var body := UiTheme.vbox(10)
 	body.add_child(_heading(I18n.t("modal.game_over")))
@@ -215,6 +235,8 @@ func _emit_settings() -> void:
 
 ## In-game settings: per-category sound toggles + a rules button.
 func open_settings(sound_cats: Array, rules_text: String) -> void:
+	_current_kind = "settings"
+	_current_args = [sound_cats, rules_text]
 	_show()
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.settings")))
@@ -286,11 +308,36 @@ func _panelize(content: Control) -> void:
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(_panel)
 
+## C5: rebuild the currently-open modal from its recorded kind+args so it
+## re-renders 100% in the new locale (no stale RU text in an open modal).
+func _rebuild_current() -> void:
+	if _panel != null and is_instance_valid(_panel):
+		_panel.free()
+	_panel = null
+	_content = null
+	match _current_kind:
+		"build":
+			open_build(int(_current_args[0]), _current_args[1], str(_current_args[2]))
+		"trade":
+			open_trade(_current_args[0], _current_args[1], int(_current_args[2]))
+		"trade_response":
+			open_trade_response(_current_args[0], _current_args[1])
+		"auction":
+			open_auction(_current_args[0], _current_args[1])
+		"message":
+			show_message(str(_current_args[0]), str(_current_args[1]))
+		"game_over":
+			show_game_over(str(_current_args[0]), int(_current_args[1]), int(_current_args[2]), int(_current_args[3]))
+		"settings":
+			open_settings(_current_args[0], str(_current_args[1]))
+
 func _show() -> void:
 	visible = true
 
 func close() -> void:
 	visible = false
+	_current_kind = ""
+	_current_args = []
 	if _panel != null and is_instance_valid(_panel):
 		_panel.free()
 	_panel = null

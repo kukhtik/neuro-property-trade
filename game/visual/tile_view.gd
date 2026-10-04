@@ -54,6 +54,7 @@ var _active := false
 var _selected := false
 var _target := false
 var _pulse_phase := 0.0
+var _type := "property"   # last tile type from refresh (for probes/tests)
 
 ## Build the tile widget for `index`. `cell` is the tile size in px.
 func build(index: int, tile_count: int, cell: int, skin: SkinManager = null) -> void:
@@ -191,6 +192,10 @@ const _HatchScript := preload("res://visual/tile_hatch.gd")
 
 ## Position the band, name, price, icon, houses, owner frame/badge and
 ## highlight frames based on which edge faces the board center.
+## Layout the tile's children. The icon sits in the corner NEAR the band edge
+## (inner corner), and the name is centered in the remaining content area with
+## its width/height clamped so it can NEVER overlap the icon (C2: text on icon).
+## Corner tiles (GO/jail/etc) override the icon to center in refresh().
 func _layout_edges() -> void:
 	var c := float(_cell)
 	var band_w := maxf(9.0, c * _skin.proportion("band_thickness", 0.25))
@@ -216,73 +221,77 @@ func _layout_edges() -> void:
 		f.position = Vector2.ZERO
 		f.size = Vector2(c, c)
 
-	# icon: proportional, <= 0.35*cell, centered in the content area (P6).
+	# icon: proportional, <= 0.35*cell, in the inner corner near the band.
 	# The floor is small (8px) so it never exceeds 0.35*cell on small tiles.
 	var icon_max := c * _skin.proportion("icon_max_frac", 0.35)
 	var icon_d := maxf(8.0, icon_max)
 
 	# Force exact label rects so a label's font minimum height can't push it
 	# past the tile edge (P6 overflow fix). clip_text keeps the text inside.
+	# Pin custom_minimum_size to the CLAMPED size (>=0) so the font's ~23px
+	# minimum can't force the rect past the tile at small cells (36px).
 	_name.clip_text = true
 	_price.clip_text = true
 
 	match _band_edge:
-		0:  # top band
+		0:  # top band — icon in top-right corner, name left of it
 			_band.position = Vector2(0, 0)
 			_band.size = Vector2(c, band_w)
+			_icon.position = Vector2(c - icon_d - pad, band_w + pad)
+			_icon.size = Vector2(icon_d, icon_d)
 			_name.position = Vector2(pad, band_w + pad)
-			_name.size = Vector2(c - pad * 2, c - band_w - price_h - pad * 2)
+			_name.size = Vector2(maxf(0.0, c - pad * 2 - icon_d), maxf(0.0, c - band_w - price_h - pad * 2))
 			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(0, c - price_h)
 			_price.size = Vector2(c, price_h)
 			_price.custom_minimum_size = _price.size
-			_icon.position = Vector2((c - icon_d) * 0.5, band_w + pad)
-			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(pad, band_w + pad)
 			_house_row.size = Vector2(c - pad * 2, 8)
 			_owner_badge.position = Vector2(c - badge_d - badge_off, c - badge_d - badge_off)
 			_owner_badge.size = Vector2(badge_d, badge_d)
-		1:  # left band
+		1:  # left band — icon in top-left corner, name to its RIGHT (horizontal,
+			# so the name keeps full height even at small cells where stacking
+			# icon-above-name would overflow the tile)
 			_band.position = Vector2(0, 0)
 			_band.size = Vector2(band_w, c)
-			_name.position = Vector2(band_w + pad, pad)
-			_name.size = Vector2(c - band_w - pad * 2, c - price_h - pad * 2)
+			_icon.position = Vector2(band_w + pad, pad)
+			_icon.size = Vector2(icon_d, icon_d)
+			_name.position = Vector2(band_w + pad + icon_d, pad)
+			_name.size = Vector2(maxf(0.0, c - band_w - pad * 2 - icon_d), maxf(0.0, c - price_h - pad * 2))
 			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(band_w, c - price_h)
 			_price.size = Vector2(c - band_w, price_h)
 			_price.custom_minimum_size = _price.size
-			_icon.position = Vector2(band_w + pad, (c - icon_d) * 0.5)
-			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(band_w + pad, pad)
 			_house_row.size = Vector2(c - band_w - pad * 2, 8)
 			_owner_badge.position = Vector2(c - badge_d - badge_off, c - badge_d - badge_off)
 			_owner_badge.size = Vector2(badge_d, badge_d)
-		2:  # bottom band
+		2:  # bottom band — icon in top-right corner, name left of it
 			_band.position = Vector2(0, c - band_w)
 			_band.size = Vector2(c, band_w)
+			_icon.position = Vector2(c - icon_d - pad, pad)
+			_icon.size = Vector2(icon_d, icon_d)
 			_name.position = Vector2(pad, pad)
-			_name.size = Vector2(c - pad * 2, c - band_w - price_h - pad * 2)
+			_name.size = Vector2(maxf(0.0, c - pad * 2 - icon_d), maxf(0.0, c - band_w - price_h - pad * 2))
 			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(0, c - price_h)
 			_price.size = Vector2(c, price_h)
 			_price.custom_minimum_size = _price.size
-			_icon.position = Vector2((c - icon_d) * 0.5, pad)
-			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(pad, c - band_w - 10)
 			_house_row.size = Vector2(c - pad * 2, 8)
 			_owner_badge.position = Vector2(badge_off, badge_off)
 			_owner_badge.size = Vector2(badge_d, badge_d)
-		3:  # right band
+		3:  # right band — icon in top-left corner, name right of it
 			_band.position = Vector2(c - band_w, 0)
 			_band.size = Vector2(band_w, c)
-			_name.position = Vector2(pad, pad)
-			_name.size = Vector2(c - band_w - pad * 2, c - price_h - pad * 2)
+			_icon.position = Vector2(pad, pad)
+			_icon.size = Vector2(icon_d, icon_d)
+			_name.position = Vector2(pad + icon_d, pad)
+			_name.size = Vector2(maxf(0.0, c - band_w - pad * 2 - icon_d), maxf(0.0, c - price_h - pad * 2))
 			_name.custom_minimum_size = _name.size
 			_price.position = Vector2(0, c - price_h)
 			_price.size = Vector2(c - band_w, price_h)
 			_price.custom_minimum_size = _price.size
-			_icon.position = Vector2(pad, (c - icon_d) * 0.5)
-			_icon.size = Vector2(icon_d, icon_d)
 			_house_row.position = Vector2(pad, pad)
 			_house_row.size = Vector2(c - band_w - pad * 2, 8)
 			_owner_badge.position = Vector2(badge_off, badge_off)
@@ -291,6 +300,7 @@ func _layout_edges() -> void:
 ## Repaint from a projection tile entry.
 func refresh(entry: Dictionary) -> void:
 	var typ: String = str(entry.get("type", "property"))
+	_type = typ
 	var is_corner: bool = TL.is_corner(_index, _tile_count)
 	var is_property: bool = (typ == "property")
 
@@ -308,6 +318,10 @@ func refresh(entry: Dictionary) -> void:
 		_price.text = ""
 		_icon.visible = true
 		_icon.texture = _skin.texture("corner_icons." + typ)
+		# corner tiles have no name — center the icon in the tile (C2)
+		var c := float(_cell)
+		var icon_d: float = _icon.size.x
+		_icon.position = Vector2((c - icon_d) * 0.5, (c - icon_d) * 0.5)
 	elif is_property:
 		_price.text = "$%d" % int(entry.get("cost", 0))
 		_icon.visible = false

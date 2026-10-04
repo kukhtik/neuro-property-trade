@@ -73,7 +73,19 @@ func _build_dice() -> void:
 	_dice_nodes.clear()
 
 	var vp := get_viewport().get_visible_rect().size
-	var center := vp * 0.5
+	# C6: center on the BOARD (the parent control's rect), not the viewport — the
+	# dice must land in the board's center, not the screen center (which is
+	# offset by the left players panel + right journal). Use the parent's size
+	# (the board scene) so it works even when this control's own size is 0 in
+	# headless (HBox hasn't laid it out).
+	var center: Vector2
+	var host := get_parent()
+	if host != null and host is Control and (host as Control).size.x > 0 and (host as Control).size.y > 0:
+		center = (host as Control).size * 0.5
+	elif size.x > 0 and size.y > 0:
+		center = size * 0.5
+	else:
+		center = vp * 0.5
 	var dice_size: float = clampf(minf(vp.x, vp.y) * 0.15, 64.0, 140.0)
 
 	for i in 2:

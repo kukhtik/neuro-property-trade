@@ -110,6 +110,13 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_board_scene.setup(engine, settings, seats)
 	if _toast_stack != null and _board_scene != null and _board_scene._sfx != null:
 		_toast_stack.set_sfx(_board_scene._sfx)
+	# C3: toasts must sit BELOW the top row of board tiles (never cover the board).
+	# The board scene's top edge is at _TOP_H (top bar) + its own margin; the
+	# toast stack is a full-viewport CanvasLayer, so offset by the board's top.
+	if _toast_stack != null and _board_scene != null:
+		var bs_top: float = float(_TOP_H) + 8.0   # top bar + board margin
+		var cell: float = float(_board_scene._cell)
+		_toast_stack.set_board_top(bs_top, cell)
 	_layout()
 	# P6 Phase 5: the event overlay must NOT float over the board center. It is
 	# reparented to the full viewport and anchored bottom-right (over the
