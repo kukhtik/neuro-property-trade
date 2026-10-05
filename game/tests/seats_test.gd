@@ -131,11 +131,18 @@ static func test_jail_timeout_priority() -> String:
 	var p = MA.pick(e, 0)
 	if p.get("action", "") != "pay":
 		return "jailed, 3 attempts, has money -> pay, got %s" % p.get("action", "")
-	# No money, no card -> nothing available (pick returns {})
+	# No money, no card: the served sentence still has to resolve, so the seat
+	# rolls the final attempt and walks free. (Returning {} here used to freeze
+	# the whole game - see engine_test.test_imprisoned_penniless_has_a_legal_move.)
 	e.player(0).money = 0
 	var p2 = MA.pick(e, 0)
-	if not p2.is_empty():
-		return "jailed, broke, no card -> {} expected, got %s" % str(p2)
+	if p2.get("action", "") != "roll":
+		return "jailed, broke, no card -> the final attempt 'roll' expected, got %s" % str(p2)
+	var res: Dictionary = e.submit_intent(0, "roll", {})
+	if not res.get("ok", false):
+		return "the final attempt was refused: %s" % str(res.get("reason", ""))
+	if e.player(0).in_jail:
+		return "the served sentence must release the player"
 	return ""
 
 # --- Spectator projection + renderer ---

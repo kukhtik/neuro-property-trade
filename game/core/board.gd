@@ -32,6 +32,10 @@ func tile_at(index: int) -> Dictionary:
 	return {}
 
 func type_at(index: int) -> String:
+	# Bounds-checked: GDScript indexes negatively from the end, so an
+	# out-of-range tile used to silently read as the last tile on the board.
+	if index < 0 or index >= _tiles.size():
+		return ""
 	return _tiles[index].get("type", "property")
 
 func group_tiles(group: String) -> Array:

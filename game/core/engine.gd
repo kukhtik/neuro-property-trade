@@ -33,6 +33,7 @@ var _forced_draw = null   # Variant: nullable Dictionary {kind, card} — test h
 var _houses: Dictionary = {}   # tile index -> house count (0..5; 5 = hotel)
 var _mortgaged: Array = []   # tile indices currently mortgaged
 var _pending_trade = {}   # {proposer, recipient, give_tiles[], give_cash, want_tiles[], want_cash} or {} when none
+var _recovered_turn: bool = false   # transient: a bankruptcy reassigned the turn during THIS intent
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -69,6 +70,9 @@ func player(i: int):
 	return players[i]
 
 func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
+	# Only meaningful within one call: a bankruptcy can reassign the turn and
+	# set this, and the trailing end-of-turn must not advance a second time.
+	_recovered_turn = false
 	if pid < 0 or pid >= players.size():
 		return {"ok": false, "reason": "no such player", "legal": [], "events": []}
 	# responder path (cross-player action during the trade window): a pending
@@ -98,6 +102,10 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 					return _resolve_jail_pay()
 				if action == "use_card":
 					return _resolve_jail_use_card()
+				if action == "roll" and cur.get_out_of_jail_cards == 0 and cur.money < settings.jail_fine:
+					# Served the term and cannot buy a card: the last attempt is
+					# the only move left, and it cannot deadlock the engine.
+					return _resolve_jail_roll()
 				if action == "roll":
 					# jail_rule "both": after 3 failed attempts you must pay or use a card
 					return {"ok": false, "reason": "must pay fine or use card", "legal": ["pay", "use_card"], "events": []}
@@ -120,7 +128,14 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 			return {"ok": false, "reason": "roll, build, sell, mortgage, or unmortgage", "legal": legal, "events": []}
 		PHASE_PURCHASE_WAIT:
 			var tile = _pending.get("tile", -1)
-			if tile == -1: return {"ok": false, "reason": "no pending purchase", "legal": [], "events": []}
+			if tile == -1 or board.tile_at(tile).is_empty():
+				# Corrupt / out-of-board pending purchase. Refusing the intent here
+				# would leave the phase unreachable from every seat - a dead game
+				# (found by tools/soak_cli.gd, seed 2026). Drop it and move on.
+				log.append("purchase_dropped", {"player": pid, "tile": tile})
+				_pending = {}
+				_end_turn_or_continue()
+				return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 			if action == "buy":
 				var tile_data = board.tile_at(tile)
 				var cost: int = tile_data.get("cost", 0)
@@ -202,12 +217,20 @@ func legal_actions(pid: int) -> Array:
 					legal.append("pay")
 				if cur.get_out_of_jail_cards > 0:
 					legal.append("use_card")
+				if legal.is_empty():
+					# Classic ruling: a player who cannot pay the fine must serve
+					# the attempt. Without this a penniless, card-less seat with
+					# three failed attempts had NO legal action at all - the game
+					# froze with every seat empty (tools/soak_cli.gd, seed 2002).
+					legal.append("roll")
 				return legal
 			return ["roll", "build_house", "sell_house", "mortgage_property", "unmortgage_property", "propose_trade", "respond_trade"]
 		PHASE_PURCHASE_WAIT:
 			var tile = _pending.get("tile", -1)
-			if tile == -1:
-				return []
+			if tile == -1 or board.tile_at(tile).is_empty():
+				# Invalid pending tile: "pass" is the recovery action (see
+				# submit_intent), so the seat can always unblock the phase.
+				return ["pass"]
 			var legal: Array = ["pass"]
 			var tile_data = board.tile_at(tile)
 			if players[pid].money >= int(tile_data.get("cost", 0)):
@@ -289,6 +312,23 @@ func _go_bankrupt(payer: int, creditor: int) -> void:
 		p.change_cash(-p.money)
 	_remove_player(payer)
 	_check_winner()
+	if phase != PHASE_END_GAME:
+		_recover_after_player_removal()
+
+## A bankruptcy can happen while the bankrupt player's own turn resolution is
+## still on the stack (rent, tax, card payment). The phase is then left at
+## ROLL_RESOLVE with nothing pending and legal_actions empty for EVERY seat - a
+## dead game (found by tools/soak_cli.gd, seed 12345, 3-player rent bankruptcy).
+## Clear the decision state and hand the turn to the survivor that
+## _remove_player has already selected; the turn holder can then roll.
+func _recover_after_player_removal() -> void:
+	_pending = {}
+	_pending_trade = {}
+	_last_roll = {}
+	_no_extra_turn = false
+	consecutive_doubles = 0
+	phase = PHASE_TURN_START
+	_recovered_turn = true
 
 func _remove_player(idx: int) -> void:
 	players.remove_at(idx)
@@ -622,6 +662,11 @@ func _end_turn_or_continue() -> void:
 	# _no_extra_turn (jail-exit doubles, going to jail) suppresses that.
 	if phase == PHASE_END_GAME:
 		return
+	# A player removed mid-resolution already had the turn reassigned by
+	# _recover_after_player_removal; advancing here would silently skip a seat.
+	if _recovered_turn:
+		_recovered_turn = false
+		return
 	if _no_extra_turn:
 		_no_extra_turn = false
 		_next_turn()
@@ -638,6 +683,17 @@ func _resolve_jail_roll() -> Dictionary:
 	var was_doubles: bool = roll.doubles
 	_last_doubles = roll.doubles
 	log.append("roll", {"player": turn_player, "d1": roll.d1, "d2": roll.d2, "doubles": roll.doubles, "sum": roll.sum})
+	# A penniless, card-less seat serves its attempts and then walks free on the
+	# last one (classic ruling). jail_turns 3 already means three attempts are
+	# served, so an unlimited retry loop here would freeze the game.
+	if not was_doubles and players[turn_player].jail_turns >= 3:
+		var served = players[turn_player]
+		served.in_jail = false
+		served.jail_turns = 0
+		_no_extra_turn = true
+		log.append("jail", {"player": turn_player, "reason": "served time"})
+		_move_and_resolve(roll)
+		return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 	var p = players[turn_player]
 	if was_doubles:
 		p.in_jail = false
@@ -739,7 +795,9 @@ func _apply_card_effect(card: Dictionary) -> void:
 		"advance":
 			_card_depth += 1
 			if _card_depth <= 5:
-				var target = (p.position + value) % board.tile_count()  # value may be negative
+				# value may be negative and Godot's % keeps the dividend's sign:
+				# "go back three spaces" from tile 2 used to yield -1.
+				var target: int = posmod(p.position + value, board.tile_count())
 				_card_move_to_mod(target, value)
 			_card_depth -= 1
 

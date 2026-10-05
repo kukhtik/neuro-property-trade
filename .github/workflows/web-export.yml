@@ -1,0 +1,53 @@
+name: web-export
+
+# The WebGL build is the stream deliverable (docs/plan.md "Up next" #1). This
+# produces it reproducibly and verifies the export actually emitted a bootable
+# HTML5 bundle (real wasm + pck + loader). It does NOT click through the game in
+# a real browser: that playthrough smoke is still manual, and frame capture under
+# SwiftShader/llvmpipe is a known-unreliable environment (docs/plan.md risks).
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  web:
+    name: Godot Web export
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache pinned Godot + export templates
+        uses: actions/cache@v4
+        with:
+          path: |
+            .tools/godot
+            ~/.local/share/godot/export_templates
+          key: godot-web-${{ runner.os }}-${{ hashFiles('.tools/godot-version') }}
+
+      - name: Fetch pinned Godot (sha512-verified)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq unzip >/dev/null
+          tools/ci/fetch_godot.sh
+
+      - name: Install export templates (pinned, sha512-verified)
+        run: tools/ci/fetch_templates.sh
+
+      - name: Export Web
+        run: |
+          G="$PWD/tools/ci/godot_bin.sh"
+          mkdir -p build/web
+          "$G" --headless --path game --import
+          "$G" --headless --path game --export-release "Web" "$PWD/build/web/index.html"
+          ls -la build/web
+
+      - name: Verify the bundle is bootable
+        run: tools/ci/verify_web_build.sh build/web
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
+          retention-days: 30

@@ -43,6 +43,44 @@ Ground truth for what's shipped: `docs/plan.md` here + the design docs under
 WebGL export builds and boots in a browser (frame-capture under SwiftShader is
 a proven environment limitation, not a build bug).
 
+## Completed infrastructure (2026-10-05)
+
+Unfreeze work for the backlog item "Godot headless CI + replay determinism"
+(issue #1). Full details and every command: `docs/infra.md`.
+
+- **Pinned engine** — Godot 4.7.2 in `.tools/godot-version`; `tools/ci/fetch_godot.sh`
+  fetches and sha512-verifies it, `tools/ci/godot_bin.sh` resolves it.
+- **One oracle command** — `tools/ci/run_tests.sh` (import pass + 226 tests +
+  a count floor + a zero-`SCRIPT ERROR` gate). `--import` is mandatory: a fresh
+  clone has no class cache, and 4 tests fail without it.
+- **CI** — `.github/workflows/ci.yml` runs the oracle, replays the committed
+  corpus and regenerates a fresh batch; `web-export.yml` builds and verifies the
+  WebGL bundle (export templates fetched + checksum-verified).
+- **Replay / determinism** — `game/tools/replay.gd` + `replay_cli.gd`. A game is
+  fully determined by (settings, names, seed, decision sequence), so logs record
+  DECISIONS, not dice, and re-running must reproduce a sha256 of
+  `to_snapshot()` byte for byte. This is the "same seeds == same state"
+  regression and the engine-vs-intent divergence debugger.
+- **Decision corpus** — `game/tools/corpus.gd` plays whole games with the shared
+  deterministic policy and records typed decisions (phase, closed legal set,
+  chosen action, and the features a System-1 model would consume) into
+  `corpus/games/*.jsonl` + `index.json`. This is the dataset the Laya/ONNX
+  adoption protocol in issue #1 requires; a learned policy is only ever a
+  `decide()` swap, since the engine validates every intent.
+- **Seeded soak** — `game/tools/soak_cli.gd` (`--sweep N`) plays many seeds and
+  asserts progress + invariants. It immediately found three engine bugs (below).
+
+### Engine bugs found and fixed by the soak
+
+| # | Symptom | Fix |
+|---|---|---|
+| 1 | **Dead game**: with 3+ players, a rent bankruptcy removed the turn player while `phase` was still `ROLL_RESOLVE`, leaving every seat with zero legal actions. | `_recover_after_player_removal()` reassigns the phase and hands the turn to the survivor `_remove_player` already selected; the trailing end-of-turn is latched off so no seat is skipped. |
+| 2 | **Off-board position**: the "Go Back Three Spaces" card resolved to position `-1` (Godot's `%` keeps the dividend's sign), then opened `PURCHASE_WAIT` on a nonexistent tile. | `posmod()` for card movement; `board.type_at()` is bounds-checked (a negative index silently read the LAST tile); an invalid pending purchase now resolves instead of freezing. |
+| 3 | **Dead game**: a jailed player with 3 served attempts, no cash and no card had zero legal actions. | Classic ruling: the served sentence resolves on the final attempt (roll → released, no bonus turn), so a jailed seat is never without a move. |
+
+All three are covered by regression tests in `tests/engine_test.gd` /
+`tests/seats_test.gd`, plus the new `tests/replay_test.gd` module.
+
 ## Current phase — UI/UX overhaul (branch `ui/overhaul`)
 
 The UI is being reworked per the **v2 redesign concept**
@@ -101,6 +139,11 @@ only tracks the roadmap, not every sub-task.
    not start without a live second SDK server.
 3. **REMOTE browser client (post-MVP)** — the third human driver, only after
    the UI overhaul is stable.
+
+Infrastructure is IN PLACE: see "Completed infrastructure" above and
+`docs/infra.md`. When the UI branches settle, the same oracle
+(`tools/ci/run_tests.sh`) already gates the engine, and the corpus + soak run in
+CI per push.
 
 ## Risks (still live)
 

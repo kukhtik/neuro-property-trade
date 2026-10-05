@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target", "test_bankrupt_mid_turn_no_deadlock", "test_bankrupt_non_turn_player_keeps_turn", "test_recovered_turn_hands_over_exactly_once", "test_bankruptcy_latch_is_transient", "test_card_back_three_never_leaves_the_board", "test_negative_position_never_pends_a_purchase", "test_invalid_pending_purchase_does_not_deadlock", "test_board_type_at_bounds_checked", "test_imprisoned_penniless_has_a_legal_move", "test_served_sentence_frees_penniless_player", "test_jail_pay_still_required_when_affordable"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -629,4 +629,287 @@ static func test_trade_rejects_self_or_invalid_target() -> String:
 	if res["ok"] == true: return "should reject trading with yourself"
 	var res2 = e.submit_intent(0, "propose_trade", {"to": 7, "give_tiles": [5], "give_cash": 0, "want_tiles": [], "want_cash": 0})
 	if res2["ok"] == true: return "should reject out-of-range recipient"
+	return ""
+
+# --- regression: bankruptcy during resolution must not strand the engine ---
+# Found by tools/soak_cli.gd (seed 12345): with 3+ players, a rent bankruptcy
+# removed the turn player while phase was still ROLL_RESOLVE, leaving EVERY seat
+# with zero legal actions - a dead game that no timer or driver can unblock.
+
+static func _three_players_with_rent_trap():
+	var E = load("res://core/engine.gd")
+	var S = load("res://core/game_settings.gd")
+	var s = S.new()
+	var e = E.new()
+	e.setup(s, ["Ada", "Bo", "Cyd"])
+	# Bo owns tile 6 (Cedar Ave, cost 100, base rent 6? no - use a pricier
+	# tile so the rent is unambiguous): tile 18 (cost 180, rent 18) keeps the
+	# arithmetic obvious when read back from the log.
+	e.player(1).add_ownership(18)
+	e.player(0).position = 17   # one step short of Bo's tile
+	e.player(0).money = 10      # cannot pay any rent at all
+	return e
+
+static func test_bankrupt_mid_turn_no_deadlock() -> String:
+	var e = _three_players_with_rent_trap()
+	e._force_dice(1, 1, 0, false)   # sum 1 -> tile 18, owned by Bo -> bankruptcy
+	e.submit_intent(0, "roll", {})
+	if e.player_count() != 2:
+		return "bankrupt player should be removed, count=%d" % e.player_count()
+	if e.phase != "TURN_START":
+		return "phase must recover to TURN_START, got %s" % e.phase
+	var legal_total := 0
+	for pid in e.player_count():
+		legal_total += e.legal_actions(pid).size()
+	if legal_total == 0:
+		return "dead game: no seat has a legal action after bankruptcy"
+	return ""
+
+static func test_bankrupt_non_turn_player_keeps_turn() -> String:
+	var e = _three_players_with_rent_trap()
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	# Ada (the turn player, now bankrupt and removed) was followed by Bo; the
+	# recovered turn holder must be a real seat that can actually roll.
+	var holder_name: String = e.player(e.turn_player).name
+	if holder_name == "Cyd":
+		return "turn skipped Bo after Ada was removed (holder=%s)" % holder_name
+	if not e.legal_actions(e.turn_player).has("roll"):
+		return "recovered turn holder %s cannot roll" % holder_name
+	# and the game must continue: one intent is accepted
+	var res: Dictionary = e.submit_intent(e.turn_player, "roll", {})
+	if not res.get("ok", false):
+		return "recovered turn holder could not act: %s" % str(res.get("reason", ""))
+	return ""
+
+static func test_recovered_turn_hands_over_exactly_once() -> String:
+	# After recovery the turn must be handed over exactly once. The latch that
+	# suppresses a second advance is transient: it must NOT be able to eat a
+	# later, legitimate turn change.
+	var e = _three_players_with_rent_trap()
+	e.player(0).add_ownership(5)     # Ada owns a railroad; it transfers to Bo
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	# NOTE: removing Ada (index 0) shifts Bo to index 0, so look the creditor up
+	# by name - indexing by the pre-removal pid is exactly the kind of mistake
+	# the seat layer has to avoid.
+	var bo = null
+	for pp in e.players:
+		if pp.name == "Bo":
+			bo = pp
+	if bo == null:
+		return "Bo vanished from the player list"
+	if not bo.owns(5):
+		return "creditor should have received the bankrupt player's tile"
+	if e.player(e.turn_player).name != "Bo":
+		return "turn should sit with Bo after Ada was removed, got %s" % e.player(e.turn_player).name
+
+	# Bo rolls a non-doubles move; the turn must land on the ONE remaining other
+	# seat (Cyd). If the latch leaked, a seat would be silently skipped.
+	e._force_dice(4, 2, 2, false)
+	var res: Dictionary = e.submit_intent(e.turn_player, "roll", {})
+	if not res.get("ok", false):
+		return "Bo could not roll after recovery: %s" % str(res.get("reason", ""))
+	if e.phase == "PURCHASE_WAIT":
+		e.submit_intent(e.turn_player, "pass", {})
+	if e.player(e.turn_player).name != "Cyd":
+		return "turn should pass to Cyd, got %s (phase %s)" % [e.player(e.turn_player).name, e.phase]
+	return ""
+
+static func test_bankruptcy_latch_is_transient() -> String:
+	# The "turn already handed over" latch is consumed by the end-of-turn path
+	# or cleared when the next intent begins - it can never suppress an advance
+	# for a later, unrelated intent.
+	var e = _three_players_with_rent_trap()
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	if e.player_count() != 2:
+		return "expected 2 survivors"
+	var holder: int = e.turn_player
+	e._force_dice(5, 2, 3, false)      # non-doubles
+	var res: Dictionary = e.submit_intent(holder, "roll", {})
+	if not res.get("ok", false):
+		return "recovered holder could not act: %s" % str(res.get("reason", ""))
+	if e.phase == "PURCHASE_WAIT":
+		e.submit_intent(holder, "pass", {})
+	if e.turn_player == holder:
+		return "the turn did not advance after a non-doubles roll"
+	return ""
+
+# --- regression: the board ring is a ring (no negative positions) ---
+# Found by tools/soak_cli.gd (seed 2026, 3 players): the community card
+# "Go Back Three Spaces" resolved to position -1, because Godot's % keeps the
+# sign of the dividend. The engine then opened PURCHASE_WAIT on tile -1.
+
+static func _community_engine(player_names: Array = ["Ada", "Bo", "Cyd"]):
+	var E = load("res://core/engine.gd")
+	var S = load("res://core/game_settings.gd")
+	var s = S.new()
+	var e = E.new()
+	e.setup(s, player_names)
+	return e
+
+static func test_card_back_three_never_leaves_the_board() -> String:
+	var n: int = _community_engine().board.tile_count()
+	# Backwards moves must land exactly on the wrapped tile and always stay on
+	# the board. Forwards moves may cascade (landing on another card tile draws
+	# again), so those only assert the position stays in range.
+	for start in range(n):
+		for value in [-3, -5, -1]:
+			var eb = _community_engine()
+			eb.turn_player = 0
+			eb.player(0).position = start
+			eb._apply_card_effect({"kind": "community", "effect": "advance", "value": value})
+			var expected: int = posmod(start + value, n)
+			# Landing on another card tile cascades into a fresh draw, so only
+			# assert the exact landing when the destination has no cascade; in
+			# every case the position must equal the wrapped tile or stay on the
+			# board (never negative).
+			# Only assert the exact landing for destinations that resolve in
+			# place: card tiles draw again and "go to jail" relocates the piece.
+			var landing: String = eb.board.type_at(expected)
+			if landing in ["property", "railroad", "utility", "tax", "go", "jail", "free_parking"]:
+				if eb.player(0).position != expected:
+					return "advance %d from %d: want %d, got %d" % [value, start, expected, eb.player(0).position]
+			var pos_neg: int = eb.player(0).position
+			if pos_neg < 0 or pos_neg >= n:
+				return "advance %d from %d left the board: position %d (n=%d)" % [value, start, pos_neg, n]
+	for start in range(n):
+		for value in [3, 7]:
+			var ef = _community_engine()
+			ef.turn_player = 0
+			ef.player(0).position = start
+			ef._apply_card_effect({"kind": "community", "effect": "advance", "value": value})
+			var pos: int = ef.player(0).position
+			if pos < 0 or pos >= n:
+				return "advance %d from %d left the board: position %d (n=%d)" % [value, start, pos, n]
+	return ""
+
+static func test_negative_position_never_pends_a_purchase() -> String:
+	# A pending purchase must always reference a real tile.
+	var e = _community_engine()
+	e.turn_player = 0
+	e.player(0).position = 2
+	e._apply_card_effect({"kind": "community", "effect": "advance", "value": -3})
+	if e.phase == "PURCHASE_WAIT":
+		var tile: int = int(e._pending.get("tile", -1))
+		if e.board.tile_at(tile).is_empty():
+			return "PURCHASE_WAIT pended on a nonexistent tile %d" % tile
+	if e.player(0).position < 0:
+		return "player position left the board: %d" % e.player(0).position
+	return ""
+
+static func test_invalid_pending_purchase_does_not_deadlock() -> String:
+	# Force the corrupt state explicitly: the phase must still be unblockable and
+	# the game must continue rather than freezing with zero legal actions.
+	var e = _community_engine()
+	e.turn_player = 0
+	e.phase = "PURCHASE_WAIT"
+	e._pending = {"tile": -1}
+	var legal: Array = e.legal_actions(0)
+	if legal.is_empty():
+		return "no legal action for an invalid pending purchase - dead game"
+	var res: Dictionary = e.submit_intent(0, "pass", {})
+	if not res.get("ok", false):
+		return "recovery pass rejected: %s" % str(res.get("reason", ""))
+	if e.phase == "PURCHASE_WAIT":
+		return "phase stayed in PURCHASE_WAIT after the recovery pass"
+	if e.log.entries_of_type("purchase_dropped").size() == 0:
+		return "the dropped purchase was not recorded in the event log"
+	return ""
+
+static func test_board_type_at_bounds_checked() -> String:
+	var Board = load("res://core/board.gd")
+	var b = Board.new()
+	var f = FileAccess.open("res://data/board.json", FileAccess.READ)
+	b.load_from_json(JSON.parse_string(f.get_as_text()))
+	f.close()
+	if b.type_at(-1) != "":
+		return "type_at(-1) should be empty, got '%s' (negative index wrapped to the last tile)" % b.type_at(-1)
+	if b.type_at(b.tile_count()) != "":
+		return "type_at(tile_count) should be empty"
+	if b.tile_at(-1) != {}:
+		return "tile_at(-1) should be empty"
+	if b.type_at(0) == "":
+		return "type_at(0) must still resolve the first tile"
+	return ""
+
+# --- regression: a jailed seat can always act ---
+# Found by tools/soak_cli.gd (seed 2002, 2 players): a penniless, card-less
+# player with three served attempts had ZERO legal actions, freezing the game.
+
+static func _jailed_engine(money: int, jail_turns: int, cards: int):
+	var E = load("res://core/engine.gd")
+	var S = load("res://core/game_settings.gd")
+	var s = S.new()
+	var e = E.new()
+	e.setup(s, ["Ada", "Bo"])
+	e.turn_player = 0
+	var p = e.player(0)
+	p.in_jail = true
+	p.position = 10
+	p.money = money
+	p.jail_turns = jail_turns
+	p.get_out_of_jail_cards = cards
+	return e
+
+static func test_imprisoned_penniless_has_a_legal_move() -> String:
+	# the exact frozen state: served time, cannot pay, no card
+	var e = _jailed_engine(0, 3, 0)
+	var legal: Array = e.legal_actions(0)
+	if legal.is_empty():
+		return "a jailed, penniless, card-less seat had no legal action - dead game"
+	if not legal.has("roll"):
+		return "the only possible move must be 'roll', got %s" % str(legal)
+	if legal.has("pay"):
+		return "'pay' must not be offered without the money"
+	if legal.has("use_card"):
+		return "'use_card' must not be offered without a card"
+	return ""
+
+static func test_served_sentence_frees_penniless_player() -> String:
+	var e = _jailed_engine(0, 3, 0)
+	var res: Dictionary = e.submit_intent(0, "roll", {})
+	if not res.get("ok", false):
+		return "the final-attempt roll was refused: %s" % str(res.get("reason", ""))
+	if e.phase == "END_GAME":
+		return "unexpected end of game"
+	# the player must be free and off the jail tile (no infinite retry loop)
+	if e.player(0).in_jail:
+		return "the served sentence must release the player"
+	if e.player(0).jail_turns != 0:
+		return "jail_turns should reset, got %d" % e.player(0).jail_turns
+	if e.player(0).position == 10:
+		return "a freed player must move (still parked on the jail tile)"
+	# and the game must be able to continue: someone has a legal action
+	var total := 0
+	for pid in e.player_count():
+		total += e.legal_actions(pid).size()
+	if total == 0:
+		return "no seat can act after the release - still dead"
+	return ""
+
+static func test_jail_pay_still_required_when_affordable() -> String:
+	# The escape hatch must not weaken the normal path: with cash and no card,
+	# a served sentence still offers the choice, and paying releases immediately.
+	var e = _jailed_engine(500, 3, 0)
+	var legal: Array = e.legal_actions(0)
+	if not legal.has("pay"):
+		return "an affordable fine must be offered, got %s" % str(legal)
+	var res: Dictionary = e.submit_intent(0, "pay", {})
+	if not res.get("ok", false):
+		return "pay was refused: %s" % str(res.get("reason", ""))
+	if e.player(0).in_jail:
+		return "paying the fine must release the player"
+	if e.player(0).money != 500 - e.settings.jail_fine:
+		return "the fine was not deducted (money=%d)" % e.player(0).money
+	# with a card in hand the card path wins and the roll stays restricted
+	var e2 = _jailed_engine(0, 1, 1)
+	var legal2: Array = e2.legal_actions(0)
+	if legal2.has("pay"):
+		return "'pay' must not be offered without the money"
+	if not legal2.has("use_card"):
+		return "a held card must be offered, got %s" % str(legal2)
+	if not legal2.has("roll"):
+		return "an attempt remains available at jail_turns=1"
 	return ""

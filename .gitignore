@@ -24,3 +24,13 @@ visual_smoke_*.png
 visual_smoke_*.png.import
 ui_*.png
 ui_*.png.import
+
+# Pinned toolchain (fetched, never committed): binary + downloaded archives
+.tools/*
+!.tools/godot-version
+
+# Corpus output written into the Godot tree when the CLI is given a res:// path
+game/corpus/
+
+# Web/desktop export output
+build/web/

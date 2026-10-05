@@ -1,0 +1,72 @@
+name: ci
+
+# The rules engine is deterministic and headless-testable, so every push is
+# gated on exactly what a contributor runs locally:
+#   tools/ci/run_tests.sh          - import pass + suite + SCRIPT ERROR gate
+#   res://tools/replay_cli.gd      - every recorded game replays to its
+#                                    recorded state fingerprint
+#   res://tools/soak_cli.gd        - seeded sweeps must not stall or break the
+#                                    ownership/cash invariants
+# Godot is PINNED (.tools/godot-version) and checksum-verified: replay
+# fingerprints are only guaranteed within a single engine build.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine-tests:
+    name: rules engine (headless)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache pinned Godot
+        uses: actions/cache@v4
+        with:
+          path: .tools/godot
+          key: godot-${{ runner.os }}-${{ hashFiles('.tools/godot-version') }}
+
+      - name: Fetch pinned Godot (sha512-verified)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq unzip >/dev/null
+          tools/ci/fetch_godot.sh
+
+      - name: Oracle - import pass + test suite + SCRIPT ERROR gate
+        run: tools/ci/run_tests.sh
+
+      - name: Determinism - replay every recorded game log
+        run: |
+          G="$PWD/tools/ci/godot_bin.sh"
+          "$G" --headless --path game --script res://tools/replay_cli.gd -- --verify-all corpus/games
+
+      - name: Corpus - regenerate a batch and verify decision-replay
+        run: |
+          G="$PWD/tools/ci/godot_bin.sh"
+          # A project-relative output path keeps the contract identical on Linux
+          # and on a Windows/Git-bash checkout (build/ is git-ignored).
+          OUT="build/corpus"
+          "$G" --headless --path game --script res://tools/corpus.gd -- --out "$OUT" --games 4 --seed 20000 --turns 250
+          "$G" --headless --path game --script res://tools/replay_cli.gd -- --verify-all "$OUT"
+
+      - name: Seeded soak - no stalls, invariants hold
+        run: |
+          G="$PWD/tools/ci/godot_bin.sh"
+          for players in 2 3 4; do
+            "$G" --headless --path game --script res://tools/soak_cli.gd -- --sweep 20 --seed 2000 --turns 250 --players "$players"
+          done
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-log
+          path: /tmp/npt-tests-*.log
+          if-no-files-found: ignore
