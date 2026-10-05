@@ -40,7 +40,10 @@ jobs:
           G="$PWD/tools/ci/godot_bin.sh"
           mkdir -p build/web
           "$G" --headless --path game --import
-          "$G" --headless --path game --export-release "Web" "$PWD/build/web/index.html"
+          # Godot needs a NATIVE output path: "$PWD" is MSYS-form on a Git-bash
+          # checkout and the export fails with "target folder does not exist".
+          OUT="$(cd build/web && (pwd -W 2>/dev/null || pwd))"
+          "$G" --headless --path game --export-release "Web" "$OUT/index.html"
           ls -la build/web
 
       - name: Verify the bundle is bootable

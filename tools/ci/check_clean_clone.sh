@@ -10,12 +10,20 @@
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# git is a NATIVE binary and needs native paths, while bash wants MSYS ones, so
+# ask the shell for the Windows form ("pwd -W" under Git-bash).
+native() { (cd "$1" && pwd -W 2>/dev/null || pwd); }
+ROOT_NATIVE="$(native "$ROOT")"
 WORK="$(mktemp -d)"
+WORK_NATIVE="$(native "$WORK")"
 trap 'rm -rf "$WORK"' EXIT
 
-echo "==> cloning HEAD into $WORK/npt"
-git clone -q --depth 1 "file://$ROOT" "$WORK/npt" || { echo "FAIL: clone failed"; exit 1; }
-cd "$WORK/npt"
+# Clone from a NATIVE local path (no file:// URL: git would read the leading
+# slash as a path root and look for a "/C:/..." directory).
+echo "==> cloning HEAD into $WORK_NATIVE/npt"
+git clone -q --depth 1 "$ROOT_NATIVE" "$WORK_NATIVE/npt" || { echo "FAIL: clone failed"; exit 1; }
+cd "$WORK_NATIVE/npt" || { echo "FAIL: cannot enter the clone"; exit 1; }
+
 
 echo "==> build artifacts must NOT leak into the clone"
 if [ -e game/.godot ]; then echo "FAIL: game/.godot/ leaked into the clone"; exit 1; fi
@@ -29,7 +37,7 @@ echo "==> pinned version: $VERSION"
 LOCAL_BIN="$ROOT/.tools/godot/Godot_v${VERSION}-stable_win64_console.exe"
 if [ -x "$LOCAL_BIN" ]; then
   echo "==> reusing the locally verified engine (skips an 86 MB download)"
-  cp -r "$ROOT/.tools/godot" "$WORK/npt/.tools/godot"
+  cp -r "$ROOT/.tools/godot" "$WORK_NATIVE/npt/.tools/godot"
 else
   tools/ci/fetch_godot.sh
 fi
