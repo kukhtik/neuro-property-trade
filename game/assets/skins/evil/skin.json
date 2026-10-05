@@ -1,0 +1,26 @@
+{
+  "id": "evil",
+  "name": "Evil",
+  "name_ru": "Evil",
+  "extends": "neuro",
+  "version": 1,
+  "_note": "Alternative skin for the Evil seat / dark-red mood. Inherits everything from neuro and only overrides colours — proof that a skin may ship a single token block and still render.",
+  "tokens": {
+    "color": {
+      "bg": "#080406",
+      "surface.1": "#12080b",
+      "surface.2": "#1c0c12",
+      "surface.3": "#2b1219",
+      "line": "#4d1d2c",
+      "text": "#fcebef",
+      "muted": "#b88b98",
+      "accent": "#e8264f",
+      "on_accent": "#1a0206",
+      "accent2": "#c58bff",
+      "money": "#c58bff",
+      "danger": "#ff7a59",
+      "warn": "#ffb020",
+      "ink": "#000000"
+    }
+  }
+}

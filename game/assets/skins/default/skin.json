@@ -1,0 +1,54 @@
+{
+  "id": "default",
+  "name": "Default",
+  "name_ru": "По умолчанию",
+  "version": 1,
+  "_note": "Procedural fallback skin. Ships NO asset files on purpose: every slot resolves to null and components draw from tokens. This is what the fallback chain ends on, so a partial skin still renders.",
+  "tokens": {
+    "color": {
+      "bg": "#16191f",
+      "surface.1": "#1e242e",
+      "surface.2": "#171c24",
+      "surface.3": "#232a35",
+      "line": "#39404d",
+      "text": "#e8edf3",
+      "muted": "#8b95a5",
+      "accent": "#4fb3d9",
+      "on_accent": "#0c1218",
+      "accent2": "#5fc4ea",
+      "money": "#ffd34d",
+      "danger": "#d9534f",
+      "warn": "#e08a3c",
+      "ink": "#000000",
+      "player": ["#4fb3d9", "#d9534f", "#5cb85c", "#ffd34d", "#9a86c9", "#e08a3c"]
+    },
+    "font": {
+      "ui": "",
+      "mono": "",
+      "display": ""
+    },
+    "size": { "xs": 10, "s": 12, "m": 14, "l": 18, "xl": 28 },
+    "space": [4, 8, 12, 16, 24],
+    "shape": { "radius": 0, "chamfer": 9, "line": 1, "line_active": 2 }
+  },
+  "metrics": {
+    "corner_ratio": 1.4,
+    "band_ratio": 0.03,
+    "board_frame": 6,
+    "board_gap": 2,
+    "house_size": 0.019,
+    "token_size": 0.027,
+    "icon_size": 0.036
+  },
+  "slots": {},
+  "motion": {
+    "step": 0.19,
+    "hop": 0.32,
+    "pop": 0.5,
+    "panel": 0.3,
+    "card": 2.8,
+    "dice_roll": 0.85,
+    "idle": { "chase": true, "logo_pulse": true },
+    "profile": "full"
+  }
+}

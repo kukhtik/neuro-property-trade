@@ -1,0 +1,54 @@
+{
+  "id": "_stress",
+  "name": "Stress",
+  "name_ru": "Стресс-скин",
+  "extends": "default",
+  "version": 1,
+  "_note": "TEST FIXTURE, not a shipping skin. Proves full asset replaceability: different fonts, sizes, metrics, chamfer, motion profile and real slot files. If the UI can load this without touching code, a future redesign only needs a new skin folder.",
+  "tokens": {
+    "color": {
+      "bg": "#101c10",
+      "surface.1": "#204020",
+      "surface.2": "#163016",
+      "surface.3": "#2a5030",
+      "line": "#90ee90",
+      "text": "#eaffea",
+      "muted": "#9ecf9e",
+      "accent": "#ffcc00",
+      "on_accent": "#241a00",
+      "accent2": "#7fffd4",
+      "money": "#7fffd4",
+      "danger": "#ff5252",
+      "warn": "#ffcc00",
+      "ink": "#000000",
+      "player": ["#ffcc00", "#7fffd4", "#ff5252", "#c0ff70"]
+    },
+    "font": { "ui": "", "mono": "", "display": "" },
+    "size": { "xs": 14, "s": 16, "m": 20, "l": 26, "xl": 40 },
+    "space": [8, 16, 24, 32, 48],
+    "shape": { "radius": 12, "chamfer": 20, "line": 3, "line_active": 5 }
+  },
+  "metrics": {
+    "corner_ratio": 1.1,
+    "band_ratio": 0.08,
+    "board_frame": 14,
+    "board_gap": 6,
+    "house_size": 0.04,
+    "token_size": 0.05,
+    "icon_size": 0.06
+  },
+  "slots": {
+    "board.frame": { "tex": "tex/panel.svg", "margins": [8, 8, 8, 8], "mode": "slice" },
+    "panel.bg": { "tex": "tex/panel.svg", "margins": [8, 8, 8, 8], "mode": "slice" }
+  },
+  "motion": {
+    "step": 0.05,
+    "hop": 0.1,
+    "pop": 0.2,
+    "panel": 0.1,
+    "card": 1.0,
+    "dice_roll": 0.3,
+    "idle": { "chase": false, "logo_pulse": false },
+    "profile": "reduced"
+  }
+}

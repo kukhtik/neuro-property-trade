@@ -36,6 +36,7 @@ func _init() -> void:
 		"res://tests/player_identity_test.gd",
 		"res://tests/i18n_test.gd",
 		"res://tests/replay_test.gd",
+		"res://tests/skin_manager_test.gd",
 	]
 	for path in modules:
 		_run_module(path)
