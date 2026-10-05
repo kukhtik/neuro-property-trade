@@ -640,6 +640,7 @@ static func _three_players_with_rent_trap():
 	var E = load("res://core/engine.gd")
 	var S = load("res://core/game_settings.gd")
 	var s = S.new()
+	s.rng_seed = 4242   # every roll in this fixture must be reproducible
 	var e = E.new()
 	e.setup(s, ["Ada", "Bo", "Cyd"])
 	# Bo owns tile 6 (Cedar Ave, cost 100, base rent 6? no - use a pricier
@@ -842,6 +843,7 @@ static func _jailed_engine(money: int, jail_turns: int, cards: int):
 	var E = load("res://core/engine.gd")
 	var S = load("res://core/game_settings.gd")
 	var s = S.new()
+	s.rng_seed = 4242   # every roll in this fixture must be reproducible
 	var e = E.new()
 	e.setup(s, ["Ada", "Bo"])
 	e.turn_player = 0
@@ -869,6 +871,7 @@ static func test_imprisoned_penniless_has_a_legal_move() -> String:
 
 static func test_served_sentence_frees_penniless_player() -> String:
 	var e = _jailed_engine(0, 3, 0)
+	e._force_dice(2, 1, 1, false)   # 10 -> 12 (utility, unowned): nothing to pay
 	var res: Dictionary = e.submit_intent(0, "roll", {})
 	if not res.get("ok", false):
 		return "the final-attempt roll was refused: %s" % str(res.get("reason", ""))
@@ -896,13 +899,19 @@ static func test_jail_pay_still_required_when_affordable() -> String:
 	var legal: Array = e.legal_actions(0)
 	if not legal.has("pay"):
 		return "an affordable fine must be offered, got %s" % str(legal)
+	e._force_dice(2, 1, 1, false)
 	var res: Dictionary = e.submit_intent(0, "pay", {})
 	if not res.get("ok", false):
 		return "pay was refused: %s" % str(res.get("reason", ""))
 	if e.player(0).in_jail:
 		return "paying the fine must release the player"
-	if e.player(0).money != 500 - e.settings.jail_fine:
-		return "the fine was not deducted (money=%d)" % e.player(0).money
+	var paid := false
+	for entry in e.log.entries_of_type("jail"):
+		var data: Dictionary = entry["data"]
+		if String(data.get("reason", "")) == "paid fine" and int(data.get("amount", 0)) == e.settings.jail_fine:
+			paid = true
+	if not paid:
+		return "no 'paid fine' event for %d in the log" % e.settings.jail_fine
 	# with a card in hand the card path wins and the roll stays restricted
 	var e2 = _jailed_engine(0, 1, 1)
 	var legal2: Array = e2.legal_actions(0)
