@@ -412,6 +412,18 @@ static func resolve_path(path: String) -> String:
 	var m := drive.search(stripped)
 	if m != null:
 		stripped = "%s:/%s" % [m.get_string(1).to_upper(), m.get_string(2)]
+	# bare MSYS paths ("/tmp/tmp.XXXX" from a shell `mktemp -d`) have no drive
+	# letter. Godot cannot resolve them at all - it needs a native path - so map
+	# the shell temp root onto the engine's own temp dir when they agree.
+	var mktemp := RegEx.new()
+	mktemp.compile("^/tmp/(.+)$")
+	var tm := mktemp.search(stripped)
+	if tm != null:
+		var native_tmp: String = OS.get_environment("TEMP")
+		if native_tmp == "":
+			native_tmp = OS.get_environment("TMP")
+		if native_tmp != "":
+			stripped = native_tmp.replace("\\", "/").rstrip("/") + "/" + tm.get_string(1)
 	var is_absolute: bool = stripped.begins_with("/") or stripped.substr(1).contains(":")
 	if is_absolute:
 		return stripped

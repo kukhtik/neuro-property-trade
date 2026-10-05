@@ -167,12 +167,18 @@ func _args(args: Array) -> void:
 				_check(false, "verify-all needs a directory argument")
 				return
 			var res: Dictionary = DReplay.verify_all(paths)
-			for r in res.get("files", []):
+			var found: Array = res.get("files", [])
+			# Zero logs must NOT be a pass: "nothing was checked" used to print
+			# REPLAY OK and exit 0, which would let CI go green while verifying
+			# an empty directory.
+			if found.is_empty():
+				_check(false, "verify-all %s" % str(paths), String(res.get("reason", "no logs found")))
+			for r in found:
 				var rr: Dictionary = r
 				_check(bool(rr.get("ok", false)), "verify %s" % String(rr.get("path", "")), String(rr.get("reason", "")))
 				if bool(rr.get("ok", false)):
 					print("      game=%s calls=%d" % [String(rr.get("game", "")), int(rr.get("calls", 0))])
-			print("==> %d logs, %d diverged" % [(res.get("files", []) as Array).size(), (res.get("failed", []) as Array).size()])
+			print("==> %d logs, %d diverged" % [found.size(), (res.get("failed", []) as Array).size()])
 		"record":
 			if out == "":
 				_check(false, "record needs an output path")

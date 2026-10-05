@@ -73,10 +73,14 @@ a header, then one line per decision.
   (`{"tile": 1.0}` -> `{"tile": 1}`). Without it, `rng_seed` arrives as a float,
   `from_data` assigns it to an int var, the Rng is never seeded and every replay
   diverges - and `Array.has(1)` silently misses a `1.0` ownership check.
-* **path handling**: `res://`, `user://`, project-relative and MSYS `/c/...`
-  paths all resolve to something `FileAccess` can open. (A Git-bash
-  `/c/Users/...` path used to open a nonexistent directory, and the corpus step
-  reported "no logs found" while still exiting 0.)
+* **path handling**: `res://`, `user://`, project-relative, MSYS `/c/...` and
+  bare MSYS temp paths (`mktemp -d` -> `/tmp/tmp.XXXX`) all resolve to something
+  `FileAccess` can open. (A Git-bash path used to open a nonexistent directory,
+  and the corpus step then reported "no logs found" while still exiting 0.)
+* **`--verify-all` refuses to pass on zero logs.** "Nothing was checked" is a
+  failure (exit 1) with a reason, not a green: that combination - an unresolvable
+  output path plus a vacuously successful verify - is exactly how a CI job could
+  have gone green while verifying nothing.
 
 CLI:
 

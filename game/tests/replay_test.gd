@@ -22,6 +22,7 @@ static func test_list() -> Array[String]:
 		"test_corpus_feature_shape",
 		"test_policy_rolls_terminates_game",
 		"test_cli_path_contract",
+		"test_verify_all_empty_dir_is_a_failure",
 	]
 
 static func _play(seed_v: int, plies: int = 400, auctions: bool = true) -> Dictionary:
@@ -222,6 +223,19 @@ static func test_cli_path_contract() -> String:
 		return "an MSYS drive path must be translated, got %s" % DReplay.resolve_path("/c/tmp/x.jsonl")
 	if DReplay.resolve_path("C:/tmp/x.jsonl") != "C:/tmp/x.jsonl":
 		return "a native absolute path must pass through, got %s" % DReplay.resolve_path("C:/tmp/x.jsonl")
+	# A bare MSYS temp path (shell `mktemp -d` -> "/tmp/tmp.XXXX") has no drive
+	# letter: Godot cannot resolve it at all, so it maps onto the engine's temp dir.
+	var native_tmp: String = OS.get_environment("TEMP").replace("\\", "/").rstrip("/")
+	if native_tmp != "":
+		var got_tmp: String = DReplay.resolve_path("/tmp/tmp.abc/g.jsonl")
+		if got_tmp != native_tmp + "/tmp.abc/g.jsonl":
+			return "a bare /tmp path must map onto the engine temp dir, got %s" % got_tmp
+		# and it must actually be usable
+		var tmp_target: String = "/tmp/npt_path_contract/x.jsonl"
+		if not DReplay.save_log(tmp_target, {"kind": "header", "schema": 1, "godot_version": DReplay.godot_version(), "game": "tmp", "seed": 1, "names": ["A", "B"], "settings": {}, "fingerprint0": "", "fingerprint": ""}, []):
+			return "save_log refused a /tmp target (%s)" % DReplay.resolve_path(tmp_target)
+		if not bool(DReplay.load_log(tmp_target).get("ok", false)):
+			return "the log written through /tmp could not be read back"
 	# and the resolved path must be actually writable through the log API
 	var target: String = "build/replay_path_contract/x.jsonl"
 	if not DReplay.save_log(target, {"kind": "header", "schema": 1, "godot_version": DReplay.godot_version(), "game": "path", "seed": 1, "names": ["A", "B"], "settings": {}, "fingerprint0": "", "fingerprint": ""}, []):
@@ -229,4 +243,23 @@ static func test_cli_path_contract() -> String:
 	var loaded: Dictionary = DReplay.load_log(target)
 	if not bool(loaded.get("ok", false)):
 		return "the written log could not be read back: %s" % str(loaded.get("reason", ""))
+	return ""
+
+static func test_verify_all_empty_dir_is_a_failure() -> String:
+	# "nothing was checked" must not be reported as success: CI would go green
+	# while verifying an empty directory (found when the corpus step wrote to an
+	# unresolvable /tmp path and --verify-all happily printed REPLAY OK).
+	var empty: String = "user://replay_empty_dir"
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(empty))
+	var res: Dictionary = DReplay.verify_all(empty)
+	if bool(res.get("ok", false)):
+		return "verify_all on an empty directory reported success"
+	if String(res.get("reason", "")) == "":
+		return "verify_all on an empty directory gave no reason"
+	# a nonexistent directory must fail too, and say why
+	var missing: Dictionary = DReplay.verify_all("user://replay_missing_dir_xyz")
+	if bool(missing.get("ok", false)):
+		return "verify_all on a missing directory reported success"
+	if not String(missing.get("reason", "")).contains("cannot open"):
+		return "a missing directory should report 'cannot open', got '%s'" % String(missing.get("reason", ""))
 	return ""
