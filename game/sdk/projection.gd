@@ -16,6 +16,7 @@ func for_player(engine, pid: int) -> Dictionary:
 	out["pending"] = _pending_view(engine)
 	out["legal"] = engine.legal_actions(pid)
 	out["private"] = _private_view(engine, pid)
+	out["parking_pot"] = engine.parking_pot()
 	return out
 
 func _board_view(engine) -> Array:
@@ -115,6 +116,7 @@ func for_spectator(engine) -> Dictionary:
 	out["board"] = _board_view(engine)
 	out["players"] = _spectator_players_view(engine)
 	out["pending"] = _pending_view(engine)
+	out["parking_pot"] = engine.parking_pot()
 	# NOTE: no "legal" and no "private" — a spectator is not a decision holder.
 	return out
 

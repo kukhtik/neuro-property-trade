@@ -34,6 +34,7 @@ var _houses: Dictionary = {}   # tile index -> house count (0..5; 5 = hotel)
 var _mortgaged: Array = []   # tile indices currently mortgaged
 var _pending_trade = {}   # {proposer, recipient, give_tiles[], give_cash, want_tiles[], want_cash} or {} when none
 var _recovered_turn: bool = false   # transient: a bankruptcy reassigned the turn during THIS intent
+var _parking_pot: int = 0   # house rule: taxes/fees accumulate here while settings.free_parking is on
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -54,6 +55,7 @@ func setup(s, names: Array) -> void:
 	for i in names.size():
 		var p = load("res://core/player.gd").new(names[i], "token%d" % i, Color.WHITE, settings.starting_cash)
 		players.append(p)
+	_parking_pot = 0
 	for kind in ["community", "chance"]:
 		var d = load("res://core/card_deck.gd").new()
 		var card_file = FileAccess.open("res://data/cards.json", FileAccess.READ)
@@ -295,6 +297,16 @@ func _charge(payer: int, amount: int, creditor: int) -> Dictionary:
 	# cannot cover full amount → insolvent
 	_go_bankrupt(payer, creditor)
 	return {"ok": false, "bankrupt": true}
+
+func _pot_take(amount: int) -> void:
+	# House rule accumulator. Only collects while free_parking is enabled; a
+	# no-op otherwise so the money simply vanishes to the bank as before.
+	if settings != null and settings.free_parking and amount > 0:
+		_parking_pot += amount
+
+## Free Parking jackpot (0 when the house rule is off). Public read for the UI.
+func parking_pot() -> int:
+	return _parking_pot
 
 func _go_bankrupt(payer: int, creditor: int) -> void:
 	# transfer all assets to creditor (bank if creditor == -1). Then drop the player.
@@ -636,9 +648,18 @@ func _move_and_resolve(roll: Dictionary) -> void:
 		var c4 = _charge(turn_player, amt, -1)
 		if c4.bankrupt: return
 		log.append("tax", {"player": turn_player, "tile": new_pos, "amount": amt})
+		_pot_take(amt)
 	elif ttype == "free_parking":
-		# house rule OFF by default — no money collected, nothing happens
-		log.append("land", {"player": turn_player, "tile": new_pos, "type": ttype, "note": "free_parking off"})
+		# House rule: when enabled, taxes/fees pile up here and the player who
+		# lands on Free Parking takes the lot. OFF by default (no money moves),
+		# which is the classic tournament ruling the game shipped with.
+		if settings.free_parking and _parking_pot > 0:
+			var pot: int = _parking_pot
+			_parking_pot = 0
+			_credit(turn_player, pot)
+			log.append("free_parking", {"player": turn_player, "tile": new_pos, "amount": pot, "pot": 0})
+		else:
+			log.append("land", {"player": turn_player, "tile": new_pos, "type": ttype, "note": "free_parking off"})
 	elif ttype == "go_to_jail":
 		_send_to_jail()
 		_no_extra_turn = true   # going to jail always ends your turn (even on doubles)
@@ -866,6 +887,7 @@ func _resolve_card_landing(tile: int) -> void:
 			var c4 = _charge(turn_player, amt2, -1)
 			if c4.bankrupt: return
 			log.append("tax", {"player": turn_player, "tile": tile, "amount": amt2})
+			_pot_take(amt2)
 		"go_to_jail":
 			_send_to_jail()
 			_no_extra_turn = true
@@ -1206,6 +1228,7 @@ func to_snapshot() -> Dictionary:
 		"pending_trade": _pending_trade,
 		"houses": _houses,
 		"mortgaged": _mortgaged,
+		"parking_pot": _parking_pot,
 		"decks": decks_d,
 		"log": log.entries(),
 	}
@@ -1235,6 +1258,7 @@ func _restore_from_snapshot(d: Dictionary) -> void:
 	_pending_trade = d.get("pending_trade", {})
 	_houses = d.get("houses", {})
 	_mortgaged = (d.get("mortgaged", []) as Array).duplicate()
+	_parking_pot = int(d.get("parking_pot", 0))
 	var pdata: Array = d.get("players", [])
 	for i in pdata.size():
 		if i >= players.size(): break

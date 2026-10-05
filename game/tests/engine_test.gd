@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target", "test_bankrupt_mid_turn_no_deadlock", "test_bankrupt_non_turn_player_keeps_turn", "test_recovered_turn_hands_over_exactly_once", "test_bankruptcy_latch_is_transient", "test_card_back_three_never_leaves_the_board", "test_negative_position_never_pends_a_purchase", "test_invalid_pending_purchase_does_not_deadlock", "test_board_type_at_bounds_checked", "test_imprisoned_penniless_has_a_legal_move", "test_served_sentence_frees_penniless_player", "test_jail_pay_still_required_when_affordable"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target", "test_bankrupt_mid_turn_no_deadlock", "test_bankrupt_non_turn_player_keeps_turn", "test_recovered_turn_hands_over_exactly_once", "test_bankruptcy_latch_is_transient", "test_card_back_three_never_leaves_the_board", "test_negative_position_never_pends_a_purchase", "test_invalid_pending_purchase_does_not_deadlock", "test_board_type_at_bounds_checked", "test_imprisoned_penniless_has_a_legal_move", "test_served_sentence_frees_penniless_player", "test_jail_pay_still_required_when_affordable", "test_parking_pot_accumulates_tax", "test_parking_pot_pays_on_landing", "test_parking_pot_off_by_default", "test_parking_pot_survives_snapshot", "test_parking_pot_credits_landing_player_cash"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -921,4 +921,109 @@ static func test_jail_pay_still_required_when_affordable() -> String:
 		return "a held card must be offered, got %s" % str(legal2)
 	if not legal2.has("roll"):
 		return "an attempt remains available at jail_turns=1"
+	return ""
+
+# --- Free Parking house rule (settings.free_parking) ---------------------------
+
+## A settings object with the Free Parking house rule switched on.
+static func _make_engine_fp(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
+	var E = load("res://core/engine.gd")
+	var S = load("res://core/game_settings.gd")
+	var s = S.new()
+	s.free_parking = true
+	var e = E.new()
+	e.setup(s, player_names)
+	return {"engine": e}
+
+static func test_parking_pot_accumulates_tax() -> String:
+	var r = _make_engine_fp()
+	var e = r["engine"]
+	if e.parking_pot() != 0:
+		return "pot should start empty, got %d" % e.parking_pot()
+	e._teleport(0, 3)
+	e._force_dice(1, 1, 0, false)   # move 1 → tile 4 (Tax 200)
+	e.submit_intent(0, "roll", {})
+	if e.parking_pot() != 200:
+		return "tax 200 should land in the pot, got %d" % e.parking_pot()
+	return ""
+
+static func test_parking_pot_pays_on_landing() -> String:
+	var r = _make_engine_fp()
+	var e = r["engine"]
+	# player 0 pays tax 200 into the pot
+	e._teleport(0, 3)
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	var after_tax: int = e.player(0).money
+	if after_tax != 1300:
+		return "tax should leave 1300, got %d" % after_tax
+	if e.parking_pot() != 200:
+		return "pot should hold 200, got %d" % e.parking_pot()
+	# hand the turn to player 1 and walk them onto Free Parking (tile 20)
+	e._teleport(1, 19)
+	e.turn_player = 1
+	e.phase = e.PHASE_TURN_START
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(1, "roll", {})
+	if e.parking_pot() != 0:
+		return "pot should be emptied on landing, got %d" % e.parking_pot()
+	if e.player(1).money != 1500 + 200:
+		return "landing player should collect 200, got %d" % e.player(1).money
+	return ""
+
+static func test_parking_pot_credits_landing_player_cash() -> String:
+	var r = _make_engine_fp()
+	var e = r["engine"]
+	e._teleport(0, 3)
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})          # pot = 200, p0 = 1300
+	var before: int = e.player(1).money
+	e._teleport(1, 19)
+	e.turn_player = 1
+	e.phase = e.PHASE_TURN_START
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(1, "roll", {})
+	# the jackpot must show up as a real credit event, not a silent state edit
+	var credited := false
+	for entry in e.log.entries_of_type("free_parking"):
+		if int(entry["data"].get("amount", 0)) == 200:
+			credited = true
+	if not credited:
+		return "no free_parking event carrying amount=200"
+	if e.player(1).money != before + 200:
+		return "expected %d, got %d" % [before + 200, e.player(1).money]
+	return ""
+
+static func test_parking_pot_off_by_default() -> String:
+	var r = _make_engine()   # free_parking defaults to false
+	var e = r["engine"]
+	if e.parking_pot() != 0:
+		return "pot must be 0 with the rule off"
+	e._teleport(0, 3)
+	e._force_dice(1, 1, 0, false)   # tax 200 still charged to the bank
+	e.submit_intent(0, "roll", {})
+	if e.parking_pot() != 0:
+		return "rule off must never accumulate, got %d" % e.parking_pot()
+	# …and landing on Free Parking still pays nothing
+	e._teleport(1, 19)
+	e.turn_player = 1
+	e.phase = e.PHASE_TURN_START
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(1, "roll", {})
+	if e.player(1).money != 1500:
+		return "rule off must not pay out, got %d" % e.player(1).money
+	return ""
+
+static func test_parking_pot_survives_snapshot() -> String:
+	var r = _make_engine_fp()
+	var e = r["engine"]
+	e._teleport(0, 3)
+	e._force_dice(1, 1, 0, false)
+	e.submit_intent(0, "roll", {})
+	if e.parking_pot() != 200:
+		return "setup failed: pot=%d" % e.parking_pot()
+	var snap: Dictionary = e.to_snapshot()
+	var restored = e.from_snapshot(snap)
+	if restored.parking_pot() != 200:
+		return "pot lost across snapshot, got %d" % restored.parking_pot()
 	return ""
