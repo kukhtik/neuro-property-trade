@@ -16,7 +16,7 @@ var _viewport: Control
 var _enabled := true
 var animations := true
 var _cell := 64
-var _tile_count := 40
+var _tile_count := 0   # set by build(); never assume 40 — the board is parametric
 var _tween: Tween
 
 ## Setup with the viewport container (the "camera") and the board control.

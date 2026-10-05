@@ -21,7 +21,7 @@ const SkinManager := preload("res://visual/skin_manager.gd")
 var _tile_nodes: Array[TileView] = []
 var _tokens := {}              # pid -> TokenPanel
 var _cell := 64
-var _tile_count := 40
+var _tile_count := 0   # set by build(); never assume 40 — the board is parametric
 var _seats: Array = []         # of Seat (for token_id + color resolution)
 var _skin: SkinManager
 

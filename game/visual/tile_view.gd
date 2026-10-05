@@ -29,7 +29,7 @@ const SkinManager := preload("res://visual/skin_manager.gd")
 const COMPACT_THRESHOLD := 44   # below this cell, compact mode (spec §4.2)
 
 var _cell := 64
-var _tile_count := 40
+var _tile_count := 0   # set by build(); never assume 40 — the board is parametric
 var _index := 0
 var _band_edge := 0   # 0=top,1=left,2=bottom,3=right (edge facing board center)
 var _compact := false

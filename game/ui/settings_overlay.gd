@@ -19,6 +19,10 @@ const I18n := preload("res://i18n/i18n.gd")
 
 const DRIVERS := ["LOCAL", "AI", "CHAT", "sdk:neuro", "sdk:evil"]
 const NAMES := ["Host", "AI-2", "AI-3", "AI-4", "AI-5", "AI-6", "AI-7", "AI-8"]
+## Fallback board size when no settings object exists yet. The engine's default
+## lives in game_settings.gd; this is only the pre-settings placeholder, never a
+## layout assumption (geometry is parametric — see BoardLayout).
+const DEF_TILE_COUNT := 40
 const COLORS := PI.COLORS
 const TOKENS := PI.TOKENS
 
@@ -442,7 +446,7 @@ func _build_interface_tab() -> void:
 	_tile_count.min_value = 16
 	_tile_count.max_value = 64
 	_tile_count.step = 4
-	_tile_count.value = 40
+	_tile_count.value = DEF_TILE_COUNT
 	_tile_count.tooltip_text = I18n.t("settings.tile_count_tip")
 	grid.add_child(_h("settings.tile_count", _tile_count))
 
@@ -621,7 +625,7 @@ func _collect_settings() -> Settings:
 			"token_id": str(r["token"].get_item_text(r["token"].selected)),
 		})
 	s.rng_seed = int(_rng_seed.value)
-	s.tile_count = int(_tile_count.value) if _tile_count != null else 40
+	s.tile_count = int(_tile_count.value) if _tile_count != null else DEF_TILE_COUNT
 	s.starting_order = "random" if _starting_order.selected == 0 else "manual"
 	s.turn_timer = _selected_seconds(_turn_timer)
 	s.auction_timer = _selected_seconds(_auction_timer)

@@ -1,0 +1,195 @@
+{
+  "meta": {
+    "name": "Neuro Property Trade",
+    "theme": "classic",
+    "tile_count": 16,
+    "license": "original, non-Hasbro",
+    "generated_by": "tools/gen_boards.py"
+  },
+  "tiles": [
+    {
+      "index": 0,
+      "name": "Start",
+      "short": "Start",
+      "type": "go"
+    },
+    {
+      "index": 1,
+      "name": "Sunset Blvd",
+      "short": "Sunset Blvd",
+      "type": "property",
+      "group": "brown",
+      "cost": 20,
+      "rent": 1,
+      "rent_set": 2,
+      "houses": [
+        4,
+        12,
+        36,
+        64,
+        100
+      ],
+      "house_cost": 20
+    },
+    {
+      "index": 2,
+      "name": "Chest",
+      "short": "Chest",
+      "type": "community"
+    },
+    {
+      "index": 3,
+      "name": "Palm Row",
+      "short": "Palm Row",
+      "type": "property",
+      "group": "brown",
+      "cost": 20,
+      "rent": 2,
+      "rent_set": 3,
+      "houses": [
+        4,
+        12,
+        36,
+        64,
+        100
+      ],
+      "house_cost": 20
+    },
+    {
+      "index": 4,
+      "name": "Jail",
+      "short": "Jail",
+      "type": "jail"
+    },
+    {
+      "index": 5,
+      "name": "Tax",
+      "short": "Tax",
+      "type": "tax",
+      "amount": 80
+    },
+    {
+      "index": 6,
+      "name": "Harbor Station",
+      "short": "Harbor Stn",
+      "type": "railroad",
+      "cost": 80,
+      "rent_1": 10
+    },
+    {
+      "index": 7,
+      "name": "Cedar Ave",
+      "short": "Cedar Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 40,
+      "rent": 2,
+      "rent_set": 5,
+      "houses": [
+        8,
+        24,
+        72,
+        128,
+        180
+      ],
+      "house_cost": 20
+    },
+    {
+      "index": 8,
+      "name": "Free Parking",
+      "short": "Free Park",
+      "type": "free_parking"
+    },
+    {
+      "index": 9,
+      "name": "Fortune",
+      "short": "Fortune",
+      "type": "chance"
+    },
+    {
+      "index": 10,
+      "name": "Elm Ave",
+      "short": "Elm Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 40,
+      "rent": 2,
+      "rent_set": 5,
+      "houses": [
+        8,
+        24,
+        72,
+        128,
+        180
+      ],
+      "house_cost": 20
+    },
+    {
+      "index": 11,
+      "name": "Linden Ave",
+      "short": "Linden Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 50,
+      "rent": 3,
+      "rent_set": 6,
+      "houses": [
+        8,
+        24,
+        72,
+        128,
+        180
+      ],
+      "house_cost": 20
+    },
+    {
+      "index": 12,
+      "name": "Go To Jail",
+      "short": "Go Jail",
+      "type": "go_to_jail"
+    },
+    {
+      "index": 13,
+      "name": "Oak Street",
+      "short": "Oak Street",
+      "type": "property",
+      "group": "pink",
+      "cost": 60,
+      "rent": 4,
+      "rent_set": 8,
+      "houses": [
+        12,
+        36,
+        108,
+        160,
+        220
+      ],
+      "house_cost": 40
+    },
+    {
+      "index": 14,
+      "name": "Tower Utilities",
+      "short": "Tower Util",
+      "type": "utility",
+      "cost": 60
+    },
+    {
+      "index": 15,
+      "name": "Maple Street",
+      "short": "Maple St",
+      "type": "property",
+      "group": "pink",
+      "cost": 60,
+      "rent": 4,
+      "rent_set": 8,
+      "houses": [
+        12,
+        36,
+        108,
+        160,
+        220
+      ],
+      "house_cost": 40
+    }
+  ]
+}

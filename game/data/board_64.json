@@ -1,0 +1,859 @@
+{
+  "meta": {
+    "name": "Neuro Property Trade",
+    "theme": "classic",
+    "tile_count": 64,
+    "license": "original, non-Hasbro",
+    "generated_by": "tools/gen_boards.py"
+  },
+  "tiles": [
+    {
+      "index": 0,
+      "name": "Start",
+      "short": "Start",
+      "type": "go"
+    },
+    {
+      "index": 1,
+      "name": "Sunset Blvd",
+      "short": "Sunset Blvd",
+      "type": "property",
+      "group": "brown",
+      "cost": 100,
+      "rent": 3,
+      "rent_set": 6,
+      "houses": [
+        16,
+        48,
+        144,
+        256,
+        400
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 2,
+      "name": "Chest",
+      "short": "Chest",
+      "type": "community"
+    },
+    {
+      "index": 3,
+      "name": "Palm Row",
+      "short": "Palm Row",
+      "type": "property",
+      "group": "brown",
+      "cost": 100,
+      "rent": 6,
+      "rent_set": 13,
+      "houses": [
+        16,
+        48,
+        144,
+        256,
+        400
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 4,
+      "name": "Tax",
+      "short": "Tax",
+      "type": "tax",
+      "amount": 320
+    },
+    {
+      "index": 5,
+      "name": "Harbor Station",
+      "short": "Harbor Stn",
+      "type": "railroad",
+      "cost": 320,
+      "rent_1": 40
+    },
+    {
+      "index": 6,
+      "name": "Cedar Ave",
+      "short": "Cedar Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 160,
+      "rent": 10,
+      "rent_set": 19,
+      "houses": [
+        32,
+        96,
+        288,
+        512,
+        720
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 7,
+      "name": "Fortune",
+      "short": "Fortune",
+      "type": "chance"
+    },
+    {
+      "index": 8,
+      "name": "Elm Ave",
+      "short": "Elm Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 160,
+      "rent": 10,
+      "rent_set": 19,
+      "houses": [
+        32,
+        96,
+        288,
+        512,
+        720
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 9,
+      "name": "Linden Ave",
+      "short": "Linden Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 190,
+      "rent": 13,
+      "rent_set": 26,
+      "houses": [
+        32,
+        96,
+        288,
+        512,
+        720
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 10,
+      "name": "Oak Street",
+      "short": "Oak Street",
+      "type": "property",
+      "group": "pink",
+      "cost": 220,
+      "rent": 16,
+      "rent_set": 32,
+      "houses": [
+        48,
+        144,
+        432,
+        640,
+        880
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 11,
+      "name": "Tower Utilities",
+      "short": "Tower Util",
+      "type": "utility",
+      "cost": 240
+    },
+    {
+      "index": 12,
+      "name": "Maple Street",
+      "short": "Maple St",
+      "type": "property",
+      "group": "pink",
+      "cost": 220,
+      "rent": 16,
+      "rent_set": 32,
+      "houses": [
+        48,
+        144,
+        432,
+        640,
+        880
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 13,
+      "name": "Birch Street",
+      "short": "Birch St",
+      "type": "property",
+      "group": "pink",
+      "cost": 260,
+      "rent": 19,
+      "rent_set": 38,
+      "houses": [
+        48,
+        144,
+        432,
+        640,
+        880
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 14,
+      "name": "Central Station",
+      "short": "Central Stn",
+      "type": "railroad",
+      "cost": 320,
+      "rent_1": 40
+    },
+    {
+      "index": 15,
+      "name": "Willow Way",
+      "short": "Willow Way",
+      "type": "property",
+      "group": "orange",
+      "cost": 290,
+      "rent": 22,
+      "rent_set": 45,
+      "houses": [
+        80,
+        240,
+        720,
+        1000,
+        1200
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 16,
+      "name": "Jail",
+      "short": "Jail",
+      "type": "jail"
+    },
+    {
+      "index": 17,
+      "name": "Chest",
+      "short": "Chest",
+      "type": "community"
+    },
+    {
+      "index": 18,
+      "name": "Aspen Way",
+      "short": "Aspen Way",
+      "type": "property",
+      "group": "orange",
+      "cost": 290,
+      "rent": 22,
+      "rent_set": 45,
+      "houses": [
+        80,
+        240,
+        720,
+        1000,
+        1200
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 19,
+      "name": "Fir Way",
+      "short": "Fir Way",
+      "type": "property",
+      "group": "orange",
+      "cost": 320,
+      "rent": 26,
+      "rent_set": 51,
+      "houses": [
+        80,
+        240,
+        720,
+        1000,
+        1200
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 20,
+      "name": "Lake Drive",
+      "short": "Lake Drive",
+      "type": "property",
+      "group": "red",
+      "cost": 350,
+      "rent": 29,
+      "rent_set": 58,
+      "houses": [
+        112,
+        320,
+        880,
+        1200,
+        1520
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 21,
+      "name": "Fortune",
+      "short": "Fortune",
+      "type": "chance"
+    },
+    {
+      "index": 22,
+      "name": "River Drive",
+      "short": "River Drive",
+      "type": "property",
+      "group": "red",
+      "cost": 350,
+      "rent": 29,
+      "rent_set": 58,
+      "houses": [
+        112,
+        320,
+        880,
+        1200,
+        1520
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 23,
+      "name": "Harbor Drive",
+      "short": "Harbor Dr",
+      "type": "property",
+      "group": "red",
+      "cost": 380,
+      "rent": 32,
+      "rent_set": 64,
+      "houses": [
+        112,
+        320,
+        880,
+        1200,
+        1520
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 24,
+      "name": "West Station",
+      "short": "West Stn",
+      "type": "railroad",
+      "cost": 320,
+      "rent_1": 40
+    },
+    {
+      "index": 25,
+      "name": "Crest Point",
+      "short": "Crest Point",
+      "type": "property",
+      "group": "yellow",
+      "cost": 420,
+      "rent": 35,
+      "rent_set": 70,
+      "houses": [
+        144,
+        400,
+        1120,
+        1400,
+        1680
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 26,
+      "name": "Crest Square",
+      "short": "Crest Sq",
+      "type": "property",
+      "group": "yellow",
+      "cost": 420,
+      "rent": 35,
+      "rent_set": 70,
+      "houses": [
+        144,
+        400,
+        1120,
+        1400,
+        1680
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 27,
+      "name": "Tower Water",
+      "short": "Tower Water",
+      "type": "utility",
+      "cost": 240
+    },
+    {
+      "index": 28,
+      "name": "Crest Heights",
+      "short": "Crest Hts",
+      "type": "property",
+      "group": "yellow",
+      "cost": 450,
+      "rent": 38,
+      "rent_set": 77,
+      "houses": [
+        144,
+        400,
+        1120,
+        1400,
+        1680
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 29,
+      "name": "Garden Grove",
+      "short": "Garden Grove",
+      "type": "property",
+      "group": "green",
+      "cost": 480,
+      "rent": 42,
+      "rent_set": 83,
+      "houses": [
+        176,
+        528,
+        1280,
+        1560,
+        1840
+      ],
+      "house_cost": 320
+    },
+    {
+      "index": 30,
+      "name": "Garden Park",
+      "short": "Garden Park",
+      "type": "property",
+      "group": "green",
+      "cost": 480,
+      "rent": 42,
+      "rent_set": 83,
+      "houses": [
+        176,
+        528,
+        1280,
+        1560,
+        1840
+      ],
+      "house_cost": 320
+    },
+    {
+      "index": 31,
+      "name": "Chest",
+      "short": "Chest",
+      "type": "community"
+    },
+    {
+      "index": 32,
+      "name": "Free Parking",
+      "short": "Free Park",
+      "type": "free_parking"
+    },
+    {
+      "index": 33,
+      "name": "Garden Court",
+      "short": "Garden Ct",
+      "type": "property",
+      "group": "green",
+      "cost": 510,
+      "rent": 45,
+      "rent_set": 90,
+      "houses": [
+        176,
+        528,
+        1280,
+        1560,
+        1840
+      ],
+      "house_cost": 320
+    },
+    {
+      "index": 34,
+      "name": "South Station",
+      "short": "South Stn",
+      "type": "railroad",
+      "cost": 320,
+      "rent_1": 40
+    },
+    {
+      "index": 35,
+      "name": "Fortune",
+      "short": "Fortune",
+      "type": "chance"
+    },
+    {
+      "index": 36,
+      "name": "Grand Avenue",
+      "short": "Grand Ave",
+      "type": "property",
+      "group": "darkblue",
+      "cost": 560,
+      "rent": 56,
+      "rent_set": 112,
+      "houses": [
+        208,
+        624,
+        1440,
+        1760,
+        2080
+      ],
+      "house_cost": 320
+    },
+    {
+      "index": 37,
+      "name": "Luxury Tax",
+      "short": "Luxury Tax",
+      "type": "tax",
+      "amount": 160
+    },
+    {
+      "index": 38,
+      "name": "Grand Place",
+      "short": "Grand Place",
+      "type": "property",
+      "group": "darkblue",
+      "cost": 640,
+      "rent": 80,
+      "rent_set": 160,
+      "houses": [
+        208,
+        624,
+        1440,
+        1760,
+        2080
+      ],
+      "house_cost": 320
+    },
+    {
+      "index": 39,
+      "name": "Sunset Blvd",
+      "short": "Sunset Blvd",
+      "type": "property",
+      "group": "brown",
+      "cost": 100,
+      "rent": 3,
+      "rent_set": 6,
+      "houses": [
+        16,
+        48,
+        144,
+        256,
+        400
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 40,
+      "name": "Chest",
+      "short": "Chest",
+      "type": "community"
+    },
+    {
+      "index": 41,
+      "name": "Palm Row",
+      "short": "Palm Row",
+      "type": "property",
+      "group": "brown",
+      "cost": 100,
+      "rent": 6,
+      "rent_set": 13,
+      "houses": [
+        16,
+        48,
+        144,
+        256,
+        400
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 42,
+      "name": "Tax",
+      "short": "Tax",
+      "type": "tax",
+      "amount": 320
+    },
+    {
+      "index": 43,
+      "name": "Harbor Station",
+      "short": "Harbor Stn",
+      "type": "railroad",
+      "cost": 320,
+      "rent_1": 40
+    },
+    {
+      "index": 44,
+      "name": "Cedar Ave",
+      "short": "Cedar Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 160,
+      "rent": 10,
+      "rent_set": 19,
+      "houses": [
+        32,
+        96,
+        288,
+        512,
+        720
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 45,
+      "name": "Fortune",
+      "short": "Fortune",
+      "type": "chance"
+    },
+    {
+      "index": 46,
+      "name": "Elm Ave",
+      "short": "Elm Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 160,
+      "rent": 10,
+      "rent_set": 19,
+      "houses": [
+        32,
+        96,
+        288,
+        512,
+        720
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 47,
+      "name": "Linden Ave",
+      "short": "Linden Ave",
+      "type": "property",
+      "group": "lightblue",
+      "cost": 190,
+      "rent": 13,
+      "rent_set": 26,
+      "houses": [
+        32,
+        96,
+        288,
+        512,
+        720
+      ],
+      "house_cost": 80
+    },
+    {
+      "index": 48,
+      "name": "Go To Jail",
+      "short": "Go Jail",
+      "type": "go_to_jail"
+    },
+    {
+      "index": 49,
+      "name": "Oak Street",
+      "short": "Oak Street",
+      "type": "property",
+      "group": "pink",
+      "cost": 220,
+      "rent": 16,
+      "rent_set": 32,
+      "houses": [
+        48,
+        144,
+        432,
+        640,
+        880
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 50,
+      "name": "Tower Utilities",
+      "short": "Tower Util",
+      "type": "utility",
+      "cost": 240
+    },
+    {
+      "index": 51,
+      "name": "Maple Street",
+      "short": "Maple St",
+      "type": "property",
+      "group": "pink",
+      "cost": 220,
+      "rent": 16,
+      "rent_set": 32,
+      "houses": [
+        48,
+        144,
+        432,
+        640,
+        880
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 52,
+      "name": "Birch Street",
+      "short": "Birch St",
+      "type": "property",
+      "group": "pink",
+      "cost": 260,
+      "rent": 19,
+      "rent_set": 38,
+      "houses": [
+        48,
+        144,
+        432,
+        640,
+        880
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 53,
+      "name": "Central Station",
+      "short": "Central Stn",
+      "type": "railroad",
+      "cost": 320,
+      "rent_1": 40
+    },
+    {
+      "index": 54,
+      "name": "Willow Way",
+      "short": "Willow Way",
+      "type": "property",
+      "group": "orange",
+      "cost": 290,
+      "rent": 22,
+      "rent_set": 45,
+      "houses": [
+        80,
+        240,
+        720,
+        1000,
+        1200
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 55,
+      "name": "Chest",
+      "short": "Chest",
+      "type": "community"
+    },
+    {
+      "index": 56,
+      "name": "Aspen Way",
+      "short": "Aspen Way",
+      "type": "property",
+      "group": "orange",
+      "cost": 290,
+      "rent": 22,
+      "rent_set": 45,
+      "houses": [
+        80,
+        240,
+        720,
+        1000,
+        1200
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 57,
+      "name": "Fir Way",
+      "short": "Fir Way",
+      "type": "property",
+      "group": "orange",
+      "cost": 320,
+      "rent": 26,
+      "rent_set": 51,
+      "houses": [
+        80,
+        240,
+        720,
+        1000,
+        1200
+      ],
+      "house_cost": 160
+    },
+    {
+      "index": 58,
+      "name": "Lake Drive",
+      "short": "Lake Drive",
+      "type": "property",
+      "group": "red",
+      "cost": 350,
+      "rent": 29,
+      "rent_set": 58,
+      "houses": [
+        112,
+        320,
+        880,
+        1200,
+        1520
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 59,
+      "name": "Fortune",
+      "short": "Fortune",
+      "type": "chance"
+    },
+    {
+      "index": 60,
+      "name": "River Drive",
+      "short": "River Drive",
+      "type": "property",
+      "group": "red",
+      "cost": 350,
+      "rent": 29,
+      "rent_set": 58,
+      "houses": [
+        112,
+        320,
+        880,
+        1200,
+        1520
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 61,
+      "name": "Harbor Drive",
+      "short": "Harbor Dr",
+      "type": "property",
+      "group": "red",
+      "cost": 380,
+      "rent": 32,
+      "rent_set": 64,
+      "houses": [
+        112,
+        320,
+        880,
+        1200,
+        1520
+      ],
+      "house_cost": 240
+    },
+    {
+      "index": 62,
+      "name": "West Station",
+      "short": "West Stn",
+      "type": "railroad",
+      "cost": 320,
+      "rent_1": 40
+    },
+    {
+      "index": 63,
+      "name": "Crest Point",
+      "short": "Crest Point",
+      "type": "property",
+      "group": "yellow",
+      "cost": 420,
+      "rent": 35,
+      "rent_set": 70,
+      "houses": [
+        144,
+        400,
+        1120,
+        1400,
+        1680
+      ],
+      "house_cost": 240
+    }
+  ]
+}
