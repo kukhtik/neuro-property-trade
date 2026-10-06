@@ -12,7 +12,7 @@ extends Control
 signal tile_clicked(index: int)
 signal tile_hovered(index: int)   # P4 §7: observer inspector on hover
 
-const TL := preload("res://visual/tile_layout.gd")
+const BL := preload("res://visual/board_layout.gd")
 const PI := preload("res://core/player_identity.gd")
 const TileView := preload("res://visual/tile_view.gd")
 const TokenPanel := preload("res://visual/token_panel.gd")
@@ -24,6 +24,7 @@ var _cell := 64
 var _tile_count := 0   # set by build(); never assume 40 — the board is parametric
 var _seats: Array = []         # of Seat (for token_id + color resolution)
 var _skin: SkinManager
+var _layout: Array = []        # BoardLayout.compute output (rects + band sides)
 
 ## Build the board control. tile_count + cell size.
 func build(tile_count: int, cell: int = 64, skin: SkinManager = null) -> Control:
@@ -31,8 +32,10 @@ func build(tile_count: int, cell: int = 64, skin: SkinManager = null) -> Control
 	_tile_count = tile_count
 	_skin = skin if skin != null else SkinManager.new()
 	_skin.load_skin()
-	var grid := TL.grid_cells(tile_count)
-	var size := grid * cell
+	# parametric geometry: rects for any tile count, with band orientation
+	_layout = BL.compute(tile_count, float(BL_side()), _skin.metric("corner_ratio", 1.4),
+		_skin.metric("board_gap", 2.0))
+	var size := BL_side()
 	custom_minimum_size = Vector2(size, size)
 	set_size(Vector2(size, size))
 
@@ -44,6 +47,12 @@ func build(tile_count: int, cell: int = 64, skin: SkinManager = null) -> Control
 
 	_rebuild()
 	return self
+
+## The board side in px, derived from the tile count and the cell size so the
+## ring always fits (d+1 cells across).
+func BL_side() -> float:
+	var d: int = maxi(1, _tile_count / 4)
+	return float(d + 1) * float(_cell)
 
 ## Provide the seat list so tokens resolve their token_id + color from the
 ## seat (which was assigned from PlayerIdentity). Call before refresh_tokens.
@@ -58,14 +67,21 @@ func _rebuild() -> void:
 			tv.queue_free()
 	_tile_nodes.clear()
 	_tokens.clear()
-	var grid := TL.grid_cells(_tile_count)
-	var size := grid * _cell
+	_layout = BL.compute(_tile_count, float(BL_side()), _skin.metric("corner_ratio", 1.4),
+		_skin.metric("board_gap", 2.0))
+	var size := BL_side()
 	custom_minimum_size = Vector2(size, size)
 	set_size(Vector2(size, size))
-	for i in _tile_count:
+	for entry in _layout:
+		var i: int = int(entry["index"])
+		var r: Rect2 = entry["rect"]
 		var tv: TileView = TileView.new()
-		tv.build(i, _tile_count, _cell, _skin)
-		tv.position = TL.pixel_pos(i, _tile_count, _cell) - Vector2(_cell / 2.0, _cell / 2.0)
+		# the tile is built at the exact geometry BoardLayout produced, and told
+		# which edge faces the centre so its band is oriented without a formula
+		tv.build_sized(i, _tile_count, r.size.x, r.size.y,
+			str(entry["band_side"]), "", bool(entry["corner"]), _skin)
+		tv.position = r.position
+		tv.size = r.size
 		tv.z_index = 1
 		tv.gui_input.connect(_on_tile_input.bind(i))
 		_tile_nodes.append(tv)

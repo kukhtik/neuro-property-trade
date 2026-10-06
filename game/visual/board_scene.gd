@@ -14,12 +14,16 @@ extends Control
 
 const ProjectionScript := preload("res://sdk/projection.gd")
 const MarkdownRenderer := preload("res://sdk/markdown_renderer.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 const TL := preload("res://visual/tile_layout.gd")
+const BL := preload("res://visual/board_layout.gd")
 const BoardView := preload("res://visual/board_view.gd")
 const Spectacle := preload("res://visual/spectacle.gd")
 const EventOverlay := preload("res://visual/event_overlay.gd")
 const Sfx := preload("res://visual/sfx.gd")
 const DiceStage := preload("res://ui/dice_stage.gd")
+const BoardCenterScript := preload("res://visual/board_center.gd")
+const EffectLayerScript := preload("res://visual/effect_layer.gd")
 
 const MIN_CELL := 24
 const MAX_CELL := 72
@@ -34,6 +38,9 @@ var _spectacle: Spectacle
 var _overlay: EventOverlay
 var _sfx: Sfx
 var _dice_stage: DiceStage
+var _effects                 # EffectLayer: tokens/particles above the ring
+var _center                  # BoardCenterV2: the interactive centre
+var _skin                    # SkinManager, shared by the centre and the effects
 var _timer := 0.0
 var _cell := 0
 var _tile_count := BOARD_TILES
@@ -99,8 +106,16 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_dice_stage.dice_rolled.connect(_on_dice_rolled)
 	add_child(_dice_stage)
 
-	# P3: board center SVG background (shown behind the board when empty)
+	# P3: board center — now the interactive centre built from skin tokens
+	_skin = SkinManager.new()
+	_skin.load_skin()
 	_add_board_center()
+
+	# effects overlay ABOVE the ring (tokens, floats, particles) — spec 5.6
+	_effects = EffectLayerScript.new()
+	_effects.name = "EffectLayer"
+	_effects.setup(_skin, _settings.animations if _settings != null else true)
+	_camera.add_child(_effects)
 
 	if _engine != null:
 		_engine.log.event_appended.connect(_on_engine_event)
@@ -137,6 +152,10 @@ func _resize_children() -> void:
 	var w := size.x
 	var h := size.y
 	if w <= 0 or h <= 0:
+		return
+	# the camera is created after the first viewport-rect pass; without it there
+	# is nothing to size (`_process` calls this every frame from the start)
+	if _camera == null or not is_instance_valid(_camera):
 		return
 	var grid := TL.grid_cells(_tile_count)
 	var bx := 8.0
@@ -175,6 +194,10 @@ func _resize_children() -> void:
 ## (Re)build the board at the current `_cell`. Frees the old board and creates
 ## a fresh one, reconnecting the tile-click signal.
 func _rebuild_board() -> void:
+	# _resize_children() can run before the camera exists (the viewport rect is
+	# applied on the first _process), so guard instead of touching a null node.
+	if _camera == null or not is_instance_valid(_camera):
+		return
 	if _board != null and is_instance_valid(_board):
 		_board.queue_free()
 	_board = BoardView.new()
@@ -185,6 +208,28 @@ func _rebuild_board() -> void:
 	_board.tile_clicked.connect(_on_tile_clicked)
 	_board.tile_hovered.connect(func(i: int) -> void: tile_hovered.emit(i))
 	_spectacle.setup(_camera, _board, _cell, _tile_count)
+	# the effects overlay sits ABOVE the ring; it takes the board's own geometry
+	# so tokens ride the real tile rects for any tile count (spec 5.6)
+	_sync_effect_layer()
+
+
+## Feed the effect layer the board's geometry and current tokens.
+func _sync_effect_layer() -> void:
+	if _effects == null or _board == null:
+		return
+	_effects.set_layout(_board._layout, float(_cell))
+	_effects.position = _board.position
+	_effects.size = _board.size
+
+
+## The interactive centre (spec 5.7) built from skin tokens, replacing the old
+## decorative SVG. It sheds the mini-log, card and subtitle as the centre shrinks.
+func _add_board_center() -> void:
+	_center = BoardCenterScript.new()
+	_center.name = "BoardCenterV2"
+	_center.setup(_skin)
+	_camera.add_child(_center)
+	_place_board_center()
 
 func _on_tile_clicked(idx: int) -> void:
 	tile_clicked.emit(idx)
@@ -224,32 +269,53 @@ func _paint(animate: bool) -> void:
 	_board.refresh_tokens(proj.get("players", []))
 	if not animate:
 		_board.update_highlight(proj)
+	# the effects overlay owns the tokens now, and the centre mirrors the turn
+	if _effects != null:
+		_effects.sync_tokens(_token_vms(proj))
+	if _center != null:
+		var players: Array = proj.get("players", [])
+		var tp: int = int(proj.get("turn_player", -1))
+		var pname := ""
+		if tp >= 0 and tp < players.size():
+			pname = str(players[tp].get("name", ""))
+		var board: Array = proj.get("board", [])
+		var tile_name := ""
+		if tp >= 0 and tp < players.size():
+			var pos: int = int(players[tp].get("position", -1))
+			if pos >= 0 and pos < board.size():
+				tile_name = str(board[pos].get("name", ""))
+		_center.set_turn(pname, str(proj.get("phase", "")), tile_name)
+		if int(proj.get("dice", [0, 0])[0]) > 0:
+			var d: Array = proj.get("dice", [0, 0])
+			_center.set_dice(int(d[0]), int(d[1]))
 
-## P3: Add board center SVG background (behind the board tiles — decorative
-## fill of the 6×6 interior so the middle doesn't look empty)
-func _add_board_center() -> void:
-	var center := TextureRect.new()
-	center.name = "BoardCenter"
-	center.texture = load("res://assets/board_center.svg")
-	center.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	center.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_camera.add_child(center)
-	_place_board_center()
 
-## Position/size the center art inside the board's inner area (between the
-## tile ring). Called after every layout pass.
+## Player view models for the effect layer's tokens (id/name/pos/colour).
+func _token_vms(proj: Dictionary) -> Array:
+	var out: Array = []
+	var players: Array = proj.get("players", [])
+	for p in players:
+		out.append({
+			"id": int(p.get("index", -1)),
+			"name": str(p.get("name", "")),
+			"pos": int(p.get("position", 0)),
+			"color_idx": int(p.get("index", 0)),
+			"bankrupt": bool(p.get("bankrupt", false)),
+		})
+	return out
+
+## Position/size the interactive centre inside the board's inner area (between
+## the tile ring). Called after every layout pass. Uses BoardLayout's real
+## centre rect so it works for any tile count, not just 40.
 func _place_board_center() -> void:
-	if not is_instance_valid(_camera):
+	if _center == null or _board == null or not is_instance_valid(_camera):
 		return
-	var center = _camera.get_node_or_null("BoardCenter")
-	if center == null or _board == null:
-		return
-	var grid := TL.grid_cells(_tile_count)
-	var inner := float(grid - 2) * float(_cell)   # interior ring area
-	var art := inner * 0.92   # small margin from the ring
-	center.size = Vector2(art, art)
-	center.position = (Vector2(float(board_px()), float(board_px())) - Vector2(art, art)) * 0.5
+	var side: float = float(board_px())
+	var inner: Rect2 = BL.center_rect(_tile_count, side,
+		_skin.metric("corner_ratio", 1.4), _skin.metric("board_gap", 2.0))
+	_center.position = _board.position + inner.position
+	_center.size = inner.size
+	_center.fit(Rect2(Vector2.ZERO, inner.size))
 
 func board_px() -> int:
 	return TL.grid_cells(_tile_count) * _cell

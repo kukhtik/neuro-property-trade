@@ -57,19 +57,28 @@ var _active := false
 
 
 ## Build the tile widget for `index`. `cell` is the tile size in px.
-## Signature kept: board_view and the layout probes call this.
+## Signature kept: the layout probes call this.
 func build(index: int, tile_count: int, cell: int, skin: SkinManager = null) -> void:
+	build_sized(index, tile_count, cell, cell, _band_side_for(index, tile_count), "",
+		index % maxi(1, tile_count / 4) == 0, skin)
+
+
+## Build with the EXACT geometry BoardLayout produced. The tile may be wider
+## than tall (a corner is cr× larger along the edge), and `band_side` tells it
+## which edge faces the centre, so no orientation formula lives here.
+func build_sized(index: int, tile_count: int, w: float, h: float, band_side: String,
+		_group: String, is_corner: bool, skin: SkinManager = null) -> void:
 	_index = index
 	_tile_count = tile_count
-	_cell = cell
+	_cell = int(minf(w, h))
+	_band_side = band_side
+	_is_corner = is_corner
 	_skin = skin if skin != null else SkinManager.new()
 	if _skin.skin_id() == "":
 		_skin.load_skin()
-	_is_corner = _index % maxi(1, _tile_count / 4) == 0
-	_band_side = _band_side_for(index, tile_count)
-	_step = _step_for(cell)
-	custom_minimum_size = Vector2(cell, cell)
-	size = Vector2(cell, cell)
+	_step = _step_for(_cell)
+	custom_minimum_size = Vector2(w, h)
+	size = Vector2(w, h)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build_nodes()
 
