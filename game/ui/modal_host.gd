@@ -1,11 +1,22 @@
 class_name ModalHost
 extends Control
-## A single full-screen overlay that hosts a modal panel. Content is swapped
-## via open_* methods; each emits a result via signals. Transparent clickaway
-## closes it. Shape-only widgets (theme).
+## The single modal host (spec §6). One instance for the whole game; `open()` is
+## idempotent — asking for a modal that is already open UPDATES it instead of
+## stacking a second one. That was defect #1 of the original brief ("стопки
+## модалок"), so it is enforced structurally here rather than by convention.
+##
+## Closing rules (spec §6): clicking the dim closes only the INFORMATIONAL
+## modals (rules, trade, message, settings). The auction and game-over are
+## decisions / terminal states — a stray click must not dismiss them.
+##
+## Every modal is a `kind` + `data` pair, so the host can re-render the open
+## modal from that pair alone. That is what makes the live locale switch work
+## (re-render, never rebuild the tree) and what makes open() idempotent.
 
 const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
+const Intents := preload("res://ui/core/intent_map.gd")
+const MoneyFmt := preload("res://ui/core/money.gd")
 
 signal build_requested(tile: int, op: String)
 signal trade_proposed(to: int, give_tiles: Array, give_cash: int, want_tiles: Array, want_cash: int)
@@ -15,119 +26,219 @@ signal auction_pass()
 signal sound_toggled(category: String, on: bool)
 signal restart_requested
 signal settings_requested
+## Emitted whenever the open modal changes (kind; "" when closed).
+signal modal_changed(kind: String)
 
-var _panel: PanelContainer
-var _content: Control
+## Modals the dim may dismiss (spec §6). Auction and game-over are NOT here.
+const DISMISSABLE := ["rules", "trade", "message", "settings"]
+
+var _panel: Control
 var _current_kind: String = ""
-var _current_args: Array = []
+var _current_data: Dictionary = {}
+var _dim: ColorRect
+var _intent_map = Intents.new()
+
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	# dim background under the modal
-	var bg := ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.55)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(bg)
-	# clicking the dim closes (clickaway)
-	bg.connect("gui_input", Callable(self, "_on_dim_input"))
-	# C5: re-render the open modal when the locale changes (100% i18n)
+	_dim = ColorRect.new()
+	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_dim)
+	_dim.gui_input.connect(_on_dim_input)
+	# re-render (not rebuild) the open modal when the locale changes
 	I18n.inst().locale_changed.connect(_on_locale_changed)
 
-func _on_locale_changed(_locale: String) -> void:
-	if _current_kind != "" and visible:
-		_rebuild_current()
 
-func open_build(tile: int, proj: Dictionary, seat_name: String) -> void:
-	_current_kind = "build"
-	_current_args = [tile, proj, seat_name]
+## The dim colour comes from a skin token, not a literal.
+func _dress() -> void:
+	var sc := UiTheme.skin().color("bg", Color(0, 0, 0))
+	_dim.color = Color(sc.r * 0.15, sc.g * 0.15, sc.b * 0.15, 0.72)
+
+
+func open(kind: String, data: Dictionary = {}) -> void:
+	_current_kind = kind
+	_current_data = data
+	_render()
+	visible = true
+	_dress()
+	modal_changed.emit(kind)
+
+
+func kind() -> String:
+	return _current_kind
+
+
+func close() -> void:
+	if _current_kind == "":
+		return
+	_current_kind = ""
+	_current_data = {}
+	visible = false
+	if _panel != null and is_instance_valid(_panel):
+		_panel.free()
+	_panel = null
+	modal_changed.emit("")
+
+
+func is_open() -> bool:
+	return _current_kind != "" and visible
+
+
+## How many modal panels currently exist as children. Used by the "no stacking"
+## contract: it must be 0 or 1, never more.
+func panel_count() -> int:
+	var n := 0
+	for c in get_children():
+		if c != _dim:
+			n += 1
+	return n
+
+
+# --- rendering ----------------------------------------------------------------
+
+## Render the current kind+data. The ONLY place a modal's content is built, so a
+## locale change is the same code path as opening it.
+func _render() -> void:
+	if _panel != null and is_instance_valid(_panel):
+		_panel.free()
+	_panel = null
+	match _current_kind:
+		"build": _build_build()
+		"trade": _build_trade()
+		"trade_response": _build_trade_response()
+		"auction": _build_auction()
+		"game_over": _build_game_over()
+		"rules": _build_rules()
+		"message": _build_message()
+		"settings": _build_settings()
+		_: _panel = null
+
+
+func _on_locale_changed(_locale: String) -> void:
+	if is_open():
+		_render()
+
+
+func _on_dim_input(ev: InputEvent) -> void:
+	if not (ev is InputEventMouseButton and ev.pressed):
+		return
+	# only the informational modals dismiss on a background click
+	if _current_kind in DISMISSABLE:
+		close()
+
+
+# --- build / manage a tile ----------------------------------------------------
+
+func open_build(tile: int, proj: Dictionary, seat_name: String, legal: Array = []) -> void:
+	open("build", {"tile": tile, "proj": proj, "seat": seat_name, "legal": legal})
+
+
+func _build_build() -> void:
+	var tile: int = int(_current_data.get("tile", -1))
+	var proj: Dictionary = _current_data.get("proj", {})
 	var t := _find_tile(proj, tile)
-	_show()
-	_content = UiTheme.vbox(10)
-	var body := VBoxContainer.new()
+	var body := UiTheme.vbox(10)
 	body.add_child(_heading(I18n.t("modal.build_title")))
 	body.add_child(UiTheme.label(I18n.t("modal.tile_header", [t.get("name", tile), tile]), 14))
-	body.add_child(UiTheme.label(I18n.t("modal.house_cost", [
-		str(t.get("houses", 0)), str(t.get("house_cost", 0))]), 13, UiTheme.COL().text_dim))
+	body.add_child(UiTheme.label_muted(I18n.t("modal.house_cost", [
+		str(t.get("houses", 0)), str(t.get("house_cost", 0))]), 13))
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	var btn_build := UiTheme.button_accent(I18n.t("act.build"), I18n.t("act.build_tip"))
-	btn_build.connect("pressed", Callable(self, "_emit_build").bind(tile, "build_house"))
-	row.add_child(btn_build)
-	var btn_sell := UiTheme.button(I18n.t("act.sell"), I18n.t("act.sell_tip"))
-	btn_sell.connect("pressed", Callable(self, "_emit_build").bind(tile, "sell_house"))
-	row.add_child(btn_sell)
-	var btn_mort := UiTheme.button(I18n.t("act.mortgage"), I18n.t("act.mortgage_tip"))
-	btn_mort.connect("pressed", Callable(self, "_emit_build").bind(tile, "mortgage_property"))
-	row.add_child(btn_mort)
-	var btn_unmort := UiTheme.button(I18n.t("act.unmortgage"), I18n.t("act.unmortgage_tip"))
-	btn_unmort.connect("pressed", Callable(self, "_emit_build").bind(tile, "unmortgage_property"))
-	row.add_child(btn_unmort)
+	var legal: Array = _current_data.get("legal", [])
+	var row := UiTheme.hbox(10)
+	_add_action_button(row, "build", "act.build", "act.build_tip", {"tile": tile}, legal, true)
+	_add_action_button(row, "sell", "act.sell", "act.sell_tip", {"tile": tile}, legal, false)
+	_add_action_button(row, "mortgage", "act.mortgage", "act.mortgage_tip", {"tile": tile}, legal, false)
+	_add_action_button(row, "unmortgage", "act.unmortgage", "act.unmortgage_tip", {"tile": tile}, legal, false)
 	body.add_child(row)
+	var close_btn := UiTheme.button(I18n.t("modal.close_btn"), I18n.t("modal.settings_panel_tip"))
+	close_btn.connect("pressed", Callable(self, "close"))
+	body.add_child(close_btn)
 	_panelize(body)
 
-func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
-	# proposer (the human) builds an offer to one other player.
-	_current_kind = "trade"
-	_current_args = [proj, seats, proposer_pid]
-	_show()
-	var recipient: OptionButton = OptionButton.new()
-	recipient.tooltip_text = I18n.t("modal.recipient_tip")
-	recipient.custom_minimum_size.x = 140
-	for s in seats:
-		if int(s.pid) != proposer_pid:
-			recipient.add_item(str(s.name), int(s.pid))
+
+## A button enabled only when the ENGINE offers the action (spec §6: buttons
+## follow legal_actions; the UI never re-implements a rule). An empty `legal`
+## means "no information" and leaves the button enabled — the engine still
+## validates and rejects.
+func _add_action_button(row: Control, ui_action: String, key: String, tip_key: String,
+		params: Dictionary, legal: Array, primary: bool) -> Button:
+	var b: Button = UiTheme.button_accent(I18n.t(key), I18n.t(tip_key)) if primary \
+		else UiTheme.button(I18n.t(key), I18n.t(tip_key))
+	if not legal.is_empty():
+		b.disabled = not _intent_map.can(ui_action, legal, params)
+	b.set_meta("i18n_key", key)
+	b.set_meta("ui_action", ui_action)
+	var mapped: Dictionary = _intent_map.to_engine(ui_action, params)
+	b.connect("pressed", Callable(self, "_emit_build").bind(int(params.get("tile", -1)),
+		str(mapped.get("action", ""))))
+	row.add_child(b)
+	return b
+
+
+# --- trade --------------------------------------------------------------------
+
+func open_trade(proj: Dictionary, seats: Array, proposer_pid: int, legal: Array = []) -> void:
+	open("trade", {"proj": proj, "seats": seats, "pid": proposer_pid, "legal": legal})
+
+
+## The proposer builds a REAL offer: tiles on both sides plus cash, validated by
+## the engine (spec §6: propose with validation, not the old stub).
+func _build_trade() -> void:
+	var proj: Dictionary = _current_data.get("proj", {})
+	var seats: Array = _current_data.get("seats", [])
+	var proposer: int = int(_current_data.get("pid", -1))
 
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.trade_title")))
 
-	var to_row := HBoxContainer.new()
-	to_row.add_theme_constant_override("separation", 8)
+	var recipient := OptionButton.new()
+	recipient.tooltip_text = I18n.t("modal.recipient_tip")
+	recipient.custom_minimum_size.x = 140
+	for s in seats:
+		if int(s.pid) != proposer:
+			recipient.add_item(str(s.name), int(s.pid))
+	var to_row := UiTheme.hbox(8)
 	to_row.add_child(UiTheme.label(I18n.t("modal.recipient")))
 	to_row.add_child(recipient)
 	body.add_child(to_row)
 
-	body.add_child(UiTheme.label(I18n.t("modal.give_hint"), 12, UiTheme.COL().text_dim))
-	var give_list := UiTheme.label(I18n.t("modal.give_placeholder"), 12)
-	body.add_child(give_list)
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", 12)
 
-	body.add_child(UiTheme.label(I18n.t("modal.want_hint"), 12, UiTheme.COL().text_dim))
-	var want_list := UiTheme.label(I18n.t("modal.want_placeholder"), 12)
-	body.add_child(want_list)
+	var give_box := VBoxContainer.new()
+	give_box.add_child(UiTheme.label_muted(I18n.t("modal.give_hint"), 12))
+	var give_list := _tile_checklist(proj, proposer, "give")
+	give_box.add_child(give_list)
+	var give_cash_row := _cash_spin("modal.give_cash", "modal.give_cash_tip")
+	give_box.add_child(give_cash_row)
+	cols.add_child(give_box)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	body.add_child(row)
-	row.add_child(UiTheme.label(I18n.t("modal.give_cash")))
-	var give_cash := SpinBox.new()
-	give_cash.min_value = 0; give_cash.max_value = 99999; give_cash.value = 0
-	give_cash.tooltip_text = I18n.t("modal.give_cash_tip")
-	row.add_child(give_cash)
+	var first_recipient: int = _first_other(seats, proposer)
+	var want_box := VBoxContainer.new()
+	want_box.add_child(UiTheme.label_muted(I18n.t("modal.want_hint"), 12))
+	var want_holder := VBoxContainer.new()
+	want_holder.name = "WantHolder"
+	_repopulate_want(want_holder, proj, first_recipient)
+	want_box.add_child(want_holder)
+	var want_cash_row := _cash_spin("modal.want_cash", "modal.want_cash_tip")
+	want_box.add_child(want_cash_row)
+	cols.add_child(want_box)
+	body.add_child(cols)
 
-	var row2 := HBoxContainer.new()
-	row2.add_theme_constant_override("separation", 8)
-	body.add_child(row2)
-	row2.add_child(UiTheme.label(I18n.t("modal.want_cash")))
-	var want_cash := SpinBox.new()
-	want_cash.min_value = 0; want_cash.max_value = 99999; want_cash.value = 0
-	want_cash.tooltip_text = I18n.t("modal.want_cash_tip")
-	row2.add_child(want_cash)
+	# the want side follows the chosen recipient
+	recipient.item_selected.connect(func(idx: int) -> void:
+		_repopulate_want(want_holder, proj, recipient.get_item_id(idx)))
 
-	# NOTE: MVP trade flow selects give_tiles from clicked tiles; want_tiles here
-	# are simplified to cash + tiles selected while in trade mode. For the MVP
-	# shell we propose with the selected give_tiles (tracked in game_view) and
-	# want = cash + any want-tiles selected. Simpler path below:
-	var give_tiles: Array = []
-	var want_tiles: Array = []
-	# (real multi-tile trade UI is a followup; MVP passes empty tile arrays and
-	#  cash amounts — engine allows this.)
+	var err := UiTheme.label("", 12, UiTheme.skin().color("danger"))
+	err.name = "Err"
+	body.add_child(err)
 
-	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 10)
+	var btn_row := UiTheme.hbox(10)
 	var ok := UiTheme.button_accent(I18n.t("modal.offer"), I18n.t("modal.offer_tip"))
 	ok.connect("pressed", Callable(self, "_emit_trade").bind(
-		recipient, give_cash, want_cash, give_tiles, want_tiles))
+		recipient, _spin_in(give_cash_row), _spin_in(want_cash_row),
+		give_list, want_holder, err))
 	btn_row.add_child(ok)
 	var cancel := UiTheme.button(I18n.t("ui.cancel"), I18n.t("modal.cancel_tip"))
 	cancel.connect("pressed", Callable(self, "close"))
@@ -135,27 +246,73 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	body.add_child(btn_row)
 	_panelize(body)
 
-func open_trade_response(proj: Dictionary, seats: Array) -> void:
-	_current_kind = "trade_response"
-	_current_args = [proj, seats]
-	_show()
+
+func _repopulate_want(holder: Control, proj: Dictionary, pid: int) -> void:
+	for c in holder.get_children():
+		holder.remove_child(c)
+		c.free()
+	var list := _tile_checklist(proj, pid, "want")
+	# move the checklist's children out of it — a node cannot have two parents
+	for c in list.get_children():
+		list.remove_child(c)
+		holder.add_child(c)
+	list.free()
+
+
+## A checklist of the tiles a player OWNS and may trade (no houses on them) —
+## exactly what the engine's propose_trade accepts.
+func _tile_checklist(proj: Dictionary, pid: int, tag: String) -> VBoxContainer:
+	var box := VBoxContainer.new()
+	for t in proj.get("board", []):
+		if int(t.get("owner", -1)) != pid:
+			continue
+		if int(t.get("houses", 0)) > 0:
+			continue   # the engine rejects trading a tile with houses
+		var cb := CheckBox.new()
+		cb.text = str(t.get("name", t.get("index", "")))
+		cb.set_meta("tile", int(t.get("index", -1)))
+		cb.set_meta("tag", tag)
+		box.add_child(cb)
+	if box.get_child_count() == 0:
+		var lbl := UiTheme.label_muted(I18n.t("modal.no_tiles"), 12)
+		lbl.set_meta("empty_hint", true)
+		box.add_child(lbl)
+	return box
+
+
+## A cash row: "Даёте, $" + a spin box. Returns the ROW (callers add the row to
+## their layout, not the bare spinbox).
+func _cash_spin(label_key: String, tip_key: String) -> Control:
+	var row := UiTheme.hbox(8)
+	row.add_child(UiTheme.label(I18n.t(label_key)))
+	var sp := SpinBox.new()
+	sp.min_value = 0
+	sp.max_value = 99999
+	sp.value = 0
+	sp.tooltip_text = I18n.t(tip_key)
+	row.add_child(sp)
+	return row
+
+
+func open_trade_response(proj: Dictionary, seats: Array, legal: Array = []) -> void:
+	open("trade_response", {"proj": proj, "seats": seats, "legal": legal})
+
+
+func _build_trade_response() -> void:
+	var proj: Dictionary = _current_data.get("proj", {})
+	var seats: Array = _current_data.get("seats", [])
 	var pending: Dictionary = proj.get("pending", {})
 	var proposer: int = int(pending.get("proposer", -1))
 	var recipient: int = int(pending.get("recipient", -1))
-	var give: Array = pending.get("give_tiles", [])
-	var want: Array = pending.get("want_tiles", [])
-	var gcash: int = int(pending.get("give_cash", 0))
-	var wcash: int = int(pending.get("want_cash", 0))
 
-	var pn := _name_of(seats, proposer)
-	var rn := _name_of(seats, recipient)
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.trade_response")))
-	body.add_child(UiTheme.label(I18n.t("modal.trade_offers", [pn, rn]), 14))
-	body.add_child(UiTheme.label(I18n.t("modal.trade_terms", [
-		gcash, give.size(), wcash, want.size()]), 13, UiTheme.COL().text_dim))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	body.add_child(UiTheme.label(I18n.t("modal.trade_offers", [
+		_name_of(seats, proposer), _name_of(seats, recipient)]), 14))
+	body.add_child(_offer_lines(proj, pending, "give", "modal.give_hint"))
+	body.add_child(_offer_lines(proj, pending, "want", "modal.want_hint"))
+
+	var row := UiTheme.hbox(10)
 	var yes := UiTheme.button_accent(I18n.t("modal.accept"), I18n.t("modal.accept_tip"))
 	yes.connect("pressed", Callable(self, "_emit_trade_response").bind(true))
 	row.add_child(yes)
@@ -165,59 +322,92 @@ func open_trade_response(proj: Dictionary, seats: Array) -> void:
 	body.add_child(row)
 	_panelize(body)
 
-func open_auction(proj: Dictionary, seats: Array) -> void:
-	_current_kind = "auction"
-	_current_args = [proj, seats]
-	_show()
+
+## A real breakdown of one side of the offer: which tiles plus the cash amount.
+func _offer_lines(proj: Dictionary, pending: Dictionary, tag: String, label_key: String) -> Control:
+	var box := VBoxContainer.new()
+	var tiles: Array = pending.get("%s_tiles" % tag, [])
+	var cash: int = int(pending.get("%s_cash" % tag, 0))
+	var names: Array = []
+	for idx in tiles:
+		names.append(str(_find_tile(proj, int(idx)).get("name", idx)))
+	var line: String = "%s: %s" % [I18n.t(label_key),
+		(", ".join(names) if names.size() > 0 else I18n.t("modal.no_tiles"))]
+	if cash > 0:
+		line += "   %s" % MoneyFmt.make("$").amount(cash)
+	box.add_child(UiTheme.label(line, 13))
+	return box
+
+
+# --- auction ------------------------------------------------------------------
+
+func open_auction(proj: Dictionary, seats: Array, legal: Array = []) -> void:
+	open("auction", {"proj": proj, "seats": seats, "legal": legal})
+
+
+## The auction modal (spec §6). Buttons appear ONLY for the player the engine is
+## currently asking to bid — legal_actions returns [bid, pass] for them alone
+## (see the stage-0 audit). Everyone else sees a spectator note, so no private
+## information can leak and no one can bid out of turn.
+func _build_auction() -> void:
+	var proj: Dictionary = _current_data.get("proj", {})
+	var seats: Array = _current_data.get("seats", [])
 	var pending: Dictionary = proj.get("pending", {})
+	var legal: Array = _current_data.get("legal", [])
 	var tile: int = int(pending.get("tile", -1))
 	var high: int = int(pending.get("high", -1))
+	var leader: int = int(pending.get("high_player", -1))
 	var t := _find_tile(proj, tile)
+
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.auction_title")))
 	body.add_child(UiTheme.label(I18n.t("modal.lot_name", [t.get("name", tile)]), 14))
-	body.add_child(UiTheme.label(I18n.t("modal.auction_high", [high]) if high > 0 else I18n.t("modal.auction_none"), 13, UiTheme.COL().text_dim))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	row.add_child(UiTheme.label(I18n.t("modal.bid_lbl")))
-	var amt := SpinBox.new()
-	amt.min_value = high + 1
-	amt.max_value = 99999
-	amt.value = high + 1
-	amt.tooltip_text = I18n.t("modal.bid_tip")
-	row.add_child(amt)
-	var bid := UiTheme.button_accent(I18n.t("modal.bid_btn"), I18n.t("modal.bid_btn_tip"))
-	bid.connect("pressed", Callable(self, "_emit_bid").bind(amt))
-	row.add_child(bid)
-	var apos := UiTheme.button(I18n.t("modal.pass_btn"), I18n.t("modal.pass_tip"))
-	apos.connect("pressed", Callable(self, "_emit_auction_pass"))
-	row.add_child(apos)
-	body.add_child(row)
+	body.add_child(UiTheme.label_muted(
+		I18n.t("modal.auction_high", [high]) if high > 0 else I18n.t("modal.auction_none"), 13))
+	if leader >= 0:
+		body.add_child(UiTheme.label_muted(I18n.t("modal.auction_leader", [_name_of(seats, leader)]), 13))
+
+	if _intent_map.can("auction_bid", legal):
+		var row := UiTheme.hbox(8)
+		row.add_child(UiTheme.label(I18n.t("modal.bid_lbl")))
+		var amt := SpinBox.new()
+		amt.min_value = high + 1
+		amt.max_value = 99999
+		amt.value = high + 1
+		amt.tooltip_text = I18n.t("modal.bid_tip")
+		row.add_child(amt)
+		var bid := UiTheme.button_accent(I18n.t("modal.bid_btn"), I18n.t("modal.bid_btn_tip"))
+		bid.set_meta("i18n_key", "modal.bid_btn")
+		bid.connect("pressed", Callable(self, "_emit_bid").bind(amt))
+		row.add_child(bid)
+		var apos := UiTheme.button(I18n.t("modal.pass_btn"), I18n.t("modal.pass_tip"))
+		apos.set_meta("i18n_key", "modal.pass_btn")
+		apos.connect("pressed", Callable(self, "_emit_auction_pass"))
+		row.add_child(apos)
+		body.add_child(row)
+	else:
+		# spectating: no buttons (public bids only, spec §6)
+		body.add_child(UiTheme.label_muted(I18n.t("modal.auction_watch"), 13))
 	_panelize(body)
 
-func show_message(title: String, msg: String) -> void:
-	_current_kind = "message"
-	_current_args = [title, msg]
-	_show()
-	var body := UiTheme.vbox(8)
-	body.add_child(_heading(title))
-	body.add_child(UiTheme.label(msg, 14))
-	var ok := UiTheme.button("OK", I18n.t("modal.msg_ok_tip"))
-	ok.connect("pressed", Callable(self, "close"))
-	body.add_child(ok)
-	_panelize(body)
 
-## Game-over results banner: winner, turns, capital + [Реванш] [Настройки].
+# --- terminal / informational -------------------------------------------------
+
+## Game-over. NOT dismissable by a background click (spec §6).
 func show_game_over(winner_name: String, turns: int, capital: int, player_count: int) -> void:
-	_current_kind = "game_over"
-	_current_args = [winner_name, turns, capital, player_count]
-	_show()
+	open("game_over", {"winner": winner_name, "turns": turns,
+		"capital": capital, "players": player_count})
+
+
+func _build_game_over() -> void:
 	var body := UiTheme.vbox(10)
 	body.add_child(_heading(I18n.t("modal.game_over")))
-	body.add_child(UiTheme.label(I18n.t("modal.winner", [winner_name]), 18, UiTheme.COL().gold))
-	body.add_child(UiTheme.label(I18n.t("modal.stats", [turns, player_count, capital]), 14, UiTheme.COL().text_dim))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
+	body.add_child(UiTheme.label_money(I18n.t("modal.winner", [
+		str(_current_data.get("winner", ""))]), 18))
+	body.add_child(UiTheme.label_muted(I18n.t("modal.stats", [
+		int(_current_data.get("turns", 0)), int(_current_data.get("players", 0)),
+		int(_current_data.get("capital", 0))]), 14))
+	var row := UiTheme.hbox(10)
 	var rematch := UiTheme.button_accent(I18n.t("modal.rematch"), I18n.t("modal.rematch_tip"))
 	rematch.connect("pressed", Callable(self, "_emit_restart"))
 	row.add_child(rematch)
@@ -227,61 +417,77 @@ func show_game_over(winner_name: String, turns: int, capital: int, player_count:
 	body.add_child(row)
 	_panelize(body)
 
-func _emit_restart() -> void:
-	restart_requested.emit()
 
-func _emit_settings() -> void:
-	settings_requested.emit()
+func open_rules(text: String) -> void:
+	open("rules", {"text": text})
 
-## In-game settings: per-category sound toggles + a rules button.
+
+func _build_rules() -> void:
+	var body := UiTheme.vbox(8)
+	body.add_child(_heading(I18n.t("modal.rules_btn")))
+	var txt := UiTheme.label(str(_current_data.get("text", "")), 13)
+	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	txt.custom_minimum_size = Vector2(420, 300)
+	body.add_child(txt)
+	var close_btn := UiTheme.button(I18n.t("modal.close_btn"), I18n.t("modal.rules_back_tip"))
+	close_btn.connect("pressed", Callable(self, "close"))
+	body.add_child(close_btn)
+	_panelize(body)
+
+
+func show_message(title: String, msg: String) -> void:
+	open("message", {"title": title, "msg": msg})
+
+
+func _build_message() -> void:
+	var body := UiTheme.vbox(8)
+	body.add_child(_heading(str(_current_data.get("title", ""))))
+	body.add_child(UiTheme.label(str(_current_data.get("msg", "")), 14))
+	var ok := UiTheme.button("OK", I18n.t("modal.msg_ok_tip"))
+	ok.connect("pressed", Callable(self, "close"))
+	body.add_child(ok)
+	_panelize(body)
+
+
 func open_settings(sound_cats: Array, rules_text: String) -> void:
-	_current_kind = "settings"
-	_current_args = [sound_cats, rules_text]
-	_show()
+	open("settings", {"cats": sound_cats, "text": rules_text})
+
+
+func _build_settings() -> void:
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.settings")))
-
-	body.add_child(UiTheme.label(I18n.t("modal.sound_title"), 13, UiTheme.COL().accent))
-	for cat in sound_cats:
+	body.add_child(UiTheme.label(I18n.t("modal.sound_title"), 13, UiTheme.skin().color("accent")))
+	for cat in _current_data.get("cats", []):
 		var cb := CheckButton.new()
 		cb.text = str(cat.get("label", ""))
 		cb.button_pressed = bool(cat.get("on", true))
 		cb.tooltip_text = I18n.t("modal.sound_tip", [str(cat.get("label", ""))])
 		cb.connect("toggled", Callable(self, "_on_sound_toggled").bind(str(cat.get("key", ""))))
 		body.add_child(cb)
-
 	var rules_btn := UiTheme.button(I18n.t("modal.rules_btn"), I18n.t("modal.rules_tip"))
-	rules_btn.connect("pressed", Callable(self, "_open_rules").bind(rules_text))
+	rules_btn.connect("pressed", Callable(self, "_open_rules_from_settings"))
 	body.add_child(rules_btn)
-
 	var close_btn := UiTheme.button(I18n.t("modal.close_btn"), I18n.t("modal.settings_panel_tip"))
 	close_btn.connect("pressed", Callable(self, "close"))
 	body.add_child(close_btn)
 	_panelize(body)
 
+
+func _open_rules_from_settings() -> void:
+	open_rules(str(_current_data.get("text", "")))
+
+
 func _on_sound_toggled(on: bool, key: String) -> void:
 	sound_toggled.emit(key, on)
 
-func _open_rules(rules_text: String) -> void:
-	# replace the settings panel with the rules text
-	if _panel != null and is_instance_valid(_panel):
-		_panel.free()
-	_panel = null
-	var body := UiTheme.vbox(8)
-	body.add_child(_heading(I18n.t("modal.rules_btn")))
-	var txt := UiTheme.label(rules_text, 13)
-	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	txt.custom_minimum_size = Vector2(420, 300)
-	body.add_child(txt)
-	var back := UiTheme.button(I18n.t("ui.back"), I18n.t("modal.rules_back_tip"))
-	back.connect("pressed", Callable(self, "close"))
-	body.add_child(back)
-	_panelize(body)
+
+# --- helpers ------------------------------------------------------------------
 
 func _heading(txt: String) -> Label:
-	var h := UiTheme.label(txt, 18, UiTheme.COL().gold)
+	var h := UiTheme.label(txt, 18, UiTheme.skin().color("money"))
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return h
+
 
 func _find_tile(proj: Dictionary, idx: int) -> Dictionary:
 	for t in (proj.get("board", []) as Array):
@@ -289,76 +495,150 @@ func _find_tile(proj: Dictionary, idx: int) -> Dictionary:
 			return t
 	return {}
 
+
 func _name_of(seats: Array, pid: int) -> String:
 	for s in seats:
 		if int(s.pid) == pid:
 			return str(s.name)
 	return "P%d" % pid
 
+
+func _first_other(seats: Array, pid: int) -> int:
+	for s in seats:
+		if int(s.pid) != pid:
+			return int(s.pid)
+	return -1
+
+
 func _panelize(content: Control) -> void:
-	_panel = UiTheme.panel()
-	_panel.custom_minimum_size = Vector2(460, 0)
+	_panel = UiTheme.chamfer_panel("tr")
+	(_panel as Control).custom_minimum_size = Vector2(460, 0)
 	var margin := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(edge, 16)
 	_panel.add_child(margin)
 	margin.add_child(content)
-	_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	(_panel as Control).set_anchors_preset(Control.PRESET_CENTER)
+	(_panel as Control).grow_horizontal = Control.GROW_DIRECTION_BOTH
+	(_panel as Control).grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(_panel)
 
-## C5: rebuild the currently-open modal from its recorded kind+args so it
-## re-renders 100% in the new locale (no stale RU text in an open modal).
-func _rebuild_current() -> void:
-	if _panel != null and is_instance_valid(_panel):
-		_panel.free()
-	_panel = null
-	_content = null
-	match _current_kind:
-		"build":
-			open_build(int(_current_args[0]), _current_args[1], str(_current_args[2]))
-		"trade":
-			open_trade(_current_args[0], _current_args[1], int(_current_args[2]))
-		"trade_response":
-			open_trade_response(_current_args[0], _current_args[1])
-		"auction":
-			open_auction(_current_args[0], _current_args[1])
-		"message":
-			show_message(str(_current_args[0]), str(_current_args[1]))
-		"game_over":
-			show_game_over(str(_current_args[0]), int(_current_args[1]), int(_current_args[2]), int(_current_args[3]))
-		"settings":
-			open_settings(_current_args[0], str(_current_args[1]))
-
-func _show() -> void:
-	visible = true
-
-func close() -> void:
-	visible = false
-	_current_kind = ""
-	_current_args = []
-	if _panel != null and is_instance_valid(_panel):
-		_panel.free()
-	_panel = null
-	_content = null
-
-func _on_dim_input(ev: InputEvent) -> void:
-	if ev is InputEventMouseButton and ev.pressed:
-		close()
 
 func _emit_build(tile: int, op: String) -> void:
+	if op == "":
+		return
 	build_requested.emit(tile, op)
 
-func _emit_trade(recipient: OptionButton, give_cash: SpinBox, want_cash: SpinBox, give: Array, want: Array) -> void:
+
+## Gather the offer from the real widget tree and hand it over; the engine
+## validates it.
+func _emit_trade(recipient: OptionButton, give_cash: SpinBox, want_cash: SpinBox,
+		give_list: Control, want_holder: Control, err: Label) -> void:
 	var to: int = recipient.get_item_id(recipient.selected)
-	trade_proposed.emit(to, give, int(give_cash.value), want, int(want_cash.value))
+	var give: Array = _checked_tiles(give_list, "give")
+	var want: Array = _checked_tiles(want_holder, "want")
+	var gc: int = int(give_cash.value)
+	var wc: int = int(want_cash.value)
+	# a strictly empty offer is meaningless — the engine rejects it
+	if give.is_empty() and want.is_empty() and gc == 0 and wc == 0:
+		if err != null:
+			err.text = I18n.t("modal.empty_offer")
+		return
+	trade_proposed.emit(to, give, gc, want, wc)
+
+
+func _checked_tiles(box: Control, tag: String) -> Array:
+	var out: Array = []
+	_walk(box, func(n: Node) -> void:
+		if n is CheckBox and bool((n as CheckBox).button_pressed) \
+				and str(n.get_meta("tag", "")) == tag:
+			out.append(int(n.get_meta("tile", -1))))
+	return out
+
+
+func _walk(node: Node, fn: Callable) -> void:
+	fn.call(node)
+	for c in node.get_children():
+		_walk(c, fn)
+
 
 func _emit_trade_response(accept: bool) -> void:
 	trade_responded.emit(accept)
 
+
 func _emit_bid(amt: SpinBox) -> void:
 	auction_bid.emit(int(amt.value))
 
+
 func _emit_auction_pass() -> void:
 	auction_pass.emit()
+
+
+func _emit_restart() -> void:
+	restart_requested.emit()
+
+
+func _emit_settings() -> void:
+	settings_requested.emit()
+
+
+# --- test/inspection helpers --------------------------------------------------
+
+## Depth-first walk over this host's nodes.
+func _walk_all(node: Node, out: Array) -> void:
+	out.append(node)
+	for c in node.get_children():
+		_walk_all(c, out)
+
+
+func nodes() -> Array:
+	var out: Array = []
+	_walk_all(self, out)
+	return out
+
+
+## The recipient dropdown in an open trade modal.
+func _find_recipient() -> OptionButton:
+	for n in nodes():
+		if n is OptionButton:
+			return n
+	return null
+
+
+## The first SpinBox inside a control (a cash row wraps its spinbox).
+func _spin_in(c: Control) -> SpinBox:
+	if c == null:
+		return null
+	for n in nodes():
+		if n is SpinBox and c.is_ancestor_of(n):
+			return n
+	return null
+
+
+## The n-th SpinBox in the open modal (0 = give cash, 1 = want cash).
+func _find_spin(index: int) -> SpinBox:
+	var seen := 0
+	for n in nodes():
+		if n is SpinBox:
+			if seen == index:
+				return n
+			seen += 1
+	return null
+
+
+## The first container whose checkboxes carry the given tag.
+func _find_by_tag(tag: String) -> Control:
+	for n in nodes():
+		if n is Control and not (n is CheckBox):
+			for c in n.get_children():
+				if c is CheckBox and str(c.get_meta("tag", "")) == tag:
+					return n
+	return null
+
+
+## The inline error label in the trade modal.
+func _find_err() -> Label:
+	for n in nodes():
+		if n is Label and n.name == "Err":
+			return n
+	return null

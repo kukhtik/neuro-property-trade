@@ -519,7 +519,9 @@ func _on_action_requested(act: String, _params: Dictionary) -> void:
 		"build_house", "sell_house", "mortgage_property", "unmortgage_property":
 			if _inspector.selected >= 0:
 				var sp := ProjectionScript.new().for_spectator(engine)
-				_modals.open_build(_inspector.selected, sp, "")
+				# pass legal_actions so the modal's buttons follow the engine
+				_modals.open_build(_inspector.selected, sp, _name_of_pid(_human_pid),
+					engine.legal_actions(_human_pid))
 			else:
 				_modals.show_message(I18n.t("gv.select_tile"), I18n.t("gv.select_tile_body"))
 		"propose_trade":
@@ -527,10 +529,10 @@ func _on_action_requested(act: String, _params: Dictionary) -> void:
 			_modals.open_trade(sp2, seats, _human_pid)
 		"respond_trade":
 			var sp3 := ProjectionScript.new().for_spectator(engine)
-			_modals.open_trade_response(sp3, seats)
+			_modals.open_trade_response(sp3, seats, engine.legal_actions(_human_pid))
 		"bid":
 			var sp4 := ProjectionScript.new().for_spectator(engine)
-			_modals.open_auction(sp4, seats)
+			_modals.open_auction(sp4, seats, engine.legal_actions(_human_pid))
 
 func _on_build(tile: int, op: String) -> void:
 	_submit(_human_pid, op, {"tile": tile})
@@ -569,6 +571,14 @@ func _on_sound_toggled(key: String, on: bool) -> void:
 			_board_scene._sfx.set_enabled(on)
 
 var _sfx_enabled := true
+
+## A seat's display name (for the modal headers).
+func _name_of_pid(pid: int) -> String:
+	for s in seats:
+		if int(s.pid) == pid:
+			return str(s.name)
+	return ""
+
 
 func _submit(pid: int, action: String, params: Dictionary) -> void:
 	if manager == null:
