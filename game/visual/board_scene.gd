@@ -24,6 +24,9 @@ const Sfx := preload("res://visual/sfx.gd")
 const DiceStage := preload("res://ui/dice_stage.gd")
 const BoardCenterScript := preload("res://visual/board_center.gd")
 const EffectLayerScript := preload("res://visual/effect_layer.gd")
+const EventAdapterScript := preload("res://ui/core/event_adapter.gd")
+const EventPresenterScript := preload("res://ui/core/event_presenter.gd")
+const UiStoreScript := preload("res://ui/core/ui_store.gd")
 
 const MIN_CELL := 24
 const MAX_CELL := 72
@@ -41,6 +44,9 @@ var _dice_stage: DiceStage
 var _effects                 # EffectLayer: tokens/particles above the ring
 var _center                  # BoardCenterV2: the interactive centre
 var _skin                    # SkinManager, shared by the centre and the effects
+var _presenter               # EventPresenter: the presentation queue (stage 5)
+var _adapter                 # EventAdapter: engine event -> UI schema
+var _store                   # UiStore: the view model the presenter feeds
 var _timer := 0.0
 var _cell := 0
 var _tile_count := BOARD_TILES
@@ -116,6 +122,20 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_effects.name = "EffectLayer"
 	_effects.setup(_skin, _settings.animations if _settings != null else true)
 	_camera.add_child(_effects)
+
+	# the presentation queue (stage 5): events are shown in order, not all at once
+	_adapter = EventAdapterScript.new()
+	_store = UiStoreScript.new()
+	_presenter = EventPresenterScript.new()
+	_presenter.animations = _settings.animations if _settings != null else true
+	_presenter.name = "EventPresenter"
+	add_child(_presenter)
+	_presenter.set_sink({
+		"play": Callable(self, "_play_event"),
+		"apply": Callable(self, "_play_event"),
+		"on_drained": Callable(self, "_resync_store"),
+	})
+	_presenter.set_resync(Callable(self, "_resync_store"))
 
 	if _engine != null:
 		_engine.log.event_appended.connect(_on_engine_event)
@@ -248,19 +268,87 @@ func _process(delta: float) -> void:
 			_paint(false)   # safety slow refresh (catches non-event changes)
 
 func _on_engine_event(entry: Dictionary) -> void:
+	# immediate, non-animated reactions stay direct: sound, the spectator feed
+	# and the camera should not wait behind the presentation queue.
 	_sfx.play_type(entry.get("type", ""))
 	_overlay.append(entry)
 	_spectacle.on_event(entry)
-	
-	# P3: Trigger dice animation on roll events
+
+	# the VISUAL playback goes through the queue (spec 8.1), so several events
+	# from one engine call are shown in order instead of all at once.
+	if _presenter == null:
+		_paint(true)
+		return
+	var ev = _adapter.adapt(entry)
+	if not ev.is_empty() or entry.get("type", "") == "roll":
+		# `roll` is a board effect with no journal line, but it still needs the
+		# dice animation, so it reaches the presenter too
+		if not ev.is_empty():
+			_presenter.push(ev)
+		else:
+			_play_local(entry, false)
+
+
+## Play one event's own animation (dice, walk, effects). Called by the presenter
+## when it is wired, or directly when it is not.
+func _play_event(ev: Dictionary, instant: bool) -> void:
+	# apply the deltas so the view model keeps up with the animation
+	if _store != null:
+		_store.apply_delta(ev.get("d", []))
+	var k: String = str(ev.get("k", ""))
+	if k == "roll" and not instant:
+		if _dice_stage != null:
+			_dice_stage.roll(int(ev.get("a", 1)), int(ev.get("b", 1)))
+	elif k == "move" and not instant:
+		if _effects != null:
+			_effects.move_player(int(ev.get("p", -1)), [int(ev.get("ti", 0))])
+	elif k == "buy" and not instant:
+		if _effects != null:
+			_effects.burst(int(ev.get("ti", -1)), _skin.color("accent"))
+	elif k in ["rent", "tax", "go", "park"] and not instant:
+		if _effects != null:
+			var positive: bool = k in ["go", "park"]
+			_effects.float_over_tile(int(ev.get("ti", -1)),
+				str(ev.get("a", 0)), positive)
+	# the board is repainted from the store/projection after each step
+	if instant:
+		_paint(false)
+	else:
+		_paint(true)
+
+
+## Fall back to the legacy one-shot path for events the adapter drops.
+func _play_local(entry: Dictionary, instant: bool) -> void:
 	if entry.get("type", "") == "roll":
 		var d: Dictionary = entry.get("data", {})
-		var d1: int = int(d.get("d1", 1))
-		var d2: int = int(d.get("d2", 1))
-		if _dice_stage != null:
-			_dice_stage.roll(d1, d2)
-	
-	_paint(true)
+		if _dice_stage != null and not instant:
+			_dice_stage.roll(int(d.get("d1", 1)), int(d.get("d2", 1)))
+	_paint(not instant)
+	# the projection is the truth: resync the view model once we are done
+	_resync_store()
+
+
+## The presenter finished its queue — reconcile the view with the projection.
+func _resync_store() -> void:
+	if _store == null or _engine == null:
+		_paint(false)
+		return
+	_store.resync(ProjectionScript.new().for_spectator(_engine))
+	_paint(false)
+
+## Skip the animation queue and jump to the truth (spec 8.1: Space / click).
+func skip_all_animations() -> void:
+	if _presenter != null:
+		_presenter.skip_all()
+
+## Set the animations master toggle (settings.animations).
+func set_animations(on: bool) -> void:
+	if _presenter != null:
+		_presenter.animations = on
+	if _effects != null:
+		_effects.animations = on
+	if _dice_stage != null:
+		_dice_stage.set_animations(on)
 
 func _paint(animate: bool) -> void:
 	if _engine == null: return
