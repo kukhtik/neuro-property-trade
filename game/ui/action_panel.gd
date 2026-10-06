@@ -21,7 +21,7 @@ var _cold := false
 var _observer := false        # P4 §7: thin status bar, no buttons
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel, UiTheme.COL.border, 1, 0))
+	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var outer := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		outer.add_theme_constant_override(edge, 10)
@@ -30,7 +30,7 @@ func _init() -> void:
 	outer.add_child(_v)
 
 	# status line (which seat + phase hint)
-	_status = UiTheme.label("", 13, UiTheme.COL.text_dim)
+	_status = UiTheme.label("", 13, UiTheme.COL().text_dim)
 	_v.add_child(_status)
 
 	# button row
@@ -39,7 +39,7 @@ func _init() -> void:
 	_btn_row.custom_minimum_size.y = 40
 	_v.add_child(_btn_row)
 
-	_hint = UiTheme.label("", 12, UiTheme.COL.text_dim)
+	_hint = UiTheme.label("", 12, UiTheme.COL().text_dim)
 	_v.add_child(_hint)
 
 var _v: VBoxContainer

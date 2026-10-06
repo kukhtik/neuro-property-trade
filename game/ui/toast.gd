@@ -252,18 +252,18 @@ class ToastItem extends PanelContainer:
 
 	static func _kind_color(kind: String) -> Color:
 		match kind:
-			"success": return UiTheme.COL.success
+			"success": return UiTheme.COL().success
 			"warning": return Color("#c9a84c")
-			"error": return UiTheme.COL.danger
-			"info": return UiTheme.COL.accent
-			"neutral": return UiTheme.COL.panel_dark
-		return UiTheme.COL.accent
+			"error": return UiTheme.COL().danger
+			"info": return UiTheme.COL().accent
+			"neutral": return UiTheme.COL().panel_dark
+		return UiTheme.COL().accent
 
 	func setup(t: String, kind: String, duration: float) -> void:
 		text = t
 		_duration = duration
 		add_theme_stylebox_override("panel", UiTheme.box(
-			_kind_color(kind), UiTheme.COL.border_accent, 1, 6))
+			_kind_color(kind), UiTheme.COL().border_accent, 1, 6))
 		var m = MarginContainer.new()
 		for e in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 			m.add_theme_constant_override(e, 10)
@@ -309,17 +309,17 @@ class BannerItem extends PanelContainer:
 
 	static func _kind_color(kind: String) -> Color:
 		match kind:
-			"success": return UiTheme.COL.success
+			"success": return UiTheme.COL().success
 			"warning": return Color("#c9a84c")
-			"error": return UiTheme.COL.danger
-			"info": return UiTheme.COL.accent
-			"neutral": return UiTheme.COL.panel
-		return UiTheme.COL.accent
+			"error": return UiTheme.COL().danger
+			"info": return UiTheme.COL().accent
+			"neutral": return UiTheme.COL().panel
+		return UiTheme.COL().accent
 
 	func setup(text: String, kind: String, actions: Array) -> void:
 		_actions = actions
 		add_theme_stylebox_override("panel", UiTheme.box(
-			_kind_color(kind), UiTheme.COL.border_accent, 2, 8))
+			_kind_color(kind), UiTheme.COL().border_accent, 2, 8))
 		var m = MarginContainer.new()
 		for e in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 			m.add_theme_constant_override(e, 16)

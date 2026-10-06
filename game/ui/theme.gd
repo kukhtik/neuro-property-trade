@@ -1,90 +1,184 @@
 class_name UiTheme
 extends RefCounted
-## Central UI theme + widget factory for the playable game shell.
-## Single source of palette + stylebox construction so every panel/button reads
-## from here (no magic colors in scenes). This is the seam where flat shapes
-## later get swapped for art: replace the shape construction below, keep the
-## public helpers. UI logic never depends on concrete widget internals.
+## Widget factory for the game shell — now a THIN ADAPTER over SkinManager.
+##
+## Historically this held its own hardcoded palette (COL) and built styleboxes
+## from it, which made it a second source of visual truth alongside the skin.
+## It now resolves every colour, size and shape through SkinManager, so the 12
+## panels that call UiTheme.* automatically follow the active skin without a
+## single edit at the call sites.
+##
+## `COL` is kept as a compatibility shim: it resolves lazily from the skin.
+## New code should prefer SkinManager directly (token/slot/metric) or the theme
+## type variations (`ButtonPrimary`, `PanelHeader`, ...).
 
-const COL := {
-	"bg":            Color("16191f"),   # deep slate backdrop
-	"panel":         Color("1e242e"),   # card/panel fill
-	"panel_dark":    Color("171c24"),   # recessed fill
-	"border":        Color("39404d"),   # default border
-	"border_accent": Color("4fb3d9"),   # accent border (selection/active)
-	"text":          Color("e8edf3"),   # primary text
-	"text_dim":      Color("8b95a5"),   # secondary text
-	"accent":        Color("4fb3d9"),   # primary accent (buttons/active)
-	"accent_hover":  Color("5fc4ea"),
-	"accent_press":  Color("3a95bd"),
-	"danger":        Color("d9534f"),
-	"success":       Color("5cb85c"),
-	"gold":          Color("ffd34d"),
-	"jail":          Color("9a86c9"),
-}
+const SkinManager := preload("res://visual/skin_manager.gd")
+const Chamfer := preload("res://ui/components/chamfer_panel.gd")
 
-## Build a flat StyleBox with the panel fill + border. radius in px.
-static func box(bg: Color, border_col: Color = COL.border, w: int = 1, radius: int = 6) -> StyleBoxFlat:
+## The active skin. Set once at boot (and on a skin change) via use_skin().
+static var _skin: SkinManager = null
+
+
+## Point the factory at a skin. Every later call reads from it.
+static func use_skin(skin: SkinManager) -> void:
+	_skin = skin
+
+
+## The active skin, loading the default on first use.
+static func skin() -> SkinManager:
+	if _skin == null:
+		_skin = SkinManager.new()
+		_skin.load_skin()
+	return _skin
+
+
+## Compatibility view of the palette, resolved from the skin. Kept so panels
+## that read `UiTheme.COL().x` keep working; prefer skin().color("x").
+## NOTE: this is a function now, not a const — call sites must use COL() .
+static func COL() -> Dictionary:
+	var s := skin()
+	return {
+		"bg": s.color("bg"),
+		"panel": s.color("surface.1"),
+		"panel_dark": s.color("surface.2"),
+		"border": s.color("line"),
+		"border_accent": s.color("accent"),
+		"text": s.color("text"),
+		"text_dim": s.color("muted"),
+		"accent": s.color("accent"),
+		"accent_hover": s.color("accent2", s.color("accent")),
+		"accent_press": s.color("accent"),
+		"danger": s.color("danger"),
+		"success": s.color("money", Color("5cb85c")),
+		"gold": s.color("money"),
+		"jail": s.color("warn", Color("9a86c9")),
+	}
+
+
+## Build a flat StyleBox with a fill + border. Radius comes from the skin so a
+## skin with rounded corners actually round.
+static func box(bg: Color, border_col: Color = Color.TRANSPARENT, w: int = 1, radius: int = -1) -> StyleBoxFlat:
 	var b := StyleBoxFlat.new()
 	b.bg_color = bg
+	if border_col.a <= 0.0:
+		border_col = skin().color("line")
 	b.border_color = border_col
 	b.set_border_width_all(w)
-	b.corner_radius_top_left = radius
-	b.corner_radius_top_right = radius
-	b.corner_radius_bottom_left = radius
-	b.corner_radius_bottom_right = radius
+	var r: int = int(skin().shape("radius", 0.0)) if radius < 0 else radius
+	b.corner_radius_top_left = r
+	b.corner_radius_top_right = r
+	b.corner_radius_bottom_left = r
+	b.corner_radius_bottom_right = r
 	return b
+
 
 ## PanelContainer with the standard panel fill + border.
 static func panel(custom_min: Vector2 = Vector2.ZERO) -> PanelContainer:
+	var s := skin()
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", box(COL.panel, COL.border, 1, 8))
+	p.add_theme_stylebox_override("panel", box(s.color("surface.1"), s.color("line"), 1))
 	if custom_min != Vector2.ZERO:
 		p.custom_minimum_size = custom_min
 	return p
 
-## Label with theme font size + color.
-static func label(text: String, size: int = 14, color: Color = COL.text) -> Label:
+
+## A chamfered panel (the project's signature cut corner) instead of a radius.
+static func chamfer_panel(cut: String = "tr") -> Chamfer:
+	var c := Chamfer.new()
+	c.set_skin(skin())
+	c.cut = cut
+	return c
+
+
+## Label with a skin font size + colour. `size` is a px override; -1 means the
+## skin's default body size.
+static func label(text: String, size: int = -1, color: Color = Color.TRANSPARENT) -> Label:
+	var s := skin()
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", color)
+	l.add_theme_font_size_override("font_size", s.size("m", 14) if size < 0 else size)
+	l.add_theme_color_override("font_color", s.color("text") if color.a <= 0.0 else color)
 	return l
 
+
+## A muted (secondary) label.
+static func label_muted(text: String, size: int = -1) -> Label:
+	return label(text, size, skin().color("muted"))
+
+
+## A money label (monospace-ish colour token).
+static func label_money(text: String, size: int = -1) -> Label:
+	return label(text, size, skin().color("money"))
+
+
 ## Standard styled Button. `tooltip` (optional) shows a styled description on
-## hover — every interactive button should pass one (A2 requirement).
+## hover — every interactive button should pass one.
 static func button(text: String, tooltip: String = "") -> Button:
+	var s := skin()
 	var b := Button.new()
 	b.text = text
 	if tooltip != "":
 		b.tooltip_text = tooltip
 		_style_tooltip(b)
-	b.add_theme_font_size_override("font_size", 14)
-	b.add_theme_color_override("font_color", COL.text)
-	# normal / hover / pressed styleboxes
-	b.add_theme_stylebox_override("normal", box(COL.panel_dark, COL.border, 1, 6))
-	b.add_theme_stylebox_override("hover", box(COL.accent, COL.border_accent, 1, 6))
-	b.add_theme_stylebox_override("pressed", box(COL.accent_press, COL.border_accent, 1, 6))
+	b.add_theme_font_size_override("font_size", s.size("m", 14))
+	b.add_theme_color_override("font_color", s.color("text"))
+	var r: int = int(s.shape("radius", 0.0))
+	var w: int = int(s.shape("line", 1.0))
+	b.add_theme_stylebox_override("normal", box(s.color("surface.2"), s.color("line"), w, r))
+	b.add_theme_stylebox_override("hover", box(s.color("surface.1"), s.color("accent"), w, r))
+	b.add_theme_stylebox_override("pressed", box(s.color("surface.1"), s.color("accent"), int(s.shape("line_active", 2.0)), r))
 	b.add_theme_stylebox_override("focus", box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	return b
 
-## Accent (primary) button — brighter + accent border. Optional tooltip.
+
+## Accent (primary) button — filled with the accent, text in on_accent.
 static func button_accent(text: String, tooltip: String = "") -> Button:
+	var s := skin()
 	var b := button(text, tooltip)
-	b.add_theme_stylebox_override("normal", box(COL.accent, COL.border_accent, 1, 6))
-	b.add_theme_stylebox_override("hover", box(COL.accent_hover, COL.border_accent, 2, 6))
-	b.add_theme_stylebox_override("pressed", box(COL.accent_press, COL.border_accent, 2, 6))
-	b.add_theme_color_override("font_color", Color("0c1218"))
+	var r: int = int(s.shape("radius", 0.0))
+	b.add_theme_stylebox_override("normal", box(s.color("accent"), s.color("accent"), 1, r))
+	b.add_theme_stylebox_override("hover", box(s.color("accent2", s.color("accent")), s.color("accent"), int(s.shape("line_active", 2.0)), r))
+	b.add_theme_stylebox_override("pressed", box(s.color("accent"), s.color("accent"), int(s.shape("line_active", 2.0)), r))
+	b.add_theme_color_override("font_color", s.color("on_accent"))
 	return b
 
-## Apply a dark, bordered tooltip style to a control that has a tooltip_text.
-static func _style_tooltip(c: Control) -> void:
-	c.add_theme_stylebox_override("TooltipPanel", box(Color("0d1117"), COL.border_accent, 1, 4))
-	c.add_theme_color_override("TooltipLabel/font_color", COL.text)
-	c.add_theme_font_size_override("TooltipLabel/font_size", 12)
 
-## VBox with consistent margin + separation.
-static func vbox(sep: int = 8, margin: int = 12) -> VBoxContainer:
+## A primary button with the skin's cut corner.
+static func button_primary_chamfer(text: String, tooltip: String = "") -> Chamfer:
+	var c := chamfer_panel("tr")
+	c.fill_token = "accent"
+	c.border_token = "accent"
+	var l := Label.new()
+	l.text = text
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_color_override("font_color", skin().color("on_accent"))
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(l)
+	if tooltip != "":
+		c.tooltip_text = tooltip
+	return c
+
+
+## Apply a bordered tooltip style to a control that has a tooltip_text.
+static func _style_tooltip(c: Control) -> void:
+	var s := skin()
+	c.add_theme_stylebox_override("TooltipPanel", box(s.color("surface.2"), s.color("accent"), 1))
+	c.add_theme_color_override("TooltipLabel/font_color", s.color("text"))
+	c.add_theme_font_size_override("TooltipLabel/font_size", s.size("s", 12))
+
+
+## VBox with consistent separation. The margin argument is kept for call-site
+## compatibility; spacing comes from the skin scale.
+static func vbox(sep: int = -1, _margin: int = 12) -> VBoxContainer:
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", sep)
+	v.add_theme_constant_override("separation", skin().space(2, 8) if sep < 0 else sep)
 	return v
+
+
+## HBox sibling of vbox().
+static func hbox(sep: int = -1) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", skin().space(2, 8) if sep < 0 else sep)
+	return h

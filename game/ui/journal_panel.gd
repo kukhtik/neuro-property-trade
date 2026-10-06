@@ -19,6 +19,19 @@ var _type_filter: OptionButton
 var _money_only: CheckButton
 var _export_btn: Button
 var _count_lbl: Label
+var _head_title: Label       # the panel title (hidden while railed)
+var _rail                    # RailPanel wrapper
+
+
+## Attach the rail wrapper: the rail carries the title while collapsed, so the
+## panel hides its own header (spec §5.2).
+func set_rail(rail) -> void:
+	_rail = rail
+	if rail != null:
+		rail.set_title(I18n.t("jrn.title"))
+		rail.toggled.connect(func(collapsed: bool) -> void:
+			if _head_title != null:
+				_head_title.visible = not collapsed)
 var _entries: Array = []          # full engine log (Array of Dictionary)
 var _player_names: Array = []     # index == pid
 var _rendered := 0                # how many entries are already in the label
@@ -31,7 +44,7 @@ const MONEY_TYPES := ["purchase", "pay", "rent", "tax", "go_bonus",
 	"auction_win", "collect", "collect_from_all", "pay_each_player"]
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel, UiTheme.COL.border, 1, 0))
+	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var outer := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		outer.add_theme_constant_override(edge, 8)
@@ -42,11 +55,11 @@ func _init() -> void:
 	# header: title + live count + export
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
-	var title := UiTheme.label(I18n.t("jrn.title"), 12, UiTheme.COL.accent)
-	I18n.key_on(title, "jrn.title")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(title)
-	_count_lbl = UiTheme.label("0", 11, UiTheme.COL.text_dim)
+	_head_title = UiTheme.label(I18n.t("jrn.title"), 12, UiTheme.COL().accent)
+	I18n.key_on(_head_title, "jrn.title")
+	_head_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_head_title)
+	_count_lbl = UiTheme.label("0", 11, UiTheme.COL().text_dim)
 	_count_lbl.tooltip_text = I18n.t("jrn.count_tip")
 	I18n.tip_on(_count_lbl, "jrn.count_tip")
 	head.add_child(_count_lbl)
@@ -60,7 +73,7 @@ func _init() -> void:
 	# filter row: player | type | money-only
 	var filters := HBoxContainer.new()
 	filters.add_theme_constant_override("separation", 6)
-	var plbl := UiTheme.label(I18n.t("jrn.player_lbl"), 11, UiTheme.COL.text_dim)
+	var plbl := UiTheme.label(I18n.t("jrn.player_lbl"), 11, UiTheme.COL().text_dim)
 	I18n.key_on(plbl, "jrn.player_lbl")
 	plbl.tooltip_text = I18n.t("jrn.player_tip")
 	I18n.tip_on(plbl, "jrn.player_tip")
@@ -72,7 +85,7 @@ func _init() -> void:
 	_player_filter.clip_text = true
 	_player_filter.connect("item_selected", Callable(self, "_on_filter_changed"))
 	filters.add_child(_player_filter)
-	var tlbl := UiTheme.label(I18n.t("jrn.type_lbl"), 11, UiTheme.COL.text_dim)
+	var tlbl := UiTheme.label(I18n.t("jrn.type_lbl"), 11, UiTheme.COL().text_dim)
 	I18n.key_on(tlbl, "jrn.type_lbl")
 	tlbl.tooltip_text = I18n.t("jrn.type_tip")
 	I18n.tip_on(tlbl, "jrn.type_tip")

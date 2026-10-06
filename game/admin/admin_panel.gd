@@ -112,7 +112,7 @@ func _build() -> void:
 	# header: title + search + close
 	var head = HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
-	var title = UiTheme.label(I18n.t("admin.title"), 16, UiTheme.COL.gold)
+	var title = UiTheme.label(I18n.t("admin.title"), 16, UiTheme.COL().gold)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	_search = LineEdit.new()
@@ -132,7 +132,7 @@ func _build() -> void:
 	_build_edits_tab()
 
 	# admin log at the bottom (spec §8.2)
-	var log_head := UiTheme.label(I18n.t("admin.log_head"), 11, UiTheme.COL.text_dim)
+	var log_head := UiTheme.label(I18n.t("admin.log_head"), 11, UiTheme.COL().text_dim)
 	v.add_child(log_head)
 	_admin_log = RichTextLabel.new()
 	_admin_log.bbcode_enabled = true
@@ -166,7 +166,7 @@ func _build_quick_tab() -> void:
 	_tabs.add_child(tab)
 	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_quick"))
 
-	var hint := UiTheme.label(I18n.t("admin.quick_hint"), 12, UiTheme.COL.text_dim)
+	var hint := UiTheme.label(I18n.t("admin.quick_hint"), 12, UiTheme.COL().text_dim)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tab.add_child(hint)
 
@@ -196,7 +196,7 @@ func _build_quick_tab() -> void:
 	tab.add_child(_status_summary_label())
 
 func _status_summary_label() -> Label:
-	var l := UiTheme.label("", 12, UiTheme.COL.text_dim)
+	var l := UiTheme.label("", 12, UiTheme.COL().text_dim)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.name = "QuickSummary"
 	return l
@@ -260,7 +260,7 @@ func _build_edits_tab() -> void:
 	_tabs.add_child(tab)
 	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_edits"))
 
-	var note := UiTheme.label(I18n.t("admin.edits_note"), 11, UiTheme.COL.text_dim)
+	var note := UiTheme.label(I18n.t("admin.edits_note"), 11, UiTheme.COL().text_dim)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tab.add_child(note)
 
@@ -281,7 +281,7 @@ func _build_edit_row(def: Dictionary) -> Control:
 	var op: String = str(def["op"])
 	var row := PanelContainer.new()
 	row.name = "EditRow_" + op
-	row.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 6))
+	row.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 6))
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 6)
 	var m := MarginContainer.new()
@@ -382,7 +382,7 @@ func _build_edit_row(def: Dictionary) -> Control:
 				widgets["seed"] = sd
 				h.add_child(_labeled(I18n.t("admin.lbl_seed"), sd, sd.tooltip_text))
 
-	var result := UiTheme.label("", 12, UiTheme.COL.text_dim)
+	var result := UiTheme.label("", 12, UiTheme.COL().text_dim)
 	result.custom_minimum_size.x = 150
 	result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	result.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -438,11 +438,11 @@ func _on_edit_apply(op: String) -> void:
 	if def.has("confirm") and bool(def["confirm"]):
 		var ok: bool = await _confirm_dialog(I18n.t("admin.confirm_op", [_op_label(def)]))
 		if not ok:
-			_set_inline(op, I18n.t("admin.cancelled"), UiTheme.COL.text_dim)
+			_set_inline(op, I18n.t("admin.cancelled"), UiTheme.COL().text_dim)
 			return
 	var params := _params_from_widgets(op, widgets)
 	var res := _gate_call(op, params)
-	var col: Color = UiTheme.COL.success if bool(res.get("ok", false)) else UiTheme.COL.danger
+	var col: Color = UiTheme.COL().success if bool(res.get("ok", false)) else UiTheme.COL().danger
 	var txt: String = I18n.t("admin.ok") if bool(res.get("ok", false)) else I18n.t("admin.error", [str(res.get("reason", "?"))])
 	_set_inline(op, txt, col)
 	_log_admin(op, res)

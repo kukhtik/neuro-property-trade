@@ -35,7 +35,7 @@ func _timer_tick() -> void:
 		_sfx.play_timer_tick()
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 0))
+	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	var m := MarginContainer.new()
@@ -46,13 +46,13 @@ func _init() -> void:
 	add_child(m)
 	m.add_child(h)
 
-	_title = UiTheme.label(I18n.t("top.title"), 15, UiTheme.COL.gold)
+	_title = UiTheme.label(I18n.t("top.title"), 15, UiTheme.COL().gold)
 	I18n.key_on(_title, "top.title")
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(_title)
 	_turn = UiTheme.label("", 15)
 	h.add_child(_turn)
-	_phase = UiTheme.label("", 13, UiTheme.COL.text_dim)
+	_phase = UiTheme.label("", 13, UiTheme.COL().text_dim)
 	h.add_child(_phase)
 	
 	# P3: Timer ring next to phase
@@ -74,7 +74,7 @@ func _init() -> void:
 	_eye_btn.visible = false
 	_eye_btn.connect("pressed", Callable(self, "_on_eye"))
 	h.add_child(_eye_btn)
-	_hint = UiTheme.label(I18n.t("top.admin_hint"), 12, UiTheme.COL.text_dim)
+	_hint = UiTheme.label(I18n.t("top.admin_hint"), 12, UiTheme.COL().text_dim)
 	h.add_child(_hint)
 
 ## Host-only gate: hide the F12 hint on non-host (WebGL / spectator).

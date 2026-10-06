@@ -11,6 +11,9 @@ extends Control
 ## "cold" (no engine) and the action panel shows a single START button.
 
 const UiTheme := preload("res://ui/theme.gd")
+const Layout := preload("res://ui/core/layout_profile.gd")
+const RailPanel := preload("res://ui/components/rail_panel.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
 const TopBar := preload("res://ui/top_bar.gd")
 const PlayersPanel := preload("res://ui/players_panel.gd")
@@ -48,6 +51,9 @@ var _inspector
 var _modals
 var _journal           # JournalPanel now (was a bare Label)
 var _jpanel: PanelContainer
+var _players_rail           # RailPanel around the players panel
+var _jpanel_rail            # RailPanel around the journal
+var _skin                   # SkinManager shared by the rails
 var _last_vp := Vector2.ZERO
 var _center: HBoxContainer   # players | board | journal (ties the panels together)
 var _cold := true
@@ -62,6 +68,9 @@ var _follow_pid := -1          # spectator follow target (clicked player row)
 func setup_cold(launcher) -> void:
 	_launcher = launcher
 	_cold = true
+	_skin = SkinManager.new()
+	_skin.load_skin()
+	UiTheme.use_skin(_skin)
 	_build_layout()
 	_layout()
 	# cold board: no engine, so just build the empty board scene
@@ -222,17 +231,11 @@ func _journal_w() -> int:
 		return _OBSERVER_JOURNAL_W
 	return _bpl().right
 
-## P5 §10 / §3.4 breakpoint table (LEFT, RIGHT) from the current width.
+## Breakpoints come from LayoutProfile (stage 2), not inline numbers, so the
+## thresholds live in one place and a skin/profile can move them.
 func _bpl() -> Dictionary:
-	# P6 CR-7: the 1024px "dense" branch (56px rail + 60px drawer) was removed
-	# because the panels don't implement rail/drawer — it just rendered two
-	# near-empty strips. Below 1280 the panels clamp to their minimum usable
-	# width so the board still dominates.
-	if size.x >= 1600.0:
-		return {"left": 260, "right": 320}
-	if size.x >= 1280.0:
-		return {"left": 240, "right": 300}
-	return {"left": 150, "right": 180}
+	var lp = Layout.for_screen(Vector2i(int(size.x), int(size.y)))
+	return {"left": lp.left_width(), "right": lp.right_width(), "profile": lp.id}
 
 func _build_layout() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -255,11 +258,19 @@ func _build_layout() -> void:
 	_center.add_theme_constant_override("separation", 8)
 	add_child(_center)
 
-	# left players panel (fixed proportional width)
+	# left players panel — wrapped in a rail so it can collapse to a 46px strip
+	# with a vertical title instead of becoming an empty band (spec §5.2)
+	_players_rail = RailPanel.new()
+	_players_rail.name = "PlayersRail"
+	_players_rail.setup(_skin, "ui.players", true)
+	_players_rail.custom_minimum_size.x = _panel_w()
+	_players_rail.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_center.add_child(_players_rail)
 	_players = PlayersPanel.new()
-	_players.custom_minimum_size.x = _panel_w()
-	_players.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_center.add_child(_players)
+	_players.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_players.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_players.set_rail(_players_rail)
+	_players_rail.set_content(_players)
 
 	# board (center) — expands to fill whatever the side panels leave
 	_board_scene = BoardScene.new()
@@ -269,18 +280,20 @@ func _build_layout() -> void:
 	_board_scene.set_managed_by_container(true)
 	_center.add_child(_board_scene)
 
-	# right journal panel (fixed proportional width) — P4: full JournalPanel
-	# (filters + export + auto-scroll), replaces the bare 10-line label.
-	_jpanel = UiTheme.panel()
-	_jpanel.custom_minimum_size.x = _journal_w()
-	_jpanel.size_flags_horizontal = Control.SIZE_SHRINK_END
-	_center.add_child(_jpanel)
+	# right journal panel — also railed (spec §5.2)
+	_jpanel_rail = RailPanel.new()
+	_jpanel_rail.name = "JournalRail"
+	_jpanel_rail.setup(_skin, "ui.journal", false)
+	_jpanel_rail.custom_minimum_size.x = _journal_w()
+	_jpanel_rail.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_center.add_child(_jpanel_rail)
 	_journal = JournalPanel.new()
 	_journal.name = "JournalPanel"
 	_journal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_journal.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_journal.exported.connect(_on_journal_exported)
-	_jpanel.add_child(_journal)
+	_journal.set_rail(_jpanel_rail)
+	_jpanel_rail.set_content(_journal)
 
 	# modal host (above everything)
 	_modals = ModalHost.new()
@@ -314,14 +327,42 @@ func _build_layout() -> void:
 ## whenever the viewport size changes (A1). The HBox re-sizes the side panels
 ## and the board fills the remaining center region automatically.
 func _layout() -> void:
-	if _players == null or _jpanel == null or _board_scene == null:
+	if _players == null or _jpanel_rail == null or _board_scene == null:
 		return
-	var pw := _panel_w()
-	var jw := _journal_w()
-	_players.custom_minimum_size.x = pw
-	_jpanel.custom_minimum_size.x = jw
+	# auto-collapse by the profile, unless the user set the state by hand
+	# (spec §5.2: a manual collapse survives until the profile threshold moves)
+	var lp = Layout.for_screen(Vector2i(int(size.x), int(size.y)))
+	if _players_rail != null:
+		if not _players_rail.is_manual():
+			_players_rail.set_collapsed(lp.rail_left(), false)
+		_players_rail.set_count(str(_player_count()))
+	if _jpanel_rail != null:
+		if not _jpanel_rail.is_manual():
+			_jpanel_rail.set_collapsed(lp.rail_right() and not _observer, false)
+		_jpanel_rail.set_count(str(_journal_count()))
+	if not _players_rail.is_collapsed():
+		_players_rail.custom_minimum_size.x = _panel_w()
+	if not _jpanel_rail.is_collapsed():
+		_jpanel_rail.custom_minimum_size.x = _journal_w()
 	# the board scene fills the center region between the panels (HBox handles it)
 	_board_scene.set_frame(Rect2(0, 0, 0, 0))   # signal it to re-fit its own rect
+
+
+## Compact status shown in the players rail so it is never an empty strip.
+func _player_count() -> int:
+	var n := 0
+	if seats != null:
+		for s in seats:
+			if not bool(s.get("bankrupt")) if s is Dictionary else true:
+				n += 1
+	return n
+
+
+## Compact status for the journal rail: the number of logged events.
+func _journal_count() -> int:
+	if engine == null or engine.log == null:
+		return 0
+	return engine.log.size()
 
 func _process(delta: float) -> void:
 	# A1: re-layout when the viewport size changes (window resize / different screen)

@@ -48,7 +48,7 @@ func open_build(tile: int, proj: Dictionary, seat_name: String) -> void:
 	body.add_child(_heading(I18n.t("modal.build_title")))
 	body.add_child(UiTheme.label(I18n.t("modal.tile_header", [t.get("name", tile), tile]), 14))
 	body.add_child(UiTheme.label(I18n.t("modal.house_cost", [
-		str(t.get("houses", 0)), str(t.get("house_cost", 0))]), 13, UiTheme.COL.text_dim))
+		str(t.get("houses", 0)), str(t.get("house_cost", 0))]), 13, UiTheme.COL().text_dim))
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
@@ -88,11 +88,11 @@ func open_trade(proj: Dictionary, seats: Array, proposer_pid: int) -> void:
 	to_row.add_child(recipient)
 	body.add_child(to_row)
 
-	body.add_child(UiTheme.label(I18n.t("modal.give_hint"), 12, UiTheme.COL.text_dim))
+	body.add_child(UiTheme.label(I18n.t("modal.give_hint"), 12, UiTheme.COL().text_dim))
 	var give_list := UiTheme.label(I18n.t("modal.give_placeholder"), 12)
 	body.add_child(give_list)
 
-	body.add_child(UiTheme.label(I18n.t("modal.want_hint"), 12, UiTheme.COL.text_dim))
+	body.add_child(UiTheme.label(I18n.t("modal.want_hint"), 12, UiTheme.COL().text_dim))
 	var want_list := UiTheme.label(I18n.t("modal.want_placeholder"), 12)
 	body.add_child(want_list)
 
@@ -153,7 +153,7 @@ func open_trade_response(proj: Dictionary, seats: Array) -> void:
 	body.add_child(_heading(I18n.t("modal.trade_response")))
 	body.add_child(UiTheme.label(I18n.t("modal.trade_offers", [pn, rn]), 14))
 	body.add_child(UiTheme.label(I18n.t("modal.trade_terms", [
-		gcash, give.size(), wcash, want.size()]), 13, UiTheme.COL.text_dim))
+		gcash, give.size(), wcash, want.size()]), 13, UiTheme.COL().text_dim))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	var yes := UiTheme.button_accent(I18n.t("modal.accept"), I18n.t("modal.accept_tip"))
@@ -176,7 +176,7 @@ func open_auction(proj: Dictionary, seats: Array) -> void:
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.auction_title")))
 	body.add_child(UiTheme.label(I18n.t("modal.lot_name", [t.get("name", tile)]), 14))
-	body.add_child(UiTheme.label(I18n.t("modal.auction_high", [high]) if high > 0 else I18n.t("modal.auction_none"), 13, UiTheme.COL.text_dim))
+	body.add_child(UiTheme.label(I18n.t("modal.auction_high", [high]) if high > 0 else I18n.t("modal.auction_none"), 13, UiTheme.COL().text_dim))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	row.add_child(UiTheme.label(I18n.t("modal.bid_lbl")))
@@ -214,8 +214,8 @@ func show_game_over(winner_name: String, turns: int, capital: int, player_count:
 	_show()
 	var body := UiTheme.vbox(10)
 	body.add_child(_heading(I18n.t("modal.game_over")))
-	body.add_child(UiTheme.label(I18n.t("modal.winner", [winner_name]), 18, UiTheme.COL.gold))
-	body.add_child(UiTheme.label(I18n.t("modal.stats", [turns, player_count, capital]), 14, UiTheme.COL.text_dim))
+	body.add_child(UiTheme.label(I18n.t("modal.winner", [winner_name]), 18, UiTheme.COL().gold))
+	body.add_child(UiTheme.label(I18n.t("modal.stats", [turns, player_count, capital]), 14, UiTheme.COL().text_dim))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	var rematch := UiTheme.button_accent(I18n.t("modal.rematch"), I18n.t("modal.rematch_tip"))
@@ -241,7 +241,7 @@ func open_settings(sound_cats: Array, rules_text: String) -> void:
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.settings")))
 
-	body.add_child(UiTheme.label(I18n.t("modal.sound_title"), 13, UiTheme.COL.accent))
+	body.add_child(UiTheme.label(I18n.t("modal.sound_title"), 13, UiTheme.COL().accent))
 	for cat in sound_cats:
 		var cb := CheckButton.new()
 		cb.text = str(cat.get("label", ""))
@@ -279,7 +279,7 @@ func _open_rules(rules_text: String) -> void:
 	_panelize(body)
 
 func _heading(txt: String) -> Label:
-	var h := UiTheme.label(txt, 18, UiTheme.COL.gold)
+	var h := UiTheme.label(txt, 18, UiTheme.COL().gold)
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return h
 

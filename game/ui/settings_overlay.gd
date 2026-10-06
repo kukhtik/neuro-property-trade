@@ -204,7 +204,7 @@ func _build() -> void:
 	# header
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
-	var title := UiTheme.label(I18n.t("settings.title"), 20, UiTheme.COL.gold)
+	var title := UiTheme.label(I18n.t("settings.title"), 20, UiTheme.COL().gold)
 	I18n.key_on(title, "settings.title")
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
@@ -223,7 +223,7 @@ func _build() -> void:
 	# presets row
 	var presets := HBoxContainer.new()
 	presets.add_theme_constant_override("separation", 8)
-	var presets_lbl := UiTheme.label(I18n.t("settings.presets_lbl"), 13, UiTheme.COL.text_dim)
+	var presets_lbl := UiTheme.label(I18n.t("settings.presets_lbl"), 13, UiTheme.COL().text_dim)
 	I18n.key_on(presets_lbl, "settings.presets_lbl")
 	presets.add_child(presets_lbl)
 	_p_classic = UiTheme.button(I18n.t("settings.preset_classic"), I18n.t("settings.preset_classic_tip"))
@@ -251,7 +251,7 @@ func _build() -> void:
 	_build_data_tab()
 
 	# status + action row
-	_status_lbl = UiTheme.label("", 12, UiTheme.COL.text_dim)
+	_status_lbl = UiTheme.label("", 12, UiTheme.COL().text_dim)
 	v.add_child(_status_lbl)
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 10)
@@ -461,7 +461,7 @@ func _build_data_tab() -> void:
 	# MD-1: preset quick-select (fast input for the common rule presets)
 	var presets_row := HBoxContainer.new()
 	presets_row.add_theme_constant_override("separation", 8)
-	var plbl := UiTheme.label(I18n.t("settings.presets_lbl"), 13, UiTheme.COL.text_dim)
+	var plbl := UiTheme.label(I18n.t("settings.presets_lbl"), 13, UiTheme.COL().text_dim)
 	I18n.key_on(plbl, "settings.presets_lbl")
 	presets_row.add_child(plbl)
 	var d_classic := UiTheme.button(I18n.t("settings.preset_classic"), I18n.t("settings.preset_classic_tip"))
@@ -546,7 +546,7 @@ func _add_row(_unused: Variant = null) -> void:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
 
-	var num := UiTheme.label("%d." % (idx + 1), 14, UiTheme.COL.text_dim)
+	var num := UiTheme.label("%d." % (idx + 1), 14, UiTheme.COL().text_dim)
 	num.custom_minimum_size.x = 22
 	h.add_child(num)
 

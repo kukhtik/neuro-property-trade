@@ -1,6 +1,6 @@
 class_name BoardView
 extends Control
-## Code-built board from a projection + TileLayout/BoardTheme. Repaints on
+## Code-built board from a projection + BoardLayout/SkinManager. Repaints on
 ## refresh_state(proj). Read-only downstream consumer of the engine projection.
 ## Each tile is a TileView widget (group band, name, price, corner icon, owner
 ## marker, houses as figures). Tokens are SVG pieces with a PlayerIdentity halo

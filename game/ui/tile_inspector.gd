@@ -18,7 +18,7 @@ var _pinned := false
 
 func _init() -> void:
 	custom_minimum_size = Vector2(320, 90)
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel, UiTheme.COL.border, 1, 8))
+	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 8))
 	var m := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		m.add_theme_constant_override(edge, 10)
@@ -26,7 +26,7 @@ func _init() -> void:
 	var v := UiTheme.vbox(4)
 	m.add_child(v)
 	var head := HBoxContainer.new()
-	var lbl := UiTheme.label(I18n.t("ins.title"), 12, UiTheme.COL.accent)
+	var lbl := UiTheme.label(I18n.t("ins.title"), 12, UiTheme.COL().accent)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(lbl)
 	_pin = UiTheme.button("📌", I18n.t("ins.pin_tip"))
@@ -39,7 +39,7 @@ func _init() -> void:
 	_close.connect("pressed", Callable(self, "clear"))
 	head.add_child(_close)
 	v.add_child(head)
-	_text = UiTheme.label(I18n.t("ins.placeholder"), 13, UiTheme.COL.text_dim)
+	_text = UiTheme.label(I18n.t("ins.placeholder"), 13, UiTheme.COL().text_dim)
 	v.add_child(_text)
 	# A3: hidden until a tile is selected
 	visible = false
@@ -63,28 +63,28 @@ func _on_pin_toggled(pressed: bool) -> void:
 		_hide_timer = _HIDE_AFTER  # keep alive while pinned
 	# Update pin button appearance
 	if _pinned:
-		_pin.add_theme_color_override("font_color", UiTheme.COL.accent)
-		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.accent, UiTheme.COL.border_accent, 2, 6))
+		_pin.add_theme_color_override("font_color", UiTheme.COL().accent)
+		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL().accent, UiTheme.COL().border_accent, 2, 6))
 	else:
-		_pin.add_theme_color_override("font_color", UiTheme.COL.text)
-		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 6))
+		_pin.add_theme_color_override("font_color", UiTheme.COL().text)
+		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 6))
 
 ## P6 CR-5: re-apply the localized placeholder when the locale changes.
 func retranslate() -> void:
 	if _text != null:
 		_text.text = I18n.t("ins.placeholder")
-		_text.add_theme_color_override("font_color", UiTheme.COL.text_dim)
+		_text.add_theme_color_override("font_color", UiTheme.COL().text_dim)
 
 func clear() -> void:
 	selected = -1
 	_hide_timer = 0.0
 	_pinned = false
 	_pin.button_pressed = false
-	_pin.add_theme_color_override("font_color", UiTheme.COL.text)
-	_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL.panel_dark, UiTheme.COL.border, 1, 6))
+	_pin.add_theme_color_override("font_color", UiTheme.COL().text)
+	_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 6))
 	visible = false             # hide the whole panel (A3)
 	_text.text = I18n.t("ins.placeholder")
-	_text.add_theme_color_override("font_color", UiTheme.COL.text_dim)
+	_text.add_theme_color_override("font_color", UiTheme.COL().text_dim)
 
 func sync(proj: Dictionary, seats: Array) -> void:
 	if selected < 0:
@@ -100,7 +100,7 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		var owner: int = int(t.get("owner", -1))
 		var base_rent: int = _base_rent(t)
 		var owner_txt := I18n.t("ins.free")
-		var owner_col: Color = UiTheme.COL.success
+		var owner_col: Color = UiTheme.COL().success
 		if owner >= 0:
 			for s in seats:
 				if int(s.pid) == owner:
@@ -111,7 +111,7 @@ func sync(proj: Dictionary, seats: Array) -> void:
 			house_txt = I18n.t("ins.house", [I18n.t("ins.hotel") if houses >= 5 else str(houses)])
 		var mort := I18n.t("ins.mortgaged") if mortgaged else ""
 		_text.text = I18n.t("ins.body", [nm, typ, mort, cost, base_rent, owner_txt, house_txt])
-		_text.add_theme_color_override("font_color", owner_col if owner >= 0 else UiTheme.COL.text)
+		_text.add_theme_color_override("font_color", owner_col if owner >= 0 else UiTheme.COL().text)
 		return
 
 func _base_rent(t: Dictionary) -> int:

@@ -22,7 +22,7 @@ func _init() -> void:
 	_skin = SkinManager.new()
 	_skin.load_skin()
 	custom_minimum_size.x = 235
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel, UiTheme.COL.border, 1, 0))
+	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var outer := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		outer.add_theme_constant_override(edge, 10)
@@ -30,20 +30,33 @@ func _init() -> void:
 	_v = UiTheme.vbox(8)
 	outer.add_child(_v)
 
-	var head := UiTheme.label(I18n.t("ui.players"), 14, UiTheme.COL.accent)
-	_v.add_child(head)
+	_head = UiTheme.label(I18n.t("ui.players"), 14, UiTheme.COL().accent)
+	_v.add_child(_head)
 	_list = UiTheme.vbox(6)
 	_v.add_child(_list)
 
 var _v: VBoxContainer
 var _list: VBoxContainer
+var _head: Label             # the panel's own title (hidden while railed)
+var _rail                    # RailPanel wrapper, for the title text
+
+
+## Attach the rail wrapper. The panel's own title is hidden while collapsed so
+## the rail's vertical title is the only one (spec §5.2).
+func set_rail(rail) -> void:
+	_rail = rail
+	if rail != null:
+		rail.set_title(I18n.t("ui.players"))
+		rail.toggled.connect(func(collapsed: bool) -> void:
+			if _head != null:
+				_head.visible = not collapsed)
 
 ## Cold state (pre-game): show a placeholder list (no engine yet).
 func sync_cold() -> void:
 	for c in _list.get_children():
 		_list.remove_child(c); c.queue_free()
 	_rows.clear()
-	var ph := UiTheme.label(I18n.t("plr.cold"), 13, UiTheme.COL.text_dim)
+	var ph := UiTheme.label(I18n.t("plr.cold"), 13, UiTheme.COL().text_dim)
 	_list.add_child(ph)
 
 func sync(proj: Dictionary, seats: Array) -> void:
@@ -95,12 +108,12 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 			away = true
 
 	var out := PanelContainer.new()
-	var bord: Color = UiTheme.COL.border_accent if active else UiTheme.COL.border
+	var bord: Color = UiTheme.COL().border_accent if active else UiTheme.COL().border
 	var w := 2 if active else 1
 	if pid == _follow_pid:
-		bord = UiTheme.COL.gold
+		bord = UiTheme.COL().gold
 		w = 2
-	out.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL.panel_dark, bord, w, 6))
+	out.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel_dark, bord, w, 6))
 	if bankrupt:
 		out.modulate = Color(1, 1, 1, _skin.proportion("bankrupt_dim_alpha", 0.5))
 	# P4 observer: a player row is clickable (follow them). Clicking an already
@@ -123,16 +136,16 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	var nm := UiTheme.label(name, 14, col)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if bankrupt:
-		nm.add_theme_color_override("font_color", UiTheme.COL.text_dim)
+		nm.add_theme_color_override("font_color", UiTheme.COL().text_dim)
 	top.add_child(nm)
-	var money := UiTheme.label("$%d" % int(p.get("money", 0)), 14, UiTheme.COL.gold)
+	var money := UiTheme.label("$%d" % int(p.get("money", 0)), 14, UiTheme.COL().gold)
 	top.add_child(money)
 	v.add_child(top)
 
 	# row 2: position by tile name + tile count
 	var pos_name: String = str(tile_names.get(int(p.get("position", 0)), "?"))
 	var info := UiTheme.label(I18n.t("plr.pos_tiles", [pos_name, int(p.get("tiles", []).size())]),
-		12, UiTheme.COL.text_dim)
+		12, UiTheme.COL().text_dim)
 	v.add_child(info)
 
 	# row 3: houses / mortgaged / jail card / badges
@@ -140,22 +153,22 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	badges.add_theme_constant_override("separation", 8)
 	var h: int = int(p.get("houses", 0))
 	if h > 0:
-		badges.add_child(UiTheme.label("🏠 %d" % h, 12, UiTheme.COL.success))
+		badges.add_child(UiTheme.label("🏠 %d" % h, 12, UiTheme.COL().success))
 	var mg: int = int(p.get("mortgaged", 0))
 	if mg > 0:
-		badges.add_child(UiTheme.label("💼 %d" % mg, 12, UiTheme.COL.text_dim))
+		badges.add_child(UiTheme.label("💼 %d" % mg, 12, UiTheme.COL().text_dim))
 	if bool(p.get("in_jail", false)):
-		badges.add_child(UiTheme.label("⚖ %d" % int(p.get("jail_turns", 0)), 12, UiTheme.COL.jail))
+		badges.add_child(UiTheme.label("⚖ %d" % int(p.get("jail_turns", 0)), 12, UiTheme.COL().jail))
 	if away:
-		badges.add_child(UiTheme.label(I18n.t("plr.auto_pass"), 12, UiTheme.COL.text_dim))
+		badges.add_child(UiTheme.label(I18n.t("plr.auto_pass"), 12, UiTheme.COL().text_dim))
 	if bankrupt:
-		badges.add_child(UiTheme.label(I18n.t("plr.bankrupt"), 12, UiTheme.COL.danger))
+		badges.add_child(UiTheme.label(I18n.t("plr.bankrupt"), 12, UiTheme.COL().danger))
 	if badges.get_child_count() > 0:
 		v.add_child(badges)
 
 	# active marker ▶
 	if active:
-		var act := UiTheme.label(I18n.t("plr.active"), 12, UiTheme.COL.accent)
+		var act := UiTheme.label(I18n.t("plr.active"), 12, UiTheme.COL().accent)
 		v.add_child(act)
 
 	# tooltip: full summary
