@@ -20,16 +20,51 @@
       "danger": "#d9534f",
       "warn": "#e08a3c",
       "ink": "#000000",
-      "player": ["#4fb3d9", "#d9534f", "#5cb85c", "#ffd34d", "#9a86c9", "#e08a3c"]
+      "player": [
+        "#4fb3d9",
+        "#d9534f",
+        "#5cb85c",
+        "#ffd34d",
+        "#9a86c9",
+        "#e08a3c"
+      ],
+      "dice_bg": "#f2f6fa",
+      "dice_ink": "#16191f",
+      "on_panel": "#0c1218",
+      "ev.money": "#5cb85c",
+      "ev.build": "#c9a84c",
+      "ev.danger": "#d9534f",
+      "ev.card": "#9a86c9",
+      "ev.text": "#e8edf3",
+      "ev.accent": "#9fd0ff",
+      "board.bg2": "#101820",
+      "board.bg3": "#22303c"
     },
     "font": {
       "ui": "",
       "mono": "",
       "display": ""
     },
-    "size": { "xs": 10, "s": 12, "m": 14, "l": 18, "xl": 28 },
-    "space": [4, 8, 12, 16, 24],
-    "shape": { "radius": 0, "chamfer": 9, "line": 1, "line_active": 2 }
+    "size": {
+      "xs": 10,
+      "s": 12,
+      "m": 14,
+      "l": 18,
+      "xl": 28
+    },
+    "space": [
+      4,
+      8,
+      12,
+      16,
+      24
+    ],
+    "shape": {
+      "radius": 0,
+      "chamfer": 9,
+      "line": 1,
+      "line_active": 2
+    }
   },
   "metrics": {
     "corner_ratio": 1.4,
@@ -48,7 +83,10 @@
     "panel": 0.3,
     "card": 2.8,
     "dice_roll": 0.85,
-    "idle": { "chase": true, "logo_pulse": true },
+    "idle": {
+      "chase": true,
+      "logo_pulse": true
+    },
     "profile": "full"
   }
 }

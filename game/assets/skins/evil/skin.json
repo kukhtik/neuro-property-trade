@@ -20,7 +20,18 @@
       "money": "#c58bff",
       "danger": "#ff7a59",
       "warn": "#ffb020",
-      "ink": "#000000"
+      "ink": "#000000",
+      "dice_bg": "#f2f6fa",
+      "dice_ink": "#16191f",
+      "on_panel": "#0c1218",
+      "ev.money": "#5cb85c",
+      "ev.build": "#c9a84c",
+      "ev.danger": "#d9534f",
+      "ev.card": "#9a86c9",
+      "ev.text": "#e8edf3",
+      "ev.accent": "#9fd0ff",
+      "board.bg2": "#101820",
+      "board.bg3": "#22303c"
     }
   }
 }

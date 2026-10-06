@@ -46,14 +46,14 @@ func _draw() -> void:
 	# Progress ring (accent) — counts DOWN from full to empty
 	var progress := 1.0 - clampf(_timer_elapsed / _timer_window, 0.0, 1.0)
 	var end_angle := -PI / 2.0 + progress * 2 * PI
-	var fg_col := Color("#4fb3d9")
+	var fg_col := UiTheme.skin().color("money")
 	if progress < 0.25:
-		fg_col = Color("#d9534f")
+		fg_col = UiTheme.skin().color("ev.danger")
 	elif progress < 0.5:
-		fg_col = Color("#c9a84c")
+		fg_col = UiTheme.skin().color("ev.build")
 	draw_arc(Vector2(center, center), radius, -PI / 2.0, end_angle, 16, fg_col, _thickness)
 	# Center time text
 	var remaining := maxi(0, int(ceil(_timer_window - _timer_elapsed)))
 	var fs: float = _size * 0.4
 	draw_string(get_theme_font("font"), Vector2(center, center + fs * 0.35),
-		str(remaining), HORIZONTAL_ALIGNMENT_CENTER, _size, fs, Color("#f2f6fa"))
+		str(remaining), HORIZONTAL_ALIGNMENT_CENTER, _size, fs, UiTheme.skin().color("dice_bg"))

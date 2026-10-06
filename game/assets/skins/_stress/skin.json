@@ -21,12 +21,49 @@
       "danger": "#ff5252",
       "warn": "#ffcc00",
       "ink": "#000000",
-      "player": ["#ffcc00", "#7fffd4", "#ff5252", "#c0ff70"]
+      "player": [
+        "#ffcc00",
+        "#7fffd4",
+        "#ff5252",
+        "#c0ff70"
+      ],
+      "dice_bg": "#f2f6fa",
+      "dice_ink": "#16191f",
+      "on_panel": "#0c1218",
+      "ev.money": "#5cb85c",
+      "ev.build": "#c9a84c",
+      "ev.danger": "#d9534f",
+      "ev.card": "#9a86c9",
+      "ev.text": "#e8edf3",
+      "ev.accent": "#9fd0ff",
+      "board.bg2": "#101820",
+      "board.bg3": "#22303c"
     },
-    "font": { "ui": "", "mono": "", "display": "" },
-    "size": { "xs": 14, "s": 16, "m": 20, "l": 26, "xl": 40 },
-    "space": [8, 16, 24, 32, 48],
-    "shape": { "radius": 12, "chamfer": 20, "line": 3, "line_active": 5 }
+    "font": {
+      "ui": "",
+      "mono": "",
+      "display": ""
+    },
+    "size": {
+      "xs": 14,
+      "s": 16,
+      "m": 20,
+      "l": 26,
+      "xl": 40
+    },
+    "space": [
+      8,
+      16,
+      24,
+      32,
+      48
+    ],
+    "shape": {
+      "radius": 12,
+      "chamfer": 20,
+      "line": 3,
+      "line_active": 5
+    }
   },
   "metrics": {
     "corner_ratio": 1.1,
@@ -38,8 +75,26 @@
     "icon_size": 0.06
   },
   "slots": {
-    "board.frame": { "tex": "tex/panel.svg", "margins": [8, 8, 8, 8], "mode": "slice" },
-    "panel.bg": { "tex": "tex/panel.svg", "margins": [8, 8, 8, 8], "mode": "slice" }
+    "board.frame": {
+      "tex": "tex/panel.svg",
+      "margins": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "mode": "slice"
+    },
+    "panel.bg": {
+      "tex": "tex/panel.svg",
+      "margins": [
+        8,
+        8,
+        8,
+        8
+      ],
+      "mode": "slice"
+    }
   },
   "motion": {
     "step": 0.05,
@@ -48,7 +103,10 @@
     "panel": 0.1,
     "card": 1.0,
     "dice_roll": 0.3,
-    "idle": { "chase": false, "logo_pulse": false },
+    "idle": {
+      "chase": false,
+      "logo_pulse": false
+    },
     "profile": "reduced"
   }
 }

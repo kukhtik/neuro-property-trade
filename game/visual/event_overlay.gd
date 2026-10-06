@@ -30,14 +30,14 @@ func _init() -> void:
 	head.text = I18n.t("jrn.title")
 	head.name = "Head"
 	head.add_theme_font_size_override("font_size", 12)
-	head.add_theme_color_override("font_color", Color("9fd0ff"))
+	head.add_theme_color_override("font_color", _skin.color("ev.accent"))
 	add_child(head)
 	_head = head
 
 	_list = Label.new()
 	_list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_list.add_theme_font_size_override("font_size", 13)
-	_list.add_theme_color_override("font_color", Color("f2f6fa"))
+	_list.add_theme_color_override("font_color", UiTheme.skin().color("dice_bg"))
 	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(_list)
 	visible = true

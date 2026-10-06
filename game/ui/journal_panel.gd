@@ -294,15 +294,15 @@ const EventMessagesScript := preload("res://visual/event_messages.gd")
 static func _kind_color(t: String) -> Color:
 	match t:
 		"purchase", "auction_win", "go_bonus", "collect":
-			return Color("5cb85c")
+			return UiTheme.skin().color("ev.money")
 		"pay", "rent", "tax":
-			return Color("c9a84c")
+			return UiTheme.skin().color("ev.build")
 		"jail", "bankrupt":
-			return Color("d9534f")
+			return UiTheme.skin().color("ev.danger")
 		"admin_override":
-			return Color("9a86c9")
+			return UiTheme.skin().color("ev.card")
 		_:
-			return Color("e8edf3")
+			return UiTheme.skin().color("ev.text")
 
 func _export() -> void:
 	var f := FileAccess.open(EXPORT_PATH, FileAccess.WRITE)

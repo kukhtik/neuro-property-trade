@@ -29,6 +29,7 @@ const SKINS_DIR := "res://assets/skins/"
 ## ships nothing still renders. Deliberately NOT the Hasbro palette.
 const FALLBACK_COLORS := {
 	"bg": "#16191f", "surface.1": "#1e242e", "surface.2": "#171c24",
+	"surface.3": "#232a35",
 	"line": "#39404d", "text": "#e8edf3", "muted": "#8b95a5",
 	"accent": "#4fb3d9", "on_accent": "#0c1218", "accent2": "#5fc4ea",
 	"money": "#ffd34d", "danger": "#d9534f", "warn": "#e08a3c",

@@ -94,7 +94,7 @@ func _build_dice() -> void:
 		dice.custom_minimum_size = Vector2(dice_size, dice_size)
 		dice.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		dice.add_theme_stylebox_override("panel", UiTheme.box(
-			Color("#f2f6fa"), UiTheme.COL().border_accent, 2, 12))
+			UiTheme.skin().color("dice_bg"), UiTheme.COL().border_accent, 2, 12))
 		dice.pivot_offset = Vector2(dice_size, dice_size) * 0.5
 
 		var face := _make_face(i, dice_size)
@@ -128,7 +128,7 @@ func _make_face(i: int, dice_size: float) -> Control:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", int(dice_size * 0.5))
-	label.add_theme_color_override("font_color", Color("#16191f"))
+	label.add_theme_color_override("font_color", UiTheme.skin().color("dice_ink"))
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 

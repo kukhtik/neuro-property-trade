@@ -253,7 +253,7 @@ class ToastItem extends PanelContainer:
 	static func _kind_color(kind: String) -> Color:
 		match kind:
 			"success": return UiTheme.COL().success
-			"warning": return Color("#c9a84c")
+			"warning": return UiTheme.skin().color("ev.build")
 			"error": return UiTheme.COL().danger
 			"info": return UiTheme.COL().accent
 			"neutral": return UiTheme.COL().panel_dark
@@ -271,13 +271,13 @@ class ToastItem extends PanelContainer:
 		var h = HBoxContainer.new()
 		h.add_theme_constant_override("separation", 8)
 		m.add_child(h)
-		_label = UiTheme.label(text, 13, Color("#0c1218"))
+		_label = UiTheme.label(text, 13, UiTheme.skin().color("on_panel"))
 		_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(_label)
 		_count_label = Label.new()
 		_count_label.text = ""
 		_count_label.add_theme_font_size_override("font_size", 11)
-		_count_label.add_theme_color_override("font_color", Color("#0c1218"))
+		_count_label.add_theme_color_override("font_color", UiTheme.skin().color("on_panel"))
 		_count_label.visible = false
 		h.add_child(_count_label)
 		custom_minimum_size = Vector2(380, 0)
@@ -310,7 +310,7 @@ class BannerItem extends PanelContainer:
 	static func _kind_color(kind: String) -> Color:
 		match kind:
 			"success": return UiTheme.COL().success
-			"warning": return Color("#c9a84c")
+			"warning": return UiTheme.skin().color("ev.build")
 			"error": return UiTheme.COL().danger
 			"info": return UiTheme.COL().accent
 			"neutral": return UiTheme.COL().panel
@@ -330,7 +330,7 @@ class BannerItem extends PanelContainer:
 
 		var head = HBoxContainer.new()
 		head.add_theme_constant_override("separation", 12)
-		var lbl = UiTheme.label(text, 15, Color("#f2f6fa"))
+		var lbl = UiTheme.label(text, 15, UiTheme.skin().color("dice_bg"))
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		head.add_child(lbl)

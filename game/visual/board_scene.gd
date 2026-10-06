@@ -76,7 +76,7 @@ func setup(engine, settings, seats: Array = []) -> void:
 
 	# background fills the whole scene
 	var bg = ColorRect.new()
-	bg.color = Color("101820")
+	bg.color = _skin.color("board.bg2", Color("101820"))
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 

@@ -40,7 +40,7 @@ func build(tile_count: int, cell: int = 64, skin: SkinManager = null) -> Control
 	set_size(Vector2(size, size))
 
 	var bkg = ColorRect.new()
-	bkg.color = _skin.color("board_bg", Color("22303c"))
+	bkg.color = _skin.color("board.bg3", Color("22303c"))
 	bkg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bkg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bkg)
