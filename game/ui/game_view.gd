@@ -12,6 +12,7 @@ extends Control
 
 const UiTheme := preload("res://ui/theme.gd")
 const Layout := preload("res://ui/core/layout_profile.gd")
+const UiProfileScript := preload("res://ui/core/ui_profile.gd")
 const RailPanel := preload("res://ui/components/rail_panel.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
@@ -43,6 +44,10 @@ var settings
 
 var _launcher
 var _human_pid := -1
+## The execution role for this process (player/stream/admin). Set by the
+## launcher BEFORE setup_cold and kept across restarts, so a run never changes
+## role mid-game. Components read it; none of them test it for game logic.
+var _profile = UiProfileScript.for_id(UiProfileScript.PLAYER)
 var _board_scene
 var _top
 var _players
@@ -84,6 +89,20 @@ func setup_cold(launcher) -> void:
 	_toast_stack.name = "ToastStack"
 	add_child(_toast_stack)
 
+## Choose the execution role. Called by the launcher before the first frame, so
+## the UI is built for the role from the start rather than switched into it.
+func set_profile(pr) -> void:
+	if pr == null:
+		return
+	_profile = pr
+	if _top != null and _top.has_method("set_profile"):
+		_top.set_profile(_profile)
+	# the human seat only exists when this execution accepts input at all
+	if not _profile.input_enabled:
+		_human_pid = -1
+	_layout()
+
+
 ## Full setup after the engine is built (START / restart).
 func setup(eng, mgr, seat_list: Array, s) -> void:
 	# restart: this same GameView instance is re-setup, so disconnect any
@@ -111,10 +130,12 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	if _event_overlay != null and is_instance_valid(_event_overlay):
 		_event_overlay.queue_free()
 		_event_overlay = null
-	for seat in seats:
-		if str(seat.input_driver) in ["LOCAL", "ADMIN"]:
-			_human_pid = int(seat.pid)
-			break
+	_human_pid = -1
+	if _profile.input_enabled:
+		for seat in seats:
+			if str(seat.input_driver) in ["LOCAL", "ADMIN"]:
+				_human_pid = int(seat.pid)
+				break
 	# board fills the center region (between left panel, top bar, journal, action bar)
 	_board_scene.setup(engine, settings, seats)
 	if _toast_stack != null and _board_scene != null and _board_scene._sfx != null:

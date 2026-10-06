@@ -36,6 +36,10 @@ static func test_list() -> Array[String]:
 		"test_layout_rails", "test_layout_label_degradation",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
+		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
+		"test_profile_infer_stream_flag", "test_profile_infer_admin_flag",
+		"test_stream_profile_is_read_only", "test_admin_profile_owns_tools",
+		"test_player_profile_takes_input", "test_every_role_reports_itself",
 		# Money
 		"test_money_formats", "test_money_compact", "test_money_names",
 		"test_adapter_cash_event_carries_delta", "test_adapter_balance_correction",
@@ -617,4 +621,71 @@ static func test_adapter_pay_event_deltas() -> String:
 			credited = true
 	if not debited or not credited:
 		return "pay should move 75 from 0 to 1: %s" % str(ev["d"])
+	return ""
+
+
+# --- stage 7: execution roles --------------------------------------------------
+
+## The role is a property of the LAUNCH, not a switch in the UI (owner decision).
+## These lock in both halves: inference, and the fact that nothing can flip it.
+static func test_profile_infer_web_is_player() -> String:
+	var p = Profile.infer(true, [] as PackedStringArray)
+	return "" if p.id == Profile.PLAYER else "web export should be player, got %s" % p.id
+
+
+static func test_profile_infer_desktop_is_admin() -> String:
+	var p = Profile.infer(false, [] as PackedStringArray)
+	return "" if p.id == Profile.ADMIN else "a desktop launch should be admin, got %s" % p.id
+
+
+static func test_profile_infer_stream_flag() -> String:
+	var p = Profile.infer(false, PackedStringArray(["--stream"]))
+	return "" if p.id == Profile.STREAM else "--stream should be stream, got %s" % p.id
+
+
+static func test_profile_infer_admin_flag() -> String:
+	var p = Profile.infer(false, PackedStringArray(["--admin"]))
+	return "" if p.id == Profile.ADMIN else "--admin should be admin, got %s" % p.id
+
+
+static func test_stream_profile_is_read_only() -> String:
+	var p = Profile.for_id(Profile.STREAM)
+	if p.input_enabled:
+		return "a stream execution must take no input"
+	if p.shows_actions:
+		return "a stream execution must not show the action bar"
+	if p.shows_admin_tools:
+		return "a stream execution must expose no admin tools"
+	if p.data_source != "spectator":
+		return "a stream execution must read the spectator projection"
+	return ""
+
+
+static func test_admin_profile_owns_tools() -> String:
+	var p = Profile.for_id(Profile.ADMIN)
+	if not p.shows_admin_tools:
+		return "an admin execution must expose the admin tools"
+	if not p.input_enabled:
+		return "an admin execution must accept input"
+	return ""
+
+
+static func test_player_profile_takes_input() -> String:
+	var p = Profile.for_id(Profile.PLAYER)
+	if not p.input_enabled:
+		return "a player execution must accept input"
+	if p.data_source != "player":
+		return "a player execution reads its own seat projection"
+	return ""
+
+
+static func test_every_role_reports_itself() -> String:
+	# a read-only badge replaces the prototype's switcher, so each role must be
+	# identifiable without any writable state
+	for rid in [Profile.PLAYER, Profile.STREAM, Profile.ADMIN]:
+		var p = Profile.for_id(rid)
+		if not p.shows_role_badge:
+			return "role %s should report itself (read-only badge)" % rid
+		if p.id != rid:
+			return "for_id(%s) returned %s" % [rid, p.id]
 	return ""

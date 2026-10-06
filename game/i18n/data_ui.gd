@@ -25,6 +25,11 @@ const D := {
 	"top.eye_tip":          {"ru": "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)", "en": "Observer mode: return to match settings (seats without LOCAL play themselves)"},
 	"top.admin_hint":       {"ru": "F12 — админ", "en": "F12 — admin"},
 
+	# ---- execution roles (read-only badge; the role is chosen at launch) ----
+	"mode.player":      {"ru": "ИГРОК", "en": "PLAYER"},
+	"mode.stream":      {"ru": "ЭФИР", "en": "LIVE"},
+	"mode.admin":       {"ru": "АДМИН", "en": "ADMIN"},
+
 	# ---- players panel ----
 	"plr.cold":             {"ru": "Партия ещё не начата", "en": "Match not started yet"},
 	"plr.pos_tiles":        {"ru": "@ %s · %d тайл.", "en": "@ %s · %d tiles."},

@@ -7,6 +7,7 @@ extends Node
 
 const EngineScript := preload("res://core/engine.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
+const UiProfileScript := preload("res://ui/core/ui_profile.gd")
 const AdminController := preload("res://admin/admin_controller.gd")
 const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
@@ -21,6 +22,10 @@ var _panel
 var _game_view
 var _overlay
 var _is_host := true
+var _profile
+## Test/embedding hook: force the role instead of inferring it from argv. Must be
+## set BEFORE the node enters the tree (i.e. before _ready).
+var _force_profile = null
 var _game_started := false
 
 func _ready() -> void:
@@ -30,13 +35,18 @@ func _ready() -> void:
 	if vp != null:
 		DisplayServer.window_set_size(Vector2i(1440, 900))
 
-	# is_host: not web AND not a --spectator run. On WebGL the admin panel is
-	# not created at all and the F12 hint is not rendered.
-	_is_host = not OS.has_feature("web") and not _has_cli_flag("--spectator")
+	# The execution role is chosen at LAUNCH, never toggled in the UI
+	# (docs/ui_migration_notes §9). UiProfile is the single source of that.
+	#   --admin   : the host application (admin tools available; default on desktop)
+	#   --stream  : the OBS window (spectator data, no input, large type)
+	#   web       : the player WebUI
+	_profile = _force_profile if _force_profile != null 		else UiProfileScript.infer(OS.has_feature("web"), OS.get_cmdline_user_args())
+	_is_host = _profile.shows_admin_tools
 
 	# one screen: build the game view immediately (cold board, no engine yet)
 	_game_view = GameView.new()
 	add_child(_game_view)
+	_game_view.set_profile(_profile)
 	_game_view.setup_cold(self)
 	_game_view.restart_requested.connect(_on_restart_requested)
 	_game_view.settings_requested.connect(_open_overlay)

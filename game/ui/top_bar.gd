@@ -20,6 +20,10 @@ var _restart_btn: Button
 var _settings_btn: Button
 var _timer_ring: TimerRing
 var _is_host := true
+## The execution role. Drives what the header shows — the role is NOT switchable
+## here (owner decision, docs/ui_migration_notes §9), only reported.
+var _profile = null
+var _role_badge: Label = null
 var _eye_btn: Button
 var _sfx = null   # optional Sfx for the per-second timer tick
 
@@ -81,6 +85,20 @@ func _init() -> void:
 func set_host(v: bool) -> void:
 	_is_host = v
 	_hint.visible = v
+
+
+## Apply the execution role. Stream runs get a compact header, a "LIVE" marker
+## and NO admin hint; player/admin keep the full one.
+func set_profile(pr) -> void:
+	if pr == null:
+		return
+	_profile = pr
+	_is_host = pr.shows_admin_tools
+	if _hint != null:
+		_hint.visible = pr.shows_admin_tools
+	if _role_badge != null:
+		_role_badge.visible = pr.shows_role_badge
+		_role_badge.text = I18n.t("mode." + str(pr.id))
 
 ## P5: re-apply static localized labels after a locale change.
 func retranslate() -> void:
