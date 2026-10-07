@@ -33,6 +33,7 @@ func _init() -> void:
 	_audit_i18n()
 	_audit_contrast()
 	_audit_single_palette()
+	_audit_static_compile()
 	print("")
 	if _fail > 0:
 		print("==> STAGE 8 AUDIT FAILED (%d)" % _fail)
@@ -214,6 +215,27 @@ func _audit_contrast() -> void:
 	else:
 		for b in bad:
 			_bad("low contrast — " + str(b))
+
+
+## A token swap that references an undeclared variable still PARSES in the
+## editor but fails only when the scene loads -- exactly the regression that
+## slipped past the unit suite during stage 8. Compile every UI script here so a
+## runtime-only failure becomes a static one.
+func _audit_static_compile() -> void:
+	print("[6] every UI script compiles (no identifiers that only fail at load)")
+	var bad: Array = []
+	for f in _gd_files():
+		var res: String = "res://" + str(f).replace(ProjectSettings.globalize_path("res://"), "").replace("\\", "/")
+		var script: Variant = load(res)
+		if script == null:
+			bad.append(res)
+		elif script is GDScript and not (script as GDScript).can_instantiate() 				and (script as GDScript).get_instance_base_type() == "":
+			bad.append(res)
+	if bad.is_empty():
+		_ok("all %d UI scripts load and compile" % _gd_files().size())
+	else:
+		for b in bad:
+			_bad("does not compile: " + str(b))
 
 
 func _audit_single_palette() -> void:

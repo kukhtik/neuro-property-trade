@@ -45,6 +45,10 @@ var _bg: Chamfer
 var _band: Chamfer
 var _strip: Control
 var _name: Label
+## An icon may occupy at most this fraction of the cell (kept in step with the
+## board probe's assertion so the art and the check cannot drift apart).
+const ICON_MAX_FRAC := 0.35
+
 var _icon: TextureRect
 var _price: Label
 var _badge: Chamfer
@@ -170,9 +174,13 @@ func _build_nodes() -> void:
 	body.add_child(_name)
 
 	_icon = TextureRect.new()
+	# A capped, centred icon. SHRINK_CENTER + no EXPAND_FILL keeps the size at
+	# custom_minimum_size; EXPAND_FILL made it swallow the body and overlay the
+	# tile's name/price at large cell sizes.
 	_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_icon.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_icon.visible = false
 	body.add_child(_icon)
@@ -322,7 +330,11 @@ func _show_icon(slot_id: String) -> void:
 	var tex: Texture2D = _skin.texture(slot_id)
 	_icon.texture = tex
 	_icon.visible = tex != null
-	var d: float = maxf(8.0, float(_cell) * _skin.metric("icon_size", 0.036) * 7.0)
+	# Bound by the tile as well as the metric: an icon may never take more than a
+	# third of the cell (the board probe enforces this at every tile_count).
+	var want: float = float(_cell) * _skin.metric("icon_size", 0.036) * 7.0
+	var cap: float = float(_cell) * ICON_MAX_FRAC
+	var d: float = clampf(want, 8.0, cap)
 	_icon.custom_minimum_size = Vector2(d, d)
 
 

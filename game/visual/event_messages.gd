@@ -59,10 +59,29 @@ static func describe(entry: Dictionary) -> String:
 			return "[%s]" % t
 
 ## helper — read a name-ish field; ints become p<int>, strings pass through.
+## Resolve a seat reference to its NAME. The brief demands names, not `p0`/`p1`
+## (defect #7 of the original review), so a numeric id is looked up through the
+## engine's player list and only falls back to a seat tag if it cannot be found.
 static func _who(d: Dictionary, key: String) -> String:
 	var v = d.get(key, "?")
-	if v is String: return str(v)
-	return "p%s" % str(v)
+	if v is String:
+		return str(v)
+	var pid: int = int(v)
+	var eng = _engine
+	if eng != null and pid >= 0 and pid < eng.players.size():
+		var nm: String = str(eng.players[pid].name)
+		if nm != "":
+			return nm
+	return "P%d" % (pid + 1)
+
+
+## The engine to resolve names against. Set once by the board scene; when it is
+## null (headless event formatting) the seat tag is used instead.
+static var _engine = null
+
+
+static func bind_engine(eng) -> void:
+	_engine = eng
 
 static func _moved_to(d: Dictionary) -> int:
 	if d.has("to"): return int(d["to"])

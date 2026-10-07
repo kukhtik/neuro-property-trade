@@ -99,5 +99,45 @@
       "logo_pulse": true
     },
     "profile": "full"
+  },
+  "assets": {
+    "tile_bg": "res://assets/tile.svg",
+    "board_center": "res://assets/board_center.svg",
+    "button": "res://assets/button.svg",
+    "corner_icons": {
+      "go": "res://assets/corner_icons/go_arrow.svg",
+      "jail": "res://assets/corner_icons/jail.svg",
+      "go_to_jail": "res://assets/corner_icons/go_to_jail.svg",
+      "free_parking": "res://assets/corner_icons/free_parking.svg"
+    },
+    "type_icons": {
+      "tax": "res://assets/type_icons/tax.svg",
+      "railroad": "res://assets/type_icons/railroad.svg",
+      "utility": "res://assets/type_icons/utility.svg",
+      "chance": "res://assets/type_icons/chance.svg",
+      "community": "res://assets/type_icons/community_chest.svg"
+    },
+    "houses": {
+      "house": "res://assets/houses/house.svg",
+      "hotel": "res://assets/houses/hotel.svg"
+    },
+    "tokens": {
+      "ship": "res://assets/tokens/ship.svg",
+      "top_hat": "res://assets/tokens/top_hat.svg",
+      "dog": "res://assets/tokens/dog.svg",
+      "cat": "res://assets/tokens/cat.svg",
+      "race_car": "res://assets/tokens/race_car.svg",
+      "boot": "res://assets/tokens/boot.svg",
+      "iron": "res://assets/tokens/iron.svg",
+      "wheelbarrow": "res://assets/tokens/wheelbarrow.svg"
+    },
+    "dice": {
+      "1": "res://assets/dice/die_1.svg",
+      "2": "res://assets/dice/die_2.svg",
+      "3": "res://assets/dice/die_3.svg",
+      "4": "res://assets/dice/die_4.svg",
+      "5": "res://assets/dice/die_5.svg",
+      "6": "res://assets/dice/die_6.svg"
+    }
   }
 }

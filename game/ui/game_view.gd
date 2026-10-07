@@ -64,7 +64,8 @@ var _center: HBoxContainer   # players | board | journal (ties the panels togeth
 var _cold := true
 var _game_over_shown := false
 var _toast_stack: ToastStack
-var _event_overlay: Control   # P6 Phase 5: reparented stream feed (over journal)
+var _event_overlay: Control   # P6 Phase 5: reparented stream feed (in the journal column)
+var _overlay_wanted := false  # the user's event_overlay setting, kept across fits
 var _observer := false         # spec §7: match has no LOCAL seat (host watches)
 var _follow_pid := -1          # spectator follow target (clicked player row)
 
@@ -157,13 +158,17 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 		var ov = bs.get_node("EventOverlay")
 		bs.remove_child(ov)
 		add_child(ov)
-		ov.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-		ov.offset_left = -440
-		ov.offset_top = -210
-		ov.offset_right = -8
-		ov.offset_bottom = -8
-		ov.visible = bool(settings.event_overlay) if settings != null else true
+		# Inside the journal column, never over the board: this is a stream feed,
+		# and the board must stay whole (spec §6 / brief defect #4).
+		ov.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_overlay_wanted = bool(settings.event_overlay) if settings != null else false
+		ov.visible = _overlay_wanted
 		_event_overlay = ov
+		_fit_event_overlay()
+		# keep it glued to the column on every relayout
+		var jc = _jpanel_rail
+		if jc != null and not resized.is_connected(_fit_event_overlay):
+			resized.connect(_fit_event_overlay)
 	if _board_scene != null and _board_scene.tile_hovered.is_connected(_on_tile_hovered):
 		_board_scene.tile_hovered.disconnect(_on_tile_hovered)
 	_board_scene.tile_clicked.connect(_on_tile_clicked)
@@ -213,6 +218,47 @@ func on_game_started() -> void:
 	_sync_all()
 
 ## Called by main.gd when the overlay is closed without starting (ESC).
+## Park the stream feed at the bottom of the journal column. Called on every
+## relayout, so it tracks rail collapse and window resizes.
+func _fit_event_overlay() -> void:
+	if _event_overlay == null or not is_instance_valid(_event_overlay):
+		return
+	var col: Control = _jpanel_rail
+	if col == null:
+		return
+	# Prefer the journal panel's own rect (settled once the container sorts); fall
+	# back to the board's right edge plus the profile's column width.
+	var r: Rect2
+	if _journal != null and is_instance_valid(_journal) and _journal.size.x > 1.0:
+		r = Rect2(_journal.global_position - global_position, _journal.size)
+	elif _board_scene != null and _board_scene.size.x > 1.0:
+		var bw: float = float(_bpl().right)
+		var x0: float = _board_scene.global_position.x - global_position.x 			+ _board_scene.size.x
+		r = Rect2(Vector2(minf(x0, size.x - bw), 0.0), Vector2(bw, size.y))
+	else:
+		return
+	# A rail is only ~46 px wide; stacking the feed there would clip it to
+	# nothing, so hide it while the journal is collapsed (the rail already
+	# carries the event count).
+	if r.size.x < 160.0:
+		(_event_overlay as Control).visible = false
+		return
+	if _event_overlay.visible != _overlay_wanted:
+		(_event_overlay as Control).visible = _overlay_wanted
+	var w: float = maxf(160.0, r.size.x - 16.0)
+	var h: float = minf(202.0, maxf(90.0, r.size.y * 0.34))
+	(_event_overlay as Control).position = Vector2(r.position.x + 8.0,
+		r.position.y + r.size.y - h - 8.0)
+	(_event_overlay as Control).size = Vector2(w, h)
+
+
+## Deferred re-fit: containers sort at the end of the frame, so the rects are
+## only valid on the next one. `_fits_left` gives the first paint a couple of
+## frames to settle, since a rail collapse moves the column again.
+var _fit_event_overlay_pending := false
+var _fits_left := 0
+
+
 func on_overlay_closed() -> void:
 	if _cold:
 		_sync_cold()
@@ -365,8 +411,13 @@ func _layout() -> void:
 		_players_rail.custom_minimum_size.x = _panel_w()
 	if not _jpanel_rail.is_collapsed():
 		_jpanel_rail.custom_minimum_size.x = _journal_w()
+	_fits_left = 3
 	# the board scene fills the center region between the panels (HBox handles it)
 	_board_scene.set_frame(Rect2(0, 0, 0, 0))   # signal it to re-fit its own rect
+	# the stream feed must follow the column: collapsing a rail changes its width
+	# without any window resize. The container has NOT sorted yet at this point,
+	# so re-fit over the next few frames instead.
+	_fit_event_overlay_pending = true
 
 
 ## Compact status shown in the players rail so it is never an empty strip.
@@ -386,6 +437,11 @@ func _journal_count() -> int:
 	return engine.log.size()
 
 func _process(delta: float) -> void:
+	if _fit_event_overlay_pending or _fits_left > 0:
+		if _fits_left > 0:
+			_fits_left -= 1
+		_fit_event_overlay_pending = false
+		_fit_event_overlay()
 	# A1: re-layout when the viewport size changes (window resize / different screen)
 	var vp := get_viewport()
 	if vp != null:

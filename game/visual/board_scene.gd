@@ -14,12 +14,14 @@ extends Control
 
 const ProjectionScript := preload("res://sdk/projection.gd")
 const MarkdownRenderer := preload("res://sdk/markdown_renderer.gd")
+const UiTheme := preload("res://ui/theme.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const TL := preload("res://visual/tile_layout.gd")
 const BL := preload("res://visual/board_layout.gd")
 const BoardView := preload("res://visual/board_view.gd")
 const Spectacle := preload("res://visual/spectacle.gd")
 const EventOverlay := preload("res://visual/event_overlay.gd")
+const EventMessages := preload("res://visual/event_messages.gd")
 const Sfx := preload("res://visual/sfx.gd")
 const DiceStage := preload("res://ui/dice_stage.gd")
 const BoardCenterScript := preload("res://visual/board_center.gd")
@@ -76,7 +78,7 @@ func setup(engine, settings, seats: Array = []) -> void:
 
 	# background fills the whole scene
 	var bg = ColorRect.new()
-	bg.color = _skin.color("board.bg2", Color("101820"))
+	bg.color = UiTheme.skin().color("board.bg2", Color("101820"))
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
@@ -138,6 +140,7 @@ func setup(engine, settings, seats: Array = []) -> void:
 	_presenter.set_resync(Callable(self, "_resync_store"))
 
 	if _engine != null:
+		EventMessages.bind_engine(_engine)
 		_engine.log.event_appended.connect(_on_engine_event)
 
 	# build the board now (default cell) so it's never null; _resize_children

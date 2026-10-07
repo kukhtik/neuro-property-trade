@@ -79,6 +79,9 @@ func load_skin(skin_id: String = DEFAULT_SKIN) -> bool:
 	# `_cfg` is the merged view (nearest skin wins), so the legacy `_lookup`
 	# helpers keep returning the effective value.
 	_cfg = {}
+	# `_deep_merge(a, b)` keeps a's values and only fills keys a LACKS. The chain
+	# is [self, parent, ...], so folding forward puts the skin in first and the
+	# parent only supplies what the skin left out — the skin wins.
 	for cfg in _chain:
 		_cfg = _deep_merge(_cfg, cfg)
 	if not ok:

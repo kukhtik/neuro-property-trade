@@ -1,5 +1,6 @@
 class_name EventOverlay
 extends PanelContainer
+const UiTheme := preload("res://ui/theme.gd")
 ## Stream overlay (spec event_overlay). Shows recent event lines rendered from
 ## spectator-safe data (EventMessages.describe reads only public fields). No
 ## per-seat private info ever reaches this.
@@ -30,7 +31,7 @@ func _init() -> void:
 	head.text = I18n.t("jrn.title")
 	head.name = "Head"
 	head.add_theme_font_size_override("font_size", 12)
-	head.add_theme_color_override("font_color", _skin.color("ev.accent"))
+	head.add_theme_color_override("font_color", UiTheme.skin().color("ev.accent"))
 	add_child(head)
 	_head = head
 
