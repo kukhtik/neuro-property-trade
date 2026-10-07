@@ -62,6 +62,10 @@ static func resolve_driver(driver_label: String, sdk_already_used: bool) -> Stri
 		return "CHAT"
 	if label == "admin":
 		return "ADMIN"
+	if label == "remote" or label.begins_with("remote:"):
+		# A browser seat. The host must ALSO mint a token and start the server;
+		# resolve_driver only names the driver, it does not wire the socket.
+		return "REMOTE"
 	if label == "ai":
 		return "AI"
 	if label.begins_with("sdk:") or label == "sdk":

@@ -34,6 +34,10 @@ func setup(eng, seat_list: Array) -> void:
 			_spawn_driver(s.pid, "res://seats/drivers/ai_driver.gd")
 		elif d == "CHAT":
 			_spawn_driver(s.pid, "res://seats/drivers/chat_driver.gd")
+		elif d == "REMOTE":
+			# spawned so the socket exists and can be driven; the host then calls
+			# configure() with the real url + token
+			_spawn_driver(s.pid, "res://seats/drivers/remote_driver.gd")
 		# LOCAL / SDK / ADMIN need no auto-driver: LOCAL waits (push_intent),
 		# SDK self-drives via its adapter, ADMIN uses explicit intents.
 
@@ -84,7 +88,10 @@ func _tick() -> void:
 				drv.act()
 			# AI/CHAT drivers act immediately; timeout is a safety net for them too
 			_maybe_timeout(seat)
-		"LOCAL", "ADMIN":
+		"LOCAL", "ADMIN", "REMOTE":
+			# REMOTE waits for a human like LOCAL, and times out like LOCAL. It
+			# MUST be here: falling through to `_` would leave the match hung
+			# whenever a browser player closed the tab.
 			_maybe_timeout(seat)
 		# "SDK" seats are NOT auto-passed here — the SDK adapter self-drives its
 		# own force/result cycle and imposing a manager timeout would race it
