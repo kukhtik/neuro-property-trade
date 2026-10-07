@@ -8,6 +8,8 @@ extends Node
 const EngineScript := preload("res://core/engine.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
+const LaunchParams := preload("res://ui/core/launch_params.gd")
+const RemoteSession := preload("res://ui/remote_session.gd")
 const GameServer := preload("res://server/game_server.gd")
 const SettingsScript := preload("res://core/game_settings.gd")
 const SeatConfigScript := preload("res://seats/seat_config.gd")
@@ -39,6 +41,8 @@ var _server_port := 0
 var _seat_tokens := {}   # pid -> token
 ## Test/embedding hook: a fixed port instead of an ephemeral one.
 var _force_port := 0
+## Set when this instance joined a match over the wire instead of owning one.
+var _remote_session
 
 func _ready() -> void:
 	# set window size for the playable shell (1440x900 gives the board room to
@@ -93,6 +97,10 @@ func _ready() -> void:
 	# a role can be exercised without a human at the keyboard.
 	if _has_cli_flag("--autostart"):
 		call_deferred("_autostart")
+	# A seat was handed to us (by the page URL or the CLI): join the host's match
+	# over the wire rather than playing a local one.
+	if LaunchParams.has_seat():
+		call_deferred("_join_as_remote")
 	# --server-port=<n>: bind the game server on a FIXED port (0 = ephemeral)
 	var port := _cli_value("--server-port=")
 	if port != "":
@@ -120,6 +128,52 @@ func _mirror_log(line: String) -> void:
 		f.seek_end()
 		f.store_line(line)
 		f.close()
+
+
+## Mirror the engine's event counter so another process can see progress. Called
+## on every manager tick while a server is running.
+func _mirror_events(_spec: Dictionary = {}) -> void:
+	if _engine == null:
+		return
+	_rewrite_counter("EVENTS", str(int(_engine.log.size())))
+
+
+## Replace the single "<tag> <value>" line in this process's role log. Used for a
+## value that updates constantly, which must not grow the file.
+func _rewrite_counter(tag: String, value: String) -> void:
+	var role := "player"
+	if _profile != null:
+		role = str(_profile.id)
+	var dir: String = _cli_value("--log-dir=")
+	if dir == "":
+		dir = ProjectSettings.globalize_path("user://")
+	var path := dir.path_join("%s.log" % role)
+	var kept: Array = []
+	if FileAccess.file_exists(path):
+		# split on the CHARACTER \n, not an escaped one: the file may use CRLF
+		for line in FileAccess.get_file_as_string(path).split("\n"):
+			var s := str(line).strip_edges()
+			if s != "" and not s.begins_with(tag + " "):
+				kept.append(s)
+	kept.append("%s %s" % [tag, value])
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f != null:
+		for line in kept:
+			f.store_line(str(line))
+		f.close()
+
+
+## Join a running match as a REMOTE seat. The host owns the engine; this instance
+## only renders and sends intents, so it needs no local engine at all.
+func _join_as_remote() -> void:
+	var url := LaunchParams.host_url()
+	var tok := LaunchParams.seat_token()
+	print("JOIN host=%s seat=%s..." % [url, tok.substr(0, 6)])
+	_mirror_log("JOIN host=%s seat=%s" % [url, tok.substr(0, 6)])
+	_remote_session = RemoteSession.new()
+	_remote_session.name = "RemoteSession"
+	add_child(_remote_session)
+	_remote_session.join(url, tok)
 
 
 func _cli_value(prefix: String) -> String:
@@ -207,6 +261,14 @@ func _build_game(settings, seats: Array) -> void:
 	if _manager.game_over.is_connected(_on_game_over):
 		_manager.game_over.disconnect(_on_game_over)
 	_manager.game_over.connect(_on_game_over)
+	if _server != null:
+		# a remote player's progress has to be observable from its own process
+		if not _manager.state_changed.is_connected(_mirror_events):
+			_manager.state_changed.connect(_mirror_events)
+		# --smoke-drive: let the host play its own LOCAL seats so an automated run
+		# can get past turn one. REMOTE seats are deliberately left waiting.
+		if _has_cli_flag("--smoke-drive"):
+			_manager.set_autoplay_local(true)
 
 ## Bring up the network host when the match has a REMOTE seat (or when a port
 ## was forced for testing). Prints the connection line a browser/ smoke reads.
@@ -267,6 +329,14 @@ func _on_admin_rebuilt(eng) -> void:
 	if _manager.game_over.is_connected(_on_game_over):
 		_manager.game_over.disconnect(_on_game_over)
 	_manager.game_over.connect(_on_game_over)
+	if _server != null:
+		# a remote player's progress has to be observable from its own process
+		if not _manager.state_changed.is_connected(_mirror_events):
+			_manager.state_changed.connect(_mirror_events)
+		# --smoke-drive: let the host play its own LOCAL seats so an automated run
+		# can get past turn one. REMOTE seats are deliberately left waiting.
+		if _has_cli_flag("--smoke-drive"):
+			_manager.set_autoplay_local(true)
 
 func _on_overlay_closed() -> void:
 	# ESC closes the overlay without starting: the board stays "cold" with a

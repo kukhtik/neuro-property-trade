@@ -17,6 +17,10 @@ var _drivers := {}           # pid -> Node driver instance
 var _last_decision_key := ""
 var _tick_elapsed := 0.0
 var _last_process_delta := 0.0
+## When true, LOCAL/ADMIN seats are played by the internal AI. Off by default: a
+## human seat must wait for its human. The smoke turns it on because no human is
+## present. REMOTE seats are NEVER auto-played — a browser player is a human.
+var _autoplay_local := false
 
 # --- pure helper (headless-testable) ---
 static func find_decision_holder(engine, player_count: int) -> int:
@@ -48,6 +52,12 @@ func _spawn_driver(pid: int, path: String) -> void:
 	add_child(node)
 	node.setup(engine, _seat(pid))
 	_drivers[pid] = node
+
+## Let the host play its own LOCAL seats (automated runs). REMOTE seats are
+## never affected: a browser player must always wait for its human.
+func set_autoplay_local(on: bool) -> void:
+	_autoplay_local = on
+
 
 func _seat(pid: int):
 	for s in seats:
@@ -88,7 +98,18 @@ func _tick() -> void:
 				drv.act()
 			# AI/CHAT drivers act immediately; timeout is a safety net for them too
 			_maybe_timeout(seat)
-		"LOCAL", "ADMIN", "REMOTE":
+		"LOCAL", "ADMIN":
+			if _autoplay_local:
+				# an automated run has no human at this seat; play it with the AI
+				# so the match can progress (the smoke uses this)
+				var p_min = load("res://seats/minimal_action.gd").pick(engine, holder)
+				if not p_min.is_empty():
+					var r_min: Dictionary = engine.submit_intent(holder, p_min.action, p_min.params)
+					if r_min.get("events", []).size() > 0:
+						events_emitted.emit(r_min["events"])
+				return
+			_maybe_timeout(seat)
+		"REMOTE":
 			# REMOTE waits for a human like LOCAL, and times out like LOCAL. It
 			# MUST be here: falling through to `_` would leave the match hung
 			# whenever a browser player closed the tab.
