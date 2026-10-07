@@ -8,6 +8,9 @@ extends Node
 const EngineScript := preload("res://core/engine.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
+const GameServer := preload("res://server/game_server.gd")
+const SettingsScript := preload("res://core/game_settings.gd")
+const SeatConfigScript := preload("res://seats/seat_config.gd")
 const AdminController := preload("res://admin/admin_controller.gd")
 const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
@@ -27,6 +30,15 @@ var _profile
 ## set BEFORE the node enters the tree (i.e. before _ready).
 var _force_profile = null
 var _game_started := false
+## The network host for REMOTE seats. Started only when a match actually has one
+## (or when the port is requested explicitly), so a normal local game opens no
+## socket. The token for each remote seat is printed to stdout on start, which is
+## how a browser — or the smoke — learns where to connect.
+var _server
+var _server_port := 0
+var _seat_tokens := {}   # pid -> token
+## Test/embedding hook: a fixed port instead of an ephemeral one.
+var _force_port := 0
 
 func _ready() -> void:
 	# set window size for the playable shell (1440x900 gives the board room to
@@ -75,6 +87,70 @@ func _ready() -> void:
 		_panel.game_rebuilt.connect(_on_admin_rebuilt)
 
 	print("Neuro Property Trade — ready. is_host=%s" % str(_is_host))
+	_mirror_log("ready is_host=%s" % str(_is_host))
+
+	# --autostart: build a match immediately, no lobby click. Used by the smoke so
+	# a role can be exercised without a human at the keyboard.
+	if _has_cli_flag("--autostart"):
+		call_deferred("_autostart")
+	# --server-port=<n>: bind the game server on a FIXED port (0 = ephemeral)
+	var port := _cli_value("--server-port=")
+	if port != "":
+		_force_port = int(port)
+
+
+## Append a line to this process's role log so a parent can observe it.
+func _mirror_log(line: String) -> void:
+	var role := "player"
+	if _profile != null:
+		role = str(_profile.id)
+	# an ABSOLUTE path, optionally redirected by --log-dir, so a parent process
+	# (the smoke) can read a detached child's readiness
+	var dir: String = _cli_value("--log-dir=")
+	if dir == "":
+		dir = ProjectSettings.globalize_path("user://")
+	var path := dir.path_join("%s.log" % role)
+	if not FileAccess.file_exists(path):
+		# touch it first: READ_WRITE will not create a missing file
+		var c := FileAccess.open(path, FileAccess.WRITE)
+		if c != null:
+			c.close()
+	var f := FileAccess.open(path, FileAccess.READ_WRITE)
+	if f != null:
+		f.seek_end()
+		f.store_line(line)
+		f.close()
+
+
+func _cli_value(prefix: String) -> String:
+	for a in OS.get_cmdline_user_args():
+		if str(a).begins_with(prefix):
+			return str(a).substr(prefix.length())
+	return ""
+
+
+## Build a default match without the lobby. Deliberately minimal: the smoke wants
+## a running engine, not a curated one.
+func _autostart() -> void:
+	var st = SettingsScript.new()
+	# --smoke-seats=N: the fixture the full smoke drives — a host seat, a REMOTE
+	# seat for the browser, and AI for the rest.
+	var n := int(_cli_value("--smoke-seats="))
+	if n >= 2:
+		st.seat_count = n
+		st.starting_order = "manual"
+		var a: Array = [{"driver": "LOCAL", "name": "Host"},
+			{"driver": "REMOTE", "name": "Browser"}]
+		while a.size() < n:
+			a.append({"driver": "AI", "name": "Bot %d" % (a.size() + 1)})
+		st.seat_assignments = a
+	var seats: Array = SeatConfigScript.from_settings(st)
+	var names: Array = []
+	for s in seats:
+		names.append(str(s.name))
+	_build_game(st, seats)
+	_game_started = true
+	_game_view.on_game_started()
 
 func _has_cli_flag(flag: String) -> bool:
 	for a in OS.get_cmdline_user_args():
@@ -124,11 +200,55 @@ func _build_game(settings, seats: Array) -> void:
 		_panel.setup(_gate)
 		_panel.visible = false
 
+	_start_server_if_needed(seats)
+
 	_game_view.setup(_engine, _manager, seats, settings)
 	# game-over banner: seat_manager emits game_over when the engine reaches END_GAME
 	if _manager.game_over.is_connected(_on_game_over):
 		_manager.game_over.disconnect(_on_game_over)
 	_manager.game_over.connect(_on_game_over)
+
+## Bring up the network host when the match has a REMOTE seat (or when a port
+## was forced for testing). Prints the connection line a browser/ smoke reads.
+func _start_server_if_needed(seats: Array) -> void:
+	if _server != null and is_instance_valid(_server):
+		_server.queue_free()
+		_server = null
+	_seat_tokens.clear()
+	var wants := _force_port > 0
+	var remote_pids: Array = []
+	for s in seats:
+		if str(s.input_driver) == "REMOTE":
+			remote_pids.append(int(s.pid))
+			wants = true
+	if not wants:
+		return
+	_server = GameServer.new()
+	_server.name = "GameServer"
+	add_child(_server)
+	if not _server.listen(_force_port, "127.0.0.1"):
+		push_error("main: the game server failed to bind")
+		_server = null
+		return
+	_server.bind_game(_engine, _manager)
+	_server_port = int(_server.port())
+	for pid in remote_pids:
+		var tok: String = _server.mint_token(int(pid))
+		_seat_tokens[int(pid)] = tok
+		print("SERVER seat=%d token=%s" % [int(pid), tok])
+		_mirror_log("SERVER seat=%d token=%s" % [int(pid), tok])
+	print("SERVER ready ws://127.0.0.1:%d" % _server_port)
+	_mirror_log("SERVER ready ws://127.0.0.1:%d" % _server_port)
+
+
+## Connection details for tests and tooling.
+func server_port() -> int:
+	return _server_port
+
+
+func seat_token(pid: int) -> String:
+	return str(_seat_tokens.get(int(pid), ""))
+
 
 func _on_game_over(winner_name: String) -> void:
 	_game_view.show_game_over(winner_name)
