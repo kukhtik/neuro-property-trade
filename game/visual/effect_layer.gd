@@ -22,6 +22,7 @@ const SkinManager := preload("res://visual/skin_manager.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
 const SkinPaint := preload("res://visual/skin_paint.gd")
+const UiTheme := preload("res://ui/theme.gd")
 
 var skin: SkinManager
 var animations := true
@@ -93,6 +94,49 @@ func sync_tokens(players: Array) -> void:
 		_refresh_token_label(pid)
 		var out: bool = bool(p.get("bankrupt", false))
 		(_tokens[pid] as Control).visible = not out
+
+	# the mockup puts a bobbing ARROW over whoever is to move (`.tok.act::before`): on a busy
+	# board it is the only thing that says whose turn it is at a glance
+	sync_active(int(players[0].get("turn_player", -1)) if players.size() > 0 else -1)
+
+
+## Mark one player as active. Pass -1 for none.
+func sync_active(pid: int) -> void:
+	if _active == pid:
+		return
+	_active = pid
+	for p in _tokens:
+		var holder: Control = _tokens[p]
+		if holder == null or not is_instance_valid(holder):
+			continue
+		var arrow = holder.get_node_or_null("Arrow")
+		var want: bool = int(p) == pid
+		if want and arrow == null:
+			arrow = _make_arrow(holder)
+		if arrow != null:
+			(arrow as Control).visible = want
+
+
+## The bobbing arrow that marks whose turn it is: `content:"▼"` with `animation: bob 1s`.
+##
+## A Label cannot animate itself, so the motion is a looping tween — the one moving thing
+## above a still board, and the fastest way to see whose move it is.
+func _make_arrow(holder: Control) -> Control:
+	var d: float = _token_size()
+	var arrow := UiTheme.label("▼", maxi(10, int(d * 0.38)), skin.color("accent"))
+	arrow.name = "Arrow"
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	arrow.z_index = 30
+	arrow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	arrow.size = Vector2(d, d * 0.5)
+	arrow.position = Vector2(0, -d * 0.62)
+	holder.add_child(arrow)
+	# bob up and down forever
+	var t := arrow.create_tween()
+	t.set_loops()
+	t.tween_property(arrow, "position:y", arrow.position.y - d * 0.12, 0.5) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(arrow, "position:y", arrow.position.y, 0.5) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	return arrow
 
 
 func _make_token(pid: int) -> Control:
@@ -337,6 +381,7 @@ var _bursts: Array = []
 const POOL_MAX := 48
 var _label_pool: Array = []
 var _shadows := {}          # pid -> the shadow node that follows its token
+var _active := -1           # the player whose turn it is, for the arrow
 var _tween_pool: Array = []
 
 

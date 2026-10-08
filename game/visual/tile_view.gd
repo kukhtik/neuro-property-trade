@@ -43,6 +43,7 @@ var _pulse_phase := 0.0
 
 # nodes
 var _owner_stripe: ColorRect
+var _sheen: ColorRect
 var _bg: Chamfer
 var _band: Chamfer
 var _strip: Control
@@ -98,6 +99,30 @@ func _band_side_for(index: int, tile_count: int) -> String:
 	return ["top", "right", "bottom", "left"][s]
 
 
+## Run the chase highlight across this tile, forever. Delayed by the tile index so the board
+## shimmers as a wave instead of blinking in unison (the mockup's `--k*.16s`).
+func _start_sheen() -> void:
+	if _sheen == null or not is_instance_valid(_sheen):
+		return
+	if _sheen.get_meta("running", false):
+		return
+	_sheen.set_meta("running", true)
+	var w: float = maxf(size.x, custom_minimum_size.x)
+	if w <= 1.0:
+		w = float(_cell)
+	var t := create_tween()
+	t.set_loops()
+	# off to the left, sweep across, then rest before the next pass
+	_sheen.position.x = -w * 0.35
+	_sheen.size = Vector2(w * 0.35, maxf(size.y, custom_minimum_size.y))
+	_sheen.visible = true
+	var delay: float = 0.16 * float(_index % 40)
+	t.tween_interval(delay)
+	t.tween_property(_sheen, "position:x", w, 1.4).set_trans(Tween.TRANS_SINE)
+	t.tween_interval(7.6 - delay)
+	# a one-off nudge in case the tile is never laid out
+
+
 func _step_for(cell: int) -> int:
 	var c := float(cell)
 	if c >= 78.0:
@@ -130,6 +155,17 @@ func _build_nodes() -> void:
 	_owner_stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_owner_stripe.z_index = 1
 	add_child(_owner_stripe)
+
+	# the chase highlight: a diagonal sheen crossing the tile every 9s, delayed by the tile's
+	# own index so the board shimmers as a wave. On a static board it is the only sign of life.
+	_sheen = ColorRect.new()
+	_sheen.name = "Sheen"
+	_sheen.color = Color(1, 1, 1, 0.10)
+	_sheen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_sheen.z_index = 2
+	_sheen.visible = false
+	_sheen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_sheen)
 	# --- flow: a Row for vertical bands, a Column for horizontal ones -------
 	var vertical: bool = _band_side == "left" or _band_side == "right"
 	_row = HBoxContainer.new() if vertical else VBoxContainer.new()
@@ -407,6 +443,8 @@ func refresh(entry: Dictionary) -> void:
 	# showed a name and NO price — the board looked empty of information while being full of
 	# it. It now survives to step 2, alongside the name.
 	_price.visible = _step <= 2 and _price.text != ""
+	if _sheen != null and not _sheen.get_meta("running", false):
+		_start_sheen()
 	if _step >= 2:
 		_icon.visible = false
 
