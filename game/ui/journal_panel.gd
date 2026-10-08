@@ -304,7 +304,7 @@ func _line_bbcode(e: Dictionary, names: Array) -> String:
 		type_lbl = t
 	# the dim tag comes from the THEME: a colour baked into markup ignores the skin and
 	# survives every palette change (this one did, through the whole stage-8 audit)
-	var dim := UiTheme.COL().text_dim.to_html(false)
+	var dim: String = UiTheme.COL().text_dim.to_html(false)
 	return "[color=#%s]#%d[/color] [color=#%s][%s][/color] %s\n" % [
 		col.to_html(false), idx, dim, type_lbl, txt]
 

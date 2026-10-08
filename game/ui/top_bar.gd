@@ -111,6 +111,22 @@ func retranslate() -> void:
 	if _hint != null:
 		_hint.text = I18n.t("top.admin_hint")
 
+## Enlarge the bar's own type for a role that is read from a distance (the OBS window).
+func scale_text(factor: float) -> void:
+	if factor <= 0.0 or is_equal_approx(factor, 1.0):
+		return
+	for lbl in [_turn, _phase, _hint, _role_badge]:
+		if lbl == null:
+			continue
+		var base: int = int(lbl.get_meta("base_size", 0))
+		if base == 0:
+			base = lbl.get_theme_font_size("font_size")
+			if base <= 0:
+				base = 13
+			lbl.set_meta("base_size", base)
+		lbl.add_theme_font_size_override("font_size", int(round(base * factor)))
+
+
 func set_cold(v: bool) -> void:
 	_turn.text = ""
 	_phase.text = I18n.t("top.cold")

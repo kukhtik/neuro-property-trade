@@ -1,0 +1,35 @@
+<!doctype html><html lang="ru"><meta charset="utf-8">
+<title>Neuro Property Trade — сквозной смоук</title>
+<style>
+ body{background:#12151b;color:#e8edf3;font:14px/1.5 system-ui,sans-serif;margin:0;padding:24px}
+ h1{font-size:20px;margin:0 0 4px}
+ .verdict{display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;
+   background:#5cb85c;color:#0b0d11;margin-bottom:16px}
+ table{border-collapse:collapse;margin:0 0 20px}
+ td{padding:3px 14px 3px 0} td.k{color:#8b95a5}
+ .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}
+ figure{margin:0;background:#1e242e;border:1px solid #39404d;border-radius:8px;padding:10px}
+ figure img,figure iframe{width:100%;border:0;border-radius:5px;background:#000;aspect-ratio:16/10}
+ figure iframe{height:340px}
+ figcaption{margin-top:8px;font-size:12px;color:#a896c8}
+ .missing{color:#ff6b6b;min-height:120px;display:flex;align-items:center;justify-content:center}
+ small{color:#8b95a5}
+</style>
+<h1>Neuro Property Trade — сквозной смоук, один прогон</h1>
+<div class="verdict" style="background:#5cb85c">PASS</div>
+<table>
+ <tr><td class="k">браузер присоединился</td><td>да</td></tr>
+ <tr><td class="k">ходов отправлено</td><td>33</td></tr>
+ <tr><td class="k">принято хостом</td><td>32</td></tr>
+ <tr><td class="k">кадр admin</td><td>есть</td></tr>
+ <tr><td class="k">кадр stream</td><td>есть</td></tr>
+ <tr><td class="k">событий в партии</td><td>58549</td></tr>
+ <tr><td class="k">типов событий</td><td>26</td></tr>
+</table>
+<h2 style="font-size:16px">Роли и макет</h2>
+<div class="grid"><figure><iframe src="file:///C:/Users/Nitro/Desktop/Neuro%20Property%20Trade%20%E2%80%94%20UI.html" title="mockup"></iframe><figcaption><b>МАКЕТ</b><br>Neuro Property Trade — UI.html</figcaption></figure><figure><img src="player.png" alt="player"><figcaption><b>player</b><br>WebUI — a real browser on a seat<br><small>71745 bytes, 1440x900</small></figcaption></figure><figure><img src="admin.png" alt="admin"><figcaption><b>admin</b><br>host application — full control<br><small>77099 bytes, 1440x900</small></figcaption></figure><figure><img src="stream.png" alt="stream"><figcaption><b>stream</b><br>OBS window — spectator data only<br><small>72098 bytes, 1440x900</small></figcaption></figure></div>
+<p style="color:#8b95a5;font-size:12px;margin-top:20px">
+ Кадры сняты в ОДНОМ прогоне: хост, три роли и живой браузер одновременно.
+ Скриншоты ролей делает сам Godot своим viewport, браузер — Playwright.
+</p>
+</html>

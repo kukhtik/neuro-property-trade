@@ -78,6 +78,7 @@ func setup_cold(launcher) -> void:
 	_skin.load_skin()
 	UiTheme.use_skin(_skin)
 	_build_layout()
+	_apply_profile()
 	_layout()
 	# cold board: no engine, so just build the empty board scene
 	_board_scene.setup(null, null)
@@ -89,6 +90,26 @@ func setup_cold(launcher) -> void:
 	_toast_stack = ToastStack.new()
 	_toast_stack.name = "ToastStack"
 	add_child(_toast_stack)
+
+
+## Apply the execution role to the COLD screen.
+##
+## Without this the launcher looked identical for every role: `setup_cold` built the
+## layout and never read `_profile`, so admin and the OBS window produced byte-identical
+## frames. The role is chosen at launch, and the launch screen is the very first thing a
+## person sees — it has to show which one they started.
+func _apply_profile() -> void:
+	if _profile == null:
+		return
+	if _actions != null:
+		_actions.visible = _profile.shows_actions
+	if _journal != null:
+		_journal.visible = _profile.shows_journal
+	# the stream wants bigger type: it is read from a video, at a distance
+	if _profile.text_scale != 1.0 and _top != null and _top.has_method("scale_text"):
+		_top.scale_text(_profile.text_scale)
+	if _top != null and _top.has_method("set_profile"):
+		_top.set_profile(_profile)
 
 ## Choose the execution role. Called by the launcher before the first frame, so
 ## the UI is built for the role from the start rather than switched into it.
