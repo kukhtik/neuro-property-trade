@@ -625,7 +625,18 @@ func _move_and_resolve(roll: Dictionary) -> void:
 			log.append("rent", {"from": turn_player, "to": owner, "tile": new_pos, "amount": rent})
 	elif ttype == "railroad":
 		var rowner = _owner_of(new_pos)
-		if rowner != -1 and rowner != turn_player:
+		if rowner == -1:
+			# unowned — offer a purchase, exactly as for a property. Without this
+			# branch a railroad could NEVER be bought: the tile stayed unowned for
+			# the whole match, so rent on it was impossible and the board kept 6 of
+			# its 40 tiles permanently dead. Measured: ownership froze at 22/40 and
+			# every seat's cash grew without bound, so no match reached game-over.
+			phase = PHASE_PURCHASE_WAIT
+			_pending = {"tile": new_pos}
+			return
+		elif rowner == turn_player:
+			log.append("land_self", {"player": turn_player, "tile": new_pos})
+		else:
 			var owned_count: int = 0
 			for ridx in [5, 15, 25, 35]:
 				if players[rowner].owns(ridx): owned_count += 1
@@ -636,7 +647,14 @@ func _move_and_resolve(roll: Dictionary) -> void:
 			log.append("rent", {"from": turn_player, "to": rowner, "tile": new_pos, "amount": rrent})
 	elif ttype == "utility":
 		var uowner = _owner_of(new_pos)
-		if uowner != -1 and uowner != turn_player:
+		if uowner == -1:
+			# unowned — offer a purchase, same as a railroad and a property
+			phase = PHASE_PURCHASE_WAIT
+			_pending = {"tile": new_pos}
+			return
+		elif uowner == turn_player:
+			log.append("land_self", {"player": turn_player, "tile": new_pos})
+		else:
 			var owns_both: bool = players[uowner].owns(12) and players[uowner].owns(28)
 			var sum: int = roll.get("sum", _last_roll.get("sum", 7))
 			var urent: int = (10 if owns_both else 4) * sum

@@ -133,21 +133,93 @@ static func decide(e, pid: int) -> Dictionary:
 static func _is_trade_recipient(e, pid: int) -> bool:
 	return e._pending_trade.size() != 0 and int(e._pending_trade.get("recipient", -1)) == pid
 
+## What this seat bids.
+##
+## The increment used to be `high + 1`, which raised the price ONE unit at a time
+## while the only guard compared against a cash balance in the thousands. A
+## measured single auction ran to 1451 bids before closing, so a match burned its
+## entire ply budget inside the first auction and never reached a second turn —
+## the soak could not exercise the rest of the engine, and the corpus filled with
+## near-identical auction_bid entries.
+##
+## The step is now a fraction of the lot, which is how a real auction moves and
+## what makes the price reach the cash ceiling where the guard can act.
 static func _decide_bid(e, pid: int) -> Dictionary:
 	var high: int = int(e._pending.get("high", -1))
 	var money: int = e.players[pid].money
-	var amount: int = high + 1
+	var tile: int = int(e._pending.get("tile", -1))
+	var amount: int
 	if high == -1:
-		amount = opening_bid(e, int(e._pending.get("tile", -1)))
+		amount = opening_bid(e, tile)
+	else:
+		amount = high + bid_step(e, tile, pid)
 	if amount > money:
 		return {"action": "pass", "params": {}}
+	# Stop when the price passes what the lot is WORTH. Without this a seat bids
+	# up to its last coin, because cash is the only ceiling — so four seats grind
+	# each other to the poorest one's balance and an auction takes dozens of
+	# rounds. A real player stops well before that.
+	if amount > bid_ceiling(e, tile, pid):
+		return {"action": "pass", "params": {}}
 	return {"action": "bid", "params": {"amount": amount}}
+
+
+## The most this seat will pay for a lot: a multiple of its price, lifted when
+## buying it completes a colour group (which is what actually makes it valuable).
+static func bid_ceiling(e, tile: int, pid: int) -> int:
+	var cost: int = int(e.board.tile_at(tile).get("cost", 0))
+	if cost <= 0:
+		return e.players[pid].money
+	var mult := BID_CEILING
+	var group: String = str(e.board.tile_at(tile).get("group", ""))
+	if group != "":
+		var mine := 0
+		var total := 0
+		for t in range(e.board.tile_count()):
+			if str(e.board.tile_at(t).get("group", "")) != group:
+				continue
+			total += 1
+			if e._owner_of(t) == pid:
+				mine += 1
+		# a piece that completes the set is worth chasing
+		if total > 0 and mine == total - 1:
+			mult = BID_CEILING_SET
+	return int(round(float(cost) * mult))
+
+
+## How much the price moves per bid: a fraction of the lot, never less than 1, and
+## always enough to close an auction in a plausible number of rounds rather than
+## thousands of unit steps.
+static func bid_step(e, tile: int, pid: int) -> int:
+	var cost: int = int(e.board.tile_at(tile).get("cost", 0))
+	if cost <= 0:
+		cost = opening_bid(e, tile)
+	var step: int = int(round(float(cost) * BID_STEP_FRAC))
+	if step < 1:
+		step = 1
+	# never bid past what this seat can pay
+	var money: int = e.players[pid].money
+	if step > money:
+		step = money
+	return step
 
 static func _decide_buy(e, pid: int) -> Dictionary:
 	if worth_buying(e, pid):
 		return {"action": "buy", "params": {}}
 	return {"action": "pass", "params": {}}
 
+const BID_STEP_FRAC := 0.1
+## Cash kept in hand after a purchase, as a fraction of the starting balance.
+const BUY_RESERVE_FRAC := 0.1
+## What a seat will pay for a plain lot, and for one that completes its group,
+## as a multiple of the lot's price.
+const BID_CEILING := 1.5
+const BID_CEILING_SET := 2.5
+
+
+## The opening price: half the lot, but never more than the seat THAT IS BIDDING
+## can pay. It used to be clamped by the AUCTIONEER's money — the seat that
+## declined — which is not the seat being asked to bid.
 static func opening_bid(e, tile: int) -> int:
 	var cost: int = int(e.board.tile_at(tile).get("cost", 0))
 	var amount: int = int(float(cost) * 0.5)
@@ -159,12 +231,20 @@ static func opening_bid(e, tile: int) -> int:
 	return amount
 
 ## Buy while keeping a cash reserve, or whenever the tile completes a set.
+## Should this seat buy the lot?
+##
+## The cushion used to be a FLAT 100. Measured over 20 000 plies on the smoke's
+## seed that produced 22 purchases: a 60-cost lot needs money >= 160, which the
+## policy seldom had, so almost nothing was ever bought, rent stayed trivial and
+## no match reached game-over. The reserve is now a fraction of the starting
+## balance, so early purchases happen and the board actually develops.
 static func worth_buying(e, pid: int) -> bool:
 	var tile: int = int(e._pending.get("tile", -1))
 	var cost: int = int(e.board.tile_at(tile).get("cost", 0))
 	if completes_set(e, pid, tile):
 		return e.players[pid].money >= cost
-	return e.players[pid].money - cost >= 100
+	var reserve: int = int(round(float(e.settings.starting_cash) * BUY_RESERVE_FRAC))
+	return e.players[pid].money - cost >= reserve
 
 static func completes_set(e, pid: int, tile: int) -> bool:
 	var group: String = String(e._group_of(tile))

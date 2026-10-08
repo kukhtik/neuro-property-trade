@@ -113,6 +113,17 @@ func _tick() -> void:
 			# REMOTE waits for a human like LOCAL, and times out like LOCAL. It
 			# MUST be here: falling through to `_` would leave the match hung
 			# whenever a browser player closed the tab.
+			if _autoplay_local:
+				# PROXY PLAY, smoke only: with no browser attached an automated
+				# run would stall on this seat forever. The host plays it with the
+				# reference policy, on the real engine — never in production.
+				var p_proxy = load("res://tools/replay.gd").decide(engine, holder)
+				if not p_proxy.is_empty():
+					var r_proxy: Dictionary = engine.submit_intent(holder,
+						str(p_proxy.get("action", "")), p_proxy.get("params", {}))
+					if r_proxy.get("events", []).size() > 0:
+						events_emitted.emit(r_proxy["events"])
+				return
 			_maybe_timeout(seat)
 		# "SDK" seats are NOT auto-passed here — the SDK adapter self-drives its
 		# own force/result cycle and imposing a manager timeout would race it

@@ -25,6 +25,17 @@ const D := {
 	"top.eye_tip":          {"ru": "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)", "en": "Observer mode: return to match settings (seats without LOCAL play themselves)"},
 	"top.admin_hint":       {"ru": "F12 — админ", "en": "F12 — admin"},
 
+	# ---- AI characters (per seat; see seats/ai_persona.gd) ----
+	"persona.tycoon":    {"ru": "Магнат", "en": "Tycoon"},
+	"persona.cautious":  {"ru": "Осторожный", "en": "Cautious"},
+	"persona.collector": {"ru": "Коллекционер", "en": "Collector"},
+	"persona.miser":     {"ru": "Скряга", "en": "Miser"},
+	"persona.aggressor": {"ru": "Агрессор", "en": "Aggressor"},
+	"persona.random":    {"ru": "Случайный", "en": "Random"},
+	"settings.persona":     {"ru": "Характер", "en": "Character"},
+	"settings.persona_tip": {"ru": "Как этот ИИ-игрок себя ведёт: покупает, ставит на аукционе, торгует.",
+		"en": "How this AI player behaves: buying, bidding, trading."},
+
 	# ---- execution roles (read-only badge; the role is chosen at launch) ----
 	"mode.player":      {"ru": "ИГРОК", "en": "PLAYER"},
 	"mode.stream":      {"ru": "ЭФИР", "en": "LIVE"},

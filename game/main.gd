@@ -198,6 +198,10 @@ func _autostart() -> void:
 		while a.size() < n:
 			a.append({"driver": "AI", "name": "Bot %d" % (a.size() + 1)})
 		st.seat_assignments = a
+	# a smoke must be REPRODUCIBLE: without this every run played a different match
+	var seed_arg := _cli_value("--smoke-seed=")
+	if seed_arg != "":
+		st.rng_seed = int(seed_arg)
 	var seats: Array = SeatConfigScript.from_settings(st)
 	var names: Array = []
 	for s in seats:

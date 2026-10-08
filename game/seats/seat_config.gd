@@ -8,6 +8,7 @@ extends RefCounted
 ## piece halo and the players-panel row can never disagree.
 
 const PI := preload("res://core/player_identity.gd")
+const Persona := preload("res://seats/ai_persona.gd")
 
 static func from_settings(settings) -> Array:
 	var n: int = settings.seat_count
@@ -35,6 +36,14 @@ static func from_settings(settings) -> Array:
 			s.token_id = PI.token_of(i)
 		s.driver_label = driver_label
 		s.input_driver = resolve_driver(driver_label, seen_sdk)
+		# the character: an explicit choice wins, otherwise rotate by seat index so
+		# an unconfigured match is never four clones (which produced a dead economy)
+		var picked := ""
+		if i < assignments.size():
+			picked = str((assignments[i] as Dictionary).get("persona", ""))
+		if picked == "" or not Persona.has(picked):
+			picked = Persona.default_for_index(i)
+		s.persona = picked
 		if s.input_driver == "SDK":
 			seen_sdk = true
 		seats.append(s)

@@ -731,8 +731,20 @@ static func test_bankruptcy_latch_is_transient() -> String:
 	var res: Dictionary = e.submit_intent(holder, "roll", {})
 	if not res.get("ok", false):
 		return "recovered holder could not act: %s" % str(res.get("reason", ""))
+	# The roll may land on an UNOWNED tile, which now includes railroads and
+	# utilities — they became buyable when the engine learned to offer them (a
+	# railroad used to be permanently dead, so this fixture never met one).
+	# Decline, and if that opens an auction, settle it: only then is the turn free.
 	if e.phase == "PURCHASE_WAIT":
 		e.submit_intent(holder, "pass", {})
+	while e.phase == "AUCTION":
+		var bidder: int = int(e._pending.get("bidder", -1))
+		if bidder < 0:
+			break
+		e.submit_intent(bidder, "pass", {})
+	if e.phase == "PURCHASE_WAIT":
+		return "a purchase was still open after settling: phase=%s tile=%s" % [
+			e.phase, str(e._pending.get("tile", -1))]
 	if e.turn_player == holder:
 		return "the turn did not advance after a non-doubles roll"
 	return ""

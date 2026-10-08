@@ -12,6 +12,7 @@ signal apply_requested(settings, seats)
 signal closed
 
 const UiTheme := preload("res://ui/theme.gd")
+const Persona := preload("res://seats/ai_persona.gd")
 const Settings := preload("res://core/game_settings.gd")
 const SeatConfig := preload("res://seats/seat_config.gd")
 const PI := preload("res://core/player_identity.gd")
@@ -577,6 +578,18 @@ func _add_row(_unused: Variant = null) -> void:
 	token.tooltip_text = I18n.t("settings.token_tip")
 	h.add_child(token)
 
+	# character: only meaningful for a seat the AI drives, but always shown so the
+	# choice is there before a driver is switched
+	var persona := OptionButton.new()
+	persona.name = "Persona"
+	for pid in Persona.ALL:
+		persona.add_item(I18n.t(Persona.label_key(pid)))
+		persona.set_item_metadata(persona.get_item_count() - 1, pid)
+	# rotate by seat so an untouched lobby already fields a varied table
+	_persona_select(persona, Persona.default_for_index(idx))
+	persona.tooltip_text = I18n.t("settings.persona_tip")
+	h.add_child(persona)
+
 	var remove_btn := UiTheme.button("✕", I18n.t("settings.remove_tip"))
 	remove_btn.custom_minimum_size = Vector2(24, 20)
 	remove_btn.disabled = (idx == 0)
@@ -585,10 +598,26 @@ func _add_row(_unused: Variant = null) -> void:
 
 	_rows.append({
 		"driver": driver, "name": name_edit, "color": swatch,
-		"token": token, "remove_btn": remove_btn, "row": h,
+		"token": token, "persona": persona, "remove_btn": remove_btn, "row": h,
 	})
 	_players_list.add_child(h)
 	_refresh_buttons()
+
+## Select a character by id on a persona OptionButton (metadata, never the label).
+static func _persona_select(o: OptionButton, persona_id: String) -> void:
+	for i in o.get_item_count():
+		if str(o.get_item_metadata(i)) == persona_id:
+			o.selected = i
+			return
+
+
+## The character chosen on a seat row.
+static func _persona_of_row(r: Dictionary) -> String:
+	var o: OptionButton = r.get("persona")
+	if o == null:
+		return ""
+	return str(o.get_item_metadata(o.selected))
+
 
 func _remove_row(i: int) -> void:
 	if i <= 0 or i >= _rows.size():
@@ -623,6 +652,7 @@ func _collect_settings() -> Settings:
 			"name": str(r["name"].text),
 			"token_color": (r["color"] as ColorRect).color.to_html(),
 			"token_id": str(r["token"].get_item_text(r["token"].selected)),
+			"persona": _persona_of_row(r),
 		})
 	s.rng_seed = int(_rng_seed.value)
 	s.tile_count = int(_tile_count.value) if _tile_count != null else DEF_TILE_COUNT
@@ -693,6 +723,7 @@ func _validation_error() -> String:
 			return I18n.t("settings.err_dup_color")
 		colors[col] = true
 		var tok: String = str(r["token"].get_item_text(r["token"].selected))
+		var _pers: String = _persona_of_row(r)
 		if tokens.has(tok):
 			return I18n.t("settings.err_dup_token")
 		tokens[tok] = true
