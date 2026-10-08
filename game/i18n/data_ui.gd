@@ -15,6 +15,12 @@ const D := {
 	"ui.starting_order": {"ru": "Нач. порядок:", "en": "Start order:"},
 	"ui.host_role":     {"ru": "Роль хоста:", "en": "Host role:"},
 
+
+	# ---- statistics block (the mockup's #stat) ----
+	"stat.round":       {"ru": "РАУНД", "en": "ROUND"},
+	"stat.pot":         {"ru": "БАНК ПАРКОВКИ", "en": "PARKING POT"},
+	"stat.tiles":       {"ru": "ВЫКУПЛЕНО", "en": "OWNED"},
+
 	# ---- top bar ----
 	"top.title":            {"ru": "● NEURO PROPERTY TRADE", "en": "● NEURO PROPERTY TRADE"},
 	"top.turn":             {"ru": "ХОД: ", "en": "TURN: "},

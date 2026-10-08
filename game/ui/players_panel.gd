@@ -9,6 +9,7 @@ extends PanelContainer
 
 const UiTheme := preload("res://ui/theme.gd")
 const SkinPaint := preload("res://visual/skin_paint.gd")
+const MoneyFmt := preload("res://ui/core/money.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
 const PI := preload("res://core/player_identity.gd")
 const I18n := preload("res://i18n/i18n.gd")
@@ -35,10 +36,69 @@ func _init() -> void:
 	_head = UiTheme.label(I18n.t("ui.players"), 14, UiTheme.COL().accent)
 	_v.add_child(_head)
 	_list = UiTheme.vbox(6)
+	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_v.add_child(_list)
+
+	# The mockup pins a STATISTICS BLOCK to the bottom of this column (`#stat`): a three-column
+	# grid of small tiles, each with a 9px label and a 15px value in the mono face, plus a bar
+	# showing how much of the board is owned. We had nothing there, so the column just stopped
+	# wherever the player list ended.
+	_stat = HBoxContainer.new()
+	_stat.name = "Stat"
+	_stat.add_theme_constant_override("separation", 6)
+	_v.add_child(_stat)
+	for key in ["round", "pot", "tiles"]:
+		_stat.add_child(_stat_tile(key))
+
+	# the ownership bar: a gradient from accent to accent2, width = share of the board
+	_own_bar = ProgressBar.new()
+	_own_bar.name = "Ownership"
+	_own_bar.show_percentage = false
+	_own_bar.custom_minimum_size.y = 6
+	_own_bar.max_value = 100.0
+	_own_bar.add_theme_stylebox_override("background",
+		UiTheme.box(UiTheme.COL().get("surface3", UiTheme.COL().panel), Color.TRANSPARENT, 0, 0))
+	_own_bar.add_theme_stylebox_override("fill", _gradient_box())
+	_v.add_child(_own_bar)
+
+
+## One statistics tile: a label above a value, as `#stat div` in the mockup.
+func _stat_tile(key: String) -> Control:
+	var box := PanelContainer.new()
+	box.name = "Stat_" + key
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_stylebox_override("panel",
+		UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 8)
+	m.add_theme_constant_override("margin_right", 8)
+	m.add_theme_constant_override("margin_top", 6)
+	m.add_theme_constant_override("margin_bottom", 6)
+	box.add_child(m)
+	var v := UiTheme.vbox(2)
+	m.add_child(v)
+	var cap := UiTheme.label(I18n.t("stat." + key), 9, UiTheme.COL().text_dim)
+	cap.name = "Caption"
+	v.add_child(cap)
+	var val := UiTheme.label("—", 15, UiTheme.COL().text)
+	val.name = "Value"
+	v.add_child(val)
+	_stat_values[key] = val
+	return box
+
+
+## The accent-to-accent2 gradient the mockup uses for the ownership bar.
+func _gradient_box() -> StyleBoxFlat:
+	var sb := UiTheme.box(UiTheme.COL().accent, Color.TRANSPARENT, 0, 0)
+	sb.bg_color = UiTheme.COL().accent
+	return sb
 
 var _v: VBoxContainer
 var _list: VBoxContainer
+var _stat: HBoxContainer
+var _own_bar: ProgressBar
+var _stat_values := {}      # key -> the Label that shows its value
+var _rendered_round := 0    # last turn count seen, for the round tile
 var _head: Label             # the panel's own title (hidden while railed)
 var _rail                    # RailPanel wrapper, for the title text
 
@@ -74,6 +134,40 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		var pid: int = int(p.get("index", 0))
 		var row := _build_row(p, seats, pid, pid == tp, tile_names)
 		_list.add_child(row)
+	_sync_stat(proj, players)
+
+
+## Update the statistics block. Everything here comes from the projection, so the panel
+## shows facts the host sent rather than anything it guessed.
+func _sync_stat(proj: Dictionary, players: Array) -> void:
+	if _stat_values.is_empty():
+		return
+	var owned := 0
+	var total := 0
+	for t in proj.get("board", []):
+		total += 1
+		if int(t.get("owner", -1)) >= 0:
+			owned += 1
+	var pot: int = int(proj.get("parking_pot", 0))
+	var round_no: int = int(proj.get("round", 0))
+	if round_no == 0:
+		# the projection may not carry a turn counter: count events instead of inventing one
+		round_no = _rendered_round
+	_set_stat("round", str(round_no) if round_no > 0 else "—")
+	_set_stat("pot", _money().amount(pot) if pot > 0 else "—")
+	_set_stat("tiles", "%d/%d" % [owned, total] if total > 0 else "—")
+	if _own_bar != null:
+		_own_bar.value = (100.0 * float(owned) / float(total)) if total > 0 else 0.0
+
+
+## Money as the player reads it. MoneyFmt owns the format; this only builds one.
+func _money():
+	return MoneyFmt.new()
+
+
+func _set_stat(key: String, text: String) -> void:
+	if _stat_values.has(key) and _stat_values[key] != null:
+		(_stat_values[key] as Label).text = text
 
 ## Observer follow: which pid is currently highlighted (visual feedback on rows).
 var _follow_pid := -1

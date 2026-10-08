@@ -28,8 +28,8 @@ const ToastStack := preload("res://ui/toast.gd")
 const JournalPanel := preload("res://ui/journal_panel.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
-const _TOP_H := 34
-const _ACTION_H := 64
+const _TOP_H := 46   # body grid in the mockup: 46px header
+const _ACTION_H := 72   # body grid in the mockup: 72px control bar
 const _MIN_PANEL_W := 150
 const _MIN_JOURNAL_W := 180
 const _OBSERVER_JOURNAL_W := 380   # spec §7: observer layout widens the journal

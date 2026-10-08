@@ -22,25 +22,37 @@ var _observer := false        # P4 §7: thin status bar, no buttons
 
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
+	# The mockup's bar is one ROW: buttons at 46px (`#act button`), the primary at 50px with
+	# 26px of padding (`#act button.pri`), and a 72px band overall. Ours stacked a status line
+	# and a hint above a 40px row, which is why it read as a form rather than a control bar.
 	var outer := MarginContainer.new()
-	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		outer.add_theme_constant_override(edge, 10)
+	outer.add_theme_constant_override("margin_left", 14)
+	outer.add_theme_constant_override("margin_right", 14)
+	outer.add_theme_constant_override("margin_top", 0)
+	outer.add_theme_constant_override("margin_bottom", 0)
 	add_child(outer)
-	_v = UiTheme.vbox(6)
-	outer.add_child(_v)
 
-	# status line (which seat + phase hint)
-	_status = UiTheme.label("", 13, UiTheme.COL().text_dim)
-	_v.add_child(_status)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	outer.add_child(row)
 
-	# button row
+	# button row: the buttons come first, as in the mockup
 	_btn_row = HBoxContainer.new()
-	_btn_row.add_theme_constant_override("separation", 8)
-	_btn_row.custom_minimum_size.y = 40
-	_v.add_child(_btn_row)
+	_btn_row.add_theme_constant_override("separation", 10)
+	_btn_row.custom_minimum_size.y = 46   # `#act button`
+	row.add_child(_btn_row)
 
-	_hint = UiTheme.label("", 12, UiTheme.COL().text_dim)
-	_v.add_child(_hint)
+	# status line (which seat + phase hint) sits to the RIGHT of the controls
+	_status = UiTheme.label("", 12, UiTheme.COL().text_dim)
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(_status)
+
+	_v = UiTheme.vbox(6)
+	_hint = UiTheme.label("", 11, UiTheme.COL().text_dim)
+	_hint.visible = false   # the mockup's hint lives in the status area, not on its own line
 
 var _v: VBoxContainer
 
@@ -58,7 +70,7 @@ func set_cold(v: bool) -> void:
 		_status.text = I18n.t("act.cold_status")
 		_hint.text = ""
 		var start := UiTheme.button_accent(I18n.t("act.start_btn"), I18n.t("act.start_tip"))
-		start.custom_minimum_size.y = 40
+		start.custom_minimum_size.y = 50   # `#act button.pri`
 		start.connect("pressed", Callable(self, "_on_start"))
 		_btn_row.add_child(start)
 	else:
@@ -128,24 +140,62 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 	var drv: String = str(seat.input_driver if seat != null else "AI")
 	_status.text = I18n.t("act.human_status", [nm])
 
-	# only rebuild buttons when the legal set actually changed (avoids hover lag)
-	if _legal_changed(legal):
-		_clear_buttons()
-		for act in legal:
-			# risk-table fix: legal_actions always lists respond_trade on a
-			# TURN_START — show the button only when a trade is really pending
-			# for ANY recipient (a LOCAL player may be asked to respond during
-			# another player's turn).
-			if act == "respond_trade" and str(proj.get("pending", {}).get("type", "")) != "trade":
-				continue
-			var btn = _make_button(act, proj, pid)
-			if btn != null:
-				btn.connect("pressed", Callable(self, "_on_pressed").bind(act))
-				_btn_row.add_child(btn)
-		_last_legal = legal.duplicate()
+	# THE BAR ALWAYS SHOWS EVERY CONTROL, greyed out when it does not apply.
+	#
+	# The mockup never hides a button: it renders all eight and sets `disabled` on the ones
+	# the current state forbids (`B[0].disabled = !ok("roll")`). That is a different language
+	# from ours — we built only the legal actions, so at an AI seat the bar went completely
+	# empty and the whole strip read as broken. A control that is visibly THERE but unusable
+	# tells the player what the game is; a missing one tells them nothing.
+	_sync_buttons(pid, legal, human, proj)
 
 	# contextual hint
 	_hint.text = _context_hint(proj)
+
+
+## The mockup's control set, in its own order.
+const BAR_ACTIONS := [
+	"roll", "buy", "pass", "build_house", "sell_house", "mortgage_property",
+	"propose_trade", "end_turn",
+]
+
+## Rebuild the bar so every action is present, enabled only when legal.
+##
+## Rebuilt only when the ENABLED SET changes, so hovering does not flicker.
+func _sync_buttons(pid: int, legal: Array, human: bool, proj: Dictionary) -> void:
+	if _btn_row == null or _observer:
+		return
+	var enabled := {}
+	for a in legal:
+		enabled[str(a)] = true
+	# a trade response only makes sense while a trade is actually pending
+	if str(proj.get("pending", {}).get("type", "")) != "trade":
+		enabled.erase("respond_trade")
+
+	var want := BAR_ACTIONS.duplicate()
+	if enabled.has("respond_trade"):
+		want.insert(2, "respond_trade")
+
+	if not human:
+		# at an AI seat nothing is pressable, but the controls stay visible
+		enabled.clear()
+
+	var key := []
+	for a in want:
+		key.append(a if enabled.has(a) else "-")
+	if key == _last_legal and _btn_row.get_child_count() > 0:
+		return
+	_last_legal = key
+	_clear_buttons()
+
+	for act in want:
+		var live: bool = enabled.has(act)
+		var btn = _make_button(act, proj, pid, live)
+		if btn == null:
+			continue
+		if live:
+			btn.connect("pressed", Callable(self, "_on_pressed").bind(act))
+		_btn_row.add_child(btn)
 
 func _legal_changed(legal: Array) -> bool:
 	if legal.size() != _last_legal.size():
@@ -155,8 +205,20 @@ func _legal_changed(legal: Array) -> bool:
 			return true
 	return false
 
-func _make_button(act: String, proj: Dictionary, pid: int) -> Button:
+func _make_button(act: String, proj: Dictionary, pid: int, live: bool = true) -> Button:
+	var b := _button_for(act, proj, pid)
+	if b != null and not live:
+		# present but not pressable: the mockup sets `disabled`, it does not remove the
+		# control, so the player can see what exists and what is currently open to them
+		b.disabled = true
+		b.focus_mode = Control.FOCUS_NONE
+	return b
+
+
+func _button_for(act: String, proj: Dictionary, pid: int) -> Button:
 	match act:
+		"end_turn":
+			return UiTheme.button(I18n.t("act.end_turn"), I18n.t("act.end_turn_tip"))
 		"roll":
 			return UiTheme.button_accent(I18n.t("act.roll"), I18n.t("act.roll_tip"))
 		"buy":

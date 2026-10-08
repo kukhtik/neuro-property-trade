@@ -141,6 +141,12 @@ static func button(text: String, tooltip: String = "") -> Button:
 		b.tooltip_text = tooltip
 		_style_tooltip(b)
 	b.add_theme_font_size_override("font_size", s.size("m", 14))
+	# the mockup's control bar: `#act button` is 46px tall with 20px of side padding, and the
+	# primary is 50px with 26px. These are the numbers that make the bar feel like a control
+	# panel rather than a stack of small form buttons.
+	b.custom_minimum_size.y = 46
+	b.add_theme_constant_override("padding_left", 20)
+	b.add_theme_constant_override("padding_right", 20)
 	b.add_theme_color_override("font_color", s.color("text"))
 	var r: int = int(s.shape("radius", 0.0))
 	var w: int = int(s.shape("line", 1.0))
@@ -160,6 +166,9 @@ static func button_accent(text: String, tooltip: String = "") -> Button:
 	b.add_theme_stylebox_override("hover", box(s.color("accent2", s.color("accent")), s.color("accent"), int(s.shape("line_active", 2.0)), r))
 	b.add_theme_stylebox_override("pressed", box(s.color("accent"), s.color("accent"), int(s.shape("line_active", 2.0)), r))
 	b.add_theme_color_override("font_color", s.color("on_accent"))
+	b.custom_minimum_size.y = 50   # the mockup's primary: `#act button.pri`
+	b.add_theme_constant_override("padding_left", 26)
+	b.add_theme_constant_override("padding_right", 26)
 	return b
 
 
