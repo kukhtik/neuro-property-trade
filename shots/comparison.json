@@ -1,0 +1,13 @@
+{
+  "theme": "neuro",
+  "mockup_widths": {
+    "L": 272,
+    "R": 330
+  },
+  "frame_panels": [
+    239,
+    290
+  ],
+  "palette_matched": 11,
+  "failures": []
+}

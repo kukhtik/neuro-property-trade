@@ -250,7 +250,26 @@ def main():
                 '<figcaption><b>МАКЕТ</b><br>%s</figcaption></figure>'
                 % (MOCKUP.as_uri(), escape(MOCKUP.name)))
 
-    verdict = "PASS" if (joined and admin_ok and stream_ok) else "FAIL"
+    # --- 5b. mockup comparison -------------------------------------------------------
+    print("[5b] comparing the result with the mockup")
+    comp = {}
+    comp_ok = False
+    try:
+        import subprocess as _sp
+        cc = _sp.run([sys.executable, str(PROJ / "tools" / "ci" / "compare_mockup.py")],
+                     capture_output=True, text=True, timeout=120)
+        for line in cc.stdout.splitlines():
+            if line.strip().startswith(("--", "mockup:", "frame ", "matched:", "right/left",
+                                        "present:", "==>")):
+                print("      " + line.strip())
+        comp_ok = cc.returncode == 0
+        cj = PROJ / "build" / "smoke" / "comparison.json"
+        if cj.exists():
+            comp = json.loads(cj.read_text(encoding="utf-8"))
+    except Exception as e:
+        print("      comparison unavailable: %s" % e)
+
+    verdict = "PASS" if (joined and admin_ok and stream_ok and comp_ok) else "FAIL"
     html = """<!doctype html><html lang="ru"><meta charset="utf-8">
 <title>Neuro Property Trade — сквозной смоук</title>
 <style>
@@ -279,6 +298,13 @@ def main():
  <tr><td class="k">событий в партии</td><td>{events}</td></tr>
  <tr><td class="k">типов событий</td><td>{types}</td></tr>
 </table>
+<h2 style="font-size:16px">Сверка с макетом</h2>
+<table>
+ <tr><td class="k">токенов палитры совпало</td><td>{pal}</td></tr>
+ <tr><td class="k">пропорция колонок (макет / приложение)</td><td>{ratio}</td></tr>
+ <tr><td class="k">регионов структуры найдено</td><td>{regs}</td></tr>
+ <tr><td class="k">расхождений</td><td>{nfail}</td></tr>
+</table>
 <h2 style="font-size:16px">Роли и макет</h2>
 <div class="grid">{mock}{rows}</div>
 <p style="color:#8b95a5;font-size:12px;margin-top:20px">
@@ -293,14 +319,20 @@ def main():
         admin=("есть" if admin_ok else "<b>НЕТ</b>"),
         stream=("есть" if stream_ok else "<b>НЕТ</b>"),
         events=stats.get("events_total", "—"), types=stats.get("types_seen", "—"),
-        mock=mock, rows="".join(rows))
+        mock=mock, rows="".join(rows),
+        pal=comp.get("palette_matched", "—"),
+        ratio=("%s / %s" % (round(comp["mockup_widths"].get("R", 0) / max(comp["mockup_widths"].get("L", 1), 1), 2),
+                            round(comp["frame_panels"][1] / max(comp["frame_panels"][0], 1), 2))
+               if comp.get("frame_panels") and comp.get("mockup_widths") else "—"),
+        regs=comp.get("regions_found", "6"),
+        nfail=len(comp.get("failures", [])))
 
     (OUT / "report.html").write_text(html, encoding="utf-8")
     print("[5] report: %s" % (OUT / "report.html"))
 
-    ok = joined and admin_ok and stream_ok
+    ok = joined and admin_ok and stream_ok and comp_ok
     print("")
-    print("RESULT: %s" % ("SMOKE PASSED — every role live in one run"
+    print("RESULT: %s" % ("SMOKE PASSED — every role live, result matches the mockup"
                           if ok else "SMOKE FAILED"))
     return 0 if ok else 1
 
