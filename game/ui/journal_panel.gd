@@ -43,6 +43,12 @@ const EXPORT_PATH := "user://journal_export.jsonl"
 const MONEY_TYPES := ["purchase", "pay", "rent", "tax", "go_bonus",
 	"auction_win", "collect", "collect_from_all", "pay_each_player"]
 
+func _solid_tex(c: Color) -> ImageTexture:
+	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	img.fill(c)
+	return ImageTexture.create_from_image(img)
+
+
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var outer := MarginContainer.new()
@@ -108,6 +114,16 @@ func _init() -> void:
 	# the log itself: rich text, auto-scroll pinned to the newest line
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
+	# WITHOUT THIS the journal renders in Godot's own grey, which measures ~1.5:1 against
+	# the panel — a log nobody can read. The theme's colour must be set explicitly.
+	_log.add_theme_color_override("default_color", UiTheme.COL().text)
+	_log.add_theme_font_size_override("normal_font_size", UiTheme.skin().size("s", 12))
+	# the engine's OWN scrollbar draws in its default grey; give it the theme's colours
+	_log.add_theme_stylebox_override("scroll", UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
+	_log.add_theme_stylebox_override("scroll_focus", UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
+	_log.add_theme_icon_override("grabber", _solid_tex(UiTheme.COL().border))
+	_log.add_theme_icon_override("grabber_highlight", _solid_tex(UiTheme.COL().accent))
+	_log.add_theme_icon_override("grabber_pressed", _solid_tex(UiTheme.COL().accent))
 	_log.scroll_following = true
 	_log.selection_enabled = true
 	_log.context_menu_enabled = true
@@ -286,8 +302,11 @@ func _line_bbcode(e: Dictionary, names: Array) -> String:
 	var type_lbl: String = I18n.t("event_type." + t)
 	if type_lbl.begins_with("{event_type."):
 		type_lbl = t
-	return "[color=#%s]#%d[/color] [color=#8b95a5][%s][/color] %s\n" % [
-		col.to_html(false), idx, type_lbl, txt]
+	# the dim tag comes from the THEME: a colour baked into markup ignores the skin and
+	# survives every palette change (this one did, through the whole stage-8 audit)
+	var dim := UiTheme.COL().text_dim.to_html(false)
+	return "[color=#%s]#%d[/color] [color=#%s][%s][/color] %s\n" % [
+		col.to_html(false), idx, dim, type_lbl, txt]
 
 const EventMessagesScript := preload("res://visual/event_messages.gd")
 

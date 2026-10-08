@@ -252,16 +252,20 @@ func burst(tile_index: int, colour: Color, count: int = 12) -> void:
 var _bursts: Array = []
 
 
+## Advance the running effects. Compacts IN PLACE: building a new array every frame
+## (as this did) allocates once per frame for as long as any effect lasts — the exact
+## moment the game is busiest.
 func _process(delta: float) -> void:
 	if _bursts.is_empty():
 		set_process(false)
 		return
-	var alive: Array = []
-	for b in _bursts:
+	var i := _bursts.size() - 1
+	while i >= 0:
+		var b: Dictionary = _bursts[i]
 		b["t"] = float(b["t"]) + delta
-		if float(b["t"]) < float(b["life"]):
-			alive.append(b)
-	_bursts = alive
+		if float(b["t"]) >= float(b["life"]):
+			_bursts.remove_at(i)
+		i -= 1
 	queue_redraw()
 
 

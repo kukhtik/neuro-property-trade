@@ -616,18 +616,19 @@ func _refresh_events() -> void:
 	for i in range(start, entries.size()):
 		var e: Dictionary = entries[i]
 		var col: Color = _kind_color(str(e.get("type", "")))
-		_ev_feed.append_text("[color=#%s]#%d[/color] [color=#8b95a5][%s][/color] %s\n" % [
-			col.to_html(false), int(e.get("index", -1)), str(e.get("type", "?")),
-			EventMessages.describe(e)])
+		# the dim tag comes from the THEME, not from markup: a baked colour ignores the skin
+		_ev_feed.append_text("[color=#%s]#%d[/color] [color=#%s][%s][/color] %s\n" % [
+			col.to_html(false), int(e.get("index", -1)), UiTheme.COL().text_dim.to_html(false),
+			str(e.get("type", "?")), EventMessages.describe(e)])
 
 func _kind_color(t: String) -> Color:
 	match t:
 		"purchase", "auction_win", "go_bonus":
-			return Color("5cb85c")
+			return UiTheme.COL().money
 		"pay", "rent", "tax":
 			return Color("c9a84c")
 		"jail", "bankrupt":
-			return Color("d9534f")
+			return UiTheme.COL().danger
 		"admin_override":
 			return Color("9a86c9")
 		_:
@@ -639,9 +640,9 @@ func _log_admin(op: String, res: Dictionary) -> void:
 	var stamp := Time.get_time_string_from_system()
 	var ok: bool = bool(res.get("ok", false))
 	var reason: String = str(res.get("reason", ""))
-	var col: String = "5cb85c" if ok else "d9534f"
-	var line := "[color=#8b95a5]%s[/color] [color=#%s]%s → %s[/color]" % [
-		stamp, col, op, "ok" if ok else reason]
+	var col: String = UiTheme.COL().money.to_html(false) if ok else UiTheme.COL().danger.to_html(false)
+	var line := "[color=#%s]%s[/color] [color=#%s]%s → %s[/color]" % [
+		UiTheme.COL().text_dim.to_html(false), stamp, col, op, "ok" if ok else reason]
 	_admin_log_lines.append(line)
 	if _admin_log_lines.size() > 60:
 		_admin_log_lines = _admin_log_lines.slice(_admin_log_lines.size() - 60)

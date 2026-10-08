@@ -23,6 +23,9 @@ var pid := -1
 var _peer: WebSocketPeer
 var _open := false
 var _rx := 0
+## Print the first frames received. Off by default: a console log is a debugging aid,
+## not something a player should pay for.
+var verbose := false
 var _hello_sent := false
 var _seq := 0
 ## The last state the host pushed. A client's only source of truth.
@@ -99,9 +102,10 @@ func _handle(msg: Dictionary) -> void:
 		"projection":
 			_projection = msg.get("data", {})
 			_rx += 1
-			# a client that receives nothing looks identical to one that is broken, so
-			# the first few frames are announced; after that it stays quiet
-			if _rx <= 3:
+			# A client that receives nothing looks identical to one that is broken, so
+			# the first frames CAN be announced — but only when asked for, never in a
+			# shipped build.
+			if verbose and _rx <= 3:
 				print("PROJ #%d legal=%d" % [_rx, (_projection.get("legal", []) as Array).size()])
 			state_received.emit(_projection)
 		"verdict", "reject":

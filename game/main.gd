@@ -177,6 +177,7 @@ func _join_as_remote() -> void:
 	_remote_session.state_received.connect(_on_remote_state)
 	_remote_session.verdict_received.connect(_on_remote_verdict)
 	_remote_session.connection_lost.connect(_on_remote_lost)
+	_remote_session.verbose = _has_cli_flag("--verbose-join")
 	_remote_session.join(url, tok)
 
 

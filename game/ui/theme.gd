@@ -49,7 +49,7 @@ static func COL() -> Dictionary:
 		"accent_hover": s.color("accent2", s.color("accent")),
 		"accent_press": s.color("accent"),
 		"danger": s.color("danger"),
-		"success": s.color("money", Color("5cb85c")),
+		"success": s.color("money", Color("6fbf73")),
 		"gold": s.color("money"),
 		"jail": s.color("warn", Color("9a86c9")),
 	}

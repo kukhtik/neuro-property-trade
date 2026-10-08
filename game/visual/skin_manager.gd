@@ -32,7 +32,7 @@ const FALLBACK_COLORS := {
 	"surface.3": "#232a35",
 	"line": "#39404d", "text": "#e8edf3", "muted": "#8b95a5",
 	"accent": "#4fb3d9", "on_accent": "#0c1218", "accent2": "#5fc4ea",
-	"money": "#ffd34d", "danger": "#d9534f", "warn": "#e08a3c",
+	"money": "#ffd34d", "danger": "#e8615c", "warn": "#e08a3c",
 }
 const FALLBACK_SIZES := {"xs": 10, "s": 12, "m": 14, "l": 18, "xl": 28}
 const FALLBACK_SPACE := [4, 8, 12, 16, 24]
