@@ -112,6 +112,7 @@ func _build_nodes() -> void:
 	_bg = Chamfer.new()
 	_bg.set_skin(_skin)
 	_bg.fill_token = "surface.1"
+	_bg.fill_shade = _skin.proportion("tile_shade", 0.22)
 	_bg.border_token = "line"
 	_bg.cut = "none"
 	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -139,6 +140,9 @@ func _build_nodes() -> void:
 	_band = Chamfer.new()
 	_band.set_skin(_skin)
 	_band.fill_token = "surface.3"
+	# the mockup's band is `linear-gradient(180deg, lighter, base, darker)`: a flat stripe
+	# reads as a sticker, a graded one as a solid chip catching light
+	_band.fill_shade = _skin.proportion("band_shade", 0.5)
 	_band.border_token = "line"
 	_band.cut = "none"
 	_band.mouse_filter = Control.MOUSE_FILTER_IGNORE

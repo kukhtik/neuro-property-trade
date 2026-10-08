@@ -13,6 +13,7 @@ signal tile_clicked(index: int)
 signal tile_hovered(index: int)   # P4 §7: observer inspector on hover
 
 const BL := preload("res://visual/board_layout.gd")
+const SkinPaint := preload("res://visual/skin_paint.gd")
 const PI := preload("res://core/player_identity.gd")
 const TileView := preload("res://visual/tile_view.gd")
 const TokenPanel := preload("res://visual/token_panel.gd")
@@ -39,8 +40,15 @@ func build(tile_count: int, cell: int = 64, skin: SkinManager = null) -> Control
 	custom_minimum_size = Vector2(size, size)
 	set_size(Vector2(size, size))
 
-	var bkg = ColorRect.new()
-	bkg.color = _skin.color("board.bg3", Color("22303c"))
+	# The board's frame is not a flat fill. The mockup draws a diagonal blend of accent into
+	# the line colour and out through accent2, with a deep shadow under it and a halo around
+	# — that is what makes the board read as a lit object floating above the stage rather
+	# than a rectangle pasted onto it.
+	var bkg := TextureRect.new()
+	bkg.name = "Slot"
+	bkg.texture = SkinPaint.frame_texture(_skin, Vector2(size, size))
+	bkg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bkg.stretch_mode = TextureRect.STRETCH_SCALE
 	bkg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bkg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bkg)

@@ -81,20 +81,31 @@ def capture_role(role_flag, out_png, host_port, wait_s):
     """
     shots = PROJ / "game" / "tools" / "_role_capture.gd"
     shots.write_text('''extends Node
-## Saves one frame of the REAL launcher after it has drawn. Written by the smoke.
+## Saves one frame of the REAL launcher after it has drawn, WITH A MATCH RUNNING.
+##
+## The first version screenshot the launch screen — no match, no board data, empty panels —
+## and the result was then compared against a mockup drawn in-game. That comparison was
+## invalid: it measured an empty lobby against a working interface and could only conclude
+## the app was far behind. A role is only worth photographing once it has something to show.
 const MainScript := preload("res://main.gd")
 var _n := 0
 var _out := "user://role.png"
+var _launcher = null
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		var s := str(a)
 		if s.begins_with("--out="):
 			_out = s.substr(6)
-	add_child(MainScript.new())
+	_launcher = MainScript.new()
+	add_child(_launcher)
 
 func _process(_dt: float) -> void:
 	_n += 1
+	# let the launcher start an offline match of its own, so the frame has real state:
+	# players, money, tiles, a turn. `--autostart` is what a smoke of the UI needs.
+	if _n == 30 and _launcher != null and _launcher.has_method("_autostart"):
+		_launcher.call("_autostart")
 	if _n == %d:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png(_out)
@@ -111,7 +122,7 @@ func _process(_dt: float) -> void:
             "--rendering-driver", "opengl3", "res://tools/_role_capture.tscn"]
     # the role and the output path BOTH go after the bare `--`: that is the only part of
     # the command line Godot hands to the running script
-    user = [f"--out={out_png.as_posix()}"]
+    user = ["--autostart", "--smoke-drive", f"--out={out_png.as_posix()}"]
     if role_flag:
         user.insert(0, role_flag)
     args += ["--"] + user

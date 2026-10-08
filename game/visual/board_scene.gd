@@ -29,6 +29,7 @@ const EffectLayerScript := preload("res://visual/effect_layer.gd")
 const EventAdapterScript := preload("res://ui/core/event_adapter.gd")
 const EventPresenterScript := preload("res://ui/core/event_presenter.gd")
 const UiStoreScript := preload("res://ui/core/ui_store.gd")
+const SkinPaint := preload("res://visual/skin_paint.gd")
 
 const MIN_CELL := 24
 const MAX_CELL := 72
@@ -76,9 +77,16 @@ func setup(engine, settings, seats: Array = []) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_viewport_rect()
 
-	# background fills the whole scene
-	var bg = ColorRect.new()
-	bg.color = UiTheme.skin().color("board.bg2", Color("101820"))
+	# background fills the whole scene.
+	#
+	# The mockup does not paint the stage a flat colour: it lays a pool of accent light in
+	# one corner fading into the backdrop. A single fill is why our board looked pasted on
+	# rather than lit — palettes matched 11 of 11 tokens and still nothing about the LOOK did.
+	var bg := TextureRect.new()
+	bg.name = "Stage"
+	bg.texture = SkinPaint.stage_texture(UiTheme.skin(), Vector2(1440, 900))
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
@@ -204,8 +212,13 @@ func _resize_children() -> void:
 	_place_board_center()
 	# background covers our rect
 	for child in get_children():
-		if child is ColorRect and child != _board:   # our bg
-			var b := child as ColorRect
+		if child is TextureRect and child.name == "Stage":   # our stage backdrop
+			# `child as ColorRect` returned NULL here: the node is a TextureRect (it carries a
+			# gradient now), and a failed cast does not raise — it hands back null and the next
+			# line throws. Every autostart printed a SCRIPT ERROR and the backdrop never sized.
+			var b := child as TextureRect
+			if b == null:
+				continue
 			b.position = Vector2.ZERO
 			b.size = Vector2(w, h)
 			b.set_anchors_preset(Control.PRESET_FULL_RECT)

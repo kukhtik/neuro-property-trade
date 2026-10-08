@@ -10,6 +10,13 @@ extends Panel
 
 ## Skin token path for the fill, e.g. "surface.1" or "accent".
 var fill_token := "surface.1"
+
+## Shade the fill vertically, light at the top to dark at the bottom (0 = flat).
+##
+## The mockup's colour bands are `linear-gradient(180deg, lighter, base, darker)`: a solid
+## stripe reads as a flat sticker, a shaded one reads as a solid object catching light. The
+## component asks for a shade, the skin supplies the amount, nothing is hardcoded.
+var fill_shade := 0.0
 ## Skin token path for the border, e.g. "line" or "accent".
 var border_token := "line"
 ## Which corner is cut: "tl", "tr", "br", "bl" or "none".
@@ -37,6 +44,11 @@ func _skin_or_default() -> SkinManager:
 	return _skin
 
 
+## Mix two colours. GDScript's lerp works on floats only.
+func _mixc(a: Color, b: Color, t: float) -> Color:
+	return Color(lerpf(a.r, b.r, t), lerpf(a.g, b.g, t), lerpf(a.b, b.b, t), a.a)
+
+
 func _draw() -> void:
 	var sk := _skin_or_default()
 	var s := size
@@ -47,7 +59,25 @@ func _draw() -> void:
 
 	var pts := _polygon(Vector2.ZERO, s, ch, cut)
 	var fill: Color = sk.color(fill_token, Color(0, 0, 0, 0))
-	draw_colored_polygon(pts, fill)
+
+	# A shaded fill is painted as horizontal bands inside the same polygon. The mockup
+	# grades its colour bands; a flat fill is why ours read as stickers rather than chips.
+	if fill_shade > 0.0 and s.y > 2.0:
+		var steps: int = clampi(int(s.y / 3.0), 2, 48)
+		var band_h: float = s.y / float(steps)
+		for i in range(steps):
+			# 0 at the top (lightest), 1 at the bottom (darkest)
+			var t := float(i) / float(steps - 1)
+			var shade := _mixc(fill, Color.WHITE, fill_shade * 0.5 * (1.0 - t * 2.0))
+			if t > 0.5:
+				shade = _mixc(fill, Color.BLACK, fill_shade * (t - 0.5) * 2.0)
+			var y0: float = band_h * float(i)
+			var band := PackedVector2Array([
+				Vector2(0, y0), Vector2(s.x, y0),
+				Vector2(s.x, y0 + band_h + 1.0), Vector2(0, y0 + band_h + 1.0)])
+			draw_colored_polygon(band, shade)
+	else:
+		draw_colored_polygon(pts, fill)
 
 	var w := int(sk.shape("line", 1.0)) + border_bonus
 	if w > 0:

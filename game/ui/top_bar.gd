@@ -5,6 +5,7 @@ extends PanelContainer
 ## projection dict. Shape-only for future art swap.
 
 const UiTheme := preload("res://ui/theme.gd")
+const SkinPaint := preload("res://visual/skin_paint.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const TimerRing := preload("res://ui/timer_ring.gd")
 
@@ -38,8 +39,26 @@ func _timer_tick() -> void:
 	if _sfx != null and _sfx.has_method("play_timer_tick"):
 		_sfx.play_timer_tick()
 
+var _underline: TextureRect
+
+
 func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
+	# the mockup sweeps an animated accent gradient along the header's bottom edge
+	# (`#top::after`): it is the one moving thing on a still screen, and its absence is part
+	# of why our header read as a plain bar
+	_underline = TextureRect.new()
+	_underline.name = "Sweep"
+	_underline.texture = SkinPaint.sweep_texture(UiTheme.skin(), 300)
+	_underline.stretch_mode = TextureRect.STRETCH_TILE
+	_underline.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_underline.custom_minimum_size = Vector2(0, 2)
+	_underline.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_underline.offset_top = -2
+	_underline.offset_bottom = 0
+	add_child(_underline)
+
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)
 	var m := MarginContainer.new()
