@@ -353,7 +353,7 @@ func _build_layout() -> void:
 	_top = TopBar.new()
 	_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_top.anchor_right = 1.0
-	_top.offset_bottom = 34
+	_top.offset_bottom = _TOP_H
 	add_child(_top)
 
 	# CENTER ROW: players | board | journal — a single HBox so the three panels
@@ -361,7 +361,7 @@ func _build_layout() -> void:
 	_center = HBoxContainer.new()
 	_center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_center.anchor_top = 0.0
-	_center.offset_top = 34
+	_center.offset_top = _TOP_H
 	_center.offset_bottom = -_ACTION_H
 	_center.add_theme_constant_override("separation", 8)
 	add_child(_center)

@@ -28,8 +28,8 @@ const RAIL_RIGHT_BELOW := 1180
 const RAIL_WIDTH := 46
 
 ## Panel widths per profile (spec §5.1).
-const LEFT_W := {WIDE: 272, DESKTOP: 240, COMPACT: 240}
-const RIGHT_W := {WIDE: 340, DESKTOP: 300, COMPACT: 300}
+const LEFT_W := {WIDE: 272, DESKTOP: 272, COMPACT: 240}
+const RIGHT_W := {WIDE: 340, DESKTOP: 330, COMPACT: 300}
 
 var id := DESKTOP
 var screen := Vector2i(1440, 900)

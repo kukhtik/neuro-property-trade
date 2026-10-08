@@ -106,6 +106,12 @@ func _process(_dt: float) -> void:
 	# players, money, tiles, a turn. `--autostart` is what a smoke of the UI needs.
 	if _n == 30 and _launcher != null and _launcher.has_method("_autostart"):
 		_launcher.call("_autostart")
+	if _n == 60 and _launcher != null:
+		var gv = _launcher.get("_game_view")
+		if gv != null:
+			print("WIDTHS viewport=%s gvsize=%s panel_w=%d journal_w=%d observer=%s" %% [
+				get_viewport().get_visible_rect().size, gv.size,
+				gv.call("_panel_w"), gv.call("_journal_w"), gv.get("_observer")])
 	if _n == %d:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png(_out)
