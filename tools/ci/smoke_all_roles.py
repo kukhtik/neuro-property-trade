@@ -327,6 +327,22 @@ def main():
         regs=comp.get("regions_found", "6"),
         nfail=len(comp.get("failures", [])))
 
+    # the picture to look at: mockup and result at the same size, side by side
+    side = ""
+    try:
+        sc = subprocess.run([sys.executable, str(PROJ / "tools" / "ci" / "side_by_side.py"), "neuro"],
+                            capture_output=True, text=True, timeout=180)
+        if sc.returncode == 0 and (OUT / "side_by_side.png").exists():
+            side = ('<figure style="grid-column:1/-1"><img src="side_by_side.png" alt="side by side">'
+                    '<figcaption><b>МАКЕТ (слева) и ПРИЛОЖЕНИЕ (справа)</b><br>'
+                    'оба 1440x900, тема neuro. Это для глаза: порога «похоже» не существует, '
+                    'разные рендереры и шрифты.</figcaption></figure>')
+            print("      side-by-side written")
+    except Exception as e:
+        print("      side-by-side unavailable: %s" % e)
+
+    html = html.replace('<div class="grid">{mock}{rows}</div>',
+                        '<div class="grid">%s{mock}{rows}</div>' % side)
     (OUT / "report.html").write_text(html, encoding="utf-8")
     print("[5] report: %s" % (OUT / "report.html"))
 

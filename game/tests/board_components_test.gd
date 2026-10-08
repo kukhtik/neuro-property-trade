@@ -20,7 +20,8 @@ static func test_list() -> Array[String]:
 		"test_tile_degradation_steps", "test_tile_owner_from_skin_palette",
 		"test_strip_counts", "test_strip_no_art_fallback_ok",
 		"test_center_sheds_in_order", "test_center_dice_pips",
-		"test_effect_layer_snaps_when_off", "test_effect_layer_positions_from_layout"]
+		"test_effect_layer_snaps_when_off", "test_effect_layer_positions_from_layout",
+		"test_float_labels_are_pooled", "test_float_pool_is_bounded"]
 
 ## Controls are instantiated standalone (no SceneTree needed): they only need
 ## a parent for `queue_free`, and `free()` works without one.
@@ -235,6 +236,62 @@ static func test_effect_layer_positions_from_layout() -> String:
 		return "effect layer should use BoardLayout centres (want %s, got %s)" % [centre, got]
 	if el._tile_centre(999) != Vector2.INF:
 		return "an unknown tile should report Vector2.INF"
+	el.free()
+	return ""
+
+
+## The float labels must be REUSED, not rebuilt per event.
+##
+## Money events are the most frequent thing in a match: this used to build a Label and a
+## Tween for each one and free both, so the engine allocated most exactly when the game was
+## busiest. Counting what actually gets created is the only way to know a pool works — a
+## pool that quietly builds a new node each time behaves identically to no pool at all.
+static func test_float_labels_are_pooled() -> String:
+	var el = EffectLayer.new()
+	el.setup(_skin(), true)
+	var tiles := BL.compute(40, 800.0, 1.4, 2.0)
+	el.set_layout(tiles, 64.0)
+	var at: Vector2 = BL.tile_center(tiles, 3)
+
+	# ten floats, all released back before the next is asked for
+	for i in range(10):
+		el.float_at(at, "+$%d" % (i + 1), true)
+		el._give_label(el._label_pool[0]["node"])
+	if el._label_pool.size() != 1:
+		el.free()
+		return "one label should serve every float (pool holds %d)" % el._label_pool.size()
+
+	# a label handed back must stop being busy, or the pool never reissues it
+	el.float_at(at, "+$1", true)
+	var busy := 0
+	for entry in el._label_pool:
+		if entry["busy"]:
+			busy += 1
+	if busy != 1:
+		el.free()
+		return "exactly one label should be busy, got %d" % busy
+	el._give_label(el._label_pool[0]["node"])
+	if el._label_pool[0]["busy"]:
+		el.free()
+		return "a returned label must be free again"
+	el.free()
+	return ""
+
+
+## The pool must be BOUNDED: one that grows without limit is only a slower leak.
+static func test_float_pool_is_bounded() -> String:
+	var el = EffectLayer.new()
+	el.setup(_skin(), true)
+	var tiles := BL.compute(40, 800.0, 1.4, 2.0)
+	el.set_layout(tiles, 64.0)
+	var at: Vector2 = BL.tile_center(tiles, 5)
+	# never return anything, so the pool is forced to grow
+	for i in range(EffectLayer.POOL_MAX + 20):
+		el.float_at(at, "+$1", true)
+	if el._label_pool.size() > EffectLayer.POOL_MAX:
+		var n: int = el._label_pool.size()
+		el.free()
+		return "the pool exceeded its cap: %d > %d" % [n, EffectLayer.POOL_MAX]
 	el.free()
 	return ""
 
