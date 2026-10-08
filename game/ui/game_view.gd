@@ -608,6 +608,13 @@ func _on_tile_hovered(idx: int) -> void:
 func _on_events_emitted(events: Array) -> void:
 	for ev in events:
 		_toast_stack.show_event_toast(ev)
+	# THE JOURNAL IS FED BY EVENTS, NOT BY STATE CHANGES.
+	#
+	# It was refreshed only from `_on_state_changed`, which fires when the state settles —
+	# so the log held exactly one entry (`setup`) while a whole match played out. A toast
+	# appeared and vanished; the written record of what happened never grew.
+	if not events.is_empty():
+		_refresh_journal()
 
 ## P2: mark the selected tile on the board with a dashed accent frame
 func _mark_selected_tile(idx: int) -> void:

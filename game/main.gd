@@ -310,17 +310,21 @@ func _build_game(settings, seats: Array) -> void:
 	if _manager.game_over.is_connected(_on_game_over):
 		_manager.game_over.disconnect(_on_game_over)
 	_manager.game_over.connect(_on_game_over)
+	# --smoke-drive: let the host play its own LOCAL seats so an automated run can get past
+	# turn one.
+	#
+	# THIS MUST NOT DEPEND ON `_server`. It used to sit inside `if _server != null`, so an
+	# offline autostart never enabled auto-play: the engine was built, the board was placed,
+	# and the match then sat at player 0 forever. Every screenshot of the offline app was of a
+	# game that had not started — which is why the board looked empty while its data was
+	# complete. Remote seats are still left to the wire unless proxy play is asked for.
+	if _has_cli_flag("--smoke-drive"):
+		_manager.set_autoplay_local(true)
+		_manager.set_proxy_remote(_cli_value("--proxy-remote=") == "1")
 	if _server != null:
 		# a remote player's progress has to be observable from its own process
 		if not _manager.state_changed.is_connected(_mirror_events):
 			_manager.state_changed.connect(_mirror_events)
-		# --smoke-drive: let the host play its own LOCAL seats so an automated run
-		# can get past turn one. REMOTE seats are left waiting for their player — a
-		# probe that TESTS the wire needs exactly that, or the host would answer
-		# before the client ever sees the question.
-		if _has_cli_flag("--smoke-drive"):
-			_manager.set_autoplay_local(true)
-			_manager.set_proxy_remote(_cli_value("--proxy-remote=") == "1")
 
 ## Bring up the network host when the match has a REMOTE seat (or when a port
 ## was forced for testing). Prints the connection line a browser/ smoke reads.
