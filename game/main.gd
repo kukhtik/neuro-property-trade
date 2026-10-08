@@ -190,6 +190,9 @@ func _on_remote_joined(pid: int) -> void:
 ## the whole job of a client: the host decides, the player only chooses from what it is
 ## offered.
 func _on_remote_state(proj: Dictionary) -> void:
+	# paint first: this client has no engine, so the wire is its only source of truth
+	if _game_view != null and _game_view.has_method("apply_projection"):
+		_game_view.apply_projection(proj)
 	var legal: Array = proj.get("legal", [])
 	if legal.is_empty():
 		return

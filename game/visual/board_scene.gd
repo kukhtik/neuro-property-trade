@@ -339,6 +339,23 @@ func _resync_store() -> void:
 	_store.resync(ProjectionScript.new().for_spectator(_engine))
 	_paint(false)
 
+## Paint from a projection that came over the WIRE (a networked client has no engine of
+## its own). This is the counterpart of `_resync_store`, which can only read a LOCAL
+## engine: without it a joining browser played correctly and showed nothing.
+func apply_projection(proj: Dictionary) -> void:
+	if _store == null:
+		return
+	if _tile_count != int(proj.get("tile_count", _tile_count)) and proj.has("tile_count"):
+		_tile_count = int(proj["tile_count"])
+		_rebuild_board()
+	_store.resync(proj)
+	_paint(false, proj)
+	# the client's own seat is the one it may act for; the board needs it to highlight
+	# the right player and to know where the tokens are
+	if _board != null and is_instance_valid(_board):
+		_board.set_seats(_seats)
+
+
 ## Skip the animation queue and jump to the truth (spec 8.1: Space / click).
 func skip_all_animations() -> void:
 	if _presenter != null:
@@ -353,9 +370,15 @@ func set_animations(on: bool) -> void:
 	if _dice_stage != null:
 		_dice_stage.set_animations(on)
 
-func _paint(animate: bool) -> void:
-	if _engine == null: return
-	var proj := ProjectionScript.new().for_spectator(_engine)
+## Draw the truth. `wire` is the projection a networked client received from the host —
+## such a client has NO engine, so reading one is not an option and bailing out early (as
+## this did) left the board blank for a whole match.
+func _paint(animate: bool, wire: Dictionary = {}) -> void:
+	var proj: Dictionary = wire
+	if proj.is_empty():
+		if _engine == null:
+			return
+		proj = ProjectionScript.new().for_spectator(_engine)
 	_board.refresh_state(proj)
 	_board.refresh_tokens(proj.get("players", []))
 	if not animate:

@@ -214,6 +214,26 @@ func _on_locale_changed(_locale: String) -> void:
 		_refresh_journal()
 
 ## Called by main.gd after the engine is built and setup() ran.
+## A networked client has no engine: the host sends the truth. Forward it to the board
+## so the player SEES the match it is playing.
+##
+## The FIRST projection also means a match is running — a networked client never runs a
+## local start, so without this it stays on the launcher for the entire match, playing
+## correctly and showing nothing.
+func apply_projection(proj: Dictionary) -> void:
+	if _cold:
+		_cold = false
+		# hide the launcher overlay exactly as a local start does, then let the view
+		# sync itself to the match it is now part of
+		if _launcher != null and _launcher.get("_overlay") != null:
+			_launcher.get("_overlay").visible = false
+		on_game_started()
+	if _board_scene != null and _board_scene.has_method("apply_projection"):
+		_board_scene.apply_projection(proj)
+	if _actions != null and _actions.has_method("set_legal"):
+		_actions.set_legal(proj.get("legal", []))
+
+
 func on_game_started() -> void:
 	_sync_all()
 
