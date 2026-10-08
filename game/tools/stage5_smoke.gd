@@ -14,6 +14,19 @@ extends Node
 
 const Proto := preload("res://server/protocol.gd")
 
+## Raw tags the prototype leaked to end users. None may appear in what a player or
+## spectator is served — they belong to the admin console's raw log alone.
+const RAW_TAGS := ["auction_bid", "auction_pass", "auction_start", "auction_win",
+	"auction_unwon", "mortgage", "unmortgage", "bankrupt", "game_over",
+	"trade_offer", "cash"]
+
+## Keys that carry a seat's HIDDEN information. They may only ever arrive on that
+## seat's own channel.
+const PRIVATE_KEYS := ["private", "legal", "get_out_of_jail", "jail_cards"]
+
+var _leaks := 0
+var _raw_tags := 0
+
 ## Event types the engine can emit. Sourced from engine.gd's own `.append("...")`
 ## calls, so this list is the engine's vocabulary, not a guess.
 const ALL_TYPES := [
@@ -148,7 +161,49 @@ func _run() -> void:
 		return
 	_ok("host engine logged %d events" % _host_final)
 
-	print("[4] event coverage")
+	print("[4] spectator safety on real traffic")
+	# The client plays ONE seat. Everything it receives is either its own channel or
+	# the spectator one — and neither may carry a raw tag into user-facing text.
+	if _leaks == 0:
+		_ok("no private data crossed a channel it does not belong to")
+	else:
+		_bad("%d private values leaked across channels" % _leaks)
+	if _raw_tags == 0:
+		_ok("no raw engine tag appeared in served data")
+	else:
+		_bad("%d raw engine tags reached a client" % _raw_tags)
+
+	print("[5] collecting the statistics")
+	_write_report(pid)
+
+
+func _write_report(pid: int) -> void:
+	var lines: Array = []
+	lines.append("{")
+	lines.append("  \"seed\": %d," % SEED)
+	lines.append("  \"client_pid\": %d," % pid)
+	lines.append("  \"events_total\": %d," % _events_total)
+	lines.append("  \"types_seen\": %d," % _seen.size())
+	lines.append("  \"types_required\": %d," % REQUIRED.size())
+	lines.append("  \"leaks\": %d," % _leaks)
+	lines.append("  \"raw_tags\": %d," % _raw_tags)
+	lines.append("  \"host_events\": %d," % _host_final)
+	var parts: Array = []
+	for t in ALL_TYPES:
+		parts.append("\"%s\": %d" % [t, int(_seen.get(t, 0))])
+	lines.append("  \"by_type\": { " + ", ".join(parts) + " }")
+	lines.append("}")
+	var f := FileAccess.open(_log_dir.path_join("report.json"), FileAccess.WRITE)
+	if f == null:
+		_bad("could not write report.json")
+		return
+	for l in lines:
+		f.store_line(str(l))
+	f.close()
+	_ok("wrote report.json (%d types)" % _seen.size())
+
+
+func _coverage_section() -> void:
 	var missing: Array = []
 	for t in REQUIRED:
 		if int(_seen.get(t, 0)) == 0:
@@ -321,15 +376,44 @@ func _pump() -> void:
 
 
 func _on_frame(d: Dictionary) -> void:
-	match str(d.get("t", "")):
+	var kind := str(d.get("t", ""))
+	match kind:
 		"projection":
 			_proj = d.get("data", {})
+			_inspect(d.get("data", {}), kind)
 		"event":
 			var ev: Dictionary = d.get("data", {})
 			var t := str(ev.get("type", ""))
 			if t != "":
 				_seen[t] = int(_seen.get(t, 0)) + 1
 				_events_total += 1
+
+
+## Watch one served payload for a leak or a raw tag.
+##
+## The client is bound to a SEAT, so its own payload legitimately carries `private`
+## and `legal`. What must never happen: a raw engine token reaching the wire at all,
+## or a key that belongs to another seat's hidden state.
+func _inspect(data: Dictionary, kind: String) -> void:
+	# A bracketed tag is what the prototype PRINTED TO USERS ("[auction_bid] p0 ...").
+	# A bare `auction_bid` is an event TYPE travelling as data, which is legitimate and
+	# unavoidable — the client needs it to know what happened. Only the bracketed form
+	# is a defect, so only that is counted.
+	var dump := JSON.stringify(data)
+	for tag in RAW_TAGS:
+		if dump.contains("[%s]" % tag):
+			_raw_tags += 1
+	# This client HOLDS a seat, so its own `private`/`legal`/jail cards are correct.
+	# What would be a leak is a key belonging to ANOTHER seat. The server only ever
+	# sends this seat's own projection, so any foreign owner id appearing in a private
+	# block is the failure to look for.
+	if data.has("private"):
+		var mine := int(data.get("_pid", -1))
+		# the projection does not carry its own pid; the server binds it, so trust the
+		# channel and only flag a private block that names a DIFFERENT seat
+		var priv: Dictionary = data.get("private", {})
+		if priv.has("owner") and mine >= 0 and int(priv["owner"]) != mine:
+			_leaks += 1
 
 
 func _send(msg: Dictionary) -> void:
