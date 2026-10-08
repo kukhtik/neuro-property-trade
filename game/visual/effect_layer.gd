@@ -21,6 +21,7 @@ extends Control
 const SkinManager := preload("res://visual/skin_manager.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
+const SkinPaint := preload("res://visual/skin_paint.gd")
 
 var skin: SkinManager
 var animations := true
@@ -49,11 +50,21 @@ func set_layout(tiles: Array, cell: float) -> void:
 	_cell = cell
 	# reposition without animation — a resize must not look like a move
 	for pid in _tokens:
-		var t := _token_pos(int(pid), _player_pos.get(int(pid), 0))
-		(_tokens[pid] as Control).position = t
+		_place_token(int(pid), _token_pos(int(pid), _player_pos.get(int(pid), 0)))
 	queue_redraw()
 
 var _player_pos := {}   # pid -> tile index (for repositioning)
+
+
+## Put a token at a position and keep its shadow with it.
+func _place_token(pid: int, at: Vector2) -> void:
+	if _tokens.has(pid):
+		(_tokens[pid] as Control).position = at
+	var sh = _shadows.get(pid)
+	if sh != null and is_instance_valid(sh):
+		var d: float = _token_size()
+		(sh as Control).position = at + Vector2(0, d * 0.88)
+		(sh as Control).size = Vector2(d, maxf(3.0, d * 0.22))
 
 
 ## Create/refresh one token per player.
@@ -94,6 +105,15 @@ func _make_token(pid: int) -> Control:
 
 	# a skin slot texture when the artist shipped one; otherwise a chamfer chip
 	var slot_tex: Texture2D = skin.texture("token.shadow")   # presence probe only
+	# the halo, behind everything: `0 0 14px var(--c)` in the mockup
+	var col: Color = _token_colors.get(pid, skin.color("accent"))
+	var halo := SkinPaint.token_halo(col, d)
+	halo.name = "Halo"
+	var pad := int(maxf(4.0, d * 0.16))
+	halo.offset_left = -pad; halo.offset_top = -pad
+	halo.offset_right = pad; halo.offset_bottom = pad
+	holder.add_child(halo)
+
 	var body := Chamfer.new()
 	body.set_skin(skin)
 	body.fill_token = "accent"
@@ -115,6 +135,16 @@ func _make_token(pid: int) -> Control:
 	body.add_child(lbl)
 
 	add_child(holder)
+
+	# the mockup blurs a dark ellipse under each piece; without it a token floats
+	var sh := SkinPaint.token_shadow(skin, d)
+	sh.name = "Shadow %d" % pid
+	sh.set_meta("owner", pid)
+	sh.position = holder.position + Vector2(0, d * 0.92)
+	sh.size = Vector2(d, maxf(3.0, d * 0.22))
+	add_child(sh)
+	_shadows[pid] = sh
+	holder.set_meta("shadow", sh)
 	return holder
 
 
@@ -173,7 +203,7 @@ func move_player(pid: int, path: Array, snap: bool = false) -> void:
 	var last: int = int(path[path.size() - 1])
 	if not animations or snap or _moving.get(pid, false):
 		_player_pos[pid] = last
-		(_tokens[pid] as Control).position = _token_pos(pid, last)
+		_place_token(pid, _token_pos(pid, last))
 		return
 	_moving[pid] = true
 	var holder: Control = _tokens[pid]
@@ -182,7 +212,13 @@ func move_player(pid: int, path: Array, snap: bool = false) -> void:
 	for idx in path:
 		_player_pos[pid] = int(idx)
 		var t := create_tween()
-		t.tween_property(holder, "position", _token_pos(pid, int(idx)), step)
+		var target := _token_pos(pid, int(idx))
+		t.tween_property(holder, "position", target, step)
+		# the shadow travels with it — a shadow left behind reads as a second piece
+		var sh = _shadows.get(pid)
+		if sh != null and is_instance_valid(sh):
+			t.parallel().tween_property(sh, "position",
+				target + Vector2(0, _token_size() * 0.88), step)
 		# a small hop on each step, proportional to the token size
 		var up: Vector2 = Vector2(0, -_token_size() * 0.25)
 		t.parallel().tween_property(holder, "modulate", Color(1.2, 1.2, 1.2), step * 0.5)
@@ -300,6 +336,7 @@ var _bursts: Array = []
 ## slower leak.
 const POOL_MAX := 48
 var _label_pool: Array = []
+var _shadows := {}          # pid -> the shadow node that follows its token
 var _tween_pool: Array = []
 
 

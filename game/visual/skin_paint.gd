@@ -236,3 +236,55 @@ static func _overlay_hatch(skin: SkinManager, base: Texture2D, col: Color, on: i
 				px = mix(px, col, col.a)
 			img.set_pixel(x, y, Color(px.r, px.g, px.b, 1.0))
 	return ImageTexture.create_from_image(img)
+
+
+## The token that stands on a tile, with its shadow.
+##
+## The mockup gives a token three things: a pentagon (`.tok b` clip-path), a halo in the
+## player's colour (`0 0 14px var(--c)`), and a soft shadow underneath (`::after` blurred).
+## We had the pentagon shape and nothing else, so the pieces read as flat stickers that never
+## looked like they were standing on the board.
+static func token_shadow(skin: SkinManager, size: float) -> Control:
+	var c := Control.new()
+	c.name = "TokenShadow"
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.custom_minimum_size = Vector2(size, size * 0.22)
+	var img := Image.create(32, 8, false, Image.FORMAT_RGBA8)
+	# a soft ellipse, dark in the middle and fading at the rim
+	for y in range(8):
+		for x in range(32):
+			var u := (float(x) / 31.0 - 0.5) * 2.0
+			var v := (float(y) / 7.0 - 0.5) * 2.0
+			var r := sqrt(u * u + v * v)
+			var a := clampf(1.0 - r, 0.0, 1.0)
+			img.set_pixel(x, y, Color(0, 0, 0, a * 0.55))
+	var tr := TextureRect.new()
+	tr.texture = ImageTexture.create_from_image(img)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.add_child(tr)
+	return c
+
+
+## The halo behind a token: transparent at the centre, the colour at the rim. Godot has no
+## box-shadow, so the glow is its own texture.
+static func token_halo(colour: Color, size: float) -> TextureRect:
+	var n := 32
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var c := float(n) / 2.0 - 0.5
+	for y in range(n):
+		for x in range(n):
+			var d := Vector2(float(x) - c, float(y) - c).length() / c
+			# bright at the edge, nothing in the middle: a ring of light, not a blob
+			var a := clampf(1.0 - absf(d - 0.82) / 0.35, 0.0, 1.0)
+			img.set_pixel(x, y, Color(colour.r, colour.g, colour.b, a * 0.55))
+	var tr := TextureRect.new()
+	tr.name = "TokenHalo"
+	tr.texture = ImageTexture.create_from_image(img)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tr
