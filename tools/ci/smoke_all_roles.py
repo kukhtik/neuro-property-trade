@@ -327,7 +327,10 @@ def main():
         regs=comp.get("regions_found", "6"),
         nfail=len(comp.get("failures", [])))
 
-    # the picture to look at: mockup and result at the same size, side by side
+    # the picture to look at: mockup and result at the same size, side by side.
+    # NOTE: this must run BEFORE the report is written. The first version patched `html`
+    # after write_text had already saved it, so the replacement went nowhere and the report
+    # silently shipped without the image.
     side = ""
     try:
         sc = subprocess.run([sys.executable, str(PROJ / "tools" / "ci" / "side_by_side.py"), "neuro"],
@@ -338,11 +341,13 @@ def main():
                     'оба 1440x900, тема neuro. Это для глаза: порога «похоже» не существует, '
                     'разные рендереры и шрифты.</figcaption></figure>')
             print("      side-by-side written")
+        else:
+            print("      side-by-side failed: %s" % (sc.stderr or "")[-200:])
     except Exception as e:
         print("      side-by-side unavailable: %s" % e)
 
-    html = html.replace('<div class="grid">{mock}{rows}</div>',
-                        '<div class="grid">%s{mock}{rows}</div>' % side)
+    if side:
+        html = html.replace('<div class="grid">', '<div class="grid">' + side, 1)
     (OUT / "report.html").write_text(html, encoding="utf-8")
     print("[5] report: %s" % (OUT / "report.html"))
 
