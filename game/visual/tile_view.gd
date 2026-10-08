@@ -361,7 +361,15 @@ func refresh(entry: Dictionary) -> void:
 	if _bg != null:
 		var group: Color = _skin.tile_color(entry)
 		var kind := _face_kind(_type, entry)
-		_bg.fill_texture = SkinPaint.tile_face(_skin, kind, group, size)
+		# `size` is still zero on the first refresh — the container has not laid the tile out
+		# yet — so the texture was built at 0x0 and never appeared. `custom_minimum_size` is
+		# set at build time and is always correct here.
+		var face_size := size
+		if face_size.x <= 1.0 or face_size.y <= 1.0:
+			face_size = custom_minimum_size
+		if face_size.x <= 1.0 or face_size.y <= 1.0:
+			face_size = Vector2(_cell, _cell)
+		_bg.fill_texture = SkinPaint.tile_face(_skin, kind, group, face_size)
 		_bg.fill_shade = 0.0   # the texture carries the shading now
 		_bg.queue_redraw()
 
