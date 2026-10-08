@@ -300,7 +300,11 @@ func refresh(entry: Dictionary) -> void:
 		_price.text = _money().amount(cost) if cost > 0 else ""
 		_show_icon("type_icons." + _type)
 	# degradation: step >= 1 hides the price, step >= 2 hides the icon
-	_price.visible = _step == 0 and _price.text != ""
+	# The price is the most important number on a tile and the mockup shows it at almost any
+	# size. It was gated at `_step == 0` (cell >= 78px), so a perfectly normal 66px tile
+	# showed a name and NO price — the board looked empty of information while being full of
+	# it. It now survives to step 2, alongside the name.
+	_price.visible = _step <= 2 and _price.text != ""
 	if _step >= 2:
 		_icon.visible = false
 
