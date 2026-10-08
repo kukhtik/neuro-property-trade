@@ -34,3 +34,5 @@ game/corpus/
 
 # Web/desktop export output
 build/web/
+game/tools/_args_probe.*
+game/tools/_role_capture.*
