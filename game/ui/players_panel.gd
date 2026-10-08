@@ -8,6 +8,8 @@ extends PanelContainer
 ## and dimmed. Reads the spectator projection + the seat list. Shape-only.
 
 const UiTheme := preload("res://ui/theme.gd")
+const SkinPaint := preload("res://visual/skin_paint.gd")
+const Chamfer := preload("res://ui/components/chamfer_panel.gd")
 const PI := preload("res://core/player_identity.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
@@ -107,13 +109,50 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 		if int(s.pid) == pid and bool(s.away):
 			away = true
 
-	var out := PanelContainer.new()
-	var bord: Color = UiTheme.COL().border_accent if active else UiTheme.COL().border
-	var w := 2 if active else 1
-	if pid == _follow_pid:
-		bord = UiTheme.COL().gold
-		w = 2
-	out.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel_dark, bord, w, 6))
+	# --- the card, rebuilt to the mockup's own numbers -----------------------------
+	# `.pc` in the mockup is: background s2, a 1px line border, a 4px border-left in the
+	# PLAYER'S colour, gap 10, padding 10, and a 40px avatar column. Active state swaps the
+	# background to s3 and adds an accent ring plus a glow. Ours was a 22px avatar in an 8px
+	# pad with no player colour anywhere — which is most of why the panel read as a list of
+	# grey boxes rather than a set of players.
+	var card := Chamfer.new()
+	card.name = "Card"
+	card.set_skin(_skin)
+	card.fill_token = "surface.2"
+	card.fill_shade = _skin.proportion("card_shade", 0.16)
+	card.border_token = "line"
+	card.cut = "none"
+	card.border_bonus = 0
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var out := MarginContainer.new()
+	out.name = "PlayerRow"
+	out.add_theme_constant_override("margin_left", 0)
+	out.add_theme_constant_override("margin_right", 0)
+	out.add_theme_constant_override("margin_top", 0)
+	out.add_theme_constant_override("margin_bottom", 0)
+	out.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	# the 4px stripe in the player's colour: a plain ColorRect, exactly as the mockup's
+	# `border-left:4px solid var(--c)`
+	var stripe := ColorRect.new()
+	stripe.name = "Stripe"
+	stripe.color = col
+	stripe.custom_minimum_size = Vector2(4, 0)
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var m := MarginContainer.new()
+	for edge in ["margin_left", "margin_right"]:
+		m.add_theme_constant_override(edge, 10)
+	for edge in ["margin_top", "margin_bottom"]:
+		m.add_theme_constant_override(edge, 10)
+	m.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 10)
+	m.add_child(body)
+	out.add_child(m)
+
 	if bankrupt:
 		out.modulate = Color(1, 1, 1, _skin.proportion("bankrupt_dim_alpha", 0.5))
 	# P4 observer: a player row is clickable (follow them). Clicking an already
@@ -121,18 +160,17 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	out.mouse_filter = Control.MOUSE_FILTER_STOP
 	out.connect("gui_input", Callable(self, "_on_row_input").bind(pid))
 
-	var m := MarginContainer.new()
-	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		m.add_theme_constant_override(edge, 8)
-	out.add_child(m)
-	var v := UiTheme.vbox(2)
-	m.add_child(v)
+	# the avatar column the mockup sizes at 40px
+	var avatar := _avatar(token_id, col, 40, name)
+	body.add_child(avatar)
 
-	# row 1: token avatar (halo) + name + money
+	var v := UiTheme.vbox(4)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(v)
+
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 8)
-	var avatar := _avatar(token_id, col, 22, name)
-	top.add_child(avatar)
+	top.add_theme_constant_override("alignment", BoxContainer.ALIGNMENT_BEGIN)
 	var nm := UiTheme.label(name, 14, col)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if bankrupt:
@@ -142,10 +180,10 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	top.add_child(money)
 	v.add_child(top)
 
-	# row 2: position by tile name + tile count
+	# row 2: position by tile name + tile count — the mockup's `.r2`, at 11px and muted
 	var pos_name: String = str(tile_names.get(int(p.get("position", 0)), "?"))
 	var info := UiTheme.label(I18n.t("plr.pos_tiles", [pos_name, int(p.get("tiles", []).size())]),
-		12, UiTheme.COL().text_dim)
+		11, UiTheme.COL().text_dim)
 	v.add_child(info)
 
 	# row 3: houses / mortgaged / jail card / badges
@@ -171,12 +209,28 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 		var act := UiTheme.label(I18n.t("plr.active"), 12, UiTheme.COL().accent)
 		v.add_child(act)
 
+	# `.pc.on` — the active player gets an accent ring and a halo around the card
+	if active:
+		card.border_token = "accent"
+		card.border_bonus = 1
+		card.add_theme_stylebox_override("panel", SkinPaint.glow_box(UiTheme.COL().accent, 1, 0))
+
+	# compose: stripe | card
+	var wrap := HBoxContainer.new()
+	wrap.name = "Row"
+	wrap.add_theme_constant_override("separation", 0)
+	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrap.mouse_filter = Control.MOUSE_FILTER_PASS
+	wrap.add_child(stripe)
+	card.add_child(out)
+	wrap.add_child(card)
+
 	# tooltip: full summary
 	var tooltip := I18n.t("plr.tooltip", [
 		name, _driver_label(seat), int(p.get("money", 0)), pos_name,
 		int(p.get("tiles", []).size()), h, mg])
-	out.tooltip_text = tooltip
-	return out
+	wrap.tooltip_text = tooltip
+	return wrap
 
 func _driver_label(seat) -> String:
 	if seat == null:
