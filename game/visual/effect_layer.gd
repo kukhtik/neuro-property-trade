@@ -219,22 +219,67 @@ func float_over_player(pid: int, text: String, positive: bool) -> void:
 	float_at(holder.position + holder.size * 0.5, text, positive)
 
 
+## Show a floating value over a tile.
+##
+## The label and its tween are REUSED. Money events are the most frequent thing in a match
+## and this used to build a Label and a Tween for each one and free them again, so the
+## engine allocated most exactly when the game was busiest.
 func float_at(at: Vector2, text: String, positive: bool) -> void:
-	var lbl := Label.new()
+	var lbl := _take_label()
+	if lbl == null:
+		return
 	lbl.text = text
 	lbl.add_theme_font_size_override("font_size", maxi(10, int(_cell * 0.22)))
 	lbl.add_theme_color_override("font_color",
 		skin.color("money") if positive else skin.color("danger"))
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.position = at - Vector2(20, 0)
-	lbl.z_index = 20
-	add_child(lbl)
+	lbl.modulate = Color(1, 1, 1, 1)
+	lbl.visible = true
+
 	var rise: float = _cell * 0.9
 	var d: float = skin.motion("pop", 0.5) * 2.0
-	var t := create_tween()
+	var t := _take_tween()
 	t.tween_property(lbl, "position:y", lbl.position.y - rise, d)
 	t.parallel().tween_property(lbl, "modulate:a", 0.0, d)
-	t.finished.connect(func(): lbl.queue_free())
+	# return it to the pool instead of freeing it: the next event wants one immediately
+	t.finished.connect(_give_label.bind(lbl), CONNECT_ONE_SHOT)
+
+
+## The free label nearest to being idle. One is built only when the pool is dry AND small.
+func _take_label() -> Label:
+	for entry in _label_pool:
+		if not entry["busy"]:
+			entry["busy"] = true
+			return entry["node"]
+	if _label_pool.size() >= POOL_MAX:
+		return null
+	var lbl := Label.new()
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl.z_index = 20
+	add_child(lbl)
+	_label_pool.append({"node": lbl, "busy": true})
+	return lbl
+
+
+## Hand a label back and stop its tween so it can be reused.
+func _give_label(lbl: Label) -> void:
+	for entry in _label_pool:
+		if entry["node"] == lbl:
+			entry["busy"] = false
+			break
+	lbl.visible = false
+
+
+## A tween to reuse. Creating one per event was the other half of the allocation.
+func _take_tween() -> Tween:
+	for t in _tween_pool:
+		if t.is_valid() and not t.is_running():
+			return t
+	if _tween_pool.size() >= POOL_MAX:
+		return create_tween()
+	var t := create_tween()
+	_tween_pool.append(t)
+	return t
 
 
 ## A short particle burst over a tile (purchase/build). Pooled in the sense that
@@ -250,6 +295,12 @@ func burst(tile_index: int, colour: Color, count: int = 12) -> void:
 
 
 var _bursts: Array = []
+
+## Reused float labels and tweens. Bounded: a pool that grows without limit is just a
+## slower leak.
+const POOL_MAX := 48
+var _label_pool: Array = []
+var _tween_pool: Array = []
 
 
 ## Advance the running effects. Compacts IN PLACE: building a new array every frame
