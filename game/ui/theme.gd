@@ -35,23 +35,43 @@ static func skin() -> SkinManager:
 ## Compatibility view of the palette, resolved from the skin. Kept so panels
 ## that read `UiTheme.COL().x` keep working; prefer skin().color("x").
 ## NOTE: this is a function now, not a const — call sites must use COL() .
+## The palette the UI code reads.
+##
+## This map is a TRANSLATION, not the source: the skin owns the colours and this gives them
+## the names components use. It used to expose only 14 of the skin's 27 tokens, so anything
+## reaching for `ink`, `on_accent`, `accent2`, `surface2/3` or an `ev.*` colour hit a missing
+## key and THREW — 1630 errors and a segfault in one run, from one absent name.
 static func COL() -> Dictionary:
 	var s := skin()
+	var ac: Color = s.color("accent")
+	var hi: Color = s.color("accent2", ac)
 	return {
 		"bg": s.color("bg"),
 		"panel": s.color("surface.1"),
 		"panel_dark": s.color("surface.2"),
+		"surface1": s.color("surface.1"),
+		"surface2": s.color("surface.2"),
+		"surface3": s.color("surface.3"),
 		"border": s.color("line"),
-		"border_accent": s.color("accent"),
+		"border_accent": ac,
 		"text": s.color("text"),
 		"text_dim": s.color("muted"),
-		"accent": s.color("accent"),
-		"accent_hover": s.color("accent2", s.color("accent")),
-		"accent_press": s.color("accent"),
+		"muted": s.color("muted"),
+		"accent": ac,
+		"accent2": hi,
+		"accent_hover": hi,
+		"accent_press": ac,
+		"on_accent": s.color("on_accent", Color(0, 0, 0)),
+		"on_panel": s.color("on_panel", s.color("text")),
+		"ink": s.color("ink", Color(0, 0, 0)),
 		"danger": s.color("danger"),
+		"warn": s.color("warn", Color("#e08a3c")),
 		"success": s.color("money", Color("6fbf73")),
+		"money": s.color("money"),
 		"gold": s.color("money"),
 		"jail": s.color("warn", Color("9a86c9")),
+		"board_bg2": s.color("board.bg2", s.color("bg")),
+		"board_bg3": s.color("board.bg3", s.color("surface.2")),
 	}
 
 

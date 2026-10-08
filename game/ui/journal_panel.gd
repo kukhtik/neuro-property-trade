@@ -13,7 +13,8 @@ signal exported(path: String)
 const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
-var _log: RichTextLabel
+var _feed: VBoxContainer
+var _scroll: ScrollContainer
 var _player_filter: OptionButton
 var _type_filter: OptionButton
 var _money_only: CheckButton
@@ -111,25 +112,23 @@ func _init() -> void:
 	filters.add_child(_money_only)
 	v.add_child(filters)
 
-	# the log itself: rich text, auto-scroll pinned to the newest line
-	_log = RichTextLabel.new()
-	_log.bbcode_enabled = true
-	# WITHOUT THIS the journal renders in Godot's own grey, which measures ~1.5:1 against
-	# the panel — a log nobody can read. The theme's colour must be set explicitly.
-	_log.add_theme_color_override("default_color", UiTheme.COL().text)
-	_log.add_theme_font_size_override("normal_font_size", UiTheme.skin().size("s", 12))
-	# the engine's OWN scrollbar draws in its default grey; give it the theme's colours
-	_log.add_theme_stylebox_override("scroll", UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
-	_log.add_theme_stylebox_override("scroll_focus", UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
-	_log.add_theme_icon_override("grabber", _solid_tex(UiTheme.COL().border))
-	_log.add_theme_icon_override("grabber_highlight", _solid_tex(UiTheme.COL().accent))
-	_log.add_theme_icon_override("grabber_pressed", _solid_tex(UiTheme.COL().accent))
-	_log.scroll_following = true
-	_log.selection_enabled = true
-	_log.context_menu_enabled = true
-	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_log.custom_minimum_size.y = 120
-	v.add_child(_log)
+	# The feed is a stack of ROWS, not rich text.
+	#
+	# The mockup draws every event as `.ev`: a 20x20 square in the event's colour with a
+	# letter in it, then the text beside it, separated by a rule. RichTextLabel can colour
+	# words but cannot lay out that badge, which is why our journal read as a wall of small
+	# grey text rather than a log you can scan.
+	_feed = VBoxContainer.new()
+	_feed.name = "Feed"
+	_feed.add_theme_constant_override("separation", 0)
+	_feed.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	_scroll = ScrollContainer.new()
+	_scroll.name = "FeedScroll"
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_feed)
+	v.add_child(_scroll)
 
 ## Cold state: no engine yet.
 func sync_cold() -> void:
@@ -233,8 +232,9 @@ func _money_only_on() -> bool:
 func _on_filter_changed(_idx: int = 0) -> void:
 	_filters_dirty = true
 	_rendered = 0
-	if _log != null:
-		_log.clear()
+	if _feed != null:
+		for c in _feed.get_children():
+			_feed.remove_child(c); c.queue_free()
 	_rebuild()
 
 func _process(_delta: float) -> void:
@@ -244,15 +244,94 @@ func _process(_delta: float) -> void:
 
 ## Core: rebuild the visible text so it matches the current filters.
 func _rebuild() -> void:
-	if _log == null:
+	if _feed == null:
 		return
+	for c in _feed.get_children():
+		_feed.remove_child(c)
+		c.queue_free()
 	var vis := filter_entries(_entries, _selected_pid(), _selected_type(), _money_only.button_pressed)
-	_log.clear()
 	for e in vis:
-		_log.append_text(_line_bbcode(e, _player_names))
+		_feed.add_child(_event_row(e, _player_names))
+	# keep the newest line in view, as the rich-text version did
+	if _scroll != null:
+		await get_tree().process_frame
+		_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
 	_rendered = _entries.size()
 	_filters_dirty = false
 	_count_lbl.text = "%d/%d" % [vis.size(), _entries.size()]
+
+
+## One event, drawn the way the mockup draws `.ev`: a coloured square with a letter, then the
+## text beside it, and a rule underneath.
+func _event_row(e: Dictionary, names: Array) -> Control:
+	var t: String = str(e.get("type", "?"))
+	var col: Color = _kind_color(t)
+
+	var row := PanelContainer.new()
+	row.name = "Event"
+	row.add_theme_stylebox_override("panel",
+		UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
+	# `.ev.hl` — a highlighted event carries an accent bar on its left
+	var hl: bool = bool(e.get("hl", false))
+	if hl:
+		row.add_theme_stylebox_override("panel",
+			UiTheme.box(UiTheme.COL().get("surface2", UiTheme.COL().panel), Color.TRANSPARENT, 0, 0))
+
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 4 if hl else 10)
+	m.add_theme_constant_override("margin_right", 10)
+	m.add_theme_constant_override("margin_top", 7)
+	m.add_theme_constant_override("margin_bottom", 7)
+	row.add_child(m)
+
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+	m.add_child(line)
+
+	# the badge: a 20x20 square in the event's colour carrying its first letter
+	var badge := ColorRect.new()
+	badge.custom_minimum_size = Vector2(20, 20)
+	badge.color = col
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var bl := UiTheme.label(_badge_letter(t), 11, UiTheme.COL().get("ink", Color.BLACK))
+	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(bl)
+	line.add_child(badge)
+
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 2)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(body)
+
+	var txt: String = EventMessagesScript.describe(e)
+	var head := UiTheme.label("#%d  %s" % [int(e.get("index", -1)), txt], 12, UiTheme.COL().text)
+	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(head)
+
+	var type_lbl: String = I18n.t("event_type." + t)
+	if type_lbl.begins_with("{event_type."):
+		type_lbl = t
+	var tag := UiTheme.label(type_lbl, 10, UiTheme.COL().text_dim)
+	body.add_child(tag)
+
+	return row
+
+
+## The single letter on an event's badge. Derived from the localized type name so it matches
+## whatever language the log is in.
+func _badge_letter(t: String) -> String:
+	var lbl: String = I18n.t("event_type." + t)
+	if lbl.begins_with("{event_type."):
+		lbl = t
+	for ch in lbl:
+		if ch.strip_edges() != "":
+			return ch.to_upper()
+	return "?"
 
 ## PURE (headless-testable): filter log entries by player pid (-1 = all),
 ## event type ("" = all) and money-only.

@@ -182,9 +182,17 @@ func _set_face(node: Control, face: int) -> void:
 			(node as TextureRect).texture = load(svg_path)
 
 func _settle_faces() -> void:
+	# the dice are built lazily; settling can run before they exist (a probe can autostart a
+	# match without ever showing the dice stage), and indexing an empty array THREW
+	if _dice_nodes.size() < 2:
+		return
 	for i in 2:
 		var dice = _dice_nodes[i]
-		var face: Control = dice.get_node("Face")
+		if dice == null or not is_instance_valid(dice):
+			continue
+		var face: Control = dice.get_node_or_null("Face")
+		if face == null:
+			continue
 		_set_face(face, _dice1 if i == 0 else _dice2)
 		dice.rotation = 0.0
 
