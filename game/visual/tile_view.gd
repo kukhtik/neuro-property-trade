@@ -28,6 +28,7 @@ extends Control
 const SkinManager := preload("res://visual/skin_manager.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
+const PI := preload("res://core/player_identity.gd")
 const HatchScript := preload("res://visual/tile_hatch.gd")
 const BuildingStrip := preload("res://visual/building_strip.gd")
 
@@ -41,6 +42,7 @@ var _step := 0              # degradation step, 0 = best
 var _pulse_phase := 0.0
 
 # nodes
+var _owner_stripe: ColorRect
 var _bg: Chamfer
 var _band: Chamfer
 var _strip: Control
@@ -119,6 +121,15 @@ func _build_nodes() -> void:
 	_anchor_full(_bg)
 	add_child(_bg)
 
+	# the owner's stripe: the mockup draws it INSET on the inner edge, so it must sit ABOVE
+	# the face and BELOW the content
+	_owner_stripe = ColorRect.new()
+	_owner_stripe.name = "Owner"
+	_owner_stripe.color = Color(0, 0, 0, 0)
+	_owner_stripe.visible = false
+	_owner_stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_owner_stripe.z_index = 1
+	add_child(_owner_stripe)
 	# --- flow: a Row for vertical bands, a Column for horizontal ones -------
 	var vertical: bool = _band_side == "left" or _band_side == "right"
 	_row = HBoxContainer.new() if vertical else VBoxContainer.new()
@@ -270,9 +281,92 @@ func _money():
 
 # --- data ---------------------------------------------------------------------
 
+## Which background the mockup prescribes for this tile.
+##
+## The mockup's CSS names don't match the engine's types one-to-one: `k-park` is
+## `free_parking`, `k-cc` is `community`, `k-ch` is `chance`, `k-gj` is `go_to_jail`. This is
+## the only place the two vocabularies meet.
+func _face_kind(t: String, _entry: Dictionary) -> String:
+	match t:
+		"go":
+			return "go"
+		"jail":
+			return "jail"
+		"free_parking":
+			return "parking"
+		"go_to_jail":
+			return "goto_jail"
+		"chance":
+			return "chance"
+		"community":
+			return "chest"
+		"tax":
+			return "tax"
+		_:
+			# property, railroad, utility: the group colour, faint
+			return "property"
+
+
+## The owner's mark: an inset stripe along the tile's INNER edge, exactly the direction the
+## mockup uses per side (`.t.own.b` bottom, `.t.own.l` left, `.t.own.r` right, `.t.own.t2` top).
+func _update_owner_stripe(entry: Dictionary) -> void:
+	var owner := int(entry.get("owner", -1))
+	if _owner_stripe == null:
+		return
+	if owner < 0:
+		_owner_stripe.visible = false
+		return
+	var col: Color = _owner_color(owner)
+	_owner_stripe.visible = true
+	_owner_stripe.color = col
+	# the stripe lies on the edge facing the CENTRE of the ring
+	var t: float = 3.0
+	match _band_side:
+		"bottom":
+			_owner_stripe.anchor_left = 0; _owner_stripe.anchor_right = 1
+			_owner_stripe.anchor_top = 0; _owner_stripe.anchor_bottom = 0
+			_owner_stripe.offset_left = 0; _owner_stripe.offset_right = 0
+			_owner_stripe.offset_top = 0; _owner_stripe.offset_bottom = t
+		"top":
+			_owner_stripe.anchor_left = 0; _owner_stripe.anchor_right = 1
+			_owner_stripe.anchor_top = 1; _owner_stripe.anchor_bottom = 1
+			_owner_stripe.offset_left = 0; _owner_stripe.offset_right = 0
+			_owner_stripe.offset_top = -t; _owner_stripe.offset_bottom = 0
+		"left":
+			_owner_stripe.anchor_left = 1; _owner_stripe.anchor_right = 1
+			_owner_stripe.anchor_top = 0; _owner_stripe.anchor_bottom = 1
+			_owner_stripe.offset_left = -t; _owner_stripe.offset_right = 0
+			_owner_stripe.offset_top = 0; _owner_stripe.offset_bottom = 0
+		_:
+			_owner_stripe.anchor_left = 0; _owner_stripe.anchor_right = 0
+			_owner_stripe.anchor_top = 0; _owner_stripe.anchor_bottom = 1
+			_owner_stripe.offset_left = 0; _owner_stripe.offset_right = t
+			_owner_stripe.offset_top = 0; _owner_stripe.offset_bottom = 0
+
+
+## The seat colour for a player index. PlayerIdentity already owns that palette; a second
+## copy here would drift from it.
+func _owner_color(pid: int) -> Color:
+	return PI.color_of(pid)
+
+
 ## Repaint from a projection tile entry (spec §5.4 render(tile_vm)).
 func refresh(entry: Dictionary) -> void:
 	_type = str(entry.get("type", "property"))
+
+	# THE TILE'S OWN FACE: every type gets its background from the mockup's spec — GO is
+	# accent-tinted, jail hatched, tax striped, chance and chest lean on accent and accent2,
+	# and a property carries a hint of its GROUP colour. A single shared surface for all of
+	# them is why our board read as a grid of identical rectangles.
+	if _bg != null:
+		var group: Color = _skin.tile_color(entry)
+		var kind := _face_kind(_type, entry)
+		_bg.fill_texture = SkinPaint.tile_face(_skin, kind, group, size)
+		_bg.fill_shade = 0.0   # the texture carries the shading now
+		_bg.queue_redraw()
+
+	# the mockup marks ownership with an INSET stripe on the inner edge (`inset 0 -3px 0`)
+	_update_owner_stripe(entry)
 
 	# band colour: the group colour for properties, the type colour otherwise
 	_band.set_meta("fill_override", _skin.tile_color(entry))

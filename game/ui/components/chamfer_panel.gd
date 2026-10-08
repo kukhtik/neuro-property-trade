@@ -17,6 +17,13 @@ var fill_token := "surface.1"
 ## stripe reads as a flat sticker, a shaded one reads as a solid object catching light. The
 ## component asks for a shade, the skin supplies the amount, nothing is hardcoded.
 var fill_shade := 0.0
+
+## A texture to paint INSIDE the polygon instead of a flat colour.
+##
+## The mockup gives every tile type its own background — hatched for jail, accent-tinted for
+## GO, striped for tax, the group's colour for a property. A single colour cannot express
+## that, so a component may hand in a texture and it is clipped to the same outline.
+var fill_texture: Texture2D = null
 ## Skin token path for the border, e.g. "line" or "accent".
 var border_token := "line"
 ## Which corner is cut: "tl", "tr", "br", "bl" or "none".
@@ -49,6 +56,55 @@ func _mixc(a: Color, b: Color, t: float) -> Color:
 	return Color(lerpf(a.r, b.r, t), lerpf(a.g, b.g, t), lerpf(a.b, b.b, t), a.a)
 
 
+## Paint a texture inside the polygon. Each horizontal span is drawn as its own quad, which
+## clips the texture to the outline without a second viewport or a shader.
+func _draw_textured(pts: PackedVector2Array, s: Vector2) -> void:
+	if pts.size() < 3 or s.y <= 0.0:
+		return
+	var tex_size := fill_texture.get_size()
+	if tex_size.x <= 0.0 or tex_size.y <= 0.0:
+		return
+	# the polygon's own bounding box, so the texture maps to the shape not the screen
+	var min_y := pts[0].y
+	var max_y := pts[0].y
+	for p in pts:
+		min_y = minf(min_y, p.y)
+		max_y = maxf(max_y, p.y)
+	var rows: int = clampi(int((max_y - min_y) / 2.0), 1, 96)
+	var step: float = (max_y - min_y) / float(rows)
+	for i in range(rows):
+		var y0: float = min_y + step * float(i)
+		var y1: float = y0 + step + 0.5
+		# the horizontal span of the OUTLINE at this row: leftmost and rightmost crossing
+		var left := INF
+		var right := -INF
+		var n := pts.size()
+		for j in range(n):
+			var a := pts[j]
+			var b := pts[(j + 1) % n]
+			if absf(b.y - a.y) < 0.001:
+				continue
+			for yy in [y0, y1]:
+				if (yy >= minf(a.y, b.y)) and (yy <= maxf(a.y, b.y)):
+					var t: float = (yy - a.y) / (b.y - a.y)
+					var x: float = a.x + (b.x - a.x) * t
+					left = minf(left, x)
+					right = maxf(right, x)
+		# also account for a horizontal edge crossing the row
+		for p in pts:
+			if p.y >= y0 and p.y <= y1:
+				left = minf(left, p.x)
+				right = maxf(right, p.x)
+		if left >= right:
+			continue
+		var span := Rect2(left, y0, right - left, y1 - y0)
+		var src := Rect2(
+			(left / s.x) * tex_size.x, ((y0 - min_y) / maxf(max_y - min_y, 1.0)) * tex_size.y,
+			((right - left) / maxf(s.x, 1.0)) * tex_size.x,
+			((y1 - y0) / maxf(max_y - min_y, 1.0)) * tex_size.y)
+		draw_texture_rect_region(fill_texture, span, src)
+
+
 func _draw() -> void:
 	var sk := _skin_or_default()
 	var s := size
@@ -60,24 +116,29 @@ func _draw() -> void:
 	var pts := _polygon(Vector2.ZERO, s, ch, cut)
 	var fill: Color = sk.color(fill_token, Color(0, 0, 0, 0))
 
-	# A shaded fill is painted as horizontal bands inside the same polygon. The mockup
-	# grades its colour bands; a flat fill is why ours read as stickers rather than chips.
-	if fill_shade > 0.0 and s.y > 2.0:
-		var steps: int = clampi(int(s.y / 3.0), 2, 48)
-		var band_h: float = s.y / float(steps)
-		for i in range(steps):
-			# 0 at the top (lightest), 1 at the bottom (darkest)
-			var t := float(i) / float(steps - 1)
-			var shade := _mixc(fill, Color.WHITE, fill_shade * 0.5 * (1.0 - t * 2.0))
-			if t > 0.5:
-				shade = _mixc(fill, Color.BLACK, fill_shade * (t - 0.5) * 2.0)
-			var y0: float = band_h * float(i)
-			var band := PackedVector2Array([
-				Vector2(0, y0), Vector2(s.x, y0),
-				Vector2(s.x, y0 + band_h + 1.0), Vector2(0, y0 + band_h + 1.0)])
-			draw_colored_polygon(band, shade)
+	# A texture is clipped to the outline with a Polygon2D mask: `draw_texture_rect` alone
+	# would paint the shape's bounding box, which for a cut corner leaves a square.
+	if fill_texture != null:
+		_draw_textured(pts, s)
 	else:
-		draw_colored_polygon(pts, fill)
+		# A shaded fill is painted as horizontal bands inside the same polygon. The mockup
+		# grades its colour bands; a flat fill is why ours read as stickers rather than chips.
+		if fill_shade > 0.0 and s.y > 2.0:
+			var steps: int = clampi(int(s.y / 3.0), 2, 48)
+			var band_h: float = s.y / float(steps)
+			for i in range(steps):
+				# 0 at the top (lightest), 1 at the bottom (darkest)
+				var t := float(i) / float(steps - 1)
+				var shade := _mixc(fill, Color.WHITE, fill_shade * 0.5 * (1.0 - t * 2.0))
+				if t > 0.5:
+					shade = _mixc(fill, Color.BLACK, fill_shade * (t - 0.5) * 2.0)
+				var y0: float = band_h * float(i)
+				var band := PackedVector2Array([
+					Vector2(0, y0), Vector2(s.x, y0),
+					Vector2(s.x, y0 + band_h + 1.0), Vector2(0, y0 + band_h + 1.0)])
+				draw_colored_polygon(band, shade)
+		else:
+			draw_colored_polygon(pts, fill)
 
 	var w := int(sk.shape("line", 1.0)) + border_bonus
 	if w > 0:

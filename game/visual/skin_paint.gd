@@ -155,3 +155,84 @@ static func hatch_texture(a: Color, b: Color, step: int = 6) -> ImageTexture:
 			# 135 degrees: the diagonal decides which stripe this pixel is in
 			img.set_pixel(x, y, a if ((x + y) / step) % 2 == 0 else b)
 	return ImageTexture.create_from_image(img)
+
+
+## The face of a tile.
+##
+## The mockup gives EVERY tile type its own background: `k-GO` is accent-tinted, `k-jail` is
+## hatched, `k-ch` and `k-cc` lean on accent and accent2, `k-tax` is diagonally striped, and a
+## plain property carries a hint of its GROUP colour. One shared `surface.1` for all of them
+## is a large part of why our board read as a grid of identical rectangles.
+##
+## Derived entirely from the skin: `kind` selects the shape, the skin supplies the colours.
+static func tile_face(skin: SkinManager, kind: String, group: Color, size: Vector2) -> Texture2D:
+	var s1: Color = skin.color("surface.1")
+	var s2: Color = skin.color("surface.2")
+	var ac: Color = skin.color("accent")
+	var hi: Color = skin.color("accent2", ac)
+	var bad: Color = skin.color("danger")
+	var warn: Color = skin.color("warn", Color("#e08a3c"))
+	var jail: Color = skin.color("jail", bad)
+
+	match kind:
+		"go":
+			return _grad(skin, mix(s2, ac, 0.35), s1, 145.0)
+		"jail":
+			# a hatched overlay plus a coloured wash, exactly as `.t.k-jail` layers them
+			var base := _grad(skin, mix(s1, jail, 0.20), s1, 145.0)
+			return _overlay_hatch(skin, base, Color(1, 1, 1, 0.05), 3, 11, 90.0)
+		"parking":
+			return _grad(skin, mix(s1, skin.color("park", hi), 0.20), s1, 145.0)
+		"goto_jail":
+			return _grad(skin, mix(s1, bad, 0.22), s1, 145.0)
+		"chance":
+			return _grad(skin, mix(s2, ac, 0.38), s1, 145.0)
+		"chest":
+			return _grad(skin, mix(s2, hi, 0.38), s1, 145.0)
+		"tax":
+			var t := _grad(skin, s1, s1, 0.0)
+			return _overlay_hatch(skin, t, Color(warn.r, warn.g, warn.b, 0.11), 7, 7, 45.0)
+		_:
+			# a property: the group colour, faint, fading into the surface
+			return _grad(skin, mix(s2, group, 0.16), s1, 160.0)
+
+
+## A two-stop linear gradient at an angle, as a stretchable texture.
+static func _grad(skin: SkinManager, from: Color, to: Color, deg: float) -> GradientTexture2D:
+	var tex := GradientTexture2D.new()
+	tex.width = 32
+	tex.height = 32
+	tex.fill = GradientTexture2D.FILL_LINEAR
+	var a := deg_to_rad(deg)
+	var d := Vector2(cos(a), sin(a)) * 0.5
+	tex.fill_from = Vector2(0.5, 0.5) - d
+	tex.fill_to = Vector2(0.5, 0.5) + d
+	var g := Gradient.new()
+	g.set_color(0, from)
+	g.set_color(1, to)
+	tex.gradient = g
+	return tex
+
+
+## Lay a stripe pattern over a base texture by drawing both into one image.
+static func _overlay_hatch(skin: SkinManager, base: Texture2D, col: Color, on: int, off: int,
+		deg: float) -> Texture2D:
+	var n := 64
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	# the base gradient, sampled as a two-colour ramp so no texture round-trip is needed
+	var g: Gradient = base.gradient if base is GradientTexture2D else null
+	var c0: Color = g.get_color(0) if g != null else Color.BLACK
+	var c1: Color = g.get_color(1) if g != null else Color.WHITE
+	var a := deg_to_rad(deg)
+	var dir := Vector2(cos(a), sin(a))
+	var period := float(on + off)
+	for y in range(n):
+		for x in range(n):
+			var t := (Vector2(x, y) / float(n) - Vector2(0.5, 0.5)).dot(dir) + 0.5
+			t = clampf(t, 0.0, 1.0)
+			var px := mix(c0, c1, t)
+			var phase: float = fposmod((Vector2(x, y).dot(dir)), period)
+			if phase < float(on):
+				px = mix(px, col, col.a)
+			img.set_pixel(x, y, Color(px.r, px.g, px.b, 1.0))
+	return ImageTexture.create_from_image(img)
