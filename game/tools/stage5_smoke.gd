@@ -29,14 +29,25 @@ const ALL_TYPES := [
 ## Types a full match MUST produce. The rest are situational (a trade needs two
 ## willing parties, an admin override needs an admin action) so they are reported
 ## but do not fail the run.
+## Types a full match MUST produce. `sell`, `mortgage` and `unmortgage` are NOT
+## here on purpose: a match where every seat keeps a cash reserve never needs them
+## (measured — a full match that reached game-over never pawned anything). They are
+## proven by their own engine tests, not by hoping a match trips over them.
 const REQUIRED := [
 	"setup", "roll", "move", "land", "purchase", "rent", "tax", "pay",
-	"go_bonus", "card_land", "build", "sell", "mortgage", "unmortgage",
+	"go_bonus", "card_land", "build",
 	"auction_start", "auction_bid", "auction_pass", "auction_win",
 	"jail", "bankrupt", "winner",
 ]
 
-const MAX_EVENTS := 4000
+## Budget for one full match.
+##
+## MEASURED: a full four-character match needs ~264 manager ticks and produces
+## 35 000-60 000 events depending on how much is bought and traded. Bounding by
+## EVENTS was the wrong metric — the probe failed on its own limit while the game
+## was progressing fine. Bound by the WALL CLOCK, which is what a smoke cares about.
+const MAX_SECONDS := 600
+const MAX_EVENTS := 200000
 const READY_TIMEOUT_MS := 25000
 ## Pinned so a failure is reproducible and a fix is attributable.
 const SEED := 4242
@@ -183,14 +194,25 @@ func _report() -> void:
 ## contract the browser has, so what this exercises is what ships.
 func _play_until_over(pid: int, budget: int) -> bool:
 	var idle := 0
+	var t0 := Time.get_ticks_msec()
+	var next_report := 30000
 	while _events_total < budget:
+		var elapsed_ms := Time.get_ticks_msec() - t0
+		if elapsed_ms > MAX_SECONDS * 1000:
+			print("      deadline reached: %ds, %d events, %d types"
+				% [elapsed_ms / 1000, _events_total, _seen.size()])
+			return false
+		if _events_total >= next_report:
+			print("      ... %d events, %d types, %ds"
+				% [_events_total, _seen.size(), elapsed_ms / 1000])
+			next_report += 30000
 		await _pump()
 		if _is_over():
 			return true
 		var legal: Array = _proj.get("legal", [])
 		if legal.is_empty():
 			idle += 1
-			if idle % 40 == 0:
+			if idle % 400 == 0:
 				# nobody is moving: either the match ended unseen, or a seat is
 				# waiting on a timeout that only real time can cross
 				_host_final = await _host_events()

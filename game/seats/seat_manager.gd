@@ -42,8 +42,13 @@ func setup(eng, seat_list: Array) -> void:
 			# spawned so the socket exists and can be driven; the host then calls
 			# configure() with the real url + token
 			_spawn_driver(s.pid, "res://seats/drivers/remote_driver.gd")
-		# LOCAL / SDK / ADMIN need no auto-driver: LOCAL waits (push_intent),
-		# SDK self-drives via its adapter, ADMIN uses explicit intents.
+		elif d == "LOCAL" or d == "ADMIN":
+			# A human seat waits for intents (push_intent) and needs no driver to
+			# PLAY — but an automated run has no human, and `--smoke-drive` plays
+			# these seats. They get the same driver as the AI seats so every
+			# auto-played seat follows one policy and its own character.
+			_spawn_driver(s.pid, "res://seats/drivers/ai_driver.gd")
+		# SDK needs no auto-driver: the adapter self-drives its force/result cycle.
 
 func _spawn_driver(pid: int, path: String) -> void:
 	var Script = load(path)
@@ -100,13 +105,15 @@ func _tick() -> void:
 			_maybe_timeout(seat)
 		"LOCAL", "ADMIN":
 			if _autoplay_local:
-				# an automated run has no human at this seat; play it with the AI
-				# so the match can progress (the smoke uses this)
-				var p_min = load("res://seats/minimal_action.gd").pick(engine, holder)
-				if not p_min.is_empty():
-					var r_min: Dictionary = engine.submit_intent(holder, p_min.action, p_min.params)
-					if r_min.get("events", []).size() > 0:
-						events_emitted.emit(r_min["events"])
+				# an automated run has no human at this seat. Play it with the SAME
+				# driver the AI seats use, so its CHARACTER decides — one policy for
+				# every auto-played seat. This used to run `minimal_action.pick`,
+				# which passes on everything: a single such seat stopped any house
+				# being built and any trade being proposed for the whole match.
+				var local_drv = _drivers.get(holder)
+				if local_drv != null and local_drv.has_method("act"):
+					local_drv.act()
+					return
 				return
 			_maybe_timeout(seat)
 		"REMOTE":
@@ -114,9 +121,18 @@ func _tick() -> void:
 			# MUST be here: falling through to `_` would leave the match hung
 			# whenever a browser player closed the tab.
 			if _autoplay_local:
-				# PROXY PLAY, smoke only: with no browser attached an automated
-				# run would stall on this seat forever. The host plays it with the
-				# reference policy, on the real engine — never in production.
+				# PROXY PLAY, smoke only: with no browser attached an automated run
+				# would stall on this seat forever. The host plays it with the SAME
+				# driver the AI seats use, so the seat's own CHARACTER decides.
+				# It used to run the reference corpus policy, which has no trade
+				# branch: the seat then never built and never traded, and a match
+				# with one such seat could not reach game-over (measured:
+				# trade_proposed=0, build=0 over a full run).
+				var proxy = _drivers.get(holder)
+				if proxy != null and proxy.has_method("act"):
+					proxy.act()
+					return
+				# no driver (should not happen): fall back to the reference policy
 				var p_proxy = load("res://tools/replay.gd").decide(engine, holder)
 				if not p_proxy.is_empty():
 					var r_proxy: Dictionary = engine.submit_intent(holder,

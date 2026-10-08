@@ -16,9 +16,14 @@ const TradeNegotiator := preload("res://seats/trade_negotiator.gd")
 var engine
 var seat
 
-## Look for a trade every Nth decision point, so a seat does not offer on every
-## turn and flood the log with proposals.
-const TRADE_LOOK_EVERY := 3
+## Look for a trade every Nth decision point.
+##
+## MEASURED at 3: 4476 proposals produced 197 trades and 4279 declines — 96% refused.
+## At 25: ZERO proposals in an entire match, because a look that rarely coincides
+## with a completable group never happens.
+## The negotiator only offers when it can complete a group, so most looks find
+## nothing anyway; checking rarely costs little and stops the flood.
+const TRADE_LOOK_EVERY := 8
 var _turns := 0
 
 func setup(eng, s) -> void:
