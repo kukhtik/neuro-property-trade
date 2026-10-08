@@ -270,9 +270,12 @@ func _build_game(settings, seats: Array) -> void:
 		if not _manager.state_changed.is_connected(_mirror_events):
 			_manager.state_changed.connect(_mirror_events)
 		# --smoke-drive: let the host play its own LOCAL seats so an automated run
-		# can get past turn one. REMOTE seats are deliberately left waiting.
+		# can get past turn one. REMOTE seats are left waiting for their player — a
+		# probe that TESTS the wire needs exactly that, or the host would answer
+		# before the client ever sees the question.
 		if _has_cli_flag("--smoke-drive"):
 			_manager.set_autoplay_local(true)
+			_manager.set_proxy_remote(_cli_value("--proxy-remote=") == "1")
 
 ## Bring up the network host when the match has a REMOTE seat (or when a port
 ## was forced for testing). Prints the connection line a browser/ smoke reads.
@@ -338,9 +341,12 @@ func _on_admin_rebuilt(eng) -> void:
 		if not _manager.state_changed.is_connected(_mirror_events):
 			_manager.state_changed.connect(_mirror_events)
 		# --smoke-drive: let the host play its own LOCAL seats so an automated run
-		# can get past turn one. REMOTE seats are deliberately left waiting.
+		# can get past turn one. REMOTE seats are left waiting for their player — a
+		# probe that TESTS the wire needs exactly that, or the host would answer
+		# before the client ever sees the question.
 		if _has_cli_flag("--smoke-drive"):
 			_manager.set_autoplay_local(true)
+			_manager.set_proxy_remote(_cli_value("--proxy-remote=") == "1")
 
 func _on_overlay_closed() -> void:
 	# ESC closes the overlay without starting: the board stays "cold" with a

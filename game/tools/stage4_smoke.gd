@@ -61,7 +61,7 @@ func _run() -> void:
 	_host_pid = OS.create_process(godot, PackedStringArray([
 		"--path", project, "--headless", "--",
 		"--admin", "--server-port=%d" % _port, "--autostart", "--smoke-seats=3",
-		"--smoke-drive", "--log-dir=%s" % _log_dir]), false)
+		"--smoke-drive", "--proxy-remote=0", "--log-dir=%s" % _log_dir]), false)
 	if _host_pid <= 0:
 		_bad("the host did not start")
 		return
@@ -206,14 +206,20 @@ func _await_type(t: String, frames: int):
 ## The client cannot act for other seats (it owns no rules), so it relies on the
 ## host's OWN auto-drivers for those. It only watches the incoming projection
 ## until `legal` is non-empty for its own seat.
-func _advance_until_our_turn(pid: int, frames: int) -> Array:
-	for i in frames:
-		if i % 20 == 0:
-			await get_tree().create_timer(0.15).timeout
+## Wait until the client's own seat is asked to move.
+##
+## The host drives every seat now, so a match is busy and the remote seat may wait
+## many turns for its own. This is bounded by the WALL CLOCK, not a frame count: a
+## count is a guess and was already wrong twice in this project.
+func _advance_until_our_turn(pid: int, _frames: int) -> Array:
+	var deadline := Time.get_ticks_msec() + 60000
+	while Time.get_ticks_msec() < deadline:
 		_await_step()
 		var la: Array = _latest_proj.get("legal", [])
 		if not la.is_empty():
 			return la
+		await get_tree().create_timer(0.01).timeout
+	print("      (the client seat was not asked to move within 60s)")
 	return []
 
 

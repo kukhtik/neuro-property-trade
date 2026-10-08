@@ -21,6 +21,10 @@ var _last_process_delta := 0.0
 ## human seat must wait for its human. The smoke turns it on because no human is
 ## present. REMOTE seats are NEVER auto-played — a browser player is a human.
 var _autoplay_local := false
+## Whether the host may answer for a REMOTE seat. TRUE only when no client is attached
+## (a full automated match); FALSE when a probe is testing the wire and needs the seat
+## left to the joining player.
+var _proxy_remote := true
 
 # --- pure helper (headless-testable) ---
 static func find_decision_holder(engine, player_count: int) -> int:
@@ -62,6 +66,11 @@ func _spawn_driver(pid: int, path: String) -> void:
 ## never affected: a browser player must always wait for its human.
 func set_autoplay_local(on: bool) -> void:
 	_autoplay_local = on
+
+
+## May the host answer for REMOTE seats? Leave this false while a client is joining.
+func set_proxy_remote(on: bool) -> void:
+	_proxy_remote = on
 
 
 func _seat(pid: int):
@@ -120,7 +129,7 @@ func _tick() -> void:
 			# REMOTE waits for a human like LOCAL, and times out like LOCAL. It
 			# MUST be here: falling through to `_` would leave the match hung
 			# whenever a browser player closed the tab.
-			if _autoplay_local:
+			if _autoplay_local and _proxy_remote:
 				# PROXY PLAY, smoke only: with no browser attached an automated run
 				# would stall on this seat forever. The host plays it with the SAME
 				# driver the AI seats use, so the seat's own CHARACTER decides.
