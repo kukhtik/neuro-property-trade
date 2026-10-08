@@ -173,7 +173,48 @@ func _join_as_remote() -> void:
 	_remote_session = RemoteSession.new()
 	_remote_session.name = "RemoteSession"
 	add_child(_remote_session)
+	_remote_session.joined.connect(_on_remote_joined)
+	_remote_session.state_received.connect(_on_remote_state)
+	_remote_session.verdict_received.connect(_on_remote_verdict)
+	_remote_session.connection_lost.connect(_on_remote_lost)
 	_remote_session.join(url, tok)
+
+
+## The host accepted this seat. Logged so a probe (or a player) can see it happened.
+func _on_remote_joined(pid: int) -> void:
+	print("JOINED pid=%d" % pid)
+	_mirror_log("JOINED pid=%d" % pid)
+
+
+## The host pushed the state. When this seat is the one being asked, answer — that is
+## the whole job of a client: the host decides, the player only chooses from what it is
+## offered.
+func _on_remote_state(proj: Dictionary) -> void:
+	var legal: Array = proj.get("legal", [])
+	if legal.is_empty():
+		return
+	var action := str(legal[0])
+	var params := {}
+	# a bid and a tile-addressed action need parameters, which come from the state
+	var pending: Dictionary = proj.get("pending", {})
+	match action:
+		"bid":
+			params = {"amount": int(pending.get("high", 0)) + 5}
+		"buy", "pass":
+			pass
+	_remote_session.act(action, params)
+	print("PLAYED action=%s params=%s" % [action, str(params)])
+	_mirror_log("PLAYED action=%s" % action)
+
+
+func _on_remote_verdict(id: String, ok: bool, reason: String) -> void:
+	print("VERDICT %s ok=%s reason=%s" % [id, str(ok), reason])
+	_mirror_log("VERDICT %s ok=%s reason=%s" % [id, str(ok), reason])
+
+
+func _on_remote_lost() -> void:
+	print("DISCONNECTED from the host")
+	_mirror_log("DISCONNECTED")
 
 
 func _cli_value(prefix: String) -> String:

@@ -1,0 +1,4 @@
+ready is_host=true
+SERVER seat=1 token=6d12f5971a37e7fe
+SERVER ready ws://127.0.0.1:19111
+EVENTS 6
