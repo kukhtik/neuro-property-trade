@@ -22,7 +22,15 @@ extends RefCounted
 ## finally to the built-in defaults in this file, so a skin can ship one slot
 ## at a time. A missing slot is a warning, never an error.
 
-const DEFAULT_SKIN := "default"
+## WHICH SKIN THE GAME WEARS.
+##
+## This was `default` — a grey-blue theme the mockup does not use anywhere. The mockup's own
+## theme is `neuro` (violet/pink, accent #ff6fae), and the skin file matches it token for token.
+## The comparison harness checked `assets/skins/neuro/skin.json` against the mockup's
+## `data-theme="neuro"` block and reported 11/11 tokens with zero delta, while the running game
+## painted `default` — so the declared values always agreed and the screen never matched. Same
+## mistake as the invisible dialog: measuring the declaration instead of the render.
+const DEFAULT_SKIN := "neuro"
 const SKINS_DIR := "res://assets/skins/"
 
 ## Built-in fallback values — the last link of the fallback chain. A skin that

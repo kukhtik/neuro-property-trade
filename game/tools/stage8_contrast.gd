@@ -77,6 +77,14 @@ func _ready() -> void:
 		for path in stray:
 			_bad("colour literal baked in %s" % path)
 
+	print("")
+	if _fail > 0:
+		print("==> STAGE 8 FAILED (%d)" % _fail)
+		get_tree().quit(1)
+	else:
+		print("==> STAGE 8 PASSED — palette contrast verified from the source of truth")
+		get_tree().quit(0)
+
 
 ## Files outside the fallback table that still hard-code a 6-digit colour.
 func _scan_for_stray_literals() -> Array:
@@ -104,13 +112,7 @@ func _scan_for_stray_literals() -> Array:
 				break
 	return out
 
-	print("")
-	if _fail > 0:
-		print("==> STAGE 8 FAILED (%d)" % _fail)
-		get_tree().quit(1)
-	else:
-		print("==> STAGE 8 PASSED — palette contrast verified from the source of truth")
-		get_tree().quit(0)
+
 
 
 func _ratio(a: Color, b: Color) -> float:

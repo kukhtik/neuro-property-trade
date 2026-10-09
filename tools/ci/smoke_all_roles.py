@@ -109,7 +109,7 @@ func _process(_dt: float) -> void:
 	if _n == 60 and _launcher != null:
 		var gv = _launcher.get("_game_view")
 		if gv != null:
-			print("WIDTHS viewport=%s gvsize=%s panel_w=%d journal_w=%d observer=%s" %% [
+			print("WIDTHS viewport=%%s gvsize=%%s panel_w=%%d journal_w=%%d observer=%%s" %% [
 				get_viewport().get_visible_rect().size, gv.size,
 				gv.call("_panel_w"), gv.call("_journal_w"), gv.get("_observer")])
 	if _n == %d:

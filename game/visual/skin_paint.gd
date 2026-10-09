@@ -171,7 +171,9 @@ static func tile_face(skin: SkinManager, kind: String, group: Color, size: Vecto
 	var ac: Color = skin.color("accent")
 	var hi: Color = skin.color("accent2", ac)
 	var bad: Color = skin.color("danger")
-	var warn: Color = skin.color("warn", Color("#e08a3c"))
+	# the fallback table is the ONE legal home for a literal; asking it keeps this from
+	# drifting away from the value the rest of the UI would fall back to anyway
+	var warn: Color = skin.color("warn", Color(SkinManager.FALLBACK_COLORS["warn"]))
 	var jail: Color = skin.color("jail", bad)
 
 	match kind:
