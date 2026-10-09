@@ -14,7 +14,43 @@ const ActionPanel := preload("res://ui/action_panel.gd")
 const PlayersPanel := preload("res://ui/players_panel.gd")
 const TopBar := preload("res://ui/top_bar.gd")
 const Journal := preload("res://ui/journal_panel.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 const I18n := preload("res://i18n/i18n.gd")
+
+## The header's skin control must announce the NEXT skin, and `load_skin()` must follow
+## whatever was chosen — otherwise a switcher has nothing to write to and every widget keeps
+## asking for the same theme. Both are global state, so this restores them.
+static func test_skin_switcher() -> String:
+	var before: String = SkinManager.chosen
+	# the loader follows the choice
+	SkinManager.chosen = "evil"
+	var s := SkinManager.new()
+	s.load_skin()
+	if s.skin_id() != "evil":
+		return "load_skin() must follow the chosen skin, got '%s'" % s.skin_id()
+	# and two skins must actually differ, or a switch is invisible
+	s.load_skin("neuro")
+	var neuro_s1 := s.color("surface.1").to_html(false)
+	s.load_skin("evil")
+	var evil_s1 := s.color("surface.1").to_html(false)
+	if neuro_s1 == evil_s1:
+		return "neuro and evil must differ, both painted #%s" % neuro_s1
+	# the header announces the next one in its own order
+	var tb := TopBar.new()
+	var got: Array = []
+	tb.skin_requested.connect(func(id): got.append(id))
+	SkinManager.chosen = "neuro"
+	tb.call("_on_skin")
+	if got != ["evil"]:
+		return "neuro must cycle to evil, got %s" % str(got)
+	# an unknown skin must be refused rather than written blindly
+	var s2 := SkinManager.new()
+	if s2.load_skin("no_such_skin") and s2.skin_id() == "no_such_skin":
+		return "an unknown skin must not load"
+	SkinManager.chosen = before
+	tb.free()
+	return ""
+
 
 ## The header's `RU / EN` control must actually change the locale — and cycle back. The locale
 ## is GLOBAL state, so the test restores it; leaking a language change would make later tests
@@ -230,7 +266,7 @@ static func test_list() -> Array[String]:
 		"test_stat_block_counts_houses_hotels_mortgaged",
 		"test_phase_to_step_mapping", "test_buy_button_shows_the_price",
 		"test_journal_filters_by_category", "test_hotkeys_respect_the_button_gate",
-		"test_language_button_cycles_locales",
+		"test_language_button_cycles_locales", "test_skin_switcher",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",

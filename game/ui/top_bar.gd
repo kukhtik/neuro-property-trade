@@ -8,10 +8,14 @@ const UiTheme := preload("res://ui/theme.gd")
 const SkinPaint := preload("res://visual/skin_paint.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const TimerRing := preload("res://ui/timer_ring.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 
 signal settings_requested
 signal restart_requested
 signal observer_toggle_requested
+## The user picked a skin. The header only announces it: the app rewears the skin and
+## rebuilds, because widget styles are baked in at construction time.
+signal skin_requested(skin_id: String)
 
 var _title: Label
 var _turn: Label
@@ -31,6 +35,7 @@ var _profile = null
 var _role_badge: Label = null
 var _eye_btn: Button
 var _lang_btn: Button
+var _skin_btn: Button
 var _sfx = null   # optional Sfx for the per-second timer tick
 
 ## Provide the procedural Sfx node so the timer ring can play a tick each second.
@@ -119,6 +124,12 @@ func _init() -> void:
 	# The mockup puts `RU / EN` in the header. `I18n` has had two locales all along, but the only
 	# way to change one was inside the settings dialog — so an English player reading a Russian
 	# interface had to find the right tab first.
+	# the mockup puts the skin picker in the header too
+	_skin_btn = UiTheme.button(_skin_label(), I18n.t("top.skin_tip"))
+	_skin_btn.custom_minimum_size = Vector2(30, 24)
+	I18n.tip_on(_skin_btn, "top.skin_tip")
+	_skin_btn.connect("pressed", Callable(self, "_on_skin"))
+	h.add_child(_skin_btn)
 	_lang_btn = UiTheme.button("RU / EN", I18n.t("top.lang_tip"))
 	_lang_btn.custom_minimum_size = Vector2(30, 24)
 	I18n.tip_on(_lang_btn, "top.lang_tip")
@@ -271,3 +282,23 @@ func _on_lang() -> void:
 	var i: int = I18n.LOCALES.find(I18n.current)
 	var next: String = I18n.LOCALES[(i + 1) % I18n.LOCALES.size()]
 	I18n.set_locale(next)
+
+
+## The skins the switcher cycles, in order. `default` is included: it is the grey-blue theme the
+## game used to wear by accident, and it is a legitimate look.
+const SKINS := ["neuro", "evil", "default"]
+
+
+func _skin_label() -> String:
+	return str(SkinManager.chosen).capitalize()
+
+
+func _on_skin() -> void:
+	var i: int = SKINS.find(SkinManager.chosen)
+	skin_requested.emit(SKINS[(i + 1) % SKINS.size()])
+
+
+## Called after the app has actually reworn the skin.
+func set_skin_name(id: String) -> void:
+	if _skin_btn != null:
+		_skin_btn.text = str(id).capitalize()

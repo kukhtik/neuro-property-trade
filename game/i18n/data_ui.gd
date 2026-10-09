@@ -41,6 +41,7 @@ const D := {
 	"top.settings_tip":     {"ru": "Открыть настройки и правила игры", "en": "Open settings and game rules"},
 	# the mockup has a `RU / EN` control in the header; `I18n` already switched languages,
 	# but only from inside the settings dialog
+	"top.skin_tip":         {"ru": "Тема оформления", "en": "Interface theme"},
 	"top.lang_tip":         {"ru": "Язык интерфейса", "en": "Interface language"},
 	"top.restart_tip":      {"ru": "Пересобрать партию с новым сидом (рестарт)", "en": "Rebuild the match with a new seed (restart)"},
 	"top.eye_tip":          {"ru": "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)", "en": "Observer mode: return to match settings (seats without LOCAL play themselves)"},

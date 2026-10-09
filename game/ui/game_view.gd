@@ -36,6 +36,7 @@ const _OBSERVER_JOURNAL_W := 380   # spec §7: observer layout widens the journa
 
 signal restart_requested
 signal settings_requested
+signal skin_requested(skin_id: String)
 
 var engine
 var manager
@@ -203,6 +204,9 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	# P3: connect events to toast stack
 	manager.events_emitted.connect(_on_events_emitted)
 	_top.settings_requested.connect(_on_settings_requested)
+	if _top.skin_requested.is_connected(_on_skin_requested):
+		_top.skin_requested.disconnect(_on_skin_requested)
+	_top.skin_requested.connect(_on_skin_requested)
 	if _top.observer_toggle_requested.is_connected(_on_eye_requested):
 		_top.observer_toggle_requested.disconnect(_on_eye_requested)
 	_top.observer_toggle_requested.connect(_on_eye_requested)
@@ -717,3 +721,9 @@ func _submit(pid: int, action: String, params: Dictionary) -> void:
 	var res: Dictionary = manager.push_intent(pid, action, params)
 	if not res.get("ok", false):
 		_modals.show_message(I18n.t("gv.rejected_title"), I18n.t("gv.rejected_body", [str(res.get("reason", "?"))]))
+
+
+## The header asked for a different skin. Wearing it means rebuilding every widget — styles are
+## built in `_init`/`setup` from the active skin, so nothing already on screen would change.
+func _on_skin_requested(skin_id: String) -> void:
+	skin_requested.emit(skin_id)

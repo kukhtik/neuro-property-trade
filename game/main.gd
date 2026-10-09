@@ -18,6 +18,7 @@ const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
 const SettingsOverlay := preload("res://ui/settings_overlay.gd")
 const GameView := preload("res://ui/game_view.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 
 var _engine
 var _manager
@@ -27,6 +28,9 @@ var _panel
 var _game_view
 var _overlay
 var _is_host := true
+## kept so the view can be rebuilt (a skin change re-creates it) without losing the match
+var _seats_cache: Array = []
+var _settings_cache = null
 var _profile
 ## Test/embedding hook: force the role instead of inferring it from argv. Must be
 ## set BEFORE the node enters the tree (i.e. before _ready).
@@ -66,6 +70,7 @@ func _ready() -> void:
 	_game_view.setup_cold(self)
 	_game_view.restart_requested.connect(_on_restart_requested)
 	_game_view.settings_requested.connect(_open_overlay)
+	_game_view.skin_requested.connect(_on_skin_requested)
 
 	# settings overlay (ex-lobby) opens on first run, pre-game mode. It lives
 	# on its own top CanvasLayer (layer 50) so it is cleanly separated from the
@@ -312,6 +317,8 @@ func _build_game(settings, seats: Array) -> void:
 		_panel.setup(_gate)
 		_panel.visible = false
 
+	_seats_cache = seats
+	_settings_cache = settings
 	_start_server_if_needed(seats)
 
 	_game_view.setup(_engine, _manager, seats, settings)
@@ -434,3 +441,29 @@ func _open_overlay() -> void:
 ## so the host can restart with a new seed.
 func _on_restart_requested() -> void:
 	_open_overlay()
+
+
+## THE SKIN SWITCH. A widget's colours are decided when it is built (`UiTheme.box(skin.color(...))`,
+## `_init` fetching tokens), so nothing already on screen can be repainted — changing the skin
+## means building the view again. The engine and the seat manager live on THIS node, not on the
+## view, so the match survives the rebuild: `setup()` is handed the same objects back.
+func _on_skin_requested(skin_id: String) -> void:
+	if skin_id == "" or skin_id == SkinManager.chosen:
+		return
+	# `available()` is an instance method (it lists what is on disk), so ask a throwaway one.
+	if not SkinManager.new().available().has(skin_id):
+		return
+	SkinManager.chosen = skin_id
+	var old = _game_view
+	_game_view = GameView.new()
+	add_child(_game_view)
+	_game_view.set_profile(_profile)
+	_game_view.setup_cold(self)
+	_game_view.restart_requested.connect(_on_restart_requested)
+	_game_view.settings_requested.connect(_open_overlay)
+	_game_view.skin_requested.connect(_on_skin_requested)
+	if old != null and is_instance_valid(old):
+		old.queue_free()
+	if _engine != null and _settings_cache != null:
+		_game_view.setup(_engine, _manager, _seats_cache, _settings_cache)
+		_game_view.on_game_started()

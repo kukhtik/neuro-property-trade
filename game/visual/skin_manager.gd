@@ -64,7 +64,18 @@ var _warned_slots := {}              # one push_warning per missing slot
 
 ## Load a skin config by id, resolving its `extends` chain. Returns true when
 ## the requested skin existed (missing keys fall back). Idempotent per id.
-func load_skin(skin_id: String = DEFAULT_SKIN) -> bool:
+## The skin the app is currently wearing.
+##
+## `DEFAULT_SKIN` is a `const` and cannot change at runtime, so a UI switcher had nothing to
+## write to: every widget called `load_skin()` and got `neuro` back. This is that variable.
+static var chosen := DEFAULT_SKIN
+
+
+func load_skin(skin_id: String = "") -> bool:
+	# an empty id means "whatever is chosen" — that keeps every existing `load_skin()` call site
+	# working, and gives a switcher one place to write.
+	if skin_id == "":
+		skin_id = chosen
 	if _loaded_id == skin_id and not _cfg.is_empty():
 		return true
 	_warned_slots.clear()
