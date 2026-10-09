@@ -5,7 +5,7 @@ extends RefCounted
 ## internal action/phase id is shown to a human (top bar phase, hints).
 
 const D := {
-	"act.end_turn":        {"ru": "ЗАВЕРШИТЬ ХОД", "en": "END TURN"},
+	"act.end_turn":        {"ru": "Конец хода", "en": "End turn"},
 	"act.end_turn_tip":    {"ru": "Передать ход дальше", "en": "Pass the turn"},
 	# engine action names
 	"action.roll":              {"ru": "бросок", "en": "roll"},

@@ -12,7 +12,34 @@ const Profile := preload("res://ui/core/ui_profile.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
 const ActionPanel := preload("res://ui/action_panel.gd")
 const PlayersPanel := preload("res://ui/players_panel.gd")
+const TopBar := preload("res://ui/top_bar.gd")
 const I18n := preload("res://i18n/i18n.gd")
+
+## The header shows the mockup's FOUR steps (Бросок / Ход / Покупка / Конец) while the engine
+## has TEN phases. The two vocabularies meet in exactly one function; without a test, a phase
+## added later silently lights no step at all and the timeline just stops advancing.
+static func test_phase_to_step_mapping() -> String:
+	var tb := TopBar.new()
+	var want := {
+		"TURN_START": 0, "ROLL_RESOLVE": 0,
+		"RENT_SETTLE": 1, "CARD_WAIT": 1, "JAIL_DECISION": 1,
+		"PURCHASE_WAIT": 2, "AUCTION": 2,
+		"END_TURN": 3,
+		"SETUP": -1, "END_GAME": -1,
+	}
+	for ph in want:
+		var got: int = tb.call("_step_index", ph)
+		if got != want[ph]:
+			return "phase %s must map to step %d, got %d" % [ph, want[ph], got]
+	# every engine phase must land somewhere, or the timeline freezes
+	for ph in ["SETUP", "TURN_START", "ROLL_RESOLVE", "PURCHASE_WAIT", "AUCTION",
+			"RENT_SETTLE", "CARD_WAIT", "JAIL_DECISION", "END_TURN", "END_GAME"]:
+		var i: int = tb.call("_step_index", ph)
+		if i < -1 or i > 3:
+			return "phase %s maps out of range (%d)" % [ph, i]
+	tb.free()
+	return ""
+
 
 ## The statistics block shows what the MOCKUP's `#stat` shows: houses, hotels, mortgaged.
 ## It used to show round / parking pot / owned-tiles, which are three different numbers that
@@ -82,6 +109,7 @@ static func test_list() -> Array[String]:
 		"test_layout_rails", "test_layout_label_degradation",
 		"test_action_panel_pass_label_tracks_pending",
 		"test_stat_block_counts_houses_hotels_mortgaged",
+		"test_phase_to_step_mapping",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",

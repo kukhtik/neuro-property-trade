@@ -16,6 +16,10 @@ signal observer_toggle_requested
 var _title: Label
 var _turn: Label
 var _phase: Label
+var _steps: HBoxContainer          # the mockup's `#steps`: four phases, the live one lit
+var _step_labels: Array = []
+var _round: Label                  # `#cRound`
+var _pot: Label                    # `#cPot` (only meaningful when free parking banks)
 var _hint: Label
 var _restart_btn: Button
 var _settings_btn: Button
@@ -87,7 +91,25 @@ func _init() -> void:
 	_turn = UiTheme.label("", 15)
 	h.add_child(_turn)
 	_phase = UiTheme.label("", 13, UiTheme.COL().text_dim)
+	# THE MOCKUP SHOWS A FOUR-STEP TIMELINE HERE, NOT A PHASE NAME. Its `#steps` is
+	# `[0,1,2,3].map(i => <span class=(i==V.ph?"on")>` — Бросок / Ход / Покупка / Конец with the
+	# current one lit. We printed "ФАЗА: <engine enum>", which is a different thing entirely and
+	# does not tell the player where they are in the turn.
+	_steps = HBoxContainer.new()
+	_steps.name = "Steps"
+	_steps.add_theme_constant_override("separation", 12)
+	h.add_child(_steps)
+	for i in 4:
+		var st := UiTheme.label(I18n.t("ph.%d" % i), 13, UiTheme.COL().text_dim)
+		st.name = "Step%d" % i
+		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_steps.add_child(st)
+		_step_labels.append(st)
 	h.add_child(_phase)
+	_round = UiTheme.label("", 13, UiTheme.COL().text_dim)
+	h.add_child(_round)
+	_pot = UiTheme.label("", 13, UiTheme.COL().text_dim)
+	h.add_child(_pot)
 	
 	# P3: Timer ring next to phase
 	_timer_ring = TimerRing.new()
@@ -197,6 +219,16 @@ func sync(proj: Dictionary, players: Array) -> void:
 	if ph_lbl.begins_with("{phase."):
 		ph_lbl = ph
 	_phase.text = I18n.t("top.phase") + ph_lbl
+	# light the step the engine's phase belongs to
+	var idx := _step_index(ph)
+	for i in _step_labels.size():
+		(_step_labels[i] as Label).add_theme_color_override("font_color",
+			UiTheme.COL().accent if i == idx else UiTheme.COL().text_dim)
+	var rnd := int(proj.get("round", 0))
+	_round.text = "" if rnd <= 0 else "%s %d" % [I18n.t("top.round"), rnd]
+	var pot := int(proj.get("pot", 0))
+	_pot.text = "" if pot <= 0 else "%s $%d" % [I18n.t("top.pot"), pot]
+	(_steps.tooltip_text) = ph_lbl
 	_restart_btn.visible = true
 	
 	# P3: Update timer ring
@@ -205,3 +237,20 @@ func sync(proj: Dictionary, players: Array) -> void:
 		var elapsed: float = float(proj.get("timer_elapsed", 0.0))
 		var active: bool = bool(proj.get("timer_active", false))
 		_timer_ring.set_state(window, elapsed, active)
+
+
+## Which of the mockup's four steps an engine phase belongs to (0..3), or -1 for none.
+##
+## The engine has ten phases; the design shows four. This is the only place the two vocabularies
+## meet — the counts differ, so the mapping has to be stated somewhere and this is it.
+func _step_index(phase: String) -> int:
+	match phase:
+		"TURN_START", "ROLL_RESOLVE":
+			return 0          # Бросок
+		"RENT_SETTLE", "CARD_WAIT", "JAIL_DECISION":
+			return 1          # Ход
+		"PURCHASE_WAIT", "AUCTION":
+			return 2          # Покупка
+		"END_TURN":
+			return 3          # Конец
+	return -1
