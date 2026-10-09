@@ -81,11 +81,18 @@ def mockup_theme(theme):
     return toks, widths
 
 
-def measure_panels(frame):
+def measure_panels(frame, line_rgb):
     """Panel widths, measured from where the frame draws its rules.
 
     A panel edge is a THIN run of the `line` colour. A long run is a filled bar, not an
     edge — taking its first pixel reported a panel width of 0 in a first attempt.
+
+    `line_rgb` is READ FROM THE SKIN BEING COMPARED. It used to be the literal (57, 64, 77)
+    — `line` of the `default` skin — and when the game started wearing `neuro` instead,
+    whose line is #3b2a5e = (59, 42, 94), that test matched NOTHING. The widths it reported
+    were pixels of unrelated colours that happened to land within +-8 of the old theme, so
+    the layout comparison was measuring noise while printing confident numbers. A detector
+    that hard-codes a value from the thing it is checking cannot detect that value changing.
     """
     im = Image.open(frame).convert("RGB")
     W, H = im.size
@@ -93,7 +100,7 @@ def measure_panels(frame):
     y = H // 2
     def is_rule(x):
         c = px[x, y]
-        return abs(c[0] - 57) <= 8 and abs(c[1] - 64) <= 8 and abs(c[2] - 77) <= 8
+        return all(abs(c[i] - line_rgb[i]) <= 8 for i in range(3))
     # an EDGE has field on BOTH sides; x=0 is the window frame and has none
     cols = [x for x in range(4, W - 4) if is_rule(x) and not is_rule(x - 3) and not is_rule(x + 3)]
     runs = []
@@ -168,7 +175,8 @@ def main():
     # --- 2. layout ------------------------------------------------------------------
     print("[2] layout — the mockup declares the panel widths, the frame shows them")
     print("    mockup: --L=%spx --R=%spx" % (m_widths.get("L", "?"), m_widths.get("R", "?")))
-    panels, W, edges = measure_panels(frame)
+    line_rgb = parse_hex(a_toks.get("line", "")) or (57, 64, 77)
+    panels, W, edges = measure_panels(frame, line_rgb)
     if panels:
         lw, rw = panels
         print("    frame %dpx: left panel %spx, right panel %spx (%d edges)"

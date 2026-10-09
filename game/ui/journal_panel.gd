@@ -90,6 +90,10 @@ func _init() -> void:
 	I18n.tip_on(_player_filter, "jrn.player_filter_tip")
 	_player_filter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_player_filter.clip_text = true
+	# min width follows the WIDEST ENTRY by default, which is what pushed the whole
+	# rail 76px past its declared width and shrank the board. The panel width is set
+	# by the layout profile; the dropdown must not overrule it.
+	_player_filter.fit_to_longest_item = false
 	_player_filter.connect("item_selected", Callable(self, "_on_filter_changed"))
 	filters.add_child(_player_filter)
 	var tlbl := UiTheme.label(I18n.t("jrn.type_lbl"), 11, UiTheme.COL().text_dim)
@@ -102,6 +106,7 @@ func _init() -> void:
 	I18n.tip_on(_type_filter, "jrn.type_filter_tip")
 	_type_filter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_type_filter.clip_text = true
+	_type_filter.fit_to_longest_item = false
 	_type_filter.connect("item_selected", Callable(self, "_on_filter_changed"))
 	filters.add_child(_type_filter)
 	_money_only = CheckButton.new()

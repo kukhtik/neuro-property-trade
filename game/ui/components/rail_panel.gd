@@ -33,6 +33,11 @@ var _title_label: Label
 var _chevron: Label
 var _count_label: Label
 var _manual := false      # true once the user toggled it by hand
+## The width the panel keeps while EXPANDED. `_apply_state` used to reset
+## `custom_minimum_size.x` to 0 on expand, so any width the caller had just set was thrown away
+## and the panel grew to whatever its content wanted — the journal rail measured 406px where the
+## layout profile said 330, taking 76px off the board. Order of calls decided the layout.
+var _expanded_w := 0
 
 
 func setup(skin: SkinManager, title_key: String, left_side: bool = true) -> void:
@@ -109,6 +114,14 @@ func set_count(text: String) -> void:
 	_count_label.text = text
 
 
+## The width this panel occupies when EXPANDED. Callers set layout widths through this instead
+## of writing `custom_minimum_size.x`, which `_apply_state` overwrites.
+func set_expanded_width(w: int) -> void:
+	_expanded_w = w
+	if not _collapsed:
+		custom_minimum_size.x = w
+
+
 ## Collapse/expand programmatically.
 func set_collapsed(v: bool, animate: bool = true) -> void:
 	if _collapsed == v:
@@ -135,7 +148,7 @@ func _on_header_input(ev: InputEvent) -> void:
 
 ## Apply the state: swap the layout between a rail and a full panel.
 func _apply_state(animate: bool) -> void:
-	var target_w: int = RAIL_W if _collapsed else 0
+	var target_w: int = RAIL_W if _collapsed else _expanded_w
 	var t: Tween = null
 	if animate:
 		t = create_tween()

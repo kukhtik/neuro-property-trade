@@ -371,7 +371,7 @@ func _build_layout() -> void:
 	_players_rail = RailPanel.new()
 	_players_rail.name = "PlayersRail"
 	_players_rail.setup(_skin, "ui.players", true)
-	_players_rail.custom_minimum_size.x = _panel_w()
+	_players_rail.set_expanded_width(_panel_w())
 	_players_rail.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_center.add_child(_players_rail)
 	_players = PlayersPanel.new()
@@ -392,7 +392,7 @@ func _build_layout() -> void:
 	_jpanel_rail = RailPanel.new()
 	_jpanel_rail.name = "JournalRail"
 	_jpanel_rail.setup(_skin, "ui.journal", false)
-	_jpanel_rail.custom_minimum_size.x = _journal_w()
+	_jpanel_rail.set_expanded_width(_journal_w())
 	_jpanel_rail.size_flags_horizontal = Control.SIZE_SHRINK_END
 	_center.add_child(_jpanel_rail)
 	_journal = JournalPanel.new()
@@ -455,9 +455,9 @@ func _layout() -> void:
 			_jpanel_rail.set_collapsed(lp.rail_right() and not _observer, false)
 		_jpanel_rail.set_count(str(_journal_count()))
 	if not _players_rail.is_collapsed():
-		_players_rail.custom_minimum_size.x = _panel_w()
+		_players_rail.set_expanded_width(_panel_w())
 	if not _jpanel_rail.is_collapsed():
-		_jpanel_rail.custom_minimum_size.x = _journal_w()
+		_jpanel_rail.set_expanded_width(_journal_w())
 	_fits_left = 3
 	# the board scene fills the center region between the panels (HBox handles it)
 	_board_scene.set_frame(Rect2(0, 0, 0, 0))   # signal it to re-fit its own rect
