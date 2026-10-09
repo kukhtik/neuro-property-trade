@@ -152,11 +152,12 @@ func _init() -> void:
 	h.add_child(_eye_btn)
 	_hint = UiTheme.label(I18n.t("top.admin_hint"), 12, UiTheme.COL().text_dim)
 	h.add_child(_hint)
+	resized.connect(_apply_density)
 
 ## Host-only gate: hide the F12 hint on non-host (WebGL / spectator).
 func set_host(v: bool) -> void:
 	_is_host = v
-	_hint.visible = v
+	_apply_density()
 
 
 ## Apply the execution role. Stream runs get a compact header, a "LIVE" marker
@@ -166,8 +167,7 @@ func set_profile(pr) -> void:
 		return
 	_profile = pr
 	_is_host = pr.shows_admin_tools
-	if _hint != null:
-		_hint.visible = pr.shows_admin_tools
+	_apply_density()
 	if _role_badge != null:
 		_role_badge.visible = pr.shows_role_badge
 		_role_badge.text = I18n.t("mode." + str(pr.id))
@@ -302,3 +302,35 @@ func _on_skin() -> void:
 func set_skin_name(id: String) -> void:
 	if _skin_btn != null:
 		_skin_btn.text = str(id).capitalize()
+
+
+## A HEADER THAT CANNOT SHRINK WALKS OFF THE SCREEN. The board and the rails collapse when the
+## window narrows — the rails drop to 46px — but the header kept a hard 885px minimum, so below
+## roughly 900px its right end (the skin picker, the language, the settings gear) sat outside the
+## window and could not be clicked at all. Dropping a caption beats losing a control, so the row
+## sheds its least important pieces first and degrades instead of clipping.
+func _apply_density() -> void:
+	# THE WINDOW, not `size`: this Control's own size is already inflated to its minimum, so
+	# asking it would answer "885" on a 700px screen and hide nothing.
+	var w: float = 0.0
+	var win := get_window()
+	if win != null:
+		w = float(win.size.x)
+	_apply_visibility(w)
+
+
+## What the header can afford at a given width. Split out from `_apply_density` so a test can ask
+## about a 700px window without having one.
+func _apply_visibility(w: float) -> void:
+	if w <= 0.0:
+		return
+	if _hint != null:
+		_hint.visible = _is_host and w >= 1150
+	if _pot != null:
+		_pot.visible = w >= 1040
+	if _round != null:
+		_round.visible = w >= 900
+	if _title != null:
+		_title.visible = w >= 700
+	if _steps != null:
+		_steps.visible = w >= 620

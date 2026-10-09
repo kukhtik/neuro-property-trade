@@ -267,6 +267,7 @@ static func test_list() -> Array[String]:
 		"test_phase_to_step_mapping", "test_buy_button_shows_the_price",
 		"test_journal_filters_by_category", "test_hotkeys_respect_the_button_gate",
 		"test_language_button_cycles_locales", "test_skin_switcher",
+		"test_header_sheds_pieces_when_narrow",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
@@ -921,4 +922,31 @@ static func test_every_role_reports_itself() -> String:
 			return "role %s should report itself (read-only badge)" % rid
 		if p.id != rid:
 			return "for_id(%s) returned %s" % [rid, p.id]
+	return ""
+
+
+## The board and the rails collapse when the window narrows, but the header kept a hard 885px
+## minimum: on a 700px window its right end (skin picker, language, settings) sat off-screen and
+## could not be clicked. It must shed captions instead of clipping controls.
+static func test_header_sheds_pieces_when_narrow() -> String:
+	var tb := TopBar.new()
+	tb.call("_apply_visibility", 1440.0)
+	for probe in ["_hint", "_pot", "_round", "_title", "_steps"]:
+		var c = tb.get(probe)
+		if c != null and not c.visible:
+			return "%s must be visible at 1440px" % probe
+	# the F12 caption is the first thing to go: it is a hint, not a control
+	tb.call("_apply_visibility", 700.0)
+	if tb.get("_hint").visible:
+		return "the F12 hint must be hidden at 700px"
+	# the skin picker and the language are CONTROLS: they are never hidden by width
+	for probe in ["_skin_btn", "_lang_btn", "_settings_btn"]:
+		var c = tb.get(probe)
+		if c != null and not c.visible:
+			return "%s is a control and must stay visible at 700px" % probe
+	# and it still reports a sane minimum after all that
+	tb.call("_apply_visibility", 1280.0)
+	if tb.get_combined_minimum_size().x <= 0.0:
+		return "the header must still report a minimum"
+	tb.free()
 	return ""
