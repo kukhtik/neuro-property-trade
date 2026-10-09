@@ -181,7 +181,7 @@ func _on_locale_changed(_locale: String) -> void:
 func _build() -> void:
 	# dim background under the overlay
 	var bg := ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.6)
+	bg.color = UiTheme.skin().color("scrim")
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(bg)

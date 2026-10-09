@@ -11,6 +11,7 @@ class_name SkinPaint
 ## no colour is hard-coded. Pure functions returning styles and textures: headless-testable.
 
 const SkinManager := preload("res://visual/skin_manager.gd")
+const UiTheme := preload("res://ui/theme.gd")
 
 ## How strongly a mixed effect leans toward its own colour (0..1 of the blend).
 const ACCENT_IN_STAGE := 0.10
@@ -137,7 +138,7 @@ static func glow_box(colour: Color, width: int = 2, radius: int = 0) -> StyleBox
 static func lift_box(bg: Color, radius: int = 0) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
-	sb.shadow_color = Color(0, 0, 0, 0.55)
+	sb.shadow_color = UiTheme.skin().color("shadow")
 	sb.shadow_size = 22
 	sb.shadow_offset = Vector2(0, 8)
 	sb.set_corner_radius_all(radius)
@@ -202,7 +203,7 @@ static func tile_face(skin: SkinManager, kind: String, group: Color, size: Vecto
 		"jail":
 			# a hatched overlay plus a coloured wash, exactly as `.t.k-jail` layers them
 			var base := _grad(skin, mix(s1, jail, 0.20), s1, 145.0)
-			return _overlay_hatch(skin, base, Color(1, 1, 1, 0.05), 3, 11, 90.0)
+			return _overlay_hatch(skin, base, skin.color("sheen"), 3, 11, 90.0)
 		"parking":
 			return _grad(skin, mix(s1, skin.color("park", hi), 0.20), s1, 145.0)
 		"goto_jail":
@@ -272,6 +273,7 @@ static func token_shadow(skin: SkinManager, size: float) -> Control:
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	c.custom_minimum_size = Vector2(size, size * 0.22)
 	var img := Image.create(32, 8, false, Image.FORMAT_RGBA8)
+	var sh := skin.color("shadow")
 	# a soft ellipse, dark in the middle and fading at the rim
 	for y in range(8):
 		for x in range(32):
@@ -279,7 +281,7 @@ static func token_shadow(skin: SkinManager, size: float) -> Control:
 			var v := (float(y) / 7.0 - 0.5) * 2.0
 			var r := sqrt(u * u + v * v)
 			var a := clampf(1.0 - r, 0.0, 1.0)
-			img.set_pixel(x, y, Color(0, 0, 0, a * 0.55))
+			img.set_pixel(x, y, Color(sh.r, sh.g, sh.b, a * sh.a))
 	var tr := TextureRect.new()
 	tr.texture = ImageTexture.create_from_image(img)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE

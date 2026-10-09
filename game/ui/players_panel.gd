@@ -259,7 +259,9 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	out.add_child(m)
 
 	if bankrupt:
-		out.modulate = Color(1, 1, 1, _skin.proportion("bankrupt_dim_alpha", 0.5))
+		var dim := Color.WHITE
+		dim.a = _skin.proportion("bankrupt_dim_alpha", 0.5)
+		out.modulate = dim
 	# P4 observer: a player row is clickable (follow them). Clicking an already
 	# followed player unfollows. Signal is always connected; consumers ignore it.
 	out.mouse_filter = Control.MOUSE_FILTER_STOP

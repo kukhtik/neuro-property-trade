@@ -104,37 +104,37 @@ static func _strip_comment(line: String) -> String:
 
 func _scan_for_stray_literals() -> Array:
 	var out: Array = []
-	var dirs := ["res://ui", "res://visual", "res://admin"]
-	var re := RegEx.new()
-	re.compile("#[0-9a-fA-F]{6}")
-	for d in dirs:
-		var dir := DirAccess.open(d)
-		if dir == null:
-			continue
-		for f in dir.get_files():
-			if not f.ends_with(".gd"):
-				continue
-			var path: String = d.path_join(f)
-			if path.ends_with("skin_manager.gd") or path.ends_with("theme.gd"):
-				continue   # the fallback table and its thin adapter ARE the source
-			var txt := FileAccess.get_file_as_string(path)
-			for line in txt.split("
-"):
-				# A COMMENT IS PROSE, NOT CODE. This check exists to find colours written into
-				# the code; a comment that documents a measured pixel (#130b1f) is evidence, and
-				# flagging it forced the measurements out of the explanations that justify the
-				# fixes. The comment is cut before the line is searched.
-				var code := _strip_comment(line)
-				for m in re.search_all(code):
-					# `[color=#%s]` is a FORMAT, not a literal
-					var at := m.get_start()
-					if code.substr(maxi(0, at - 8), 10).contains("%s"):
-						continue
-					out.append(path)
-					break
-				if not out.is_empty() and out[-1] == path:
-					break
+	# RECURSIVE, because a flat listing is not the tree: `ui/components/` (the rails, the chamfer
+	# boxes, the dice stage) was never opened by this check at all, so every colour literal inside
+	# it passed every run. The directory names map to how the UI is arranged, not to how it is
+	# stored on disk.
+	for d in ["res://ui", "res://visual", "res://admin"]:
+		_scan_dir(d, out)
 	return out
+
+
+func _scan_dir(d: String, out: Array) -> void:
+	var dir := DirAccess.open(d)
+	if dir == null:
+		return
+	for f in dir.get_files():
+		if not f.ends_with(".gd"):
+			continue
+		var path: String = d.path_join(f)
+		if path.ends_with("skin_manager.gd") or path.ends_with("theme.gd"):
+			continue   # the fallback table and its thin adapter ARE the source
+		var txt := FileAccess.get_file_as_string(path)
+		for line in txt.split("
+"):
+			# A COMMENT IS PROSE, NOT CODE. This check exists to find colours written into the
+			# code; a comment that documents a measured pixel (#130b1f) is evidence, and flagging
+			# it forced the measurements out of the explanations that justify the fixes. The
+			# comment is cut before the line is searched.
+			if _has_colour_literal(_strip_comment(line)):
+				out.append(path)
+				break
+	for sub in dir.get_directories():
+		_scan_dir(d.path_join(sub), out)
 
 
 
@@ -161,3 +161,29 @@ func _ok(m: String) -> void:
 func _bad(m: String) -> void:
 	_fail += 1
 	print("  FAIL " + m)
+
+
+## `#rrggbb` or `Color(r, g, b)` — the SAME violation written two ways, and only the first was
+## being scanned. `Color(1, 1, 1, 0.10)` passed every check in this file. `Color.TRANSPARENT` and
+## `Color.WHITE` are constants, not literals, and are left alone.
+func _has_colour_literal(line: String) -> bool:
+	var re := RegEx.new()
+	re.compile("#[0-9a-fA-F]{6}")
+	for m in re.search_all(line):
+		# `[color=#%s]` is a FORMAT, not a literal
+		var at := m.get_start()
+		if line.substr(maxi(0, at - 8), 10).contains("%s"):
+			continue
+		return true
+	var needle := "Color("
+	var from := 0
+	while from < line.length():
+		var i := line.find(needle, from)
+		if i < 0:
+			break
+		var after := line.substr(i + needle.length(), 1)
+		# a digit, a minus or a space starts an argument list; a dot (`Color.TRANSPARENT`) does not
+		if after == "-" or after == " " or (after >= "0" and after <= "9"):
+			return true
+		from = i + needle.length()
+	return false

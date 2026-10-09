@@ -150,7 +150,7 @@ func _build_nodes() -> void:
 	# the face and BELOW the content
 	_owner_stripe = ColorRect.new()
 	_owner_stripe.name = "Owner"
-	_owner_stripe.color = Color(0, 0, 0, 0)
+	_owner_stripe.color = Color.TRANSPARENT
 	_owner_stripe.visible = false
 	_owner_stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_owner_stripe.z_index = 1
@@ -160,7 +160,7 @@ func _build_nodes() -> void:
 	# own index so the board shimmers as a wave. On a static board it is the only sign of life.
 	_sheen = ColorRect.new()
 	_sheen.name = "Sheen"
-	_sheen.color = Color(1, 1, 1, 0.10)
+	_sheen.color = _skin.color("sheen")
 	_sheen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sheen.z_index = 2
 	_sheen.visible = false
@@ -524,7 +524,8 @@ func set_target(v: bool) -> void:
 func play_landing() -> void:
 	var t := create_tween()
 	var d: float = _skin.motion("pop", 0.5) * 0.4
-	t.tween_property(self, "modulate", Color(1.35, 1.35, 1.35), d)
+	var boost: float = _skin.metric("flash_boost", 1.35)
+	t.tween_property(self, "modulate", Color(boost, boost, boost), d)
 	t.tween_property(self, "modulate", Color.WHITE, d)
 
 

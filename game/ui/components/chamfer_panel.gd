@@ -147,7 +147,7 @@ func _draw() -> void:
 	ch = clampf(ch, 0.0, lim)
 
 	var pts := _polygon(Vector2.ZERO, s, ch, cut)
-	var fill: Color = sk.color(fill_token, Color(0, 0, 0, 0))
+	var fill: Color = sk.color(fill_token, Color.TRANSPARENT)
 
 	# A texture is clipped to the outline with a Polygon2D mask: `draw_texture_rect` alone
 	# would paint the shape's bounding box, which for a cut corner leaves a square.

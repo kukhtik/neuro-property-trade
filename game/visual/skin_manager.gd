@@ -41,6 +41,10 @@ const FALLBACK_COLORS := {
 	"line": "#39404d", "text": "#e8edf3", "muted": "#8b95a5",
 	"accent": "#4fb3d9", "on_accent": "#0c1218", "accent2": "#5fc4ea",
 	"money": "#ffd34d", "danger": "#e8615c", "warn": "#e08a3c",
+	# translucency that used to be written inline as `Color(0, 0, 0, 0.55)` and friends: a theme
+	# that changes every surface still had these eight bake a fixed grey over its art.
+	"shadow": "#0000008c", "scrim": "#00000099", "sheen": "#ffffff1a",
+	"hatch": "#0000004d", "ring_bg": "#333f5999",
 }
 const FALLBACK_SIZES := {"xs": 10, "s": 12, "m": 14, "l": 18, "xl": 28}
 const FALLBACK_SPACE := [4, 8, 12, 16, 24]
@@ -48,6 +52,8 @@ const FALLBACK_SHAPE := {"radius": 0, "chamfer": 9, "line": 1, "line_active": 2}
 const FALLBACK_METRICS := {
 	"corner_ratio": 1.4, "band_ratio": 0.03, "board_frame": 6, "board_gap": 2,
 	"house_size": 0.019, "token_size": 0.027, "icon_size": 0.036,
+	# how far a landing flash lifts the tile's brightness
+	"flash_boost": 1.35,
 }
 const FALLBACK_MOTION := {
 	"step": 0.19, "hop": 0.32, "pop": 0.5, "panel": 0.3, "card": 2.8,
@@ -430,7 +436,7 @@ func theme() -> Theme:
 	var line := color("line")
 	var s1 := color("surface.1")
 	var s2 := color("surface.2")
-	var noline := Color(0, 0, 0, 0)
+	var noline := Color.TRANSPARENT
 
 	for panel_variant in ["PanelBase", "PanelRail", "ModalFrame", "PlayerCard", "JournalRow", "ToastBg"]:
 		th.set_stylebox("panel", panel_variant, _flat(s1, line, int(shape("line", 1.0))))

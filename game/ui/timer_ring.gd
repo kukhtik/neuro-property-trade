@@ -41,7 +41,7 @@ func _draw() -> void:
 	var center: float = size.x * 0.5
 	var radius: float = center - _thickness * 0.5
 	# Background ring (dim)
-	var bg_col := Color(0.2, 0.25, 0.35, 0.6)
+	var bg_col := UiTheme.skin().color("ring_bg")
 	draw_arc(Vector2(center, center), radius, 0, 2 * PI, 16, bg_col, _thickness)
 	# Progress ring (accent) — counts DOWN from full to empty
 	var progress := 1.0 - clampf(_timer_elapsed / _timer_window, 0.0, 1.0)

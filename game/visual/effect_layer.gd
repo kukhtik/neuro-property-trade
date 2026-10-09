@@ -265,7 +265,8 @@ func move_player(pid: int, path: Array, snap: bool = false) -> void:
 				target + Vector2(0, _token_size() * 0.88), step)
 		# a small hop on each step, proportional to the token size
 		var up: Vector2 = Vector2(0, -_token_size() * 0.25)
-		t.parallel().tween_property(holder, "modulate", Color(1.2, 1.2, 1.2), step * 0.5)
+		var lift: float = UiTheme.skin().metric("step_boost", 1.2)
+		t.parallel().tween_property(holder, "modulate", Color(lift, lift, lift), step * 0.5)
 		t.parallel().tween_property(holder, "modulate", Color.WHITE, step * 0.5)
 		await t.finished
 	_moving[pid] = false
@@ -313,7 +314,7 @@ func float_at(at: Vector2, text: String, positive: bool) -> void:
 	lbl.add_theme_color_override("font_color",
 		skin.color("money") if positive else skin.color("danger"))
 	lbl.position = at - Vector2(20, 0)
-	lbl.modulate = Color(1, 1, 1, 1)
+	lbl.modulate = Color.WHITE
 	lbl.visible = true
 
 	var rise: float = _cell * 0.9

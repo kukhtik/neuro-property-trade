@@ -118,7 +118,7 @@ func _ensure_modal_root() -> Control:
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	_dim.visible = false
-	_dim.color = Color(0, 0, 0, 0)
+	_dim.color = Color.TRANSPARENT
 	_modal_root.add_child(_dim)
 	_dim.gui_input.connect(_on_dim_input)
 	return _modal_root
@@ -131,7 +131,7 @@ func _ready() -> void:
 
 ## The dim colour comes from a skin token, not a literal.
 func _dress() -> void:
-	var sc := UiTheme.skin().color("bg", Color(0, 0, 0))
+	var sc := UiTheme.skin().color("bg", Color.BLACK)
 	# `#mod` is the backdrop at 75% opacity over the page, with a 3px blur. Godot's ColorRect
 	# cannot blur, so the same effect is reached with a slightly denser scrim — the point is
 	# that the dialog sits ON something, not that the pixels behind it are unreadable.

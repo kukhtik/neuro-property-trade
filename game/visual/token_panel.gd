@@ -1,5 +1,6 @@
 class_name TokenPanel
 extends Control
+const UiTheme := preload("res://ui/theme.gd")
 ## A single animated player token (spec §4.3). The piece is the player's SVG
 ## sprite (assets/tokens/<token_id>.svg) drawn WITHOUT recoloring, sitting on a
 ## colored halo circle (PlayerIdentity color) so the player's color reads while
@@ -154,13 +155,18 @@ func _walk_to(target_tile: int, target_pos: Vector2) -> void:
 ## Gold flash when the piece passes GO.
 func _flash_go() -> void:
 	var flash := ColorRect.new()
-	flash.color = Color(1, 0.83, 0.3, 0.0)
+	# the GO flash was a hardcoded gold: a red-themed board still flashed yellow
+	var gold := UiTheme.skin().color("money")
+	var peak := UiTheme.skin().proportion("go_flash_alpha", 0.55)
+	var faint := Color(gold.r, gold.g, gold.b, 0.0)
+	var bright := Color(gold.r, gold.g, gold.b, peak)
+	flash.color = faint
 	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
 	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(flash)
 	var tw := create_tween()
-	tw.tween_property(flash, "color", Color(1, 0.83, 0.3, 0.55), 0.12)
-	tw.tween_property(flash, "color", Color(1, 0.83, 0.3, 0.0), 0.25)
+	tw.tween_property(flash, "color", bright, 0.12)
+	tw.tween_property(flash, "color", faint, 0.25)
 	tw.tween_callback(flash.queue_free)
 
 ## Pixel position for a piece on `tile_idx`, fanned out among `fan_count`
