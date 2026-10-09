@@ -39,6 +39,9 @@ const D := {
 	"top.phase":            {"ru": "ФАЗА: ", "en": "PHASE: "},
 	"top.cold":             {"ru": "до старта", "en": "not started"},
 	"top.settings_tip":     {"ru": "Открыть настройки и правила игры", "en": "Open settings and game rules"},
+	# the mockup has a `RU / EN` control in the header; `I18n` already switched languages,
+	# but only from inside the settings dialog
+	"top.lang_tip":         {"ru": "Язык интерфейса", "en": "Interface language"},
 	"top.restart_tip":      {"ru": "Пересобрать партию с новым сидом (рестарт)", "en": "Rebuild the match with a new seed (restart)"},
 	"top.eye_tip":          {"ru": "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)", "en": "Observer mode: return to match settings (seats without LOCAL play themselves)"},
 	"top.admin_hint":       {"ru": "F12 — админ", "en": "F12 — admin"},

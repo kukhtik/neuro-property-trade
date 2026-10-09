@@ -30,6 +30,7 @@ var _is_host := true
 var _profile = null
 var _role_badge: Label = null
 var _eye_btn: Button
+var _lang_btn: Button
 var _sfx = null   # optional Sfx for the per-second timer tick
 
 ## Provide the procedural Sfx node so the timer ring can play a tick each second.
@@ -115,6 +116,14 @@ func _init() -> void:
 	_timer_ring = TimerRing.new()
 	h.add_child(_timer_ring)
 	
+	# The mockup puts `RU / EN` in the header. `I18n` has had two locales all along, but the only
+	# way to change one was inside the settings dialog — so an English player reading a Russian
+	# interface had to find the right tab first.
+	_lang_btn = UiTheme.button("RU / EN", I18n.t("top.lang_tip"))
+	_lang_btn.custom_minimum_size = Vector2(30, 24)
+	I18n.tip_on(_lang_btn, "top.lang_tip")
+	_lang_btn.connect("pressed", Callable(self, "_on_lang"))
+	h.add_child(_lang_btn)
 	_settings_btn = UiTheme.button("⚙", I18n.t("top.settings_tip"))
 	_settings_btn.custom_minimum_size = Vector2(30, 24)
 	_settings_btn.connect("pressed", Callable(self, "_on_settings"))
@@ -254,3 +263,11 @@ func _step_index(phase: String) -> int:
 		"END_TURN":
 			return 3          # Конец
 	return -1
+
+
+## Cycle the interface language. `game_view` already listens for `locale_changed` and re-syncs
+## the whole HUD, so nothing else has to be told.
+func _on_lang() -> void:
+	var i: int = I18n.LOCALES.find(I18n.current)
+	var next: String = I18n.LOCALES[(i + 1) % I18n.LOCALES.size()]
+	I18n.set_locale(next)

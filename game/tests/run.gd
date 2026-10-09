@@ -57,6 +57,19 @@ func _run_module(path: String) -> void:
 		_failures.append("cannot load %s" % path)
 		return
 	var names: Array = mod.call("test_list")
+	# A TEST FUNCTION THAT IS NOT LISTED IN `test_list` NEVER RUNS, and the suite stays green.
+	# That happened while adding the language button: the function was written, the assertion it
+	# makes was real, and `ran N tests, 0 failed` never counted it. Compare what the module
+	# DECLARES against the methods it actually has, the same way a missing module is caught.
+	var declared := {}
+	for n in names:
+		declared[str(n)] = true
+	for m in mod.get_script_method_list():
+		var mname := str(m.get("name", ""))
+		if mname.begins_with("test_") and mname != "test_list" and not declared.has(mname):
+			var msg := "%s :: %s exists but is not in test_list()" % [path.get_file(), mname]
+			_failures.append(msg)
+			push_error(msg)
 	for test_name in names:
 		_count += 1
 		var err: Variant = mod.call(test_name)

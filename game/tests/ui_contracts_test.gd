@@ -16,6 +16,30 @@ const TopBar := preload("res://ui/top_bar.gd")
 const Journal := preload("res://ui/journal_panel.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
+## The header's `RU / EN` control must actually change the locale — and cycle back. The locale
+## is GLOBAL state, so the test restores it; leaking a language change would make later tests
+## depend on the order they run in.
+static func test_language_button_cycles_locales() -> String:
+	var tb := TopBar.new()
+	var before: String = I18n.current
+	tb.call("_on_lang")
+	var mid: String = I18n.current
+	if mid == before:
+		return "the language control must change the locale (stuck on %s)" % before
+	tb.call("_on_lang")
+	if I18n.current == mid:
+		return "the language control must cycle, not get stuck on %s" % mid
+	if I18n.current != before:
+		return "two presses must return to the original locale, got %s" % I18n.current
+	# a locale the game does not ship must be refused
+	I18n.set_locale("klingon")
+	if I18n.current != before:
+		return "an unsupported locale must be ignored, got %s" % I18n.current
+	I18n.set_locale(before)
+	tb.free()
+	return ""
+
+
 ## The mockup marks B on buy and N on end turn. A hotkey must be gated exactly like the button
 ## it stands for: firing an intent the engine will reject is worse than doing nothing, because
 ## the player sees no effect and no reason.
@@ -206,6 +230,7 @@ static func test_list() -> Array[String]:
 		"test_stat_block_counts_houses_hotels_mortgaged",
 		"test_phase_to_step_mapping", "test_buy_button_shows_the_price",
 		"test_journal_filters_by_category", "test_hotkeys_respect_the_button_gate",
+		"test_language_button_cycles_locales",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
