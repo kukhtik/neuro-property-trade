@@ -131,19 +131,40 @@ only tracks the roadmap, not every sub-task.
 
 ## Up next (post-UI)
 
-1. **In-browser WebGL playthrough smoke** (the only Phase-4/5 deferral that
-   still matters for stream): run the Web build on real Chrome/Firefox, click
-   through a full game, confirm 60 FS-wise acceptable on an overlay.
-2. **Real `evil` over a second SDK connection** — requires re-vendoring the
-   SDK singleton into per-connection instances; plan is in the dev skill, do
-   not start without a live second SDK server.
-3. **REMOTE browser client (post-MVP)** — the third human driver, only after
-   the UI overhaul is stable.
+1. ~~**In-browser WebGL playthrough smoke**~~ — DONE. `tools/ci/browser_seat_e2e.py`
+   drives a real headless Chrome against the WebGL export and a host seat; the
+   browser joins, receives projections and sends intents the host accepts
+   (`joined=True`, verdicts ok). `docs/browser_e2e.md` records the setup
+   (COOP/COEP headers, `index.html?seat=<token>&host=ws://...`).
+2. **Real `evil` over a second SDK connection** — still open. Requires
+   re-vendoring the SDK singleton into per-connection instances; plan is in the
+   dev skill, do not start without a live second SDK server.
+3. ~~**REMOTE browser client (post-MVP)**~~ — DONE, and it is the same work as
+   (1): the browser IS a remote seat, driving `remote_driver.gd` on the host.
+   What remains is only polish, not plumbing.
+
+**Open UI gaps** (not blockers; each is a deliberate decision, not an oversight):
+- skin switcher in the UI — the palette is fully tokenised now (`surface.1`,
+  `line`, `board.bg2` and friends resolve from the skin after the dotted-key
+  fix), so a switcher would actually show something; the owner deferred it.
+- role tabs (`ИГРОК/СТРИМ/АДМИН`) exist in the mockup but must NOT be built:
+  roles are chosen at launch (`--stream`/`--admin`/web), by design.
+- admin controls (`Пауза`, `Шаг`, `+$500`) live in the F12 panel rather than in
+  the action bar, where the mockup puts them.
+
+**UI-vs-mockup verification** is scripted and green: `tools/ci/smoke_all_roles.py`
+drives one match with all three roles live, `compare_mockup.py` diffs the
+declared palette and breakpoints, and `side_by_side.py` renders the mockup in a
+browser at the app's own size. The mockup must be driven into its STARTED state
+(`closeSet()` then `startMatch()`) — screenshotting it cold compares an unstarted
+design against a running game.
 
 Infrastructure is IN PLACE: see "Completed infrastructure" above and
 `docs/infra.md`. When the UI branches settle, the same oracle
 (`tools/ci/run_tests.sh`) already gates the engine, and the corpus + soak run in
-CI per push.
+CI per push. `run.gd` additionally fails on a test function that exists but is
+absent from `test_list()`, so a silently unrun test cannot hide behind a green
+suite.
 
 ## Risks (still live)
 
