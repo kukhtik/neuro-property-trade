@@ -173,6 +173,18 @@ func _draw() -> void:
 		var bc: Color = sk.color(border_token, Color.WHITE)
 		var closed := pts.duplicate()
 		closed.append(pts[0])
+		# The border is drawn on the polygon's EDGE, and content laid out by a container fills
+		# the same rect — so the child paints over the frame and the border is invisible. Inset
+		# the path by half the width so it stays inside its own bounds.
+		var half := float(w) * 0.5
+		if half > 0.0 and pts.size() >= 4:
+			var inset := PackedVector2Array()
+			for p in pts:
+				inset.append(Vector2(
+					clampf(p.x, half, maxf(half, s.x - half)),
+					clampf(p.y, half, maxf(half, s.y - half))))
+			closed = inset.duplicate()
+			closed.append(inset[0])
 		draw_polyline(closed, bc, float(w), true)
 
 
