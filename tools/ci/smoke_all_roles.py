@@ -133,7 +133,12 @@ func _process(_dt: float) -> void:
         user.insert(0, role_flag)
     args += ["--"] + user
     p = subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    deadline = time.time() + wait_s + 25
+    # A ROLE CAPTURE IS SLOWER THAN IT LOOKS. The frame is taken after `wait_s * 60` frames, and
+    # under opengl3 with a real window that is ~10 fps, not 60 — a `wait_s` of 8 needs ~46s of
+    # wall clock, while the old budget was `wait_s + 25` = 33s. The process was killed just before
+    # it wrote its file, both roles reported MISSING, and the smoke failed for a reason that had
+    # nothing to do with the UI. Measured, then budgeted with room to spare.
+    deadline = time.time() + wait_s * 8 + 60
     while time.time() < deadline:
         if out_png.exists():
             break
