@@ -225,7 +225,10 @@ func _button_for(act: String, proj: Dictionary, pid: int) -> Button:
 			return UiTheme.button_accent(I18n.t("act.buy"), I18n.t("act.buy_tip"))
 		"pass":
 			var label := I18n.t("act.pass")
-			if str(proj.get("pending", {}).get("type", "") == "purchase"):
+			# `str(a == b)` compares FIRST and then stringifies the bool, so this read "False", and a
+			# non-empty string is TRUE in GDScript — the button was relabelled "don't buy" on every
+			# single turn, whatever the pending action actually was. `str()` belongs around the value.
+			if str(proj.get("pending", {}).get("type", "")) == "purchase":
 				label = I18n.t("act.no_buy")
 			return UiTheme.button(label, I18n.t("act.pass_tip"))
 		"bid":

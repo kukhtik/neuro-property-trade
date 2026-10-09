@@ -10,6 +10,26 @@ const Store := preload("res://ui/core/ui_store.gd")
 const Layout := preload("res://ui/core/layout_profile.gd")
 const Profile := preload("res://ui/core/ui_profile.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
+const ActionPanel := preload("res://ui/action_panel.gd")
+const I18n := preload("res://i18n/i18n.gd")
+
+## The pass button's label follows the pending action, and it did NOT: the condition was
+## `str(a == b)`, which compares first and stringifies the boolean — so it read "False", and a
+## non-empty string is true in GDScript. The button was relabelled "don't buy" on every turn no
+## matter what was pending. A comparison whose result is more interesting than its truth value.
+static func test_action_panel_pass_label_tracks_pending() -> String:
+	var p := ActionPanel.new()
+	var plain: Button = p.call("_button_for", "pass", {"pending": {"type": ""}}, 0)
+	if plain.text != I18n.t("act.pass"):
+		return "with nothing pending the pass button must read '%s', got '%s'" % [
+			I18n.t("act.pass"), plain.text]
+	var during: Button = p.call("_button_for", "pass", {"pending": {"type": "purchase"}}, 0)
+	if during.text != I18n.t("act.no_buy"):
+		return "during a purchase the pass button must read '%s', got '%s'" % [
+			I18n.t("act.no_buy"), during.text]
+	p.free()
+	return ""
+
 
 static func test_list() -> Array[String]:
 	return [
@@ -34,6 +54,7 @@ static func test_list() -> Array[String]:
 		# LayoutProfile
 		"test_layout_profiles", "test_layout_compact_by_height",
 		"test_layout_rails", "test_layout_label_degradation",
+		"test_action_panel_pass_label_tracks_pending",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
