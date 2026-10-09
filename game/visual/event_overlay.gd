@@ -14,7 +14,11 @@ var _max_lines := 6
 
 func _init() -> void:
 	var b := StyleBoxFlat.new()
-	b.bg_color = Color(0.05, 0.08, 0.12, 0.72)
+	# THE COLOUR WAS LITERAL: Color(0.05, 0.08, 0.12, 0.72) — no skin defines it, and it sat
+	# over the journal as a grey slab. Measured #0e111e where the mockup has #130b1f across 20%
+	# of the right column. It reads as the skin's own background now, only translucent, so it
+	# still separates itself from the panel beneath without belonging to another palette.
+	b.bg_color = Color(UiTheme.skin().color("bg"), 0.82)
 	b.corner_radius_top_left = 8
 	b.corner_radius_top_right = 8
 	b.corner_radius_bottom_left = 8

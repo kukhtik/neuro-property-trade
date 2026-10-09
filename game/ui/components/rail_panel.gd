@@ -19,6 +19,7 @@ signal toggled(collapsed: bool)
 
 const SkinManager := preload("res://visual/skin_manager.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
+const UiTheme := preload("res://ui/theme.gd")
 
 const RAIL_W := 46
 
@@ -47,6 +48,13 @@ func setup(skin: SkinManager, title_key: String, left_side: bool = true) -> void
 	_title_key = title_key
 	_left_side = left_side
 	mouse_filter = Control.MOUSE_FILTER_PASS
+	# A PanelContainer is TRANSPARENT only if someone says so. This one never set a `panel`
+	# stylebox, so it fell back to the ENGINE's default theme fill — a grey (#1a1a1a) belonging
+	# to no skin — and both side rails painted it behind their content. `PlayersPanel` sets its
+	# own box; the rail that wraps it did not, so the surface under the panels was a colour the
+	# design never mentions.
+	add_theme_stylebox_override("panel",
+		UiTheme.box(_skin.color("surface.1"), _skin.color("line"), 1, 0))
 	_build()
 
 

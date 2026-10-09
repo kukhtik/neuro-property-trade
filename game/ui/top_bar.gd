@@ -43,7 +43,8 @@ var _underline: TextureRect
 
 
 func _init() -> void:
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
+	# the mockup fills the header with `var(--s1)` — surface.1 — not surface.2
+	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	# the mockup sweeps an animated accent gradient along the header's bottom edge
 	# (`#top::after`): it is the one moving thing on a still screen, and its absence is part
 	# of why our header read as a plain bar
@@ -57,7 +58,17 @@ func _init() -> void:
 	_underline.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	_underline.offset_top = -2
 	_underline.offset_bottom = 0
-	add_child(_underline)
+	# THE SWEEP NEEDS ITS OWN LAYER. This is a `PanelContainer`, and a container positions its
+	# children itself — anchors and offsets on a direct child are simply overwritten. The 2px
+	# sweep was therefore laid out at the container's full content rect and its accent gradient
+	# covered the entire header bar, 44px tall, in every screenshot the game ever took. Inside a
+	# plain `Control` that fills the bar, the anchors the sweep sets are the ones that apply.
+	var sweep_layer := Control.new()
+	sweep_layer.name = "SweepLayer"
+	sweep_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sweep_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sweep_layer)
+	sweep_layer.add_child(_underline)
 
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 16)

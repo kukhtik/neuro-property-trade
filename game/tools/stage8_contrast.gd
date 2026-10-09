@@ -87,6 +87,21 @@ func _ready() -> void:
 
 
 ## Files outside the fallback table that still hard-code a 6-digit colour.
+## Everything in a line before its first `#` that is not inside a string literal.
+static func _strip_comment(line: String) -> String:
+	var in_d := false
+	var in_s := false
+	for i in line.length():
+		var ch := line[i]
+		if ch == "\"" and not in_s:
+			in_d = not in_d
+		elif ch == "'" and not in_d:
+			in_s = not in_s
+		elif ch == "#" and not in_d and not in_s:
+			return line.substr(0, i)
+	return line
+
+
 func _scan_for_stray_literals() -> Array:
 	var out: Array = []
 	var dirs := ["res://ui", "res://visual", "res://admin"]
@@ -103,13 +118,22 @@ func _scan_for_stray_literals() -> Array:
 			if path.ends_with("skin_manager.gd") or path.ends_with("theme.gd"):
 				continue   # the fallback table and its thin adapter ARE the source
 			var txt := FileAccess.get_file_as_string(path)
-			for m in re.search_all(txt):
-				# `[color=#%s]` is a FORMAT, not a literal
-				var at := m.get_start()
-				if txt.substr(maxi(0, at - 8), 10).contains("%s"):
-					continue
-				out.append(path)
-				break
+			for line in txt.split("
+"):
+				# A COMMENT IS PROSE, NOT CODE. This check exists to find colours written into
+				# the code; a comment that documents a measured pixel (#130b1f) is evidence, and
+				# flagging it forced the measurements out of the explanations that justify the
+				# fixes. The comment is cut before the line is searched.
+				var code := _strip_comment(line)
+				for m in re.search_all(code):
+					# `[color=#%s]` is a FORMAT, not a literal
+					var at := m.get_start()
+					if code.substr(maxi(0, at - 8), 10).contains("%s"):
+						continue
+					out.append(path)
+					break
+				if not out.is_empty() and out[-1] == path:
+					break
 	return out
 
 

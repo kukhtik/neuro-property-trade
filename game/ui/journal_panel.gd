@@ -130,6 +130,13 @@ func _init() -> void:
 
 	_scroll = ScrollContainer.new()
 	_scroll.name = "FeedScroll"
+	# A ScrollContainer draws a `panel` stylebox, and ours was never overridden — so it used the
+	# engine's default theme fill instead of the skin. The journal's rows are transparent and the
+	# area below the last one therefore painted a colour that exists in no skin: measured #0e111e
+	# where the mockup has #130b1f. The scroll region must be a window onto the panel, not a
+	# surface of its own.
+	_scroll.add_theme_stylebox_override("panel",
+		UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_feed)
