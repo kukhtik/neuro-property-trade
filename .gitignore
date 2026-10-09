@@ -39,3 +39,5 @@ game/tools/_role_capture.*
 
 # probe/debug output written next to the project
 game/_*.out
+game/tools/_*
+game/_*
