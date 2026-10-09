@@ -138,10 +138,7 @@ func _ready() -> void:
 		resized.connect(_reflow)
 
 
-var _draws := 0
-
 func _draw() -> void:
-	_draws += 1
 	var sk := _skin_or_default()
 	var s := size
 	var ch: float = sk.shape("chamfer", 9.0)

@@ -41,6 +41,9 @@ var _intent_map = Intents.new()
 
 ## The dialog's stack, re-centred whenever it or the host changes size.
 var _centred: Control = null
+## The Control inside this host's own CanvasLayer: everything visual goes here, so the dialog
+## always outranks the lobby regardless of who parented the host.
+var _modal_root: Control = null
 
 
 ## Centre the dialog. Called when it opens and when the host resizes.
@@ -66,10 +69,28 @@ func _notification(what: int) -> void:
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_process(true)
+	# THE DIALOG MUST OUTRANK THE LOBBY.
+	#
+	# The settings overlay lives on its own `CanvasLayer` at layer 50, and a CanvasLayer paints
+	# above the ENTIRE node tree no matter what `z_index` anything in that tree carries. The
+	# dialog was therefore underneath it and never seen: it opened, sized, drew and reported
+	# `visible=true` while the lobby covered every pixel of it. Moving the whole host onto a
+	# higher CanvasLayer fixes it wherever it is parented, and does not depend on anyone
+	# remembering which layer the lobby chose.
+	var layer := CanvasLayer.new()
+	layer.name = "ModalLayer"
+	layer.layer = 60
+	add_child(layer)
+	var holder := Control.new()
+	holder.name = "ModalRoot"
+	holder.set_anchors_preset(Control.PRESET_FULL_RECT)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(holder)
+	_modal_root = holder
 	_dim = ColorRect.new()
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(_dim)
+	_modal_root.add_child(_dim)
 	_dim.gui_input.connect(_on_dim_input)
 	# re-render (not rebuild) the open modal when the locale changes
 	I18n.inst().locale_changed.connect(_on_locale_changed)
@@ -140,8 +161,12 @@ func _free_panel() -> void:
 ## How many modal panels currently exist as children. Used by the "no stacking"
 ## contract: it must be 0 or 1, never more.
 func panel_count() -> int:
+	# The dialog now lives inside this host's own CanvasLayer (`_modal_root`), not directly
+	# among our children, so counting `get_children()` returned the layer itself and the test
+	# read "close() left 1 panels" for a dialog that had been freed properly.
+	var root := _modal_root if _modal_root != null and is_instance_valid(_modal_root) else self
 	var n := 0
-	for c in get_children():
+	for c in root.get_children():
 		if c != _dim:
 			n += 1
 	return n
@@ -628,7 +653,7 @@ func _panelize(content: Control) -> void:
 
 	# the stack follows the box: the box's own height decides the stack's
 	stack.custom_minimum_size.y = 0
-	add_child(wrap)
+	_modal_root.add_child(wrap)
 	_centred = stack
 	call_deferred("centre")
 	# `Chamfer._draw` runs once, before the container has sized the box, and is never asked
