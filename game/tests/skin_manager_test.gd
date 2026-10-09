@@ -20,7 +20,7 @@ static func test_list() -> Array[String]:
 		"test_theme_builds_from_skin", "test_theme_varies_between_skins",
 		"test_chamfer_polygon_shapes", "test_unknown_skin_uses_defaults",
 		"test_dotted_slot_id_resolves", "test_dotted_color_tokens_come_from_the_skin",
-		"test_metric_not_shadowed_by_fallback",
+		"test_metric_not_shadowed_by_fallback", "test_token_path_follows_the_skin",
 		"test_motion_not_shadowed_by_fallback"]
 
 static func test_default_skin_loads() -> String:
@@ -291,4 +291,27 @@ static func test_motion_not_shadowed_by_fallback() -> String:
 		return "stress motion.step should be 0.05, got %s" % s.motion("step")
 	if s.motion_profile() != "reduced":
 		return "stress profile should be 'reduced', got %s" % s.motion_profile()
+	return ""
+
+
+## Token icons are the thing a themed board most wants to redraw, and their folder used to be a
+## literal in `core`. A skin must be able to point `asset.tokens` somewhere else, and a seat with
+## a bad id must still get a path that EXISTS.
+static func test_token_path_follows_the_skin() -> String:
+	var s = SM.new()
+	s.load_skin("default")
+	if s.token_path("ship") != "res://assets/tokens/ship.svg":
+		return "default folder wrong: %s" % s.token_path("ship")
+	if s.token_path("") != "res://assets/tokens/ship.svg":
+		return "empty id must fall back to the first token, got %s" % s.token_path("")
+	if s.token_path("bogus") != "res://assets/tokens/ship.svg":
+		return "unknown id must fall back, got %s" % s.token_path("bogus")
+	# A SKIN MUST BE ABLE TO REDIRECT ITS ICONS. This is the whole point of reading the folder
+	# from the skin instead of a literal in `core`: the icons are what a themed board most wants
+	# to redraw, and until now a skin could restyle every surface and still be stuck with these.
+	var cfg: Dictionary = s._cfg.duplicate(true)
+	cfg["tokens"]["asset"] = {"tokens": "res://assets/skins/evil/tokens"}
+	s._cfg = cfg
+	if not s.token_path("cat").begins_with("res://assets/skins/evil/"):
+		return "a skin must be able to redirect its token folder, got %s" % s.token_path("cat")
 	return ""

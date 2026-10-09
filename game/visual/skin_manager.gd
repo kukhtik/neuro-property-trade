@@ -35,6 +35,7 @@ const SKINS_DIR := "res://assets/skins/"
 
 ## Built-in fallback values — the last link of the fallback chain. A skin that
 ## ships nothing still renders. Deliberately NOT the Hasbro palette.
+const PI := preload("res://core/player_identity.gd")
 const FALLBACK_COLORS := {
 	"bg": "#16191f", "surface.1": "#1e242e", "surface.2": "#171c24",
 	"surface.3": "#232a35",
@@ -267,6 +268,21 @@ func motion_profile() -> String:
 
 ## Resolve a color by token path ("accent") or legacy dotted path
 ## ("group.brown", "ui.accent"). Returns the fallback when missing.
+## Where this skin keeps its player-token icons.
+##
+## The path used to live in `core/player_identity.gd` as a literal, so a skin could restyle every
+## surface and still be stuck with the shipped icons: the one thing a themed board most wants to
+## redraw. A skin may now point `asset.tokens` at its own folder; the shared folder is the default.
+func token_path(id: String) -> String:
+	var d := str(token("asset.tokens", "")).strip_edges()
+	if d == "":
+		d = "res://assets/tokens"
+	var pid := id.strip_edges()
+	if not PI.is_known_token(pid):
+		pid = PI.TOKENS[0]   # a bad seat must not yield a path to a file that isn't there
+	return "%s/%s.svg" % [d.rstrip("/"), pid]
+
+
 func color(name: String, fallback: Color = Color.WHITE) -> Color:
 	var tok: Variant = token("color." + name, null)
 	var c := _as_color(tok)

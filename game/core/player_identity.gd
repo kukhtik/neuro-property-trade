@@ -29,14 +29,6 @@ static func color_of(pid: int) -> Color:
 static func token_of(pid: int) -> String:
 	return TOKENS[pid % TOKENS.size()]
 
-## Resolve a token id to its SVG asset path. Falls back to the first token if
-## the id is unknown/empty so a bad id never yields a broken path.
-static func token_path(token_id: String) -> String:
-	var id := token_id.strip_edges()
-	if id == "" or not TOKENS.has(id):
-		id = TOKENS[0]
-	return "res://assets/tokens/%s.svg" % id
-
 ## True when the token id is one of the known assets.
 static func is_known_token(token_id: String) -> bool:
 	return TOKENS.has(token_id.strip_edges())

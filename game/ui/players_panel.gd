@@ -363,8 +363,9 @@ func _avatar(token_id: String, col: Color, size: int, player_name: String) -> Co
 	wrap.add_child(halo)
 	# sprite
 	var tex: Texture2D = null
-	if ResourceLoader.exists(PI.token_path(token_id)):
-		tex = load(PI.token_path(token_id))
+	var path: String = _skin.token_path(token_id)
+	if ResourceLoader.exists(path):
+		tex = load(path)
 	if tex != null:
 		var spr := TextureRect.new()
 		spr.texture = tex

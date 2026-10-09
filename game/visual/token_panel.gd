@@ -57,8 +57,9 @@ func setup(tok: String, col: Color, lbl: String, tile_count: int, cell: int,
 	# sprite (SVG art, no recolor). Fall back to a plain circle if the asset
 	# is missing (code-built seam so art can swap without logic changes).
 	var tex: Texture2D = null
-	if ResourceLoader.exists(PI.token_path(token_id)):
-		tex = load(PI.token_path(token_id))
+	var path: String = UiTheme.skin().token_path(token_id)
+	if ResourceLoader.exists(path):
+		tex = load(path)
 	if tex != null:
 		_sprite = TextureRect.new()
 		_sprite.texture = tex

@@ -7,8 +7,6 @@ static func test_list() -> Array[String]:
 		"test_eight_colors_and_tokens",
 		"test_color_of_wraps",
 		"test_token_of_wraps",
-		"test_token_path_known",
-		"test_token_path_unknown_falls_back",
 		"test_is_known_token",
 		"test_colors_contrast_on_backdrop",
 	]
@@ -44,20 +42,6 @@ static func test_token_of_wraps() -> String:
 		return "token_of(0) should be TOKENS[0]"
 	if PI.token_of(8) != PI.TOKENS[0]:
 		return "token_of(8) should wrap to TOKENS[0]"
-	return ""
-
-static func test_token_path_known() -> String:
-	var PI = _PI()
-	if PI.token_path("ship") != "res://assets/tokens/ship.svg":
-		return "token_path(ship) wrong: %s" % PI.token_path("ship")
-	return ""
-
-static func test_token_path_unknown_falls_back() -> String:
-	var PI = _PI()
-	if PI.token_path("") != "res://assets/tokens/ship.svg":
-		return "empty token should fall back to ship"
-	if PI.token_path("bogus") != "res://assets/tokens/ship.svg":
-		return "unknown token should fall back to ship"
 	return ""
 
 static func test_is_known_token() -> String:

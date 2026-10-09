@@ -1,7 +1,6 @@
 extends Node
 ## Phase 0 diagnostic probe — skinning/asset abstraction (TDD-first).
-## Verifies the visual layer has NO hardcoded asset paths or Color(...) literals
-## in the tile/panel/top-bar code — everything must go through a SkinManager /
+## Verifies every script reaches its art through the skin seam, never by literal path — everything must go through a SkinManager /
 ## ThemeManager seam so art can swap by replacing assets + a skin.json config.
 ##   1. tile_view.gd: no `res://assets/...` literal paths, no `Color("...")` or
 ##      `Color(r,g,b)` literals for the tile's own look.
@@ -13,48 +12,76 @@ var _had_fail := false
 var _checks := 0
 
 func _ready() -> void:
-	await _check_no_hardcoded_paths("res://visual/tile_view.gd")
-	await _check_no_hardcoded_paths("res://visual/board_view.gd")
-	await _check_no_hardcoded_paths("res://ui/players_panel.gd")
-	await _check_no_hardcoded_paths("res://ui/top_bar.gd")
+	# EVERY script, not four hand-picked ones. The old list (`tile_view`, `board_view`,
+	# `players_panel`, `top_bar`) meant this probe reported PASS while the rest of the UI was
+	# never read — and its Colour test skipped any line containing the word "skin", which is most
+	# lines that legitimately mention a skin and also most lines that would hide a literal.
+	# Colours are `stage8_contrast`'s job now (it scans the same tree, recursively, for both
+	# `#rrggbb` and `Color(...)`); this probe guards ASSET PATHS, which nothing else checks.
+	for d in ["res://ui", "res://visual", "res://admin", "res://seats", "res://i18n", "res://core"]:
+		_scan_dir(d)
 	await _check_skin_manager_exists()
 
 	if _had_fail:
 		quit(1)
 	else:
-		print("SKIN_PROBE: ALL PASSED (%d checks)" % _checks)
+		print("SKIN_PROBE: ALL PASSED (%d files, %d checks)" % [_files, _checks])
 		quit(0)
 
-## A visual-layer file must not contain literal `res://assets/...` paths or
-## `Color(...)` literals (the skin seam owns those).
+
+var _files := 0
+
+
+func _scan_dir(d: String) -> void:
+	var dir := DirAccess.open(d)
+	if dir == null:
+		return
+	for f in dir.get_files():
+		if not f.ends_with(".gd"):
+			continue
+		var path: String = d.path_join(f)
+		if path.ends_with("skin_manager.gd"):
+			continue   # the one place an asset path is ALLOWED to appear
+		_check_no_hardcoded_paths(path)
+	for sub in dir.get_directories():
+		_scan_dir(d.path_join(sub))
+
+
+## A script must not open an asset by literal path — art swaps by replacing files, and a literal
+## path is what stops a skin from being able to redirect it.
 func _check_no_hardcoded_paths(path: String) -> void:
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		_fail("cannot read %s" % path)
 		return
-	var src: String = f.get_as_text()
-	var bad_paths := 0
-	var bad_colors := 0
-	for line in src.split("\n"):
-		var l := line.strip_edges()
-		if l.begins_with("#") or l.begins_with("##"):
-			continue
-		if l.contains("res://assets/") and not l.contains("SkinManager") and not l.contains("skin"):
-			bad_paths += 1
-		# Color("...") or Color(r, g, b) literals (not Color.TRANSPARENT/WHITE/BLACK
-		# which are semantic, not a call into a theme/skin manager, and not a
-		# Color(c.r, ...) reconstruction from existing components)
-		if l.contains("Color(") and not l.contains("Color.TRANSPARENT") and \
-		   not l.contains("Color.WHITE") and not l.contains("Color.BLACK") and \
-		   not l.contains("Color(c.r") and \
-		   not l.contains("SkinManager") and not l.contains("ThemeManager") and \
-		   not l.contains("skin") and not l.contains("theme"):
-			bad_colors += 1
-	if bad_paths > 0 or bad_colors > 0:
-		_fail("%s: %d hardcoded asset paths, %d hardcoded Color() literals" % \
-			[path, bad_paths, bad_colors])
-		return
-	_pass("%s: no hardcoded asset paths or Color() literals" % path)
+	_files += 1
+	var bad := 0
+	for line in f.get_as_text().split("
+"):
+		var code := _strip_comment(line).strip_edges()
+		if code.contains("res://assets/") or code.contains("res://assets\\"):
+			# a `const SKIN_DIR := "res://assets/skins"` style declaration is a SEAM, not a bake
+			if code.begins_with("const ") or code.begins_with("@"):
+				continue
+			bad += 1
+	if bad > 0:
+		_fail("%s: %d hardcoded asset paths" % [path, bad])
+
+
+## Comments are prose: they cite paths as evidence and must not be counted as code.
+func _strip_comment(line: String) -> String:
+	var in_s := false
+	var in_d := false
+	for i in line.length():
+		var ch := line[i]
+		if ch == "\"" and not in_d:
+			in_s = not in_s
+		elif ch == "'" and not in_s:
+			in_d = not in_d
+		elif ch == "#" and not in_s and not in_d:
+			return line.substr(0, i)
+	return line
+
 
 ## A SkinManager class must exist and load a skin.json config.
 func _check_skin_manager_exists() -> void:
