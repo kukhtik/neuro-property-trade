@@ -36,3 +36,6 @@ game/corpus/
 build/web/
 game/tools/_args_probe.*
 game/tools/_role_capture.*
+
+# probe/debug output written next to the project
+game/_*.out
