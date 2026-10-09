@@ -41,6 +41,32 @@ var _filters_dirty := true
 const EXPORT_PATH := "user://journal_export.jsonl"
 
 ## Event types that move money (the "деньги" quick filter).
+## The design groups events into EIGHT categories (`ty.*`). The filter used to list the raw
+## engine types it had seen in the log — `roll`, `move`, `purchase`, `cash`, `setup` — which is a
+## debugging vocabulary. A player reads "Броски / Деньги / Покупки", not "roll / move / cash".
+const CATEGORY_KEYS := ["ty.roll", "ty.money", "ty.buy", "ty.auction",
+	"ty.build", "ty.card", "ty.trade", "ty.other"]
+
+## Which category an engine event type belongs to. Anything unlisted lands in `ty.other`, so a
+## new event type degrades into a real category instead of vanishing from the filter.
+const CATEGORY_OF := {
+	"roll": "ty.roll", "move": "ty.roll", "land": "ty.roll", "go": "ty.roll",
+	"rent": "ty.money", "tax": "ty.money", "pay": "ty.money", "cash": "ty.money",
+	"collect": "ty.money", "collect_from_all": "ty.money", "pay_each_player": "ty.money",
+	"go_bonus": "ty.money", "pass_go": "ty.money",
+	"purchase": "ty.buy", "buy": "ty.buy",
+	"auction_start": "ty.auction", "auction_bid": "ty.auction", "auction_win": "ty.auction",
+	"auction_none": "ty.auction", "bid": "ty.auction",
+	"build": "ty.build", "sell_house": "ty.build", "sell": "ty.build",
+	"mortgage": "ty.build", "unmortgage": "ty.build",
+	"card": "ty.card", "deck": "ty.card", "chance": "ty.card", "community": "ty.card",
+	"trade_offer": "ty.trade", "trade_accept": "ty.trade", "trade_reject": "ty.trade",
+	"trade": "ty.trade",
+}
+
+static func category_of(t: String) -> String:
+	return str(CATEGORY_OF.get(t, "ty.other"))
+
 const MONEY_TYPES := ["purchase", "pay", "rent", "tax", "go_bonus",
 	"auction_win", "collect", "collect_from_all", "pay_each_player"]
 
@@ -169,7 +195,7 @@ func refresh(entries: Array, player_names: Array) -> void:
 func _sync_filter_options() -> void:
 	# index 0 is always the "all" display option (I18n.t("jrn.all")); the
 	# comparison logic below relies on that position, not on the literal.
-	var want: Array[String] = [I18n.t("jrn.all")]
+	var want: Array[String] = [I18n.t("fl.player")]
 	for i in _player_names.size():
 		want.append("%d·%s" % [i, str(_player_names[i])])
 	var cur_p: int = _player_filter.selected
@@ -177,13 +203,9 @@ func _sync_filter_options() -> void:
 		_fill_options(_player_filter, want)
 		_restore_selection(_player_filter, cur_p)
 	# type filter: "all" + unique types present in the log
-	var types: Array[String] = [I18n.t("jrn.all")]
-	var seen := {}
-	for e in _entries:
-		var t: String = str(e.get("type", "?"))
-		if not seen.has(t):
-			seen[t] = true
-			types.append(t)
+	var types: Array[String] = [I18n.t("fl.type")]
+	for k in CATEGORY_KEYS:
+		types.append(I18n.t(k))
 	var cur_t := _selected_text(_type_filter)
 	if _options_changed(_type_filter, types):
 		_fill_type_options(_type_filter, types)
@@ -236,7 +258,8 @@ func _selected_type() -> String:
 	# locale-dependent display text.
 	if _type_filter.selected <= 0:
 		return ""
-	return _selected_text(_type_filter)
+	var i := _type_filter.selected - 1
+	return CATEGORY_KEYS[i] if i < CATEGORY_KEYS.size() else ""
 
 func _money_only_on() -> bool:
 	return _money_only.button_pressed
@@ -353,7 +376,7 @@ static func filter_entries(entries: Array, pid: int, type: String, money_only: b
 		var d: Dictionary = e.get("data", {})
 		if pid >= 0 and not _mentions_player(d, pid):
 			continue
-		if type != "" and str(e.get("type", "")) != type:
+		if type != "" and category_of(str(e.get("type", ""))) != type:
 			continue
 		if money_only and not _is_money(e):
 			continue

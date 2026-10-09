@@ -80,6 +80,8 @@ const D := {
 	"act.roll":             {"ru": "Бросок", "en": "Roll"},
 	"act.roll_tip":         {"ru": "Бросить кубики и передвинуть фишку на выпавшее число клеток", "en": "Roll the dice and move the token by the rolled count"},
 	"act.buy":              {"ru": "Купить", "en": "Buy"},
+	# the mockup prints the price on the button itself (`a.buy|Купить ¤{a}`)
+	"act.buy_price":        {"ru": "Купить $%d", "en": "Buy $%d"},
 	"act.buy_tip":          {"ru": "Купить эту клетку за указанную цену", "en": "Buy this tile at the listed price"},
 	"act.pass":             {"ru": "Отказ", "en": "Decline"},
 	"act.no_buy":           {"ru": "Отказ", "en": "Decline"},
@@ -124,6 +126,18 @@ const D := {
 	"jrn.title":            {"ru": "◆ ХОД СОБЫТИЙ", "en": "◆ EVENT LOG"},
 	"jrn.player_lbl":       {"ru": "игрок", "en": "player"},
 	"jrn.type_lbl":         {"ru": "тип", "en": "type"},
+	# The journal's filter categories — the mockup's `ty.*`, eight of them, not the raw engine
+	# event types. `fl.player` / `fl.type` are the dropdowns' first entries.
+	"fl.player":            {"ru": "Все игроки", "en": "All players"},
+	"fl.type":              {"ru": "Все типы", "en": "All types"},
+	"ty.roll":              {"ru": "Броски", "en": "Rolls"},
+	"ty.money":             {"ru": "Деньги", "en": "Money"},
+	"ty.buy":               {"ru": "Покупки", "en": "Purchases"},
+	"ty.auction":           {"ru": "Аукционы", "en": "Auctions"},
+	"ty.build":             {"ru": "Стройка и залог", "en": "Build and mortgage"},
+	"ty.card":              {"ru": "Карты", "en": "Cards"},
+	"ty.trade":             {"ru": "Торги", "en": "Trades"},
+	"ty.other":             {"ru": "Прочее", "en": "Other"},
 	"jrn.all":              {"ru": "все", "en": "all"},
 	"jrn.count_tip":        {"ru": "Сколько событий показано из общего числа в журнале.", "en": "How many events are shown vs the total in the log."},
 	"jrn.player_tip":       {"ru": "Фильтр журнала по игроку", "en": "Filter the log by player"},

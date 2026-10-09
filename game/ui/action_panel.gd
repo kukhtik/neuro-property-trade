@@ -222,7 +222,16 @@ func _button_for(act: String, proj: Dictionary, pid: int) -> Button:
 		"roll":
 			return UiTheme.button_accent(I18n.t("act.roll"), I18n.t("act.roll_tip"))
 		"buy":
-			return UiTheme.button_accent(I18n.t("act.buy"), I18n.t("act.buy_tip"))
+			# THE MOCKUP PUTS THE PRICE ON THE BUTTON (`a.buy|Купить ¤{a}`). "Купить" alone makes
+			# the player look elsewhere for a number they are about to commit to.
+			var buy_lbl := I18n.t("act.buy")
+			var pend: Dictionary = proj.get("pending", {})
+			if str(pend.get("type", "")) == "purchase":
+				var tinf: Dictionary = _tile_info(proj, int(pend.get("tile", -1)))
+				var price: int = int(tinf.get("cost", 0))
+				if price > 0:
+					buy_lbl = I18n.t("act.buy_price", [price])
+			return UiTheme.button_accent(buy_lbl, I18n.t("act.buy_tip"))
 		"pass":
 			var label := I18n.t("act.pass")
 			# `str(a == b)` compares FIRST and then stringifies the bool, so this read "False", and a

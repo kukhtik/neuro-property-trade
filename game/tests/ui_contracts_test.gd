@@ -13,7 +13,50 @@ const MoneyFmt := preload("res://ui/core/money.gd")
 const ActionPanel := preload("res://ui/action_panel.gd")
 const PlayersPanel := preload("res://ui/players_panel.gd")
 const TopBar := preload("res://ui/top_bar.gd")
+const Journal := preload("res://ui/journal_panel.gd")
 const I18n := preload("res://i18n/i18n.gd")
+
+## The journal filter lists the design's EIGHT categories, not the raw engine event types, and
+## it must filter by that grouping. Checked against the mapping directly and through a real
+## filter call, including an unknown type, which must land in `ty.other` rather than vanish.
+static func test_journal_filters_by_category() -> String:
+	if Journal.category_of("roll") != "ty.roll":
+		return "roll belongs to the rolls category"
+	if Journal.category_of("purchase") != "ty.buy":
+		return "purchase belongs to purchases"
+	if Journal.category_of("auction_bid") != "ty.auction":
+		return "auction_bid belongs to auctions"
+	if Journal.category_of("a_type_nobody_listed") != "ty.other":
+		return "an unknown type must fall into 'Прочее', not disappear"
+	var entries := [
+		{"type": "roll", "data": {}},
+		{"type": "purchase", "data": {}},
+		{"type": "auction_bid", "data": {}},
+		{"type": "rent", "data": {}},
+	]
+	var got: Array = Journal.filter_entries(entries, -1, "ty.auction", false)
+	if got.size() != 1 or str(got[0].get("type", "")) != "auction_bid":
+		return "filtering by auctions must keep only the auction event, got %d" % got.size()
+	if Journal.filter_entries(entries, -1, "", false).size() != 4:
+		return "an empty filter must keep everything"
+	return ""
+
+
+## The mockup prints the price on the buy button. Checked in BOTH directions: with a purchase
+## pending it must carry the number, and with nothing pending it must not invent one.
+static func test_buy_button_shows_the_price() -> String:
+	var p := ActionPanel.new()
+	var proj := {"board": [{"index": 5, "name": "Test", "cost": 240}],
+		"pending": {"type": "purchase", "tile": 5}}
+	var b: Button = p.call("_button_for", "buy", proj, 0)
+	if not b.text.contains("240"):
+		return "with a purchase pending the buy button must show its price, got '%s'" % b.text
+	var b2: Button = p.call("_button_for", "buy", {"board": [], "pending": {}}, 0)
+	if b2.text.contains("$") or b2.text.contains("%"):
+		return "with nothing pending the buy button must not invent a price, got '%s'" % b2.text
+	p.free()
+	return ""
+
 
 ## The header shows the mockup's FOUR steps (Бросок / Ход / Покупка / Конец) while the engine
 ## has TEN phases. The two vocabularies meet in exactly one function; without a test, a phase
@@ -109,7 +152,8 @@ static func test_list() -> Array[String]:
 		"test_layout_rails", "test_layout_label_degradation",
 		"test_action_panel_pass_label_tracks_pending",
 		"test_stat_block_counts_houses_hotels_mortgaged",
-		"test_phase_to_step_mapping",
+		"test_phase_to_step_mapping", "test_buy_button_shows_the_price",
+		"test_journal_filters_by_category",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
