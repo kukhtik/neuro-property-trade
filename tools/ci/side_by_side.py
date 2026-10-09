@@ -49,7 +49,14 @@ def main():
         page.evaluate(
             "typeof closeSet === 'function' ? closeSet()"
             " : document.querySelectorAll('.on').forEach(e => e.classList.remove('on'))")
-        page.wait_for_timeout(1500)
+        # AND START A MATCH. Dismissing the dialog leaves the mockup on its "Партия ещё не
+        # начата" screen: an empty player column, an empty journal, an empty bottom bar. Every
+        # comparison this script produced therefore put a NOT-STARTED mockup beside a RUNNING
+        # game, and the only regions that matched were the ones that look the same in both —
+        # which is exactly what a header and a board frame are. `startMatch()` fills the panels
+        # the way the app fills them, so the comparison finally describes the same screen.
+        page.evaluate("typeof startMatch === 'function' ? startMatch() : 0")
+        page.wait_for_timeout(2500)
         page.screenshot(path=str(mock_png), full_page=False)
         browser.close()
     print("wrote   %s" % mock_png)
