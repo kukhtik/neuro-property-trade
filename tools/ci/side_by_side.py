@@ -39,9 +39,17 @@ def main():
         browser = pw.chromium.launch()
         page = browser.new_page(viewport={"width": WIDTH, "height": HEIGHT})
         # the mockup picks its theme from a data attribute on <html>
-        page.goto(MOCKUP.as_uri(), wait_until="domcontentloaded", timeout=60000)
+        page.goto(MOCKUP.as_uri(), wait_until="networkidle", timeout=60000)
         page.evaluate("document.documentElement.setAttribute('data-theme', '%s')" % theme)
-        page.wait_for_timeout(2500)
+        # THE MOCKUP OPENS WITH ITS SETTINGS DIALOG OVER EVERYTHING — a full-screen overlay at
+        # z=60. Every screenshot this script ever took therefore showed the mockup's SETTINGS
+        # SCREEN, and put it next to a frame of the running GAME. The comparison was between two
+        # different screens, and no amount of looking at it could have said anything about
+        # whether the game matches the design. The overlay is dismissed before the shot.
+        page.evaluate(
+            "typeof closeSet === 'function' ? closeSet()"
+            " : document.querySelectorAll('.on').forEach(e => e.classList.remove('on'))")
+        page.wait_for_timeout(1500)
         page.screenshot(path=str(mock_png), full_page=False)
         browser.close()
     print("wrote   %s" % mock_png)
