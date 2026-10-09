@@ -101,6 +101,8 @@ func _clear_buttons() -> void:
 ## decision context (pending purchase/auction/etc) for richer buttons.
 func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -> void:
 	_current_pid = pid
+	_legal_now = legal
+	_human_now = human
 
 	var seat = null
 	for s in seats:
@@ -205,8 +207,24 @@ func _legal_changed(legal: Array) -> bool:
 			return true
 	return false
 
+## The mockup prints the hotkey inside the button (`Купить B`, `Конец хода N`).
+const HOTKEY := {"buy": "B", "end_turn": "N"}
+
+## The keys the player can actually press right now, and whether this seat is the human one.
+## A hotkey must honour the SAME gate as the button: firing `buy` while it is greyed would send
+## an intent the engine rejects, and the player sees nothing happen at all.
+var _legal_now: Array = []
+var _human_now := false
+
 func _make_button(act: String, proj: Dictionary, pid: int, live: bool = true) -> Button:
 	var b := _button_for(act, proj, pid)
+	# THE KEY HINT IS ALWAYS SHOWN, even on a disabled button: the mockup prints `Купить B` on
+	# the control whether or not it is pressable, and a player who can see the key on a greyed
+	# button knows what it will do once the turn allows it.
+	if b != null:
+		var key: String = str(HOTKEY.get(act, ""))
+		if key != "" and b.get_node_or_null("Hotkey") == null:
+			b.add_child(_hotkey_badge(key))
 	if b != null and not live:
 		# present but not pressable: the mockup sets `disabled`, it does not remove the
 		# control, so the player can see what exists and what is currently open to them
@@ -290,3 +308,39 @@ func _on_pressed(act: String) -> void:
 		"build_house", "sell_house", "mortgage_property", "unmortgage_property", "propose_trade", "bid":
 			# these need a tile/params selection — open the relevant modal
 			action_requested.emit(act, {})
+
+
+## A small key hint tucked into the button's right edge.
+func _hotkey_badge(key: String) -> Label:
+	var l := UiTheme.label(key, 10, UiTheme.COL().text_dim)
+	l.name = "Hotkey"
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.anchor_left = 1.0
+	l.anchor_right = 1.0
+	l.offset_left = -20.0
+	l.offset_right = -7.0
+	l.offset_top = 0.0
+	l.offset_bottom = 0.0
+	l.anchor_top = 0.0
+	l.anchor_bottom = 1.0
+	return l
+
+
+## Hotkeys: B buys, N ends the turn — the two the mockup marks. F12 (admin) lives in main.gd.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey) or not event.pressed or event.echo:
+		return
+	var act := ""
+	match (event as InputEventKey).keycode:
+		KEY_B:
+			act = "buy"
+		KEY_N, KEY_END:
+			act = "end_turn"
+	if act == "":
+		return
+	if not _human_now or not _legal_now.has(act):
+		return
+	accept_event()
+	action_requested.emit(act, {})

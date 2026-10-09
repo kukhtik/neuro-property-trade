@@ -16,6 +16,58 @@ const TopBar := preload("res://ui/top_bar.gd")
 const Journal := preload("res://ui/journal_panel.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
+## The mockup marks B on buy and N on end turn. A hotkey must be gated exactly like the button
+## it stands for: firing an intent the engine will reject is worse than doing nothing, because
+## the player sees no effect and no reason.
+static func test_hotkeys_respect_the_button_gate() -> String:
+	var p := ActionPanel.new()
+	var got: Array = []
+	p.action_requested.connect(func(a, _params): got.append(a))
+	p.set("_human_now", true)
+	var ev := InputEventKey.new()
+	ev.keycode = KEY_B
+	ev.pressed = true
+	# buy is NOT legal -> the key must do nothing
+	p.set("_legal_now", ["roll"])
+	p.call("_unhandled_key_input", ev)
+	if not got.is_empty():
+		return "B must not fire while buy is not legal, got %s" % str(got)
+	# buy IS legal -> it fires
+	p.set("_legal_now", ["roll", "buy"])
+	p.call("_unhandled_key_input", ev)
+	if got != ["buy"]:
+		return "B must emit buy when legal, got %s" % str(got)
+	# an AI seat has no hotkeys
+	got.clear()
+	p.set("_human_now", false)
+	p.call("_unhandled_key_input", ev)
+	if not got.is_empty():
+		return "a hotkey must not fire at an AI seat, got %s" % str(got)
+	# N maps to end turn
+	got.clear()
+	p.set("_human_now", true)
+	p.set("_legal_now", ["end_turn"])
+	var ev2 := InputEventKey.new()
+	ev2.keycode = KEY_N
+	ev2.pressed = true
+	p.call("_unhandled_key_input", ev2)
+	if got != ["end_turn"]:
+		return "N must emit end_turn, got %s" % str(got)
+	# THE KEY HINT IS DRAWN ON THE BUTTON, disabled or not — the mockup prints `Купить B` on the
+	# control whether or not it can be pressed.
+	for act in ["buy", "end_turn"]:
+		var b := p.call("_make_button", act, {"pending": {}}, 0, false) as Button
+		if b == null:
+			return "no button built for %s" % act
+		if b.get_node_or_null("Hotkey") == null:
+			return "%s must carry its key hint even when disabled" % act
+	var plain := p.call("_make_button", "roll", {"pending": {}}, 0, true) as Button
+	if plain != null and plain.get_node_or_null("Hotkey") != null:
+		return "a button without a hotkey must not get a badge"
+	p.free()
+	return ""
+
+
 ## The journal filter lists the design's EIGHT categories, not the raw engine event types, and
 ## it must filter by that grouping. Checked against the mapping directly and through a real
 ## filter call, including an unknown type, which must land in `ty.other` rather than vanish.
@@ -153,7 +205,7 @@ static func test_list() -> Array[String]:
 		"test_action_panel_pass_label_tracks_pending",
 		"test_stat_block_counts_houses_hotels_mortgaged",
 		"test_phase_to_step_mapping", "test_buy_button_shows_the_price",
-		"test_journal_filters_by_category",
+		"test_journal_filters_by_category", "test_hotkeys_respect_the_button_gate",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
