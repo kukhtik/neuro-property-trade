@@ -19,7 +19,8 @@ static func test_list() -> Array[String]:
 		"test_missing_slot_is_graceful", "test_available_lists_skins",
 		"test_theme_builds_from_skin", "test_theme_varies_between_skins",
 		"test_chamfer_polygon_shapes", "test_unknown_skin_uses_defaults",
-		"test_dotted_slot_id_resolves", "test_metric_not_shadowed_by_fallback",
+		"test_dotted_slot_id_resolves", "test_dotted_color_tokens_come_from_the_skin",
+		"test_metric_not_shadowed_by_fallback",
 		"test_motion_not_shadowed_by_fallback"]
 
 static func test_default_skin_loads() -> String:
@@ -227,6 +228,34 @@ static func test_unknown_skin_uses_defaults() -> String:
 
 ## Regression: slot ids contain dots ("board.frame"), so they must be matched
 ## as flat keys — a dotted _lookup would split them into a non-existent path.
+## A COLOUR token's name may itself contain a dot: `surface.1`, `surface.2`, `board.bg2`,
+## `ev.text`. `_lookup` walks a path by splitting it on dots, so `tokens.color.surface.1` looked
+## for a nested `surface` object that does not exist, found nothing, and every one of these
+## tokens fell through to `FALLBACK_COLORS`. Those defaults are the `default` skin's values, so
+## the game wore `neuro`'s background and accent with `default`'s panels, surfaces and borders.
+##
+## ONE skin cannot detect this. The fallback equals `default`'s own value, so a `default`-only
+## assertion passes with or without the bug. It takes a second skin whose value DIFFERS to prove
+## the number came out of the file at all.
+static func test_dotted_color_tokens_come_from_the_skin() -> String:
+	var s = SM.new()
+	if not s.load_skin("neuro"):
+		return "neuro did not load"
+	var n := s.color("surface.1").to_html(false)
+	if n != "130b1f":
+		return "neuro surface.1 must be #130b1f from the file, got #%s (the fallback is #1e242e)" % n
+	if s.color("line").to_html(false) != "3b2a5e":
+		return "neuro line must be #3b2a5e, got #%s" % s.color("line").to_html(false)
+	if not s.load_skin("default"):
+		return "default did not load"
+	if s.color("surface.1").to_html(false) != "1e242e":
+		return "default surface.1 must be #1e242e, got #%s" % s.color("surface.1").to_html(false)
+	# a name no skin ships must still be graceful, not an error
+	if s.load_skin("neuro") and s.color("surface.9").to_html(false) == "":
+		return "an absent dotted token should fall back, not vanish"
+	return ""
+
+
 static func test_dotted_slot_id_resolves() -> String:
 	var s = SM.new()
 	if not s.load_skin("_stress"):
