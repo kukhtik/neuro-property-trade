@@ -111,6 +111,18 @@ func is_open() -> bool:
 	return _current_kind != "" and visible
 
 
+## Repaint the box and its shadow once the container has sized them, and again on any resize.
+func _redraw_box() -> void:
+	if _panel == null or not is_instance_valid(_panel):
+		return
+	(_panel as CanvasItem).queue_redraw()
+	var wrap = _panel.get_meta("wrap", null)
+	if wrap != null and is_instance_valid(wrap):
+		for ch in (wrap as Node).get_children():
+			if ch is CanvasItem:
+				(ch as CanvasItem).queue_redraw()
+
+
 ## Free the current dialog AND its wrapper. The wrapper carries the box's offset shadow, so
 ## freeing only the box leaves the shadow hanging on the screen.
 func _free_panel() -> void:
@@ -594,11 +606,23 @@ func _panelize(content: Control) -> void:
 	(_panel as Control).border_token = "accent"
 	(_panel as Control).border_bonus = int(UiTheme.skin().shape("line_active", 2.0)) - 1
 	(_panel as Control).set_anchors_preset(Control.PRESET_FULL_RECT)
+	# The border is painted by THIS panel, but its content is a child — and children paint on
+	# top. The frame therefore sat UNDER the margin box and was invisible however carefully it
+	# was configured. A frame belongs above what it frames.
+	(_panel as Control).z_index = 5
 	stack.add_child(_panel)
 
 	var margin := MarginContainer.new()
-	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
-		margin.add_theme_constant_override(edge, 16)
+	# The content must not cover the frame. `Chamfer` paints 2px INSIDE its own rect, so the
+	# margin box starts after that — otherwise the margin (a child, drawn on top) paints over
+	# the border and the accent never shows, whatever the border token says.
+	var bw := int(UiTheme.skin().shape("line", 1.0)) + \
+		(int(UiTheme.skin().shape("line_active", 2.0)) - 1)
+	var pad := 16 + bw * 2
+	margin.add_theme_constant_override("margin_left", pad)
+	margin.add_theme_constant_override("margin_right", pad)
+	margin.add_theme_constant_override("margin_top", pad)
+	margin.add_theme_constant_override("margin_bottom", pad)
 	_panel.add_child(margin)
 	margin.add_child(content)
 
@@ -607,6 +631,10 @@ func _panelize(content: Control) -> void:
 	add_child(wrap)
 	_centred = stack
 	call_deferred("centre")
+	# `Chamfer._draw` runs once, before the container has sized the box, and is never asked
+	# again — so the frame it paints was laid down at zero size and stayed that way. A redraw
+	# after the layout pass is what actually makes the border appear.
+	call_deferred("_redraw_box")
 	_panel.set_meta("wrap", wrap)
 
 

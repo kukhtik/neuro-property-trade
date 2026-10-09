@@ -131,9 +131,17 @@ func _ready() -> void:
 	for c in get_children():
 		if c is Control and not (c as Control).resized.is_connected(_reflow):
 			(c as Control).resized.connect(_reflow)
+	# AND OUR OWN SIZE. The frame is painted from `size`, which a container sets AFTER `_draw`
+	# has already run once — so the outline was laid down at 0x0 and never repainted. Listening
+	# to ourselves is what makes a border appear at all.
+	if not resized.is_connected(_reflow):
+		resized.connect(_reflow)
 
+
+var _draws := 0
 
 func _draw() -> void:
+	_draws += 1
 	var sk := _skin_or_default()
 	var s := size
 	var ch: float = sk.shape("chamfer", 9.0)
@@ -171,20 +179,19 @@ func _draw() -> void:
 	var w := int(sk.shape("line", 1.0)) + border_bonus
 	if w > 0:
 		var bc: Color = sk.color(border_token, Color.WHITE)
-		var closed := pts.duplicate()
-		closed.append(pts[0])
-		# The border is drawn on the polygon's EDGE, and content laid out by a container fills
-		# the same rect — so the child paints over the frame and the border is invisible. Inset
-		# the path by half the width so it stays inside its own bounds.
-		var half := float(w) * 0.5
-		if half > 0.0 and pts.size() >= 4:
-			var inset := PackedVector2Array()
+		# The border is drawn on the polygon's EDGE and content fills the same rect, so the
+		# child paints over the frame. `draw_polyline` widens by half on EACH side, so insetting
+		# by half still leaves a half-width sliver under the content — inset by the FULL width.
+		var inset_px := float(w)
+		var closed := PackedVector2Array()
+		if pts.size() >= 4 and s.x > inset_px * 2.0 and s.y > inset_px * 2.0:
 			for p in pts:
-				inset.append(Vector2(
-					clampf(p.x, half, maxf(half, s.x - half)),
-					clampf(p.y, half, maxf(half, s.y - half))))
-			closed = inset.duplicate()
-			closed.append(inset[0])
+				closed.append(Vector2(
+					clampf(p.x, inset_px, s.x - inset_px),
+					clampf(p.y, inset_px, s.y - inset_px)))
+		else:
+			closed = pts.duplicate()
+		closed.append(closed[0])
 		draw_polyline(closed, bc, float(w), true)
 
 
