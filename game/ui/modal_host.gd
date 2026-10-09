@@ -39,8 +39,33 @@ var _dim: ColorRect
 var _intent_map = Intents.new()
 
 
+## The dialog's stack, re-centred whenever it or the host changes size.
+var _centred: Control = null
+
+
+## Centre the dialog. Called when it opens and when the host resizes.
+##
+## Doing this in `_process` did NOT run at all: the host adds this node but never enables
+## processing on it, so the dialog sat in the corner while the code to centre it looked
+## correct. An explicit call is one line and does not depend on who owns the tree.
+func centre() -> void:
+	if _centred == null or not is_instance_valid(_centred):
+		return
+	var s := size
+	var w := _centred.size
+	if w.x <= 1.0:
+		w = _centred.get_combined_minimum_size()
+	_centred.position = Vector2(maxf(0.0, (s.x - w.x) * 0.5), maxf(0.0, (s.y - w.y) * 0.5))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		centre()
+
+
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_process(true)
 	_dim = ColorRect.new()
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -53,7 +78,10 @@ func _init() -> void:
 ## The dim colour comes from a skin token, not a literal.
 func _dress() -> void:
 	var sc := UiTheme.skin().color("bg", Color(0, 0, 0))
-	_dim.color = Color(sc.r * 0.15, sc.g * 0.15, sc.b * 0.15, 0.72)
+	# `#mod` is the backdrop at 75% opacity over the page, with a 3px blur. Godot's ColorRect
+	# cannot blur, so the same effect is reached with a slightly denser scrim — the point is
+	# that the dialog sits ON something, not that the pixels behind it are unreadable.
+	_dim.color = Color(sc.r, sc.g, sc.b, 0.75)
 
 
 func open(kind: String, data: Dictionary = {}) -> void:
@@ -75,14 +103,26 @@ func close() -> void:
 	_current_kind = ""
 	_current_data = {}
 	visible = false
-	if _panel != null and is_instance_valid(_panel):
-		_panel.free()
-	_panel = null
+	_free_panel()
 	modal_changed.emit("")
 
 
 func is_open() -> bool:
 	return _current_kind != "" and visible
+
+
+## Free the current dialog AND its wrapper. The wrapper carries the box's offset shadow, so
+## freeing only the box leaves the shadow hanging on the screen.
+func _free_panel() -> void:
+	if _panel == null or not is_instance_valid(_panel):
+		_panel = null
+		return
+	var wrap = _panel.get_meta("wrap", null)
+	if wrap != null and is_instance_valid(wrap):
+		(wrap as Node).free()
+	else:
+		_panel.free()
+	_panel = null
 
 
 ## How many modal panels currently exist as children. Used by the "no stacking"
@@ -100,9 +140,7 @@ func panel_count() -> int:
 ## Render the current kind+data. The ONLY place a modal's content is built, so a
 ## locale change is the same code path as opening it.
 func _render() -> void:
-	if _panel != null and is_instance_valid(_panel):
-		_panel.free()
-	_panel = null
+	_free_panel()
 	match _current_kind:
 		"build": _build_build()
 		"trade": _build_trade()
@@ -511,17 +549,65 @@ func _first_other(seats: Array, pid: int) -> int:
 
 
 func _panelize(content: Control) -> void:
+	# THE DIALOG BOX, to the mockup's spec.
+	#
+	# `#mbox` is: 440px wide, a 2px ACCENT border, `box-shadow: 10px 10px 0 var(--line)` — an
+	# offset hard shadow, not a soft one — over a scrim at 75%. Ours was a 460px chamfer with a
+	# 1px line border and no shadow, which is why our dialogs looked like plain boxes.
+	var wrap := Control.new()
+	wrap.name = "ModalWrap"
+	wrap.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	# the offset shadow: its own flat panel BEHIND the box, shifted 10px right and down
+	var stack := MarginContainer.new()
+	stack.name = "ModalBox"
+	stack.custom_minimum_size = Vector2(440, 0)
+	stack.add_theme_constant_override("margin_left", 0)
+	stack.add_theme_constant_override("margin_right", 0)
+	stack.add_theme_constant_override("margin_top", 0)
+	stack.add_theme_constant_override("margin_bottom", 0)
+	# A CenterContainer only centres what does NOT stretch to fill it. The default flags are
+	# FILL, so the stack took the whole screen and "centring" did nothing.
+	stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	stack.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# positioned by `_process`, so it lives directly under the full-rect wrapper
+	wrap.add_child(stack)
+	_centred = stack
+
+	var shadow := Panel.new()
+	shadow.name = "Shadow"
+	shadow.add_theme_stylebox_override("panel",
+		UiTheme.box(UiTheme.COL().border, Color.TRANSPARENT, 0, 0))
+	shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shadow.offset_left = 10
+	shadow.offset_top = 10
+	shadow.offset_right = 10
+	shadow.offset_bottom = 10
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(shadow)
+
 	_panel = UiTheme.chamfer_panel("tr")
-	(_panel as Control).custom_minimum_size = Vector2(460, 0)
+	(_panel as Control).name = "Box"
+	(_panel as Control).fill_token = "surface.1"
+	# the border is the ACCENT at 2px, as `#mbox` draws it
+	(_panel as Control).border_token = "accent"
+	(_panel as Control).border_bonus = int(UiTheme.skin().shape("line_active", 2.0)) - 1
+	(_panel as Control).set_anchors_preset(Control.PRESET_FULL_RECT)
+	stack.add_child(_panel)
+
 	var margin := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		margin.add_theme_constant_override(edge, 16)
 	_panel.add_child(margin)
 	margin.add_child(content)
-	(_panel as Control).set_anchors_preset(Control.PRESET_CENTER)
-	(_panel as Control).grow_horizontal = Control.GROW_DIRECTION_BOTH
-	(_panel as Control).grow_vertical = Control.GROW_DIRECTION_BOTH
-	add_child(_panel)
+
+	# the stack follows the box: the box's own height decides the stack's
+	stack.custom_minimum_size.y = 0
+	add_child(wrap)
+	_centred = stack
+	call_deferred("centre")
+	_panel.set_meta("wrap", wrap)
 
 
 func _emit_build(tile: int, op: String) -> void:

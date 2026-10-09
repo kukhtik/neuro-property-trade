@@ -105,6 +105,34 @@ func _draw_textured(pts: PackedVector2Array, s: Vector2) -> void:
 		draw_texture_rect_region(fill_texture, span, src)
 
 
+## Size to the content, as a PanelContainer does.
+##
+## `Panel` reports a MINIMUM SIZE OF ZERO regardless of what is inside it. Every dialog built
+## on this component therefore collapsed to a 440-px line with all its content spilling out of
+## the frame — which is what the modal windows had been doing all along.
+func _get_minimum_size() -> Vector2:
+	var m := Vector2.ZERO
+	for c in get_children():
+		if c is Control and (c as Control).visible:
+			var cm: Vector2 = (c as Control).get_combined_minimum_size()
+			m = m.max(cm)
+	return m
+
+
+## A child changing shape must re-measure the frame. The `resized` signal is connected in
+## `_build_nodes`, and children added later are picked up by `update_minimum_size` in `_draw`.
+func _reflow() -> void:
+	update_minimum_size()
+	queue_redraw()
+
+
+func _ready() -> void:
+	# `Panel` never re-measures itself; every child must tell us when it changed shape
+	for c in get_children():
+		if c is Control and not (c as Control).resized.is_connected(_reflow):
+			(c as Control).resized.connect(_reflow)
+
+
 func _draw() -> void:
 	var sk := _skin_or_default()
 	var s := size
