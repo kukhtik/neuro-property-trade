@@ -11,7 +11,33 @@ const Layout := preload("res://ui/core/layout_profile.gd")
 const Profile := preload("res://ui/core/ui_profile.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
 const ActionPanel := preload("res://ui/action_panel.gd")
+const PlayersPanel := preload("res://ui/players_panel.gd")
 const I18n := preload("res://i18n/i18n.gd")
+
+## The statistics block shows what the MOCKUP's `#stat` shows: houses, hotels, mortgaged.
+## It used to show round / parking pot / owned-tiles, which are three different numbers that
+## appear nowhere in the design — while the bar under it already measured ownership.
+static func test_stat_block_counts_houses_hotels_mortgaged() -> String:
+	var p := PlayersPanel.new()
+	var proj := {"board": [
+		{"owner": 0, "houses": 3, "mortgaged": false},     # 3 houses
+		{"owner": 0, "houses": 5, "mortgaged": false},     # a hotel, not 5 houses
+		{"owner": 1, "houses": 0, "mortgaged": true},      # mortgaged
+		{"owner": -1, "houses": 0, "mortgaged": false},    # unowned
+	]}
+	p.call("_sync_stat", proj, [])
+	var vals: Dictionary = p.get("_stat_values")
+	if vals.is_empty():
+		return "the statistics block was not built"
+	if vals["houses"].text != "3":
+		return "houses must sum only the sub-hotel counts, got '%s'" % vals["houses"].text
+	if vals["hotels"].text != "1":
+		return "a tile with 5 houses is one hotel, got '%s'" % vals["hotels"].text
+	if vals["mortgaged"].text != "1":
+		return "one tile is mortgaged, got '%s'" % vals["mortgaged"].text
+	p.free()
+	return ""
+
 
 ## The pass button's label follows the pending action, and it did NOT: the condition was
 ## `str(a == b)`, which compares first and stringifies the boolean — so it read "False", and a
@@ -55,6 +81,7 @@ static func test_list() -> Array[String]:
 		"test_layout_profiles", "test_layout_compact_by_height",
 		"test_layout_rails", "test_layout_label_degradation",
 		"test_action_panel_pass_label_tracks_pending",
+		"test_stat_block_counts_houses_hotels_mortgaged",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",

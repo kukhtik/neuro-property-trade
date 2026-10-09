@@ -17,9 +17,14 @@ const D := {
 
 
 	# ---- statistics block (the mockup's #stat) ----
-	"stat.round":       {"ru": "РАУНД", "en": "ROUND"},
-	"stat.pot":         {"ru": "БАНК ПАРКОВКИ", "en": "PARKING POT"},
-	"stat.tiles":       {"ru": "ВЫКУПЛЕНО", "en": "OWNED"},
+	# `#stat` in the mockup is houses / hotels / mortgaged, not round / pot / owned:
+	#   hs.filter(h => h < 5).reduce(...)        -> houses on the board
+	#   hs.filter(h => h == 5).length            -> hotels
+	#   Object.values(V.mort).filter(Boolean)    -> mortgaged
+	# The old three were never in the design. Values match `k.h1` / `k.ht` / `k.mort`.
+	"stat.houses":      {"ru": "1 дом", "en": "1 house"},
+	"stat.hotels":      {"ru": "Отель", "en": "Hotel"},
+	"stat.mortgaged":   {"ru": "В залоге", "en": "Mortgaged"},
 
 	# ---- top bar ----
 	"top.title":            {"ru": "● NEURO PROPERTY TRADE", "en": "● NEURO PROPERTY TRADE"},

@@ -47,7 +47,7 @@ func _init() -> void:
 	_stat.name = "Stat"
 	_stat.add_theme_constant_override("separation", 6)
 	_v.add_child(_stat)
-	for key in ["round", "pot", "tiles"]:
+	for key in ["houses", "hotels", "mortgaged"]:
 		_stat.add_child(_stat_tile(key))
 
 	# the ownership bar: a gradient from accent to accent2, width = share of the board
@@ -142,20 +142,31 @@ func sync(proj: Dictionary, seats: Array) -> void:
 func _sync_stat(proj: Dictionary, players: Array) -> void:
 	if _stat_values.is_empty():
 		return
+	# COUNT WHAT THE MOCKUP COUNTS. Its `#stat` is built from `V.hs` and `V.mort`:
+	#   houses   = every house below hotel level, summed over the board
+	#   hotels   = tiles holding a hotel (house count 5)
+	#   mortgaged= tiles currently mortgaged
+	# The values were round / parking pot / owned-tiles — three different numbers, none of them
+	# in the design — while the bar underneath already measured ownership correctly.
+	var houses := 0
+	var hotels := 0
+	var mortgaged := 0
 	var owned := 0
 	var total := 0
 	for t in proj.get("board", []):
 		total += 1
+		var h: int = int(t.get("houses", 0))
+		if h >= 5:
+			hotels += 1
+		else:
+			houses += h
+		if bool(t.get("mortgaged", false)):
+			mortgaged += 1
 		if int(t.get("owner", -1)) >= 0:
 			owned += 1
-	var pot: int = int(proj.get("parking_pot", 0))
-	var round_no: int = int(proj.get("round", 0))
-	if round_no == 0:
-		# the projection may not carry a turn counter: count events instead of inventing one
-		round_no = _rendered_round
-	_set_stat("round", str(round_no) if round_no > 0 else "—")
-	_set_stat("pot", _money().amount(pot) if pot > 0 else "—")
-	_set_stat("tiles", "%d/%d" % [owned, total] if total > 0 else "—")
+	_set_stat("houses", str(houses) if total > 0 else "—")
+	_set_stat("hotels", str(hotels) if total > 0 else "—")
+	_set_stat("mortgaged", str(mortgaged) if total > 0 else "—")
 	if _own_bar != null:
 		_own_bar.value = (100.0 * float(owned) / float(total)) if total > 0 else 0.0
 
