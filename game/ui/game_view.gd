@@ -407,6 +407,12 @@ func _build_layout() -> void:
 	_modals = ModalHost.new()
 	_modals.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_modals.visible = false
+	# IT SAID "above everything" AND WAS NOT. Children added later paint on top, and both the
+	# action panel and the tile inspector are added AFTER this — so the dialog's own pixels were
+	# covered wherever those panels reach. The node reported a correct rect and `visible=true`
+	# while nothing of it appeared on screen. An explicit z_index does not depend on the order
+	# somebody happened to write `add_child` in.
+	_modals.z_index = 100
 	add_child(_modals)
 	_connect_modals()
 
