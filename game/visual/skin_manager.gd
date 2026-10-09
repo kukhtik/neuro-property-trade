@@ -154,6 +154,21 @@ func token(path: String, default = null) -> Variant:
 	var v: Variant = _lookup("tokens." + path)
 	if v != null:
 		return v
+	# A TOKEN NAME MAY CONTAIN DOTS. `surface.1`, `surface.2`, `board.bg2` and `ev.text` are
+	# SINGLE keys in the skin file, not nested objects — but `_lookup` splits the path on dots
+	# and walks it, so it looked for `tokens.color.surface.1`, found no `surface`, and returned
+	# null. Every one of those tokens then fell through to `FALLBACK_COLORS` — which holds the
+	# values of the `default` skin. With `neuro` loaded the background and accent came from the
+	# skin while every panel, surface and border came from another theme's defaults: the game
+	# wore half of each palette at once, which is exactly what "выглядит не так" looked like.
+	# Look the remainder up as one key inside its namespace before giving up on it.
+	var dot := path.find(".")
+	if dot > 0:
+		var ns_dict: Variant = _lookup("tokens." + path.substr(0, dot))
+		if ns_dict is Dictionary:
+			var rest := path.substr(dot + 1)
+			if (ns_dict as Dictionary).has(rest):
+				return (ns_dict as Dictionary)[rest]
 	var parts := path.split(".", false, 1)
 	if parts.size() == 2:
 		var ns := parts[0]
