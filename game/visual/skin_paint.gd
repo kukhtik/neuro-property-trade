@@ -60,6 +60,26 @@ static func stage_texture(skin: SkinManager, size: Vector2) -> GradientTexture2D
 	return tex
 
 
+## THE BOARD CENTRE, as the mockup actually draws it.
+##
+## `#ctr` in the mockup is `var(--bg)` plus a 135-degree HATCH: one 1px stripe of the line
+## colour at 35% alpha every 15px. `frame_texture` filled the same area with a SOLID gradient
+## through the line colour instead, which put #3b2a5e over 35% of the board's interior where the
+## mockup is almost entirely dark — 2.6% of that colour across the whole centre. A one-period
+## tile, tiled by the caller, gives the same hatch at no cost.
+static func center_texture(skin: SkinManager, period: int = 15) -> ImageTexture:
+	var bg: Color = skin.color("bg")
+	var stripe := Color(skin.color("line"), 0.35)
+	var n := maxi(4, period)
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(bg)
+	for y in range(n):
+		for x in range(n):
+			if (x + y) % n == 0:
+				img.set_pixel(x, y, stripe)
+	return ImageTexture.create_from_image(img)
+
+
 ## The board's own frame: a diagonal blend of accent into the line colour and out the other
 ## side through accent2. `#board` background in the mockup.
 static func frame_texture(skin: SkinManager, size: Vector2) -> GradientTexture2D:

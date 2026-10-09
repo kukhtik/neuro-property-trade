@@ -46,9 +46,10 @@ func build(tile_count: int, cell: int = 64, skin: SkinManager = null) -> Control
 	# than a rectangle pasted onto it.
 	var bkg := TextureRect.new()
 	bkg.name = "Slot"
-	bkg.texture = SkinPaint.frame_texture(_skin, Vector2(size, size))
+	# the centre is a hatch, not a fill — see `center_texture`
+	bkg.texture = SkinPaint.center_texture(_skin)
 	bkg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bkg.stretch_mode = TextureRect.STRETCH_SCALE
+	bkg.stretch_mode = TextureRect.STRETCH_TILE
 	bkg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bkg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bkg)

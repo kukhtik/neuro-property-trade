@@ -1,0 +1,1252 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+OpenGL API 3.3.0 NVIDIA 581.57 - Compatibility - Using Device: NVIDIA - NVIDIA GeForce GTX 1050
+
+Added websocket message node: res://addons/neuro-sdk/messages/incoming/action.gd
+Added websocket message node: res://addons/neuro-sdk/messages/incoming/actions_reregisterall.gd
+Added websocket message node: res://addons/neuro-sdk/messages/incoming/startup_ack.gd
+Initializing Websocket connection
+ERROR: NEURO_SDK_WS_URL environment variable is not set
+   at: push_error (core/variant/variant_utility.cpp:1023)
+   GDScript backtrace (most recent call first):
+       [0] _ws_start (res://addons/neuro-sdk/websocket/websocket.gd:75)
+       [1] _ready (res://addons/neuro-sdk/websocket/websocket.gd:31)
+Neuro Property Trade — ready. is_host=true
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+WARNING: SkinManager: slot 'token.shadow' missing; procedural fallback
+   at: push_warning (core/variant/variant_utility.cpp:1033)
+   GDScript backtrace (most recent call first):
+       [0] slot (res://visual/skin_manager.gd:322)
+       [1] texture (res://visual/skin_manager.gd:371)
+       [2] _make_token (res://visual/effect_layer.gd:151)
+       [3] sync_tokens (res://visual/effect_layer.gd:93)
+       [4] _paint (res://visual/board_scene.gd:401)
+       [5] _resize_children (res://visual/board_scene.gd:203)
+       [6] setup (res://visual/board_scene.gd:160)
+       [7] setup (res://ui/game_view.gd:162)
+       [8] _build_game (res://main.gd:317)
+       [9] _autostart (res://main.gd:254)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: Nodes with non-equal opposite anchors will have their size overridden after _ready(). 
+If you want to set size, change the anchors or consider using set_deferred().
+   at: _set_size (scene/gui/control.cpp:1519)
+   GDScript backtrace (most recent call first):
+       [0] _start_sheen (res://visual/tile_view.gd:117)
+       [1] refresh (res://visual/tile_view.gd:447)
+       [2] refresh_state (res://visual/board_view.gd:105)
+       [3] _paint (res://visual/board_scene.gd:395)
+       [4] _resize_children (res://visual/board_scene.gd:203)
+       [5] setup (res://visual/board_scene.gd:160)
+       [6] setup (res://ui/game_view.gd:162)
+       [7] _build_game (res://main.gd:317)
+       [8] _autostart (res://main.gd:254)
+       [9] _process (res://tools/_h2.gd:9)
+WARNING: SkinManager: slot 'token.shadow' missing; procedural fallback
+   at: push_warning (core/variant/variant_utility.cpp:1033)
+   GDScript backtrace (most recent call first):
+       [0] slot (res://visual/skin_manager.gd:322)
+       [1] texture (res://visual/skin_manager.gd:371)
+       [2] _make_token (res://visual/effect_layer.gd:151)
+       [3] sync_tokens (res://visual/effect_layer.gd:93)
+       [4] _paint (res://visual/board_scene.gd:401)
+       [5] _resize_children (res://visual/board_scene.gd:203)
+       [6] setup (res://visual/board_scene.gd:160)
+       [7] setup (res://ui/game_view.gd:162)
+       [8] _build_game (res://main.gd:317)
+       [9] _autostart (res://main.gd:254)
+       [10] _process (res://tools/_h2.gd:9)
+--- точка (700.0, 400.0) = #3b2a5e ---
+       @Control@4 Control
+         @HBoxContainer@16 HBoxContainer
+           BoardScene Control
+             Stage TextureRect TEXTURE
+               EffectLayer Control
+             @Control@1226 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@1232 VBoxContainer
+                   @Label@1235 Label
+               EffectLayer Control
+             @Control@2296 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@2301 VBoxContainer
+                   @Label@2304 Label
+               EffectLayer Control
+               @Control@3194 Control
+                 Slot TextureRect TEXTURE
+             ModalRoot Control
+           @PanelContainer@547 PanelContainer bg=130b1f
+             @MarginContainer@548 MarginContainer
+               @VBoxContainer@549 VBoxContainer
+                 @TabContainer@562 TabContainer
+                   @VBoxContainer@563 VBoxContainer
+                     @PanelContainer@564 PanelContainer bg=130b1f
+                       @MarginContainer@565 MarginContainer
+                         @VBoxContainer@566 VBoxContainer
+                           @HBoxContainer@884 HBoxContainer
+                             @OptionButton@872 OptionButton
+                     @GridContainer@594 GridContainer
+                   @VBoxContainer@973 VBoxContainer
+--- точка (800.0, 250.0) = #3b2a5e ---
+       @Control@4 Control
+         @HBoxContainer@16 HBoxContainer
+           BoardScene Control
+             Stage TextureRect TEXTURE
+               EffectLayer Control
+             @Control@1226 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@1232 VBoxContainer
+                   @Control@1233 Control
+               EffectLayer Control
+             @Control@2296 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@2301 VBoxContainer
+                   @Control@2302 Control
+               EffectLayer Control
+               @Control@3194 Control
+                 Slot TextureRect TEXTURE
+             ModalRoot Control
+           @PanelContainer@547 PanelContainer bg=130b1f
+             @MarginContainer@548 MarginContainer
+               @VBoxContainer@549 VBoxContainer
+                 @HBoxContainer@558 HBoxContainer
+                   @VBoxContainer@973 VBoxContainer
+--- точка (600.0, 600.0) = #3b2a5e ---
+       @Control@4 Control
+         @HBoxContainer@16 HBoxContainer
+           BoardScene Control
+             Stage TextureRect TEXTURE
+               EffectLayer Control
+             @Control@1226 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@1232 VBoxContainer
+                   @Control@1243 Control
+               EffectLayer Control
+             @Control@2296 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@2301 VBoxContainer
+                   @Control@2312 Control
+               EffectLayer Control
+               @Control@3194 Control
+                 Slot TextureRect TEXTURE
+             ModalRoot Control
+           @PanelContainer@547 PanelContainer bg=130b1f
+             @MarginContainer@548 MarginContainer
+               @VBoxContainer@549 VBoxContainer
+                 @TabContainer@562 TabContainer
+                   @VBoxContainer@563 VBoxContainer
+--- точка (950.0, 200.0) = #3b2a5e ---
+       @Control@4 Control
+         @HBoxContainer@16 HBoxContainer
+           BoardScene Control
+             Stage TextureRect TEXTURE
+               EffectLayer Control
+             @Control@1226 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@1232 VBoxContainer
+                   @Control@1233 Control
+               EffectLayer Control
+             @Control@2296 Control
+               BoardCenterV2 Control
+                 @VBoxContainer@2301 VBoxContainer
+                   @Control@2302 Control
+               EffectLayer Control
+               @Control@3194 Control
+                 Slot TextureRect TEXTURE
+             ModalRoot Control
+           @PanelContainer@547 PanelContainer bg=130b1f
+             @MarginContainer@548 MarginContainer
+               @VBoxContainer@549 VBoxContainer
+                 @HBoxContainer@553 HBoxContainer
+                   @Label@550 Label
+                   @VBoxContainer@973 VBoxContainer
+ERROR: 11 RID allocations of type 'N5GLES37TextureE' were leaked at exit.
+ERROR: 1 RID allocations of type 'PN18TextServerAdvanced12FontAdvancedE' were leaked at exit.
+WARNING: 58 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2735)
+ERROR: Texture with GL ID of 37: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 38: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 40: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 41: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 42: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 43: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 44: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 46: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 48: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 51: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+ERROR: Texture with GL ID of 87: leaked 131072 bytes.
+   at: ~Utilities (drivers/gles3/storage/utilities.cpp:82)
+WARNING: 141 ObjectDB instances were leaked at exit (run with `--verbose` for details).
+   at: cleanup (core/object/object.cpp:2536)

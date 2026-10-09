@@ -252,7 +252,16 @@ func _autostart() -> void:
 	for s in seats:
 		names.append(str(s.name))
 	_build_game(st, seats)
+	# STARTING A MATCH MUST MEAN THE SAME THING ON BOTH PATHS.
+	#
+	# `_on_started` (the button) hides the settings overlay and tells the view the game began.
+	# `_autostart` did neither, so every probe and every smoke frame taken through it photographed
+	# the screen with the SETTINGS MENU still open over the board — the centre of the frame was a
+	# settings dialog, and metrics were read from it. Found by the owner, not by me: the suite was
+	# green because the assertions looked at colours that happen to sit outside the dialog.
+	_overlay.visible = false
 	_game_started = true
+	_game_view.on_game_started()
 	_game_view.on_game_started()
 
 func _has_cli_flag(flag: String) -> bool:
