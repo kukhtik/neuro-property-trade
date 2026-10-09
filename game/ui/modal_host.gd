@@ -69,14 +69,41 @@ func _notification(what: int) -> void:
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_process(true)
+	# re-render (not rebuild) the open modal when the locale changes
+	I18n.inst().locale_changed.connect(_on_locale_changed)
+
+
+## THE DIALOG MUST OUTRANK THE LOBBY, and this is where the layer that does it is built.
+##
+## The settings overlay lives on its own `CanvasLayer` at layer 50, and a CanvasLayer paints
+## above the ENTIRE node tree no matter what `z_index` anything in that tree carries. The dialog
+## was therefore underneath it and never seen: it opened, sized, drew and reported
+## `visible=true` while the lobby covered every pixel of it.
+##
+## This runs in `_ready` and NOT in `_init`. `_init` fires before the node is in the tree, and
+## building the subtree there left the whole application on a blank white screen — the window
+## opened, no frame was ever drawn, and nothing was logged. A node that shapes its own visual
+## tree does it once it is in the tree.
+## Build the layer that outranks the lobby, ONCE, whoever gets here first.
+##
+## `_ready` is too late on its own: the tests call `open()` on a host that has not had a frame
+## yet, so `_ready` has not run and the dialog had nowhere to go — every test that opens a modal
+## failed with "stacked 0 panels". This builds the layer from whichever of `_ready` / `open` /
+## `panel_count` is reached first, and does nothing on later calls.
+func _ensure_modal_root() -> Control:
+	if _modal_root != null and is_instance_valid(_modal_root):
+		return _modal_root
 	# THE DIALOG MUST OUTRANK THE LOBBY.
 	#
 	# The settings overlay lives on its own `CanvasLayer` at layer 50, and a CanvasLayer paints
 	# above the ENTIRE node tree no matter what `z_index` anything in that tree carries. The
 	# dialog was therefore underneath it and never seen: it opened, sized, drew and reported
-	# `visible=true` while the lobby covered every pixel of it. Moving the whole host onto a
-	# higher CanvasLayer fixes it wherever it is parented, and does not depend on anyone
-	# remembering which layer the lobby chose.
+	# `visible=true` while the lobby covered every pixel of it.
+	#
+	# `layer` must stay ABOVE the lobby's 50, and the dim must never be left visible: a default
+	# `ColorRect` is WHITE, and on its own layer it does not inherit this host's `visible`. A
+	# white full-screen dim sitting above everything is exactly the blank white screen the game
+	# opened on.
 	var layer := CanvasLayer.new()
 	layer.name = "ModalLayer"
 	layer.layer = 60
@@ -90,10 +117,16 @@ func _init() -> void:
 	_dim = ColorRect.new()
 	_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dim.visible = false
+	_dim.color = Color(0, 0, 0, 0)
 	_modal_root.add_child(_dim)
 	_dim.gui_input.connect(_on_dim_input)
-	# re-render (not rebuild) the open modal when the locale changes
-	I18n.inst().locale_changed.connect(_on_locale_changed)
+	return _modal_root
+
+
+## The host is in the tree: make sure the layer exists for anything that opens a dialog.
+func _ready() -> void:
+	_ensure_modal_root()
 
 
 ## The dim colour comes from a skin token, not a literal.
@@ -108,8 +141,11 @@ func _dress() -> void:
 func open(kind: String, data: Dictionary = {}) -> void:
 	_current_kind = kind
 	_current_data = data
+	_ensure_modal_root()
 	_render()
 	visible = true
+	if _dim != null:
+		_dim.visible = true
 	_dress()
 	modal_changed.emit(kind)
 
@@ -124,6 +160,8 @@ func close() -> void:
 	_current_kind = ""
 	_current_data = {}
 	visible = false
+	if _dim != null:
+		_dim.visible = false
 	_free_panel()
 	modal_changed.emit("")
 
@@ -164,7 +202,7 @@ func panel_count() -> int:
 	# The dialog now lives inside this host's own CanvasLayer (`_modal_root`), not directly
 	# among our children, so counting `get_children()` returned the layer itself and the test
 	# read "close() left 1 panels" for a dialog that had been freed properly.
-	var root := _modal_root if _modal_root != null and is_instance_valid(_modal_root) else self
+	var root := _ensure_modal_root()
 	var n := 0
 	for c in root.get_children():
 		if c != _dim:
@@ -653,6 +691,7 @@ func _panelize(content: Control) -> void:
 
 	# the stack follows the box: the box's own height decides the stack's
 	stack.custom_minimum_size.y = 0
+	_ensure_modal_root()
 	_modal_root.add_child(wrap)
 	_centred = stack
 	call_deferred("centre")
