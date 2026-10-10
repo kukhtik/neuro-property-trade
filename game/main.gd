@@ -360,7 +360,14 @@ func _start_server_if_needed(seats: Array) -> void:
 	_server = GameServer.new()
 	_server.name = "GameServer"
 	add_child(_server)
-	if not _server.listen(_force_port, "127.0.0.1"):
+	# A LAN GAME NEEDS A REACHABLE BIND. This was hardcoded to the loopback address, so the host
+	# could only ever serve itself — fine for the smoke, useless for playing with other people.
+	# `--server-bind=` opens it up (`0.0.0.0`); the default stays loopback so nothing on a shared
+	# network is exposed unless asked for.
+	var bind := _cli_value("--server-bind=")
+	if bind == "":
+		bind = "127.0.0.1"
+	if not _server.listen(_force_port, bind):
 		push_error("main: the game server failed to bind")
 		_server = null
 		return
@@ -371,8 +378,11 @@ func _start_server_if_needed(seats: Array) -> void:
 		_seat_tokens[int(pid)] = tok
 		print("SERVER seat=%d token=%s" % [int(pid), tok])
 		_mirror_log("SERVER seat=%d token=%s" % [int(pid), tok])
-	print("SERVER ready ws://127.0.0.1:%d" % _server_port)
-	_mirror_log("SERVER ready ws://127.0.0.1:%d" % _server_port)
+	var shown := bind
+	if shown == "0.0.0.0" or shown == "*":
+		shown = _lan_address()
+	print("SERVER ready ws://%s:%d" % [shown, _server_port])
+	_mirror_log("SERVER ready ws://%s:%d" % [shown, _server_port])
 
 
 ## Connection details for tests and tooling.
@@ -467,3 +477,17 @@ func _on_skin_requested(skin_id: String) -> void:
 	if _engine != null and _settings_cache != null:
 		_game_view.setup(_engine, _manager, _seats_cache, _settings_cache)
 		_game_view.on_game_started()
+
+
+## The address another machine should use to reach this host. `0.0.0.0` is a bind instruction,
+## not an address anyone can connect TO, so the host prints a real LAN address instead of the one
+## it happens to be listening on.
+func _lan_address() -> String:
+	for a in IP.get_local_addresses():
+		var s := String(a)
+		if s.begins_with("127.") or s.contains(":"):
+			continue
+		if s.begins_with("169.254."):
+			continue   # link-local: not routable
+		return s
+	return "127.0.0.1"

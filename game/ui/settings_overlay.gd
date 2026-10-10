@@ -18,7 +18,10 @@ const SeatConfig := preload("res://seats/seat_config.gd")
 const PI := preload("res://core/player_identity.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
-const DRIVERS := ["LOCAL", "AI", "CHAT", "sdk:neuro", "sdk:evil"]
+# REMOTE is the seat another MACHINE plays (a browser or a second copy of the game). It was
+# missing from this list, so a networked match could only be assembled from a CLI flag made
+# for the smoke — there was no way to invite a friend through the interface.
+const DRIVERS := ["LOCAL", "AI", "CHAT", "REMOTE", "sdk:neuro", "sdk:evil"]
 const NAMES := ["Host", "AI-2", "AI-3", "AI-4", "AI-5", "AI-6", "AI-7", "AI-8"]
 ## Fallback board size when no settings object exists yet. The engine's default
 ## lives in game_settings.gd; this is only the pre-settings placeholder, never a

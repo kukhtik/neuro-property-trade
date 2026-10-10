@@ -38,6 +38,7 @@ const D := {
 	"settings.driver.local":   {"ru": "ЛОКАЛ", "en": "LOCAL"},
 	"settings.driver.ai":      {"ru": "ИИ", "en": "AI"},
 	"settings.driver.chat":    {"ru": "ЧАТ", "en": "CHAT"},
+	"settings.driver.remote":    {"ru": "Друг по сети", "en": "Remote player"},
 	"settings.driver.sdk_neuro": {"ru": "Neuro", "en": "Neuro"},
 	"settings.driver.sdk_evil":  {"ru": "Neuro (злой)", "en": "Neuro (evil)"},
 	"settings.name_tip":       {"ru": "Имя игрока, отображаемое на доске и в списке.", "en": "Player name shown on the board and in the list."},
