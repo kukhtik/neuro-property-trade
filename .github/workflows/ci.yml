@@ -45,16 +45,16 @@ jobs:
       - name: Determinism - replay every recorded game log
         run: |
           # `$PWD/tools/ci/godot_bin.sh` is the SCRIPT, not the binary. Invoking the script with
-# `--headless ...` makes bash run it, ignore every argument, print the binary path and
-# exit 0 — so this step was green while running NOTHING. Run the script to get the path.
+          # `--headless ...` makes bash run it, ignore every argument, print the binary path and
+          # exit 0 — so this step was green while running NOTHING. Run the script to get the path.
           G="$(tools/ci/godot_bin.sh)"
           "$G" --headless --path game --script res://tools/replay_cli.gd -- --verify-all corpus/games
 
       - name: Corpus - regenerate a batch and verify decision-replay
         run: |
           # `$PWD/tools/ci/godot_bin.sh` is the SCRIPT, not the binary. Invoking the script with
-# `--headless ...` makes bash run it, ignore every argument, print the binary path and
-# exit 0 — so this step was green while running NOTHING. Run the script to get the path.
+          # `--headless ...` makes bash run it, ignore every argument, print the binary path and
+          # exit 0 — so this step was green while running NOTHING. Run the script to get the path.
           G="$(tools/ci/godot_bin.sh)"
           # A project-relative output path keeps the contract identical on Linux
           # and on a Windows/Git-bash checkout (build/ is git-ignored).
@@ -65,8 +65,8 @@ jobs:
       - name: Seeded soak - no stalls, invariants hold
         run: |
           # `$PWD/tools/ci/godot_bin.sh` is the SCRIPT, not the binary. Invoking the script with
-# `--headless ...` makes bash run it, ignore every argument, print the binary path and
-# exit 0 — so this step was green while running NOTHING. Run the script to get the path.
+          # `--headless ...` makes bash run it, ignore every argument, print the binary path and
+          # exit 0 — so this step was green while running NOTHING. Run the script to get the path.
           G="$(tools/ci/godot_bin.sh)"
           for players in 2 3 4; do
             "$G" --headless --path game --script res://tools/soak_cli.gd -- --sweep 20 --seed 2000 --turns 250 --players "$players"
