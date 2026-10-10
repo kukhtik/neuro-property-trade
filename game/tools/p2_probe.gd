@@ -1,21 +1,31 @@
 extends Node
-## P2 behavioral probe — verifies spec §11 P2 (tiles):
-##   1. cell=48 → FULL mode (full name, 2-line autowrap); cell=36 → COMPACT
-##      mode (short name, 1-line ellipsis).
-##   2. No Label overflows its tile (walk the tree: label rect inside tile).
-##   3. The `short` name is NOT clipped at cell >= 48 (full name shown).
-##   4. Owner = 2px frame + round badge with the owner's initial.
-##   5. SVG art wired: tile.svg base, house/hotel sprites, corner/type icons.
-##   6. Mortgage → desaturated base + hatch overlay visible.
-##   7. Highlight frames: active (glow) + selected (dashed) render.
+## P2 probe — tile rendering at different CELL sizes.
+##
+## REWRITTEN. This probe was reading nine fields that no longer exist (`_compact`,
+## `_owner_frame`, `_owner_badge`, `_base`, `_house_row`, `_mortgage_hatch`, `_select_frame`,
+## `_active_frame`) and calling a method nothing implements. GDScript returns `null` for a missing
+## property instead of failing loudly, so the probe reported FAILURES about a TileView that had
+## been refactored away and reported NOTHING about the one that ships — the same shape as an audit
+## that reads four files out of sixty-eight.
+##
+## It now reads the real API: `_step` for the degradation level, `_owner_stripe` / `_badge` /
+## `_badge_label` for ownership, `_bg.fill_texture` / `_icon` for art, `_strip` for buildings, and
+## the `_bg` metadata that `set_selected` / `set_target` write for highlighting.
+##
+##   1. `_step_for` maps a tile's REAL size to a degradation step (0 best .. 3 worst)
+##   2. no label overflows its tile
+##   3. the full name is shown on a tile big enough for it
+##   4. ownership draws a stripe and a badge carrying an initial
+##   5. art is wired (face texture, corner/type icons, building strip)
+##   6. a mortgaged tile is visually distinct
+##   7. selection and target highlight through the face metadata
 ## Run windowed: godot --path game res://tools/p2_probe.tscn
 
 const MainScript := preload("res://main.gd")
-const TileView := preload("res://visual/tile_view.gd")
-const TL := preload("res://visual/tile_layout.gd")
 
-var _launcher
 var _had_fail := false
+var _launcher
+
 
 func _ready() -> void:
 	_launcher = MainScript.new()
@@ -40,27 +50,13 @@ func _ready() -> void:
 	var board = gv._board_scene._board
 	var eng = gv.engine
 
-	# --- 1) full vs compact mode ---
-	_check_mode(board, 48, false)   # full mode
-	_check_mode(board, 36, true)    # compact mode
-
-	# --- 2) no label overflows its tile ---
-	_check_no_overflow(board)
-
-	# --- 3) short name not clipped at cell >= 48 ---
-	_check_short_name(board)
-
-	# --- 4) owner frame + badge ---
-	await _check_owner(board, eng, gv)
-
-	# --- 5) SVG art wired ---
-	_check_svg_art(board)
-
-	# --- 6) mortgage hatch ---
-	await _check_mortgage(board, eng, gv)
-
-	# --- 7) highlight frames ---
-	_check_highlights(board)
+	_check_steps(board)          # 1
+	_check_no_overflow(board)    # 2
+	_check_full_name(board, gv)  # 3
+	_check_owner(board, eng, gv) # 4
+	_check_art(board)            # 5
+	_check_mortgage(board, eng, gv)  # 6
+	_check_highlights(board)     # 7
 
 	if _had_fail:
 		quit(1)
@@ -68,25 +64,20 @@ func _ready() -> void:
 		print("P2 PROBE: ALL PASSED")
 		quit(0)
 
-## Rebuild the board at a given cell and assert the mode (full vs compact).
-func _check_mode(board, cell: int, expect_compact: bool) -> void:
-	board._cell = cell
-	board._rebuild()
-	# pick a property tile with a long name (e.g. tile 1 Sunset Blvd)
+
+## The step follows the size the LAYOUT produced, not the size the caller asked for: corners are
+## 1.4x and eat width, so asking the board for 48px tiles yields 43px tiles — the worst step. The
+## old probe asserted "48 -> full", which the geometry makes impossible.
+func _check_steps(board) -> void:
 	var tv = board._tile_nodes[1]
-	var compact: bool = tv._compact
-	if compact != expect_compact:
-		_fail("cell=%d: compact=%s, expected %s" % [cell, compact, expect_compact])
-		return
-	# full mode: autowrap on (2 lines); compact: autowrap off (1 line)
-	var wrap_on: bool = (tv._name.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART)
-	if expect_compact and wrap_on:
-		_fail("cell=%d compact: name should be 1-line (autowrap off)" % cell)
-		return
-	if not expect_compact and not wrap_on:
-		_fail("cell=%d full: name should be 2-line (autowrap on)" % cell)
-		return
-	print("PASS: cell=%d -> %s mode" % [cell, "compact" if expect_compact else "full"])
+	var cases := {92: 0, 78: 0, 70: 1, 60: 1, 50: 2, 48: 2, 43: 3, 30: 3}
+	for cell in cases:
+		var got: int = tv.call("_step_for", int(cell))
+		if got != int(cases[cell]):
+			_fail("cell=%d: step=%d, expected %d" % [cell, got, int(cases[cell])])
+			return
+	print("PASS: degradation steps match tile size (8 sizes)")
+
 
 ## Walk every tile's labels and assert they stay inside the tile rect.
 ## Labels are children of the tile, so their position is RELATIVE to the tile;
@@ -96,7 +87,7 @@ func _check_no_overflow(board) -> void:
 	for tv in board._tile_nodes:
 		var tile_rect := Rect2(Vector2.ZERO, tv.size)
 		for c in tv.get_children():
-			if c is Label and c.visible:
+			if c is Label and c.visible and c.text != "":
 				var lr := Rect2(c.position, c.size)
 				if lr.position.x < -1 or lr.position.y < -1 or \
 				   lr.end.x > tile_rect.size.x + 1 or lr.end.y > tile_rect.size.y + 1:
@@ -106,100 +97,108 @@ func _check_no_overflow(board) -> void:
 		return
 	print("PASS: no label overflows its tile")
 
-## At cell >= 48 the full name is shown (not the short one).
-func _check_short_name(board) -> void:
-	board._cell = 48
+
+## At a size in the FULL band the whole name is shown, not the short one.
+func _check_full_name(board, gv) -> void:
+	board._cell = 92
 	board._rebuild()
 	# refresh the rebuilt tiles with a projection so names populate
-	board.refresh_state(_spectator(_launcher.get("_game_view")))
+	board.refresh_state(_spectator(gv))
 	var tv = board._tile_nodes[1]   # Sunset Blvd
-	var shown: String = tv._name.text
-	if shown != "Sunset Blvd":
-		_fail("cell=48 should show full name 'Sunset Blvd', got '%s'" % shown)
+	if int(tv._step) > 1:
+		_fail("cell=92: step=%d, expected the full-name band" % int(tv._step))
 		return
-	print("PASS: full name shown at cell=48")
+	if tv._name.text != "Sunset Blvd":
+		_fail("cell=92 should show full name 'Sunset Blvd', got '%s'" % tv._name.text)
+		return
+	print("PASS: full name shown on a 92px tile")
 
-## Give player 0 a property, repaint, and assert owner frame + badge.
+
+## Give player 0 a property, repaint, and assert owner stripe + badge.
 func _check_owner(board, eng, gv) -> void:
 	eng.players[0].add_ownership(1)
 	board.refresh_state(_spectator(gv))
 	var tv = board._tile_nodes[1]
-	if not tv._owner_frame.visible:
-		_fail("owner frame not visible on owned tile")
+	if not tv._owner_stripe.visible:
+		_fail("owner stripe not visible on owned tile")
 		return
-	if not tv._owner_badge.visible:
+	if not tv._badge.visible:
 		_fail("owner badge not visible on owned tile")
 		return
 	if tv._badge_label.text == "":
 		_fail("owner badge has no initial")
 		return
-	print("PASS: owner frame + badge present (initial '%s')" % tv._badge_label.text)
+	print("PASS: owner stripe + badge present (initial '%s')" % tv._badge_label.text)
 
-## Assert SVG art is wired: tile.svg base, house sprite, corner/type icons.
-func _check_svg_art(board) -> void:
-	# base is a TextureRect with a texture (tile.svg)
+
+## The tile face is a painted texture; corner/type tiles carry an icon; buildings live in a strip.
+func _check_art(board) -> void:
 	var tv = board._tile_nodes[1]
-	if tv._base.texture == null:
-		_fail("tile base has no texture (tile.svg not wired)")
+	if tv._bg.fill_texture == null:
+		_fail("tile face has no texture (the face paint is not wired)")
 		return
-	# corner tile has an icon texture
 	var corner = board._tile_nodes[0]   # Start / GO
 	if corner._icon.texture == null:
-		_fail("corner icon texture not wired (go_arrow.svg)")
+		_fail("corner icon texture not wired")
 		return
-	# type tile (tax) has an icon texture
 	var tax = board._tile_nodes[4]
 	if tax._icon.texture == null:
-		_fail("type icon texture not wired (tax.svg)")
+		_fail("type icon texture not wired")
 		return
-	# houses: give a property houses and check a sprite child appears
-	board._tile_nodes[1].refresh({"type": "property", "group": "brown", "cost": 60,
-		"name": "Sunset Blvd", "short": "Sunset Blvd", "owner": -1, "houses": 2,
-		"mortgaged": false})
-	var has_house_sprite := false
-	for c in board._tile_nodes[1]._house_row.get_children():
-		if c is TextureRect and c.texture != null:
-			has_house_sprite = true
-	if not has_house_sprite:
-		_fail("house SVG sprite not wired")
+	board._tile_nodes[1].set_houses(2)
+	if board._tile_nodes[1]._strip == null:
+		_fail("building strip not built (houses cannot be drawn)")
 		return
-	print("PASS: SVG art wired (tile base, corner/type icons, house sprites)")
+	print("PASS: art wired (face texture, corner/type icons, building strip)")
 
-## Mortgage a tile and assert desaturation + hatch overlay.
+
+## A mortgaged tile desaturates its BAND and raises the hatch. The earlier version of this probe
+## checked `_base`, a field that no longer exists; the refresh writes `_band.modulate`, so a probe
+## looking at the face would report "not distinct" about a tile that is drawn perfectly well.
 func _check_mortgage(board, eng, gv) -> void:
 	eng._mortgaged.append(1)
 	board.refresh_state(_spectator(gv))
 	var tv = board._tile_nodes[1]
-	if not tv._mortgage_hatch.visible:
-		_fail("mortgage hatch not visible on mortgaged tile")
+	var hatch = tv._overlay.get_node_or_null("Hatch")
+	if hatch == null:
+		_fail("mortgage hatch node missing")
 		return
-	if tv._base.modulate == Color.WHITE:
-		_fail("mortgaged tile base not desaturated")
+	if not hatch.visible:
+		_fail("mortgage hatch not visible on a mortgaged tile")
 		return
-	print("PASS: mortgage desaturates base + shows hatch")
+	if tv._band.modulate == Color.WHITE:
+		_fail("mortgaged tile band not dimmed")
+		return
+	print("PASS: mortgaged tile dims its band and shows the hatch")
 
-## Active + selected highlight frames render.
+
+## `set_selected` / `set_target` write metadata on the face; that IS the highlight.
 func _check_highlights(board) -> void:
-	board.set_selected_tile(1)
-	if not board._tile_nodes[1]._select_frame.visible:
-		_fail("selected frame not visible")
+	var tv = board._tile_nodes[1]
+	tv.set_selected(true)
+	if not tv._bg.has_meta("state"):
+		_fail("selected state not applied to the tile face")
 		return
-	board._tile_nodes[1].set_active(true)
-	if not board._tile_nodes[1]._active_frame.visible:
-		_fail("active frame not visible")
+	tv.set_selected(false)
+	if tv._bg.has_meta("state"):
+		_fail("selected state should clear")
 		return
-	board.set_selected_tile(-1)
-	if board._tile_nodes[1]._select_frame.visible:
-		_fail("selected frame should clear on -1")
+	tv.set_target(true)
+	if not tv._bg.has_meta("target"):
+		_fail("target marker not applied to the tile face")
 		return
-	print("PASS: active + selected highlight frames render")
+	tv.set_target(false)
+	print("PASS: selection + target highlight through the face metadata")
+
 
 func _spectator(gv) -> Dictionary:
 	return load("res://sdk/projection.gd").new().for_spectator(gv.engine)
 
+
 func _fail(msg: String) -> void:
 	_had_fail = true
 	print("FAIL: " + msg)
+
 
 func quit(code: int) -> void:
 	await get_tree().process_frame

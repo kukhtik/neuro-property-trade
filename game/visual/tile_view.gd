@@ -470,7 +470,7 @@ func refresh(entry: Dictionary) -> void:
 	var hatch := _overlay.get_node_or_null("Hatch")
 	if hatch != null:
 		hatch.visible = mortgaged
-	_band.modulate = _skin.color("mortgage.dim", Color("999999")) if mortgaged else Color.WHITE
+	_band.modulate = _skin.color("mortgage.dim") if mortgaged else Color.WHITE
 	pass
 
 

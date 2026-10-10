@@ -94,17 +94,18 @@ func _test_inspector_retranslate() -> void:
 	if ti == null:
 		_fail("BUG3b setup: no TileInspector"); return
 	I.set_locale("ru")
-	if ti.has_method("show_tile"):
-		ti.call("show_tile", 1, {}, {})
+	# `show_tile` does not exist: the old probe called a method nothing implements, so both
+	# readings were taken with the SAME locale and could never differ. `clear()` is what actually
+	# writes the placeholder.
+	if ti.has_method("clear"):
+		ti.call("clear")
 	var ru_text: String = ""
 	var txt_node: Node = ti.get("_text")
 	if txt_node != null:
 		ru_text = str(txt_node.get("text"))
 	I.set_locale("en")
-	if ti.has_method("_on_locale_changed"):
-		ti.call("_on_locale_changed", "en")
-	elif ti.has_method("show_tile"):
-		ti.call("show_tile", 1, {}, {})
+	if ti.has_method("retranslate"):
+		ti.call("retranslate")
 	var en_text: String = ""
 	txt_node = ti.get("_text")
 	if txt_node != null:

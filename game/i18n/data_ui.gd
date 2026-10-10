@@ -37,6 +37,21 @@ const D := {
 	"top.title":            {"ru": "● NEURO PROPERTY TRADE", "en": "● NEURO PROPERTY TRADE"},
 	"top.turn":             {"ru": "ХОД: ", "en": "TURN: "},
 	"top.phase":            {"ru": "ФАЗА: ", "en": "PHASE: "},
+	# THE ENGINE'S PHASE NAMES WERE NEVER TRANSLATED. Both the header and the action bar build
+	# them as `I18n.t("phase." + phase)` and fall back to the raw enum when the key is missing —
+	# and every key was missing, so a Russian player watched `TURN_START` and `PURCHASE_WAIT` in
+	# the status line. The fallback is right (an unknown phase must still render something), but
+	# it was covering for a table that had never been written.
+	"phase.SETUP":          {"ru": "Подготовка", "en": "Setup"},
+	"phase.TURN_START":     {"ru": "Начало хода", "en": "Turn start"},
+	"phase.ROLL_RESOLVE":   {"ru": "Бросок", "en": "Roll"},
+	"phase.PURCHASE_WAIT":  {"ru": "Покупка", "en": "Purchase"},
+	"phase.AUCTION":        {"ru": "Аукцион", "en": "Auction"},
+	"phase.RENT_SETTLE":    {"ru": "Аренда", "en": "Rent"},
+	"phase.CARD_WAIT":      {"ru": "Карта", "en": "Card"},
+	"phase.JAIL_DECISION":  {"ru": "Тюрьма", "en": "Jail"},
+	"phase.END_TURN":       {"ru": "Конец хода", "en": "End of turn"},
+	"phase.END_GAME":       {"ru": "Конец игры", "en": "Game over"},
 	"top.cold":             {"ru": "до старта", "en": "not started"},
 	"top.settings_tip":     {"ru": "Открыть настройки и правила игры", "en": "Open settings and game rules"},
 	# the mockup has a `RU / EN` control in the header; `I18n` already switched languages,

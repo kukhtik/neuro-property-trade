@@ -175,6 +175,10 @@ func _has_colour_literal(line: String) -> bool:
 		if line.substr(maxi(0, at - 8), 10).contains("%s"):
 			continue
 		return true
+	# `Color("c9a84c")` — the same violation a third time, and invisible to both earlier passes
+	var q := line.find('Color("')
+	if q >= 0:
+		return true
 	var needle := "Color("
 	var from := 0
 	while from < line.length():

@@ -626,13 +626,13 @@ func _kind_color(t: String) -> Color:
 		"purchase", "auction_win", "go_bonus":
 			return UiTheme.COL().money
 		"pay", "rent", "tax":
-			return Color("c9a84c")
+			return UiTheme.COL().warn
 		"jail", "bankrupt":
 			return UiTheme.COL().danger
 		"admin_override":
-			return Color("9a86c9")
+			return UiTheme.COL().accent
 		_:
-			return Color("e8edf3")
+			return UiTheme.COL().text
 
 # -------------------------------------------------------- admin log ----
 

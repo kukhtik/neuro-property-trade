@@ -29,6 +29,13 @@ var _restart_btn: Button
 var _settings_btn: Button
 var _timer_ring: TimerRing
 var _is_host := true
+## The header builds its text from live state, so a locale change cannot fix it by re-running
+## `I18n.t` on the strings it happens to hold — it has to rebuild them. These remember what the
+## header was showing so `retranslate()` can rebuild it in the new language.
+var _cold := true
+var _last_phase := ""
+var _last_turn := ""
+var _last_turn_color := Color.TRANSPARENT
 ## The execution role. Drives what the header shows — the role is NOT switchable
 ## here (owner decision, docs/ui_migration_notes §9), only reported.
 var _profile = null
@@ -174,6 +181,24 @@ func set_profile(pr) -> void:
 
 ## P5: re-apply static localized labels after a locale change.
 func retranslate() -> void:
+	# REBUILD what the header currently shows. `_phase` is composed at sync time, so a locale
+	# change used to leave the OLD language sitting in the header: probing RU -> EN reported
+	# `_phase` still reading "до старта" while every caption around it had switched. The strings
+	# are not independent of state, so they cannot simply be re-fetched — they must be re-derived.
+	if _phase != null:
+		if _cold:
+			_phase.text = I18n.t("top.cold")
+		elif _last_phase != "":
+			var lbl: String = I18n.t("phase." + _last_phase)
+			if lbl.begins_with("{phase."):
+				lbl = _last_phase
+			_phase.text = I18n.t("top.phase") + lbl
+	if _turn != null:
+		if _cold or _last_turn == "":
+			_turn.text = ""
+		else:
+			_turn.text = I18n.t("top.turn") + _last_turn
+			_turn.add_theme_color_override("font_color", _last_turn_color)
 	if _settings_btn != null:
 		_settings_btn.tooltip_text = I18n.t("top.settings_tip")
 	if _restart_btn != null:
@@ -200,11 +225,13 @@ func scale_text(factor: float) -> void:
 
 
 func set_cold(v: bool) -> void:
+	_cold = true
 	_turn.text = ""
 	_phase.text = I18n.t("top.cold")
 	_restart_btn.visible = false
 
 func sync_cold() -> void:
+	_cold = true
 	_turn.text = ""
 	_phase.text = I18n.t("top.cold")
 	_restart_btn.visible = false
@@ -229,12 +256,17 @@ func sync(proj: Dictionary, players: Array) -> void:
 	var tp: int = int(proj.get("turn_player", -1))
 	if tp >= 0 and tp < players.size():
 		var s = players[tp]
-		_turn.text = I18n.t("top.turn") + str(s.name)
-		_turn.add_theme_color_override("font_color", s.color)
+		_cold = false
+		_last_turn = str(s.name)
+		_last_turn_color = s.color
+		_turn.text = I18n.t("top.turn") + _last_turn
+		_turn.add_theme_color_override("font_color", _last_turn_color)
 	else:
+		_last_turn = ""
 		_turn.text = ""
 	# CS-1: localize the phase name (phase.* keys), fall back to the raw enum.
 	var ph: String = str(proj.get("phase", ""))
+	_last_phase = ph
 	var ph_lbl: String = I18n.t("phase." + ph)
 	if ph_lbl.begins_with("{phase."):
 		ph_lbl = ph

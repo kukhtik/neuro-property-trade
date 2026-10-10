@@ -56,7 +56,6 @@ var _actions
 var _inspector
 var _modals
 var _journal           # JournalPanel now (was a bare Label)
-var _jpanel: PanelContainer
 var _players_rail           # RailPanel around the players panel
 var _jpanel_rail            # RailPanel around the journal
 var _skin                   # SkinManager shared by the rails

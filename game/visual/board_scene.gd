@@ -411,7 +411,14 @@ func _paint(animate: bool, wire: Dictionary = {}) -> void:
 			var pos: int = int(players[tp].get("position", -1))
 			if pos >= 0 and pos < board.size():
 				tile_name = str(board[pos].get("name", ""))
-		_center.set_turn(pname, str(proj.get("phase", "")), tile_name)
+		# THE BANNER SHOWED THE ENGINE'S ENUM. `top_bar` and `action_panel` both translate the phase
+		# before displaying it; the board centre was handed the raw string, so the middle of the
+		# board read "Host · TURN_START · Start" while the header two inches above it read correctly.
+		var ph_raw: String = str(proj.get("phase", ""))
+		var ph_lbl: String = I18n.t("phase." + ph_raw)
+		if ph_lbl.begins_with("{phase."):
+			ph_lbl = ph_raw
+		_center.set_turn(pname, ph_lbl, tile_name)
 		if int(proj.get("dice", [0, 0])[0]) > 0:
 			var d: Array = proj.get("dice", [0, 0])
 			_center.set_dice(int(d[0]), int(d[1]))

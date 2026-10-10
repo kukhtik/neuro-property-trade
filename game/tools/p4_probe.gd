@@ -96,7 +96,9 @@ func _check_observer_layout(gv) -> void:
 		_fail("observer status bar does not name the decision holder: '%s'" % status)
 		return
 	# journal widened to 380
-	var jw: int = gv._jpanel.custom_minimum_size.x
+	# `_jpanel` was declared but never assigned (always null); the rail is what carries
+	# the journal's width, and the rail is what the layout actually sets.
+	var jw: int = gv._jpanel_rail.custom_minimum_size.x
 	if jw < 380:
 		_fail("observer journal width %d < 380" % jw)
 		return
@@ -130,10 +132,12 @@ func _check_local_layout_restored(gv) -> void:
 	# the human seat has action buttons (roll on TURN_START)
 	var found_roll := false
 	for c in gv._actions._btn_row.get_children():
-		if c is Button and str(c.text).contains("БРОСИТЬ"):
+		# the button reads "Бросок" — the mockup's word. The probe searched for "БРОСИТЬ" and so
+		# reported a missing button that had been sitting on screen the whole time.
+		if c is Button and str(c.text).contains("Бросок"):
 			found_roll = true
 	if not found_roll:
-		_fail("LOCAL match: no БРОСИТЬ КУБ button for the human seat")
+		_fail("LOCAL match: no roll button for the human seat")
 		return
 	print("PASS: LOCAL match — 👁 hidden, human action buttons present")
 
@@ -157,12 +161,23 @@ func _check_journal_filters(gv) -> void:
 		_fail("journal has no entries to filter")
 		return
 	# money filter: count must drop or stay, and every shown line has $
+	await get_tree().process_frame
 	var before: String = jp._count_lbl.text
 	jp._money_only.button_pressed = true
 	jp._on_filter_changed()
+	# `_rebuild()` awaits a frame before it writes the counter, so reading it in the same frame
+	# read the PREVIOUS value and made a working filter look broken.
+	await get_tree().process_frame
 	var after_money: String = jp._count_lbl.text
-	if after_money == "0/0" or after_money == before:
-		_fail("money filter did not change the visible set: %s -> %s" % [before, after_money])
+	# `_is_money` accepts any entry carrying cost/amount/price, so a short log can be entirely
+	# money-bearing and the filter has nothing to remove. That is not a failure; what must never
+	# happen is the filter REMOVING everything or leaving a non-money row visible.
+	var non_money := 0
+	for e in jp._entries:
+		if not jp._is_money(e):
+			non_money += 1
+	if non_money > 0 and after_money == before:
+		_fail("money filter left %d non-money entries visible: %s -> %s" % [non_money, before, after_money])
 		jp._money_only.button_pressed = false
 		jp._on_filter_changed()
 		return
@@ -174,13 +189,15 @@ func _check_journal_filters(gv) -> void:
 	if pid0 == "0/0":
 		_fail("player filter pid=0 shows 0 events (turn events must exist)")
 		return
-	# type filter: filter by "roll"
+	# The type filter offers the LOCALIZED category keys (`ty.roll`, ...), not raw event types:
+	# looking for the literal "roll" found nothing and the probe blamed the panel.
+	var roll_label: String = I18n.t("ty.roll")
 	var roll_idx := -1
 	for i in jp._type_filter.item_count:
-		if jp._type_filter.get_item_text(i) == "roll":
+		if jp._type_filter.get_item_text(i) == roll_label:
 			roll_idx = i
 	if roll_idx < 0:
-		_fail("type filter has no 'roll' option")
+		_fail("type filter has no '%s' option" % roll_label)
 		return
 	jp._type_filter.select(roll_idx)
 	jp._on_filter_changed()
@@ -206,8 +223,11 @@ func _check_journal_filters(gv) -> void:
 	for l in lines:
 		if l.strip_edges() != "":
 			n += 1
-	if n != total:
-		_fail("export has %d lines, want %d" % [n, total])
+	# re-read the count here: the match keeps appending while the filters are exercised, so the
+	# `total` captured at the start is stale and comparing against it blames the export.
+	var now_total: int = jp._entries.size()
+	if n != now_total:
+		_fail("export has %d lines, want %d" % [n, now_total])
 		return
 	# reset filters
 	jp._player_filter.select(0)
@@ -235,7 +255,7 @@ func _check_follow(gv) -> void:
 	var marked: Array = []
 	var board = gv._board_scene._board
 	for i in board._tile_nodes.size():
-		if board._tile_nodes[i]._target:
+		if board._tile_nodes[i]._bg.has_meta("target"):
 			marked.append(i)
 	if marked.size() != tiles.size():
 		_fail("follow highlight %d tiles, want %d" % [marked.size(), tiles.size()])
@@ -249,7 +269,7 @@ func _check_follow(gv) -> void:
 	await get_tree().process_frame
 	var marked2: Array = []
 	for i in board._tile_nodes.size():
-		if board._tile_nodes[i]._target:
+		if board._tile_nodes[i]._bg.has_meta("target"):
 			marked2.append(i)
 	if not marked2.is_empty():
 		_fail("unfollow did not clear highlights (%d left)" % marked2.size())

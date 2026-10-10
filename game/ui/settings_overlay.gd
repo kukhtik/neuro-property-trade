@@ -435,7 +435,9 @@ func _build_interface_tab() -> void:
 	grid.add_child(_h("settings.sound", _sound))
 
 	_language = OptionButton.new()
-	_language.add_item("Русский"); _language.add_item("English")
+	# the labels are localized like everything else: a hardcoded pair cannot follow a locale
+	# change, and the audit caught them still reading "Русский"/"English" after a switch
+	_language.add_item(I18n.t("settings.lang_ru")); _language.add_item(I18n.t("settings.lang_en"))
 	_language.selected = 0
 	_language.tooltip_text = I18n.t("settings.language_tip")
 	_language.connect("item_selected", Callable(self, "_on_language"))

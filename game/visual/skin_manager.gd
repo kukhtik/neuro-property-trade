@@ -45,6 +45,7 @@ const FALLBACK_COLORS := {
 	# translucency that used to be written inline as `Color(0, 0, 0, 0.55)` and friends: a theme
 	# that changes every surface still had these eight bake a fixed grey over its art.
 	"shadow": "#0000008c", "scrim": "#00000099", "sheen": "#ffffff1a",
+	"mortgage.dim": "#999999",
 	"hatch": "#0000004d", "ring_bg": "#333f5999",
 }
 const FALLBACK_SIZES := {"xs": 10, "s": 12, "m": 14, "l": 18, "xl": 28}
