@@ -588,7 +588,13 @@ static func replay(loaded: Dictionary, allow_version_mismatch: bool = false) -> 
 	if fp0 != "":
 		var got0: String = fingerprint(e)
 		if got0 != fp0:
-			return {"ok": false, "reason": "initial state diverged (settings/names not restored): %s != %s" % [got0, fp0], "engine": e, "plies": 0, "fingerprint": got0}
+			# NAME THE CULPRIT. The fingerprint hashes the whole snapshot, so adding ANY field to
+			# a player, the settings or the engine state rotates every recorded log — this has now
+			# happened three times (`animations` default, the i18n tables, `round_limit`). A bare
+			# "initial state diverged" sends the reader hunting; diffing the snapshot and the
+			# recorded settings says which key moved.
+			var hint: String = _divergence_hint(header, e)
+			return {"ok": false, "reason": "initial state diverged (settings/names not restored): %s != %s%s" % [got0, fp0, hint], "engine": e, "plies": 0, "fingerprint": got0}
 
 	for i in calls.size():
 		var c: Dictionary = calls[i]
@@ -655,3 +661,40 @@ static func verify_all(targets) -> Dictionary:
 		"files": results,
 		"failed": failed,
 	}
+
+
+## Which part of the recorded header no longer reproduces? Returns a human hint like
+## " [settings differ on: round_limit]" or "" when nothing obvious moved.
+static func _divergence_hint(header: Dictionary, e) -> String:
+	var out: Array = []
+	var recorded: Dictionary = header.get("settings", {})
+	var live: Dictionary = e.settings.to_data()
+	var keys: Array = recorded.keys()
+	keys.sort()
+	for k in keys:
+		if not live.has(k):
+			out.append("%s (gone)" % k)
+		elif not _same_value(live[k], recorded[k]):
+			out.append("%s %s->%s" % [k, str(recorded[k]), str(live[k])])
+	for k in live.keys():
+		if not recorded.has(k):
+			out.append("%s (new)=%s" % [k, str(live[k])])
+	if not out.is_empty():
+		return " [settings differ on: %s]" % ", ".join(PackedStringArray(out))
+	# names and per-player state, since those carry the rest of the snapshot
+	var rnames: Array = header.get("names", [])
+	var lnames: Array = []
+	for p in e.players:
+		lnames.append(p.name)
+	if str(rnames) != str(lnames):
+		return " [names differ: %s vs %s]" % [str(rnames), str(lnames)]
+	return " [settings and names match: the state schema itself changed]"
+
+
+## JSON stores 50 as 50.0 while `to_data()` yields 50; comparing those as strings reports every
+## numeric setting as changed and buries the one key that actually moved.
+static func _same_value(a, b) -> bool:
+	if a is float or a is int or b is float or b is int:
+		if (a is float or a is int) and (b is float or b is int):
+			return is_equal_approx(float(a), float(b))
+	return str(a) == str(b)
