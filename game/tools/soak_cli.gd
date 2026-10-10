@@ -109,6 +109,7 @@ func _one(args: Array) -> void:
 	var quiet := false
 	var sweep := 0
 	var players := 4
+	var use_ai := false
 	var i := 0
 	while i < args.size():
 		var a := String(args[i])
@@ -121,6 +122,8 @@ func _one(args: Array) -> void:
 				turns = int(args[i])
 			"--no-auctions":
 				auctions = false
+			"--ai":
+				use_ai = true
 			"--quiet":
 				quiet = true
 			"--sweep":
@@ -132,6 +135,9 @@ func _one(args: Array) -> void:
 			_:
 				print("unknown arg: %s" % a)
 		i += 1
+	if use_ai:
+		_sweep_ai(seed_v, maxi(sweep, 1), turns, players)
+		return
 	if sweep > 0:
 		_sweep(seed_v, sweep, turns, auctions, players)
 		return
@@ -145,6 +151,63 @@ func _one(args: Array) -> void:
 	_check(int(rec.get("plies", 0)) > 0, "game made progress")
 	_check(String(rec.get("end_reason", "")) != "stalled", "game did not stall", String(rec.get("end_reason", "")))
 	_check(int(r.get("events", 0)) > 0, "event log recorded state changes")
+
+## THE POLICY IS NOT THE PLAYER. `DReplay.play` drives the engine with the reference corpus
+## policy, which has no trade branch — so its matches cannot form colour groups, nothing is ever
+## built, and most runs end on the ply cap with everyone rich instead of one survivor. Measured
+## on seeds 3000/3003/3006: the corpus policy never reached END_GAME (0 monopolies, $8-16k each),
+## while the SAME seeds played by the real `ai_driver` all ended within ~2100 steps.
+##
+## That is not a game bug — `seat_manager` already plays live matches with `ai_driver` — but it
+## means the soak never exercised the seat logic that actually ships. This mode does, so a stall
+## in the real driver is a stall the suite can find.
+func _sweep_ai(seed_v: int, count: int, turns: int, players: int) -> void:
+	var SM = load("res://seats/seat_manager.gd")
+	var Persona = load("res://seats/ai_persona.gd")
+	print("=== soak (REAL ai_driver): %d seeds from %d, %d players, cap %d steps ===" % [count, seed_v, players, turns])
+	var ended := 0
+	var problems := 0
+	for i in count:
+		var sd := seed_v + i
+		var s = load("res://core/game_settings.gd").new()
+		s.rng_seed = sd
+		s.seat_count = players
+		s.starting_order = "manual"
+		s.turn_timer = 0
+		s.auction_timer = 0
+		var names: Array = ["Neuro", "Ada", "Bo", "Cyd", "Dee", "Eve"].slice(0, players)
+		var e = load("res://core/engine.gd").new()
+		e.setup(s, names)
+		var seats: Array = []
+		for pi in players:
+			var st = load("res://seats/seat.gd").new(pi)
+			st.name = String(names[pi])
+			st.input_driver = "AI"
+			st.persona = Persona.default_for_index(pi)
+			seats.append(st)
+		var mgr = SM.new()
+		root.add_child(mgr)
+		mgr.setup(e, seats)
+		mgr.set_autoplay_local(true)
+		var steps := 0
+		while e.phase != "END_GAME" and steps < turns:
+			# the manager normally ticks on a frame; a probe has no frames to spare
+			mgr._process(0.05)
+			steps += 1
+		var broke: Array = _audit(e, sd)
+		if not broke.is_empty():
+			problems += 1
+			for b in broke:
+				print("  FAIL %s" % String(b))
+		if e.phase == "END_GAME":
+			ended += 1
+		else:
+			print("  STALL seed %d: still %s after %d steps" % [sd, e.phase, steps])
+		mgr.queue_free()
+	print("      ended=%d of %d, invariant breaks=%d" % [ended, count, problems])
+	_check(problems == 0, "every seed held its invariants")
+	_check(ended == count, "every seed reached a winner", "%d of %d" % [ended, count])
+
 
 func _selftest() -> void:
 	print("=== soak self-test (no args): 5 seeds ===")
