@@ -49,6 +49,10 @@ The engine needs no renderer, so the whole rules suite runs headless. `--import`
 first is mandatory: a fresh clone has no `.godot/` class cache and `class_name`
 globals fail to resolve without it — the script does that for you.
 
+`run_tests.sh` fails on a module that does not load, on a `test_*` function missing from
+`test_list()`, and on any `SCRIPT ERROR` — a green suite that skipped real work is the failure
+mode this gate exists to prevent.
+
 Determinism and robustness checks (all run in CI):
 
 ```bash
@@ -61,11 +65,31 @@ Every game is fully determined by (settings, names, seed, decision sequence), so
 a recorded log replays to a byte-identical state fingerprint — that is how
 engine-vs-intent divergence gets caught. Full details: `docs/infra.md`.
 
+## Playing with other people
+
+**`docs/how-to-play.md`** — local play, play over a network (one host, everyone else joins), and
+play in a browser. It has the flags, the role split and a troubleshooting table, written from
+commands that were actually run.
+
+The short version: one machine hosts the match and owns the engine; every other seat — another
+copy of the game, or a browser — sends intents to it and the engine validates each one. Start the
+host on a LAN with `--server-bind=0.0.0.0`, hand each friend the seat token it prints, and they
+join with `--seat=<token> --host=ws://<address>:<port>`.
+
 ## Status
 
-Engines, seats, admin console and the visual layer are implemented (Phases 0-5,
-226 headless tests green). The UI/UX overhaul is the current phase; headless
-infrastructure (CI, replay, corpus, soak) is in place. Roadmap: `docs/plan.md`.
+The engine, seats, network host, admin console, visual layer and the UI overhaul are implemented.
+Verified by two gates, both run in CI:
+
+```bash
+tools/ci/run_tests.sh     # 406 headless tests (rules engine)
+tools/ci/run_probes.sh    # 16 behavioral probes (UI, i18n, skin, network, board)
+```
+
+Plus determinism (every recorded game replays to a byte-identical fingerprint), a regenerated
+decision corpus and seeded soaks, and a WebGL export that a real browser was driven through.
+
+Roadmap and known gaps: `docs/plan.md`.
 
 ## License
 
