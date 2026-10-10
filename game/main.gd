@@ -243,8 +243,18 @@ func _autostart() -> void:
 	if n >= 2:
 		st.seat_count = n
 		st.starting_order = "manual"
-		var a: Array = [{"driver": "LOCAL", "name": "Host"},
-			{"driver": "REMOTE", "name": "Browser"}]
+		# `--smoke-seats=N` used to make exactly ONE remote seat and fill the rest with bots, which
+		# is what the browser smoke needed. A host inviting friends needs N-1 remote seats, so
+		# `--remote-seats=` says how many; without it the old shape is kept so the smoke fixtures
+		# and their recorded expectations do not move.
+		var remote := int(_cli_value("--remote-seats="))
+		var a: Array = [{"driver": "LOCAL", "name": "Host"}]
+		if remote <= 0:
+			a.append({"driver": "REMOTE", "name": "Browser"})
+			remote = 1
+		else:
+			for i in remote:
+				a.append({"driver": "REMOTE", "name": "Player %d" % (i + 2)})
 		while a.size() < n:
 			a.append({"driver": "AI", "name": "Bot %d" % (a.size() + 1)})
 		st.seat_assignments = a
