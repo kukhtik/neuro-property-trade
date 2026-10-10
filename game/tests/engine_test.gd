@@ -2,7 +2,7 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target", "test_bankrupt_mid_turn_no_deadlock", "test_bankrupt_non_turn_player_keeps_turn", "test_recovered_turn_hands_over_exactly_once", "test_bankruptcy_latch_is_transient", "test_card_back_three_never_leaves_the_board", "test_negative_position_never_pends_a_purchase", "test_invalid_pending_purchase_does_not_deadlock", "test_board_type_at_bounds_checked", "test_imprisoned_penniless_has_a_legal_move", "test_served_sentence_frees_penniless_player", "test_jail_pay_still_required_when_affordable", "test_parking_pot_accumulates_tax", "test_parking_pot_pays_on_landing", "test_parking_pot_off_by_default", "test_parking_pot_survives_snapshot", "test_parking_pot_credits_landing_player_cash"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target", "test_bankrupt_mid_turn_no_deadlock", "test_bankrupt_non_turn_player_keeps_turn", "test_recovered_turn_hands_over_exactly_once", "test_bankruptcy_latch_is_transient", "test_card_back_three_never_leaves_the_board", "test_negative_position_never_pends_a_purchase", "test_invalid_pending_purchase_does_not_deadlock", "test_board_type_at_bounds_checked", "test_imprisoned_penniless_has_a_legal_move", "test_served_sentence_frees_penniless_player", "test_jail_pay_still_required_when_affordable", "test_parking_pot_accumulates_tax", "test_parking_pot_pays_on_landing", "test_parking_pot_off_by_default", "test_parking_pot_survives_snapshot", "test_parking_pot_credits_landing_player_cash", "test_round_counter_advances_on_wrap", "test_round_limit_ends_the_match", "test_round_limit_off_plays_on", "test_round_limit_winner_is_richest", "test_round_no_survives_snapshot"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -1038,4 +1038,143 @@ static func test_parking_pot_survives_snapshot() -> String:
 	var restored = e.from_snapshot(snap)
 	if restored.parking_pot() != 200:
 		return "pot lost across snapshot, got %d" % restored.parking_pot()
+	return ""
+
+
+# --- round counter and the short game -------------------------------------
+
+## A round is one full lap: the counter bumps when the turn index wraps to seat 0.
+static func test_round_counter_advances_on_wrap() -> String:
+	var r = _make_engine(["Ada", "Bo"])
+	var e = r["engine"]
+	if e.round_no != 1:
+		return "a fresh match starts in round 1, got %d" % e.round_no
+	# two seats: one non-doubles turn each is exactly one round
+	e._force_dice(4, 1, 3, false)
+	e.submit_intent(0, "roll", {})
+	if e.round_no != 1:
+		return "round must not advance mid-lap, got %d" % e.round_no
+	e._force_dice(4, 1, 3, false)
+	e.submit_intent(1, "roll", {})
+	if e.round_no != 2:
+		return "a full lap should reach round 2, got %d" % e.round_no
+	return ""
+
+
+## The short game: past the limit the richest seat wins and the match is over.
+static func test_round_limit_ends_the_match() -> String:
+	var r = _make_engine(["Ada", "Bo"])
+	var e = r["engine"]
+	e.settings.round_limit = 3
+	# give seat 0 the bigger purse so the winner is unambiguous
+	e.players[0].change_cash(500)
+	var guard := 0
+	while e.phase != "END_GAME" and guard < 200:
+		guard += 1
+		# THE DECISION HOLDER IS NOT ALWAYS `turn_player`: during an AUCTION the engine
+		# rotates `pending.bidder`, and `turn_player` keeps pointing at whoever triggered it.
+		var holder: int = -1
+		for _pid in e.player_count():
+			if not e.legal_actions(_pid).is_empty():
+				holder = _pid
+				break
+		if e.legal_actions(holder).has("roll"):
+			e._force_dice(4, 1, 3, false)
+			e.submit_intent(holder, "roll", {})
+		elif e.legal_actions(holder).has("pass"):
+			e.submit_intent(holder, "pass", {})
+		elif e.legal_actions(holder).has("bid"):
+			# a bid must EXCEED the current high, so offering a flat 1 against a high of 1
+			# is rejected and the auction loops forever on the same bidder
+			e.submit_intent(holder, "bid", {"amount": int(e._pending.get("high", 0)) + 1})
+		else:
+			return "no legal move at %s (round %d)" % [e.phase, e.round_no]
+	if e.phase != "END_GAME":
+		return "limit 3 must end the match, still %s at round %d" % [e.phase, e.round_no]
+	if e.round_no <= 3:
+		return "the match must outlast the limit itself, round=%d" % e.round_no
+	return ""
+
+
+## The limit is off by default: a fixture must not change because of a new rule.
+static func test_round_limit_off_plays_on() -> String:
+	var r = _make_engine(["Ada", "Bo"])
+	var e = r["engine"]
+	if e.settings.round_limit != 0:
+		return "round_limit must default to 0 (off), got %d" % e.settings.round_limit
+	var guard := 0
+	while e.round_no < 8 and guard < 200 and e.phase != "END_GAME":
+		guard += 1
+		# THE DECISION HOLDER IS NOT ALWAYS `turn_player`: during an AUCTION the engine
+		# rotates `pending.bidder`, and `turn_player` keeps pointing at whoever triggered it.
+		var holder: int = -1
+		for _pid in e.player_count():
+			if not e.legal_actions(_pid).is_empty():
+				holder = _pid
+				break
+		if e.legal_actions(holder).has("roll"):
+			e._force_dice(4, 1, 3, false)
+			e.submit_intent(holder, "roll", {})
+		elif e.legal_actions(holder).has("pass"):
+			e.submit_intent(holder, "pass", {})
+		elif e.legal_actions(holder).has("bid"):
+			# a bid must EXCEED the current high, so offering a flat 1 against a high of 1
+			# is rejected and the auction loops forever on the same bidder
+			e.submit_intent(holder, "bid", {"amount": int(e._pending.get("high", 0)) + 1})
+		else:
+			break
+	if e.round_no < 8:
+		return "with the limit off the match must keep playing, stopped at round %d (%s)" % [e.round_no, e.phase]
+	return ""
+
+
+## The winner is the RICHEST seat, not the first one.
+static func test_round_limit_winner_is_richest() -> String:
+	var r = _make_engine(["Ada", "Bo", "Cyd"])
+	var e = r["engine"]
+	e.settings.round_limit = 2
+	e.players[2].change_cash(900)   # Cyd is clearly the richest
+	var guard := 0
+	while e.phase != "END_GAME" and guard < 200:
+		guard += 1
+		# THE DECISION HOLDER IS NOT ALWAYS `turn_player`: during an AUCTION the engine
+		# rotates `pending.bidder`, and `turn_player` keeps pointing at whoever triggered it.
+		var holder: int = -1
+		for _pid in e.player_count():
+			if not e.legal_actions(_pid).is_empty():
+				holder = _pid
+				break
+		if e.legal_actions(holder).has("roll"):
+			e._force_dice(4, 1, 3, false)
+			e.submit_intent(holder, "roll", {})
+		elif e.legal_actions(holder).has("pass"):
+			e.submit_intent(holder, "pass", {})
+		elif e.legal_actions(holder).has("bid"):
+			# a bid must EXCEED the current high, so offering a flat 1 against a high of 1
+			# is rejected and the auction loops forever on the same bidder
+			e.submit_intent(holder, "bid", {"amount": int(e._pending.get("high", 0)) + 1})
+		else:
+			break
+	var won := -1
+	# EventLog has no `recent()`: read the entries list.
+	for ev in e.log.entries_of_type("winner"):
+		won = int((ev.get("data", {}) as Dictionary).get("player", -1))
+	if e.phase != "END_GAME":
+		return "limit 2 must end the match"
+	if won != 2:
+		return "the richest seat (2) must win, got %d" % won
+	return ""
+
+
+## The counter is part of the state, so a replay resumes in the right round.
+static func test_round_no_survives_snapshot() -> String:
+	var r = _make_engine(["Ada", "Bo"])
+	var e = r["engine"]
+	e.round_no = 7
+	var snap: Dictionary = e.to_snapshot()
+	if int(snap.get("round_no", -1)) != 7:
+		return "snapshot must carry round_no, got %s" % str(snap.get("round_no"))
+	var e2 = e.from_snapshot(snap)
+	if e2.round_no != 7:
+		return "round_no must survive a round-trip, got %d" % e2.round_no
 	return ""

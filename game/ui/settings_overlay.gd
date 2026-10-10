@@ -57,6 +57,7 @@ var _mortgage: CheckButton
 var _loan_pct: SpinBox
 var _repay_pct: SpinBox
 var _trades: CheckButton
+var _round_limit: SpinBox
 var _ai_aggression: SpinBox
 
 # tempo tab
@@ -380,6 +381,10 @@ func _build_rules_tab() -> void:
 	_trades.button_pressed = true
 	_trades.tooltip_text = I18n.t("settings.trades_tip")
 	grid.add_child(_h("settings.trades", _trades))
+	# THE SHORT GAME. 60 covers every normal match measured (19-45 rounds) and stops the ones
+	# that never end. Off by default so existing fixtures and fingerprints do not move.
+	_round_limit = _spin(0, 200, 0, I18n.t("settings.round_limit"), I18n.t("settings.round_limit_tip"))
+	grid.add_child(_h("settings.round_limit", _round_limit))
 	_ai_aggression = _spin(0, 100, 50, I18n.t("settings.ai_aggression"), I18n.t("settings.ai_aggression_tip"))
 	grid.add_child(_h("settings.ai_aggression", _ai_aggression))
 
@@ -681,6 +686,7 @@ func _collect_settings() -> Settings:
 	s.mortgage_loan_pct = int(_loan_pct.value)
 	s.mortgage_repay_pct = int(_repay_pct.value)
 	s.trades = _trades.button_pressed
+	s.round_limit = int(_round_limit.value)
 	s.ai_aggression = int(_ai_aggression.value)
 	s.timeout_action = "auto-pass" if _timeout_action.selected == 0 else "mark-away"
 	return s
@@ -775,6 +781,7 @@ func _show_rules() -> void:
 	lines.append(I18n.t("rules.monopoly_x2", [on if s.monopoly_rent_x2 else off]))
 	lines.append(I18n.t("rules.mortgage", [on if s.mortgage else off, s.mortgage_loan_pct, s.mortgage_repay_pct]))
 	lines.append(I18n.t("rules.trades", [on if s.trades else off]))
+	lines.append(I18n.t("rules.round_limit", [I18n.t("rules.round_limit_off") if int(_round_limit.value) <= 0 else str(int(_round_limit.value))]))
 	lines.append(I18n.t("rules.turn_timer", [s.turn_timer]))
 	lines.append(I18n.t("rules.auction_timer", [s.auction_timer]))
 	lines.append(I18n.t("rules.timeout", [ta_lbl]))

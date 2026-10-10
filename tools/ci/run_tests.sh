@@ -20,7 +20,7 @@ GODOT="$("$ROOT/tools/ci/godot_bin.sh")"
 # The count is a tripwire, not a target: if a module stops compiling the runner reports success
 # for the work it skipped, and only the total betrays it. Kept a little under the real number so
 # adding or retiring a handful of tests does not require editing this line.
-MIN_TESTS="${MIN_TESTS:-390}"
+MIN_TESTS="${MIN_TESTS:-400}"
 FAST="${1:-}"
 LOG="${TMPDIR:-/tmp}/npt-tests-$$.log"
 

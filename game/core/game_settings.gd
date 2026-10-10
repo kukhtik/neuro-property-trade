@@ -23,6 +23,14 @@ var mortgage: bool = true
 var mortgage_loan_pct: int = 50
 var mortgage_repay_pct: int = 110
 var trades: bool = true
+## Rounds after which the match ends and the RICHEST seat wins (0 = play until one survives).
+##
+## Without this a game can be unbounded: if no colour group is ever completed nothing is built,
+## rent stays trivial, the bank keeps paying out for passing GO and bankruptcy becomes impossible.
+## Measured on 4 seats: 17 of 20 seeds were still playing at 250 plies while a 2-seat match always
+## ended. `ai_driver` trades and finishes far more often than the corpus policy, but 1 seed in 6
+## still inflated instead of ending. This is Monopoly's own "short game" rule.
+var round_limit: int = 0
 
 var deck_pairs: int = 2
 var deck_shuffle: String = "per_game"

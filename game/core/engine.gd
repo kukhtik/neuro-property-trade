@@ -22,6 +22,10 @@ var rng
 var decks: Dictionary = {}
 var phase: String = PHASE_SETUP
 var turn_player: int = 0
+## Completed rounds (every seat has played at least once). The engine used to keep no such number
+## — the UI counted wraps on its own — so a round limit had nothing to compare against, and the
+## header's "РАУНД N" read a key the projection never produced.
+var round_no: int = 1
 var consecutive_doubles: int = 0
 var _forced_roll = null   # Variant: nullable Dictionary for test hook
 var _last_roll = {}       # last roll dict, reused by tile resolution (Tasks 5-8)
@@ -367,10 +371,33 @@ func _send_to_jail() -> void:
 func _next_turn() -> void:
 	# advance to the next player, resetting turn state
 	turn_player = (turn_player + 1) % players.size()
+	if turn_player == 0:
+		round_no += 1
 	consecutive_doubles = 0
 	if phase != PHASE_END_GAME:
 		phase = PHASE_TURN_START
 	_last_roll = {}
+	_check_round_limit()
+
+
+## THE SHORT GAME. Without it a match can be unbounded: no colour group means nothing is built,
+## rent stays trivial, the bank pays out for passing GO and no seat can go bankrupt. When the
+## configured limit is reached the richest seat wins, which is Monopoly's own short-game rule.
+func _check_round_limit() -> void:
+	var limit: int = int(settings.round_limit)
+	if limit <= 0 or phase == PHASE_END_GAME or round_no <= limit:
+		return
+	var best := -1
+	var best_cash := -1
+	for i in players.size():
+		var cash: int = int(players[i].money)
+		if cash > best_cash:
+			best_cash = cash
+			best = i
+	phase = PHASE_END_GAME
+	log.append("round_limit", {"round": round_no, "limit": limit})
+	if best >= 0:
+		log.append("winner", {"player": best, "name": players[best].name, "by": "round_limit"})
 
 func _owner_of(tile: int) -> int:
 	for i in players.size():
@@ -1237,6 +1264,7 @@ func to_snapshot() -> Dictionary:
 		"players": players_d,
 		"phase": phase,
 		"turn_player": turn_player,
+		"round_no": round_no,
 		"consecutive_doubles": consecutive_doubles,
 		"last_roll": _last_roll,
 		"last_doubles": _last_doubles,
@@ -1267,6 +1295,7 @@ func from_snapshot(d: Dictionary):
 func _restore_from_snapshot(d: Dictionary) -> void:
 	phase = d.get("phase", PHASE_TURN_START)
 	turn_player = int(d.get("turn_player", 0))
+	round_no = int(d.get("round_no", 1))
 	consecutive_doubles = int(d.get("consecutive_doubles", 0))
 	_last_roll = d.get("last_roll", {})
 	_last_doubles = bool(d.get("last_doubles", false))

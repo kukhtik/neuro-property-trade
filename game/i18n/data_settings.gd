@@ -94,6 +94,13 @@ const D := {
 	"settings.lang_en":        {"ru": "Английский", "en": "English"},
 	"settings.trades_lbl":     {"ru": "торги", "en": "trades"},
 	"settings.trades_tip":     {"ru": "Разрешить сделки между игроками.", "en": "Allow trades between players."},
+	"settings.round_limit":    {"ru": "Лимит раундов", "en": "Round limit"},
+	"settings.round_limit_off": {"ru": "0 — без лимита", "en": "0 — no limit"},
+	"settings.round_limit_tip": {"ru": "После стольких раундов партия кончается, и побеждает самый богатый. 0 — играть до последнего выжившего.
+
+Без лимита партия может не кончиться: если не собрать ни одной монополии, дома не строятся, аренда мизерная, банк платит за проход GO, и разориться невозможно. Замерено: обычная партия кончается за 19-45 раундов.", "en": "After this many rounds the match ends and the RICHEST seat wins. 0 plays until one survivor.
+
+Without a limit a match can be unbounded: with no colour group nothing is built, rent stays trivial, the bank pays out for passing GO and bankruptcy becomes impossible. Measured: a normal match ends in 19-45 rounds."},
 	"settings.ai_aggression":  {"ru": "Агрессия ИИ", "en": "AI aggression"},
 	"settings.ai_aggression_tip": {"ru": "Насколько агрессивно ИИ торгуется и строит.", "en": "How aggressively the AI trades and builds."},
 
@@ -156,6 +163,8 @@ const D := {
 	"rules.monopoly_x2":       {"ru": "Монополия ×2 аренда: %s", "en": "Monopoly ×2 rent: %s"},
 	"rules.mortgage":          {"ru": "Залог: %s (%d%% / %d%%)", "en": "Mortgage: %s (%d%% / %d%%)"},
 	"rules.trades":            {"ru": "Торги: %s", "en": "Trades: %s"},
+	"rules.round_limit":       {"ru": "Лимит раундов: %s", "en": "Round limit: %s"},
+	"rules.round_limit_off":   {"ru": "нет", "en": "none"},
 	"rules.turn_timer":        {"ru": "Таймер хода: %dс", "en": "Turn timer: %ds"},
 	"rules.auction_timer":     {"ru": "Таймер аукциона: %dс", "en": "Auction timer: %ds"},
 	"rules.timeout":           {"ru": "Тайм-аут: %s", "en": "Timeout: %s"},
