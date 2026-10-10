@@ -37,7 +37,10 @@ jobs:
 
       - name: Export Web
         run: |
-          G="$PWD/tools/ci/godot_bin.sh"
+          # `$PWD/tools/ci/godot_bin.sh` is the SCRIPT, not the binary. Invoking the script with
+# `--headless ...` makes bash run it, ignore every argument, print the binary path and
+# exit 0 — so this step was green while running NOTHING. Run the script to get the path.
+          G="$(tools/ci/godot_bin.sh)"
           mkdir -p build/web
           "$G" --headless --path game --import
           # Godot needs a NATIVE output path: "$PWD" is MSYS-form on a Git-bash
