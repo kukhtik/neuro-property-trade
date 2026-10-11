@@ -443,7 +443,11 @@ func refresh(entry: Dictionary) -> void:
 	# showed a name and NO price — the board looked empty of information while being full of
 	# it. It now survives to step 2, alongside the name.
 	_price.visible = _step <= 2 and _price.text != ""
-	if _sheen != null and not _sheen.get_meta("running", false):
+	# THE SHEEN COST 40 FPS IN THE BROWSER. It is 40 infinite tweens, each walking a full-width
+	# ColorRect across its tile, so on every frame up to 40 extra layer redraws are queued — on a
+	# browser's integrated GPU that alone holds the frame rate near 33 at 1600x900. It is decoration:
+	# off by default (`--no-sheen` also forces it off), on only when a host asks for the flourish.
+	if _sheen != null and _sheen_on() and not _sheen.get_meta("running", false):
 		_start_sheen()
 	if _step >= 2:
 		_icon.visible = false
@@ -538,6 +542,37 @@ func play_build() -> void:
 	var d: float = _skin.motion("pop", 0.5) * 0.5
 	t.tween_property(_band, "modulate", _skin.color("accent2"), d)
 	t.tween_property(_band, "modulate", Color.WHITE, d)
+
+
+## The sheen is 40 infinite tweens walking a full-width ColorRect each — up to 40 extra layer
+## redraws EVERY FRAME, which on a browser's integrated GPU holds the frame rate near 33 at
+## 1600x900 (measured on an Intel UHD 630). It is decoration, so it follows the host's setting
+## rather than a token that does not exist: `--no-sheen` off, `--sheen` on, and a browser stays
+## off unless told otherwise, because a browser is where the cost is paid.
+func _sheen_flag() -> bool:
+	for a in OS.get_cmdline_user_args():
+		var s2 := str(a)
+		if s2 == "--no-sheen":
+			return false
+		if s2 == "--sheen":
+			return true
+	# a browser is where the cost shows up; the host's GPU absorbs it
+	return not OS.has_feature("web")
+
+
+## The sheen is 40 infinite tweens walking a full-width ColorRect each — up to 40 extra layer
+## redraws EVERY FRAME, which on a browser's integrated GPU holds the frame rate near 33 at
+## 1600x900 (measured on an Intel UHD 630). It is decoration, so the HOST decides: `--no-sheen`
+## off, `--sheen` on, and a browser stays off unless told, because a browser is where the cost is
+## actually paid.
+func _sheen_on() -> bool:
+	for a in OS.get_cmdline_user_args():
+		var s2 := str(a)
+		if s2 == "--no-sheen":
+			return false
+		if s2 == "--sheen":
+			return true
+	return not OS.has_feature("web")
 
 
 func _process(delta: float) -> void:

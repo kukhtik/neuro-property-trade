@@ -20,6 +20,7 @@ const SettingsOverlay := preload("res://ui/settings_overlay.gd")
 const GameView := preload("res://ui/game_view.gd")
 const JoinLobby := preload("res://ui/join_lobby.gd")
 const HostInvite := preload("res://ui/host_invite.gd")
+const PerfOverlay := preload("res://ui/perf_overlay.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 
 var _engine
@@ -118,6 +119,10 @@ func _ready() -> void:
 		# host looked like a frozen empty window. The lobby says what is happening and what to
 		# check if nothing happens.
 		call_deferred("_open_join_lobby")
+	# --perf: put the frame rate on screen. Performance cannot be judged by eye, and a desktop
+	# build has no console unless one opens it.
+	if _has_cli_flag("--perf"):
+		call_deferred("_add_perf_overlay")
 	# --server-port=<n>: bind the game server on a FIXED port (0 = ephemeral)
 	var port := _cli_value("--server-port=")
 	if port != "":
@@ -274,6 +279,12 @@ func _autostart() -> void:
 	var seed_arg := _cli_value("--smoke-seed=")
 	if seed_arg != "":
 		st.rng_seed = int(seed_arg)
+	# --round-limit=N closes the match at a finite round count (0 = off). Needed for a full-cycle
+	# run, because without it a match can be unbounded — no colour group, no houses, the bank pays
+	# out and nobody can go bankrupt. 60 covers every healthy match (measured: 19-45 rounds).
+	var lim := _cli_value("--round-limit=")
+	if lim != "":
+		st.round_limit = int(lim)
 	var seats: Array = SeatConfigScript.from_settings(st)
 	var names: Array = []
 	for s in seats:
@@ -595,3 +606,8 @@ func _show_invite() -> void:
 	add_child(_host_invite)
 	_host_invite.z_index = 45
 	_host_invite.set_invitation(base, links)
+
+
+func _add_perf_overlay() -> void:
+	var o = PerfOverlay.new()
+	add_child(o)
