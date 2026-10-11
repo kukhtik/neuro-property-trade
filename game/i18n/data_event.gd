@@ -92,4 +92,25 @@ const D := {
 	"event_type.auction_pass":     {"ru": "пас на аукционе", "en": "auction pass"},
 	"event_type.auction_unwon":    {"ru": "аукцион не разыгран", "en": "auction unwon"},
 	"event_type.setup":            {"ru": "подготовка", "en": "setup"},
+
+	# --- THE LIST THE JOURNAL ACTUALLY ASKS FOR. The journal does not translate the engine's raw
+	# event type: it translates the adapter's SPAN (free_parking -> "park", card_gain -> "card",
+	# auction_bid -> "bid"). Adding labels for the raw names left all of these blank, so a player
+	# read "park", "card", "bid", "aucnone" on screen. Any adapter span without a row here is a
+	# visible bug — the fallback is the key itself.
+	"event_type.start":   {"ru": "начало", "en": "start"},
+	"event_type.go":      {"ru": "круг GO", "en": "GO lap"},
+	"event_type.buy":     {"ru": "покупка", "en": "buy"},
+	"event_type.park":    {"ru": "парковка", "en": "parking"},
+	"event_type.card":    {"ru": "карта", "en": "card"},
+	"event_type.aucstart": {"ru": "аукцион", "en": "auction"},
+	"event_type.bid":     {"ru": "ставка", "en": "bid"},
+	"event_type.aucwin":  {"ru": "аукцион выигран", "en": "auction won"},
+	"event_type.aucnone": {"ru": "аукцион не разыгран", "en": "no auction"},
+	"event_type.mort":    {"ru": "залог", "en": "mortgage"},
+	"event_type.unmort":  {"ru": "выкуп", "en": "unmortgage"},
+	"event_type.trdoffer": {"ru": "предложение сделки", "en": "trade offer"},
+	"event_type.trdno":   {"ru": "сделка отклонена", "en": "trade refused"},
+	"event_type.bank":    {"ru": "банкротство", "en": "bankrupt"},
+	"event_type.over":    {"ru": "конец игры", "en": "game over"},
 }
