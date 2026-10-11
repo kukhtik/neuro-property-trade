@@ -72,4 +72,24 @@ const D := {
 	"event_type.collect":       {"ru": "получение", "en": "collect"},
 	"event_type.collect_from_all": {"ru": "сбор", "en": "collect"},
 	"event_type.pay_each_player":  {"ru": "выплата", "en": "pay"},
+
+	# --- added after a live check: the engine emits these types and the journal showed the RAW KEY
+	# --- ("card_gain", "free_parking") because no label existed. `I18n.t` falls back to the key
+	# --- itself, which is exactly what a player read on screen.
+	"event_type.card_gain":        {"ru": "карта получена", "en": "card gain"},
+	"event_type.card_null":        {"ru": "карта без эффекта", "en": "blank card"},
+	"event_type.cash":             {"ru": "наличные", "en": "cash"},
+	"event_type.free_parking":     {"ru": "бесплатная парковка", "en": "free parking"},
+	"event_type.land_self":        {"ru": "своя клетка", "en": "own tile"},
+	"event_type.purchase_dropped": {"ru": "покупка сорвана", "en": "purchase dropped"},
+	"event_type.pass_on_purchase": {"ru": "пас при покупке", "en": "pass on purchase"},
+	"event_type.round_limit":      {"ru": "лимит раундов", "en": "round limit"},
+	"event_type.teleport":         {"ru": "телепорт", "en": "teleport"},
+	"event_type.trade_proposed":   {"ru": "сделка предложена", "en": "trade proposed"},
+	"event_type.trade_declined":   {"ru": "сделка отклонена", "en": "trade declined"},
+	"event_type.unmortgage":       {"ru": "выкуп из залога", "en": "unmortgage"},
+	"event_type.auction_bid":      {"ru": "ставка", "en": "bid"},
+	"event_type.auction_pass":     {"ru": "пас на аукционе", "en": "auction pass"},
+	"event_type.auction_unwon":    {"ru": "аукцион не разыгран", "en": "auction unwon"},
+	"event_type.setup":            {"ru": "подготовка", "en": "setup"},
 }
