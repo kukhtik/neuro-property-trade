@@ -99,6 +99,9 @@ func _standalone() -> void:
 
 
 func _connect_to(url: String, tok: String) -> void:
+	# PRINT, not just state: a browser player has no console window and no log file, so without
+	# this a failure to connect is invisible — the screen spins and nothing says why.
+	print("JOIN_LOBBY connecting to %s (seat %s…)" % [url, tok.substr(0, 6)])
 	_session = RemoteSession.new()
 	_session.name = "JoinSession"
 	add_child(_session)
@@ -120,6 +123,7 @@ func _process(delta: float) -> void:
 
 
 func _on_joined(pid: int) -> void:
+	print("JOIN_LOBBY joined pid=%d" % pid)
 	_spinner.text = "✓"
 	_spinner.add_theme_color_override("font_color", UiTheme.COL().accent2)
 	_status.text = I18n.t("join.joined")
@@ -128,6 +132,7 @@ func _on_joined(pid: int) -> void:
 
 ## The host stopped answering. Say what to check instead of leaving the spinner going.
 func _on_lost(reason: String) -> void:
+	print("JOIN_LOBBY connection lost: %s" % reason)
 	_stall(reason)
 
 

@@ -41,3 +41,5 @@ game/tools/_role_capture.*
 game/_*.out
 game/tools/_*
 game/_*
+dist/
+build/

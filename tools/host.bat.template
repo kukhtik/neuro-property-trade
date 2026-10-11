@@ -1,0 +1,16 @@
+@echo off
+chcp 65001 >nul
+title Neuro Property Trade - ведущий
+echo.
+echo   NEURO PROPERTY TRADE - создаю партию для друзей
+echo.
+set /p N=Сколько друзей пригласить? [Enter = 3]: 
+if "%N%"=="" set N=3
+echo.
+echo   Запускаю. Через несколько секунд покажу ссылку для каждого друга.
+echo   Это окно должно оставаться открытым, пока вы играете.
+echo.
+python "%~dp0host_match.py" %N%
+echo.
+echo   Партия закончилась. Нажмите любую клавишу, чтобы закрыть.
+pause >nul
