@@ -40,6 +40,9 @@ var _players_list: VBoxContainer
 var _host_role: OptionButton
 var _starting_order: OptionButton
 var _start_btn: Button
+var _host_btn: Button
+## Emitted when the host wants a networked match: main opens the server and shows the invite.
+signal host_invite_requested
 var _apply_btn: Button
 var _rules_btn: Button
 var _status_lbl: Label
@@ -268,6 +271,13 @@ func _build() -> void:
 	_apply_btn.custom_minimum_size.y = 40
 	_apply_btn.connect("pressed", Callable(self, "_apply_pressed"))
 	actions.add_child(_apply_btn)
+	# ONE CLICK TO HOST. Choosing "Друг по сети" seat by seat still leaves the host to work out why
+	# nobody can connect: the server defaults to loopback, and each remote seat needs its own
+	# freshly minted token. This button does the whole thing and then SHOWS the invitation.
+	_host_btn = UiTheme.button_accent(I18n.t("settings.host_btn"), I18n.t("settings.host_tip"))
+	_host_btn.custom_minimum_size.y = 40
+	_host_btn.connect("pressed", Callable(self, "_host_pressed"))
+	actions.add_child(_host_btn)
 	_rules_btn = UiTheme.button(I18n.t("settings.rules_btn"), I18n.t("settings.rules_tip"))
 	_rules_btn.connect("pressed", Callable(self, "_show_rules"))
 	actions.add_child(_rules_btn)
@@ -748,7 +758,14 @@ func _refresh_buttons() -> void:
 	_start_btn.tooltip_text = err if err != "" else I18n.t("settings.start_tip")
 	_apply_btn.tooltip_text = err if err != "" else I18n.t("settings.apply_tip")
 	_start_btn.visible = _pre_game
+	_host_btn.visible = _pre_game
 	_apply_btn.visible = not _pre_game
+
+## Host a networked match: the seats are taken as configured, the server opens wide enough to be
+## reached, and main shows the invitation link. A seat with no explicit driver becomes a friend.
+func _host_pressed() -> void:
+	host_invite_requested.emit()
+
 
 func _start_pressed() -> void:
 	var s := _collect_settings()

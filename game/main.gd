@@ -18,6 +18,8 @@ const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
 const SettingsOverlay := preload("res://ui/settings_overlay.gd")
 const GameView := preload("res://ui/game_view.gd")
+const JoinLobby := preload("res://ui/join_lobby.gd")
+const HostInvite := preload("res://ui/host_invite.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 
 var _engine
@@ -43,6 +45,8 @@ var _game_started := false
 var _server
 var _server_port := 0
 var _seat_tokens := {}   # pid -> token
+var _join_lobby = null    # the screen a friend sees while joining
+var _host_invite = null   # the invitation screen the host sees after creating a match
 ## Test/embedding hook: a fixed port instead of an ephemeral one.
 var _force_port := 0
 ## Set when this instance joined a match over the wire instead of owning one.
@@ -84,6 +88,10 @@ func _ready() -> void:
 	_overlay_layer.add_child(_overlay)
 	_overlay.set_mode(true)
 	_overlay.started.connect(_on_started)
+	# IT MUST BE SUBSCRIBED HERE, where the overlay exists. The first attempt wired this in
+	# `_ready()` several lines earlier, before `_overlay` was constructed, so the button was
+	# connected to nothing and pressing it did exactly as much as pressing a picture.
+	_overlay.host_invite_requested.connect(_on_host_invite)
 	_overlay.apply_requested.connect(_on_apply)
 	_overlay.closed.connect(_on_overlay_closed)
 
@@ -105,7 +113,11 @@ func _ready() -> void:
 	# A seat was handed to us (by the page URL or the CLI): join the host's match
 	# over the wire rather than playing a local one.
 	if LaunchParams.has_seat():
-		call_deferred("_join_as_remote")
+		# A FRIEND OPENING A LINK GETS A SCREEN, NOT A SILENT CONNECTION. `_join_as_remote` wired
+		# the socket and painted nothing until the host pushed state, so a failure to reach the
+		# host looked like a frozen empty window. The lobby says what is happening and what to
+		# check if nothing happens.
+		call_deferred("_open_join_lobby")
 	# --server-port=<n>: bind the game server on a FIXED port (0 = ephemeral)
 	var port := _cli_value("--server-port=")
 	if port != "":
@@ -482,6 +494,8 @@ func _on_skin_requested(skin_id: String) -> void:
 	_game_view.restart_requested.connect(_on_restart_requested)
 	_game_view.settings_requested.connect(_open_overlay)
 	_game_view.skin_requested.connect(_on_skin_requested)
+	if _overlay != null and _overlay.has_signal("host_invite_requested"):
+		_overlay.host_invite_requested.connect(_on_host_invite)
 	if old != null and is_instance_valid(old):
 		old.queue_free()
 	if _engine != null and _settings_cache != null:
@@ -501,3 +515,83 @@ func _lan_address() -> String:
 			continue   # link-local: not routable
 		return s
 	return "127.0.0.1"
+
+
+## Show the join screen for a seat handed to us by an invitation link, and let it open the socket.
+## On success the normal game view takes over; the lobby removes itself.
+func _open_join_lobby() -> void:
+	# `layer` belongs to CanvasLayer, not Control — the lobby draws in the normal tree, so it only
+	# needs `z_index`. (Assigning `layer` on a Control raises "Invalid assignment" at runtime, which
+	# is how this was caught: by running it.)
+	var lobby = JoinLobby.new()
+	add_child(lobby)
+	lobby.z_index = 40   # above the cold board
+	lobby.joined.connect(_on_lobby_joined)
+	lobby.gave_up.connect(_on_lobby_gave_up)
+	_join_lobby = lobby
+	if _overlay != null and is_instance_valid(_overlay):
+		_overlay.visible = false   # a joining player must not be shown the host's settings
+
+
+func _on_lobby_joined(pid: int) -> void:
+	print("JOINED pid=%d" % pid)
+	_mirror_log("JOINED pid=%d" % pid)
+	# the lobby's session becomes the game's: hand it over instead of opening a second one
+	if _join_lobby != null and is_instance_valid(_join_lobby):
+		var sess = _join_lobby.get("_session")
+		if sess != null and is_instance_valid(sess):
+			_remote_session = sess
+			sess.state_received.connect(_on_remote_state)
+			sess.verdict_received.connect(_on_remote_verdict)
+			sess.connection_lost.connect(_on_remote_lost)
+			_join_lobby.remove_child(sess)
+			add_child(sess)
+		_join_lobby.queue_free()
+		_join_lobby = null
+	if _game_view != null:
+		_game_view.on_game_started()
+
+
+func _on_lobby_gave_up(_reason: String) -> void:
+	pass   # the lobby keeps showing the problem and a retry button
+
+
+## "Создать партию для друзей": build the match with the configured seats, turn the seats into
+## REMOTE ones a browser can take, open the server wide enough to be reached, and SHOW the links.
+func _on_host_invite() -> void:
+	var seats: Array = SeatConfigScript.from_settings(_overlay.call("_collect_settings"))
+	# every seat but the host's own becomes something another machine can take
+	var remote := 0
+	for st in seats:
+		if int(st.pid) != 0:
+			st.input_driver = "REMOTE"
+			remote += 1
+	if remote == 0:
+		# nothing to invite anyone to: say so instead of opening a linkless screen
+		push_warning("host invite: every seat is local — add a friend's seat first")
+		return
+	var st = _overlay.call("_collect_settings")
+	_on_started(st, seats)
+	# the server mints tokens during the build, so the links exist only after it
+	_show_invite()
+
+
+## The invitation screen, filled from what the server actually bound.
+func _show_invite() -> void:
+	var base := "ws://%s:%d" % [_lan_address(), _server_port]
+	var links: Array = []
+	# a browser link is the whole point: the friend installs nothing. Without a web build the
+	# address is still useful, so the row falls back to the desktop command.
+	var web := _cli_value("--web-url=")
+	for pid in _seat_tokens.keys():
+		var tok: String = str(_seat_tokens[pid])
+		if web != "":
+			links.append("%s?seat=%s&host=%s" % [web, tok, base])
+		else:
+			links.append("%s  seat=%s" % [base, tok])
+	if _host_invite != null and is_instance_valid(_host_invite):
+		_host_invite.queue_free()
+	_host_invite = HostInvite.new()
+	add_child(_host_invite)
+	_host_invite.z_index = 45
+	_host_invite.set_invitation(base, links)

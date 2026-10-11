@@ -34,6 +34,7 @@ const D := {
 	"settings.order_random":   {"ru": "случайный", "en": "random"},
 	"settings.order_manual":   {"ru": "вручную", "en": "manual"},
 	"settings.starting_order_tip": {"ru": "Случайный порядок ходов или порядок в списке игроков.", "en": "Random turn order or the order in the player list."},
+	"settings.driver.remote_tip": {"ru": "Друг по сети — он открывает ссылку-приглашение в браузере или во второй копии игры.", "en": "A remote player — they open the invitation link in a browser or a second copy of the game."},
 	"settings.driver_tip": {"ru": "LOCAL = человек за этим компьютером, AI = компьютер, CHAT = чат, sdk:neuro = Neuro, sdk:evil = второй SDK (играет как ИИ).", "en": "LOCAL = a human at this computer, AI = computer, CHAT = chat, sdk:neuro = Neuro, sdk:evil = second SDK (plays as AI)."},
 	"settings.driver.local":   {"ru": "ЛОКАЛ", "en": "LOCAL"},
 	"settings.driver.ai":      {"ru": "ИИ", "en": "AI"},
