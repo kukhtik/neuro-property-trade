@@ -217,7 +217,11 @@ func _on_remote_state(proj: Dictionary) -> void:
 	if _game_view != null and _game_view.has_method("apply_projection"):
 		_game_view.apply_projection(proj)
 	var legal: Array = proj.get("legal", [])
+	# WHY: this is the whole game for a browser player, so silence here is invisible — the seat is
+	# taken away, nothing is played, and the match looks alive from the host. Log the reason the
+	# seat stays empty instead of returning without a trace.
 	if legal.is_empty():
+		_mirror_log("IDLE state legal=[] phase=%s turn=%s" % [str(proj.get("phase", "?")), str(proj.get("current", "?"))])
 		return
 	var action := str(legal[0])
 	var params := {}
@@ -405,6 +409,11 @@ func _start_server_if_needed(seats: Array) -> void:
 		_server = null
 		return
 	_server.bind_game(_engine, _manager)
+	# A friend who opens an invitation must TAKE the seat, not share it: without this the host's
+	# proxy keeps answering for the same place, so the friend's moves are accepted and then
+	# overwritten a tick later. `set_proxy_remote(false)` is not enough per-seat, so the host drops
+	# the whole proxy the moment one client identifies itself.
+	_server.seat_claimed.connect(_on_seat_claimed)
 	_server_port = int(_server.port())
 	for pid in remote_pids:
 		var tok: String = _server.mint_token(int(pid))
@@ -611,3 +620,13 @@ func _show_invite() -> void:
 func _add_perf_overlay() -> void:
 	var o = PerfOverlay.new()
 	add_child(o)
+
+
+## A real client identified itself with a valid seat token. Hand the seat over: the host stops
+## proxying REMOTE seats so the friend's own intents are the ones executed.
+func _on_seat_claimed(pid: int) -> void:
+	if _manager == null:
+		return
+	_manager.set_proxy_remote(false)
+	print("SEAT CLAIMED pid=%d — host no longer plays it" % pid)
+	_mirror_log("SEAT_CLAIMED pid=%d" % pid)

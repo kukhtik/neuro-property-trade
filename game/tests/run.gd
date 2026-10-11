@@ -45,6 +45,7 @@ func _init() -> void:
 		"res://tests/server_test.gd",
 		"res://tests/remote_driver_test.gd",
 		"res://tests/launch_params_test.gd",
+		"res://tests/network_handover_test.gd",
 	]
 	for path in modules:
 		_run_module(path)

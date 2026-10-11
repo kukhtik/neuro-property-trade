@@ -30,6 +30,10 @@ const Protocol := preload("res://server/protocol.gd")
 const ProjectionScript := preload("res://sdk/projection.gd")
 
 signal served(intent_id: String, ok: bool, reason: String)
+## A real client claimed a seat. The host must stop PROXYING that seat, or the two of them take
+## turns over the same place: whatever the friend does is immediately overwritten by the host's
+## own answer, and the friend is a spectator at a game they are playing.
+signal seat_claimed(pid: int)
 
 ## Default port. 0 lets the OS pick a free one (used by the smoke so parallel
 ## runs never collide).
@@ -161,6 +165,8 @@ func _on_hello(entry: Dictionary, msg: Dictionary) -> void:
 		return
 	entry["token"] = tok
 	entry["channel"] = CHANNEL_SPECTATOR if pid < 0 else "seat/%s" % tok
+	if pid >= 0:
+		seat_claimed.emit(pid)
 	_send(entry, {
 		"t": "hello_ok",
 		"profile": str(msg.get("profile", "player")),
