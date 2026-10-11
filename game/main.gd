@@ -196,6 +196,7 @@ func _join_as_remote() -> void:
 	_remote_session.name = "RemoteSession"
 	add_child(_remote_session)
 	_remote_session.joined.connect(_on_remote_joined)
+	_remote_session.event_received.connect(_on_remote_event)
 	_remote_session.state_received.connect(_on_remote_state)
 	_remote_session.verdict_received.connect(_on_remote_verdict)
 	_remote_session.connection_lost.connect(_on_remote_lost)
@@ -561,6 +562,7 @@ func _on_lobby_joined(pid: int) -> void:
 		var sess = _join_lobby.get("_session")
 		if sess != null and is_instance_valid(sess):
 			_remote_session = sess
+			sess.event_received.connect(_on_remote_event)
 			sess.state_received.connect(_on_remote_state)
 			sess.verdict_received.connect(_on_remote_verdict)
 			sess.connection_lost.connect(_on_remote_lost)
@@ -630,3 +632,21 @@ func _on_seat_claimed(pid: int) -> void:
 	_manager.set_proxy_remote(false)
 	print("SEAT CLAIMED pid=%d — host no longer plays it" % pid)
 	_mirror_log("SEAT_CLAIMED pid=%d" % pid)
+
+
+## An engine event arrived over the wire. `winner` is the one that matters: it is the only way a
+## client — which has no engine of its own — can learn the match ended and who won it.
+func _on_remote_event(ev: Dictionary) -> void:
+	if ev.is_empty():
+		return
+	var kind := str(ev.get("type", ev.get("k", "")))
+	var data: Dictionary = ev.get("data", {})
+	if kind != "winner" and kind != "round_limit":
+		return
+	var who := str(data.get("name", ""))
+	if who == "":
+		who = str(data.get("player", "?"))
+	print("EVENT %s winner=%s" % [kind, who])
+	_mirror_log("EVENT %s winner=%s" % [kind, who])
+	if _game_view != null and _game_view.has_method("show_game_over"):
+		_game_view.show_game_over(who)

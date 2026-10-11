@@ -21,6 +21,7 @@ var _sfx = null   # optional Sfx for a soft pop on new toasts
 # player within a short window and flushes them as ONE merged toast (spec §6.2:
 # "Neuro платит $48: рента Host ×2, налог $20"). Keyed by player id.
 var _rent_pay_buffer: Dictionary = {}   # pid -> {name, amounts:Array, total:int, timer:float}
+var _auction_banner_id := -1            # the live auction notice, or -1 when none
 const _RENT_PAY_WINDOW := 1.2
 
 ## Provide the procedural Sfx node so new toasts play a soft pop sound.
@@ -105,13 +106,30 @@ func dismiss(id: int) -> void:
 			child.dismiss()
 			return
 
+## Remove one BANNER by id (if it is still up). Banners are the persistent kind, so a
+## heads-up that outlived its meaning needs this to come down without the user hunting the ✕.
+func dismiss_banner(id: int) -> void:
+	if id < 0:
+		return
+	for child in _banner_container.get_children():
+		if child is BannerItem and child.id == id:
+			# BannerItem has no `dismiss()` — that method belongs to ToastItem. A banner goes away
+			# through the `dismissed` signal or by freeing it; calling a method it does not have is
+			# how this function failed its first live run.
+			child.emit_signal("dismissed", child.id)
+			child.queue_free()
+			return
+
+
 func dismiss_all() -> void:
 	for child in _toast_container.get_children():
 		if child is ToastItem:
 			child.dismiss()
 	for child in _banner_container.get_children():
 		if child is BannerItem:
-			child.dismiss()
+			# see dismiss_banner: a banner has no dismiss(), only the signal
+			child.emit_signal("dismissed", child.id)
+			child.queue_free()
 
 func toast_count() -> int:
 	return _toast_container.get_child_count()
@@ -211,9 +229,18 @@ func show_event_toast(entry: Dictionary) -> void:
 		"trade":
 			show_toast(I18n.t("toast.trade"), "info")
 		"auction_win":
+			dismiss_banner(_auction_banner_id)
+			_auction_banner_id = -1
 			show_toast(I18n.t("toast.auction_win", [_who(d, "player"), _tile_name(d)]), "success")
+		"auction_unwon", "auction_pass":
+			dismiss_banner(_auction_banner_id)
+			_auction_banner_id = -1
 		"auction_start":
-			show_banner(I18n.t("toast.auction_start", [_tile_name(d)]), "neutral")
+			# A "auction started" note is a heads-up, not a decision: it must not sit over the
+			# board until someone finds the ✕. TOASTs auto-dismiss; BANNERS are for things that
+			# need a click (game over, connection lost). This is why the notice used to hang.
+			dismiss_banner(_auction_banner_id)
+			_auction_banner_id = show_toast(I18n.t("toast.auction_start", [_tile_name(d)]), "info", 4.0)
 		"admin_override":
 			show_toast(I18n.t("toast.admin_override", [_who(d, "op")]), "neutral")
 		_:

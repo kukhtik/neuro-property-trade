@@ -118,6 +118,12 @@ static func label(text: String, size: int = -1, color: Color = Color.TRANSPARENT
 	l.text = text
 	l.add_theme_font_size_override("font_size", s.size("m", 14) if size < 0 else size)
 	l.add_theme_color_override("font_color", s.color("text") if color.a <= 0.0 else color)
+	# WHY: a Label defaults to NO wrapping (autowrap_mode=0) with a fill size flag, so a long string
+	# in a rail column forces that column to grow horizontally instead of wrapping — the text
+	# renders as one narrow vertical stripe down the side of the screen. Every side panel is built
+	# from this helper, so the fix belongs here rather than in each panel.
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return l
 
 

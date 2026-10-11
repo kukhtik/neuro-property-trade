@@ -16,6 +16,9 @@ signal joined(pid: int)
 signal state_received(proj: Dictionary)
 signal verdict_received(id: String, ok: bool, reason: String)
 signal connection_lost
+## One engine event (`winner`, `round_limit`, `rent`...). Without this the client never learns a
+## match ended: `projection` carries only the current legal set and no log.
+signal event_received(ev: Dictionary)
 
 var url := ""
 var token := ""
@@ -111,3 +114,8 @@ func _handle(msg: Dictionary) -> void:
 		"verdict", "reject":
 			verdict_received.emit(str(msg.get("id", "")), bool(msg.get("ok", false)),
 				str(msg.get("reason", "")))
+		"event":
+			# The game log reaches a client here or not at all: a browser player missed every
+			# `winner`, `round_limit` and rent event, so a match that ended showed no result. The
+			# server has broadcast this frame since broadcast_event existed; nothing decoded it.
+			event_received.emit(msg.get("data", {}))
