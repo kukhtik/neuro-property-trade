@@ -26,6 +26,11 @@ PROBES=(
 	p0_probe p1_probe p2_probe p3_probe p4_probe p5_probe p6_p3_probe
 	stage1_probe stage2_probe stage3_smoke stage4_smoke
 	ui_audit_probe board_sizes_visual dynamic_board_probe i18n_probe skin_probe
+	# The journal's own texts: every engine event through the ADAPTER (the translation path the
+	# UI actually uses, not the engine's raw type names) plus the eight filter categories. A span
+	# added to TYPE_MAP without a label in data_event.gd must turn this red — that miss shipped
+	# once and cost a commit that added 16 labels nobody read.
+	journal_text_probe
 )
 
 failed=0
