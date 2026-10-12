@@ -6,6 +6,9 @@ extends Node
 ##      `Color(r,g,b)` literals for the tile's own look.
 ##   2. players_panel.gd / top_bar.gd: same.
 ##   3. A SkinManager exists and can resolve a skin.json config.
+##   4. Every skin a player can WEAR resolves a complete token set (effective config) —
+##      a skin that renders its chrome from SkinManager's built-in FALLBACK_COLORS is a
+##      defect, not a theme (classic used to do exactly that).
 ## Run: godot --headless --path game res://tools/skin_probe.tscn
 
 var _had_fail := false
@@ -21,6 +24,7 @@ func _ready() -> void:
 	for d in ["res://ui", "res://visual", "res://admin", "res://seats", "res://i18n", "res://core"]:
 		_scan_dir(d)
 	await _check_skin_manager_exists()
+	_check_skins_complete()
 
 	if _had_fail:
 		quit(1)
@@ -98,6 +102,84 @@ func _check_skin_manager_exists() -> void:
 		_fail("SkinManager has no load_skin()")
 		return
 	_pass("SkinManager exists with load_skin()")
+
+
+## Every skin a player can wear must resolve a COMPLETE token set on its EFFECTIVE config —
+## `extends` inheritance is legitimate skin design (see `evil`: a single colour block over
+## `neuro`, and its own note says so), so the check runs on the merged view the app reads.
+##
+## Required: the chrome tokens the panels resolve (hardcoded here, so it cannot be lowered by
+## editing one file) plus every colour the BASELINE skin ships, plus the five size steps.
+## A skin that falls through to FALLBACK_COLORS wears ANOTHER theme's values baked into code:
+## that is what "рисует интерфейс фолбэками" means, and classic did exactly that (its own
+## legacy `colors` block was never read by the token lookups; the chrome came from the
+## built-in defaults, which are `default`'s values).
+##
+## Fixtures are exempt by the `_` prefix convention (`_stress`: deliberately extreme).
+## The picker list is read from the LIVE top_bar script, so dropping a partial skin into the
+## switcher fails here instead of on a player's screen.
+func _check_skins_complete() -> void:
+	var sm = load("res://visual/skin_manager.gd").new()
+	var want_colors := {}
+	for k in ["bg", "surface.1", "surface.2", "surface.3", "line", "text", "muted", "accent",
+			"on_accent", "on_panel", "money", "danger", "warn", "ink", "dice_bg", "dice_ink",
+			"board.bg2", "board.bg3"]:
+		want_colors[k] = true
+	sm.load_skin("default")
+	var base: Variant = sm._lookup("tokens.color")
+	if base is Dictionary:
+		for k in (base as Dictionary).keys():
+			want_colors[k] = true
+	var want_sizes := ["xs", "s", "m", "l", "xl"]
+
+	var picker: Array = []
+	var tb = load("res://ui/top_bar.gd")
+	if tb != null:
+		picker = tb.SKINS
+
+	var ids := {}
+	for id in sm.available():
+		var s := str(id)
+		if not s.begins_with("_"):
+			ids[s] = true
+	for id in picker:
+		ids[str(id)] = true
+
+	var bad: Array = []
+	var keys: Array = ids.keys()
+	keys.sort()
+	for id in keys:
+		if not sm.load_skin(id):
+			bad.append("%s: не загружается" % id)
+			continue
+		var col: Variant = sm._lookup("tokens.color")
+		var siz: Variant = sm._lookup("tokens.size")
+		var parent := ""
+		var pe: Variant = sm._lookup("extends")
+		if pe != null:
+			parent = str(pe)
+		var miss: Array = []
+		for k in want_colors.keys():
+			if not (col is Dictionary and (col as Dictionary).has(k)):
+				miss.append("color." + str(k))
+		if siz is Dictionary:
+			for s in want_sizes:
+				if not (siz as Dictionary).has(s):
+					miss.append("size." + s)
+		else:
+			miss.append("size.*")
+		if miss.is_empty():
+			var have: int = (col as Dictionary).size() if col is Dictionary else 0
+			var from := (" (наследует от %s)" % parent) if parent != "" else ""
+			print("  skin %s: %d цветов, 5 размеров%s — полон" % [id, have, from])
+		else:
+			bad.append("%s: нет %s" % [id, ", ".join(miss)])
+	for b in bad:
+		print("  incomplete skin: " + str(b))
+	if bad.is_empty():
+		_pass("skins complete: %d shipping skin(s)" % keys.size())
+	else:
+		_fail("%d incomplete skin(s) — the player would see fallbacks: %s" % [bad.size(), bad[0]])
 
 func _pass(label: String) -> void:
 	_checks += 1
