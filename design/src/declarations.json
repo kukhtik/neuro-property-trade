@@ -1,0 +1,81 @@
+{
+  "schema": "npt-ui-declarations/1",
+  "project": "Neuro Property Trade — UI v3 “Broadcast Table”",
+  "note": "Machine-readable contract of the prototype. compare_mockup.py (retuned) reads THIS registry instead of the old id list, the palette from :root[data-theme=\"<skin>\"] blocks, and the widths/breakpoints from here. Every region id below exists in ui-prototype.html as a data-od-id on a top-level zone.",
+
+  "widths": {
+    "dock_l": 268, "dock_r": 344,
+    "wide_l": 280, "wide_r": 380,
+    "observer_r": 400,
+    "rail": 48, "drawer": 320,
+    "header": 56, "console": 96,
+    "gap": 8, "pad": 12,
+    "tile_compact_below": 44, "tile_comfort_above": 56
+  },
+
+  "breakpoints": [
+    { "id": "wide",    "min_width": 1600, "what": "docks 280/380, bigger gaps; board stays the hero" },
+    { "id": "desktop", "min_width": 1280, "max_height": null, "what": "design size 1440x900; docks 268/344; console 96" },
+    { "id": "compact", "below_width": 1280, "or_max_height": 700, "what": "docks fold into 48px rails + drawers; brand wordmark and step dots drop; chips shrink to numbers; board may enter compact tiles (<44px)" },
+    { "id": "min",     "width": 880, "height": 600, "what": "hard floor; below it the app clamps and shows the too-narrow notice" }
+  ],
+
+  "text_roles": {
+    "value": { "class": "t-value", "wrap": "never", "width": "content", "grow": "never", "note": "money, badges, counters, timers, names in rows; mono digits via .num" },
+    "para":  { "class": "t-para",  "wrap": "by words", "width": "fills parent", "grow": "allowed", "note": "prompts, rules, hints, journal text, inspector copy" }
+  },
+  "grow_marker": "data-grow",
+  "grow_rule": "exactly one child per flex row carries data-grow; the audit in the prototype's probe strip counts violations live",
+
+  "regions": [
+    { "id": "top",           "role": "header: brand, turn chip, round/pot, decision timer/waiting, role badge, controls" },
+    { "id": "seats",         "role": "left dock: seat cards, table stats, ownership bar" },
+    { "id": "stage",         "role": "centre column: board + centre scene" },
+    { "id": "board",         "role": "the 40-tile ring (parametric N tiles)" },
+    { "id": "center",        "role": "centre scene: dice tray, decision card, banners, watermark" },
+    { "id": "journal",       "role": "right dock top: event log with filters + export" },
+    { "id": "inspector",     "role": "right dock bottom: tile reference + management actions" },
+    { "id": "act",           "role": "action console under the board: prompt, primary and secondary actions, last roll" },
+    { "id": "toast",         "role": "notification host — right dock top on desktop; the compact profile shows a one-line ticker INSIDE the console (never over the board)" },
+    { "id": "rail-left",     "role": "compact: seat avatars rail (opens the seats drawer)" },
+    { "id": "rail-right",    "role": "compact: journal/inspector rail (opens drawers)" },
+    { "id": "drawer-seats",  "role": "compact overlay drawer: seats" },
+    { "id": "drawer-journal","role": "compact overlay drawer: journal" },
+    { "id": "ov-settings",   "role": "modal sheet: match settings (5 tabs)" },
+    { "id": "ov-rules",      "role": "modal sheet: rules composed from current settings" },
+    { "id": "ov-admin",      "role": "modal sheet: admin (host-local only; absent on web)" },
+    { "id": "ov-invite",     "role": "modal sheet: host invitation links" },
+    { "id": "ov-join",       "role": "modal sheet: friend's join lobby (connecting / joined / failed / no-invite)" },
+    { "id": "modal",         "role": "decision modals: auction, trade, incoming trade, build/mortgage, confirm, game over, messages" }
+  ],
+  "legacy_region_alias": { "pl": "seats", "jr": "journal", "mid": "inspector" },
+
+  "token_map": {
+    "--bg": "bg", "--s1": "surface.1", "--s2": "surface.2", "--s3": "surface.3",
+    "--line": "line", "--tx": "text", "--mu": "muted", "--ac": "accent",
+    "--acx": "on_accent", "--hi": "accent2", "--money": "money", "--bad": "danger",
+    "--warn": "warn", "--ink": "ink", "--ring-bg": "ring_bg",
+    "--dice-bg": "dice_bg", "--dice-ink": "dice_ink",
+    "--g-<group>": "group.<group>", "--p<N>": "player[N]"
+  },
+
+  "journal_categories": ["ty.roll", "ty.money", "ty.buy", "ty.auction", "ty.build", "ty.card", "ty.trade", "ty.other"],
+
+  "theme_extensions": {
+    "note": "Values the design adds on top of the skin tokens. scrim/glow/good become skin tokens in the implementation phase; the extra player colours close seats 7-8 (skins ship 6 today; 2-8 seats are configurable). The default skin ships no group palette — the prototype substitutes the classic set there, flagged as an open question.",
+    "scrim":  { "neuro": "#0b0613b8", "evil": "#080406b8", "default": "#16191fb8", "classic": "#16191fb8" },
+    "glow":   { "neuro": "#ff6fae55", "evil": "#e8264f55", "default": "#4fb3d955", "classic": "#4fb3d955" },
+    "good":   { "neuro": "#2fa862",   "evil": "#2fa862",   "default": "#3f8f5f",   "classic": "#3f8f5f" },
+    "ring_bg": { "default": "#39404d99" },
+    "player_extra": {
+      "neuro":   ["#ffd166", "#8f9bff"],
+      "evil":    ["#ffd166", "#8f9bff"],
+      "default": ["#46c8b8", "#d46a9e"],
+      "classic": ["#46c8b8", "#d46a9e"]
+    },
+    "group_fallback": {
+      "default": { "brown": "#6b3a2a", "lightblue": "#7bb8d4", "pink": "#d98aa8", "orange": "#e08a3c",
+                   "red": "#b3403d", "yellow": "#d9c44a", "green": "#3f8f5f", "darkblue": "#2f4a7a" }
+    }
+  }
+}

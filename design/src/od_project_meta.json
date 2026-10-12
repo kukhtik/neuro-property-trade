@@ -1,0 +1,7 @@
+{
+  "kind": "prototype",
+  "source": "design/ui-prototype.html",
+  "spec": "docs/specs/ui-full-redesign-spec.md",
+  "themes": ["neuro", "evil", "default"],
+  "note": "NPT UI v3 «Broadcast Table» — full redesign prototype. Data-driven: board + i18n + palettes generated from the game repo."
+}

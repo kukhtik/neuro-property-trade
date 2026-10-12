@@ -1,0 +1,15 @@
+{
+  "_note": "Strings the new design needs that the game does not ship yet. Listed in coverage.md as proposed i18n keys; the prototype consumes them alongside game/i18n/data_*.gd. Merge target in the implementation phase.",
+  "plr.owned":          { "ru": "В собственности", "en": "Owned" },
+  "plr.owned_tip":      { "ru": "Доля клеток доски, находящихся в собственности игроков.", "en": "Share of board tiles owned by players." },
+  "plr.jail_tip":       { "ru": "Попытки выйти из тюрьмы.", "en": "Attempts to leave jail." },
+  "act.timer_tip":      { "ru": "Осталось времени на решение.", "en": "Time left for the decision." },
+  "act.observer_note":  { "ru": "Паузы нет — матч живёт по таймерам.", "en": "No pause — the match runs on its timers." },
+  "jrn.empty_title":    { "ru": "Пока пусто", "en": "Nothing yet" },
+  "jrn.empty_body":     { "ru": "События появятся, когда партия начнётся. Нажмите «НАЧАТЬ ПАРТИЮ» внизу.", "en": "Events appear once the match starts. Press “START MATCH” below." },
+  "settings.tag_live":  { "ru": "применится живьём", "en": "applies live" },
+  "settings.tag_restart": { "ru": "нужен рестарт", "en": "needs restart" },
+  "ins.price":          { "ru": "цена", "en": "price" },
+  "ins.rent":           { "ru": "аренда", "en": "rent" },
+  "die.doubles":        { "ru": "ДУБЛЬ", "en": "DOUBLE" }
+}

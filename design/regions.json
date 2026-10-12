@@ -1,0 +1,85 @@
+{
+ "regions": [
+  {
+   "id": "top",
+   "role": "header: brand, turn chip, round/pot, decision timer/waiting, role badge, controls"
+  },
+  {
+   "id": "seats",
+   "role": "left dock: seat cards, table stats, ownership bar"
+  },
+  {
+   "id": "stage",
+   "role": "centre column: board + centre scene"
+  },
+  {
+   "id": "board",
+   "role": "the 40-tile ring (parametric N tiles)"
+  },
+  {
+   "id": "center",
+   "role": "centre scene: dice tray, decision card, banners, watermark"
+  },
+  {
+   "id": "journal",
+   "role": "right dock top: event log with filters + export"
+  },
+  {
+   "id": "inspector",
+   "role": "right dock bottom: tile reference + management actions"
+  },
+  {
+   "id": "act",
+   "role": "action console under the board: prompt, primary and secondary actions, last roll"
+  },
+  {
+   "id": "toast",
+   "role": "notification host — right dock top on desktop; the compact profile shows a one-line ticker INSIDE the console (never over the board)"
+  },
+  {
+   "id": "rail-left",
+   "role": "compact: seat avatars rail (opens the seats drawer)"
+  },
+  {
+   "id": "rail-right",
+   "role": "compact: journal/inspector rail (opens drawers)"
+  },
+  {
+   "id": "drawer-seats",
+   "role": "compact overlay drawer: seats"
+  },
+  {
+   "id": "drawer-journal",
+   "role": "compact overlay drawer: journal"
+  },
+  {
+   "id": "ov-settings",
+   "role": "modal sheet: match settings (5 tabs)"
+  },
+  {
+   "id": "ov-rules",
+   "role": "modal sheet: rules composed from current settings"
+  },
+  {
+   "id": "ov-admin",
+   "role": "modal sheet: admin (host-local only; absent on web)"
+  },
+  {
+   "id": "ov-invite",
+   "role": "modal sheet: host invitation links"
+  },
+  {
+   "id": "ov-join",
+   "role": "modal sheet: friend's join lobby (connecting / joined / failed / no-invite)"
+  },
+  {
+   "id": "modal",
+   "role": "decision modals: auction, trade, incoming trade, build/mortgage, confirm, game over, messages"
+  }
+ ],
+ "legacy_region_alias": {
+  "pl": "seats",
+  "jr": "journal",
+  "mid": "inspector"
+ }
+}

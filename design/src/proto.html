@@ -1,0 +1,322 @@
+<!-- =========================================================================
+     NPT UI v3 — "Broadcast Table" prototype · body fragment
+     Assembled into design/ui-prototype.html by build_prototype.py.
+     Regions carry id + data-od-id; the registry is design/declarations.json.
+     ========================================================================= -->
+
+<!-- design-owned UI glyphs (chrome only; game art comes from game/assets) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ui-brand" viewBox="0 0 16 16">
+    <path d="M5 1 H15 V11 L11 15 H1 V5 Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+    <path d="M8 4.4 V11.6 M4.4 8 H11.6" stroke="currentColor" stroke-width="1.6" transform="rotate(45 8 8)"/>
+  </symbol>
+  <symbol id="ui-gear" viewBox="0 0 16 16">
+    <path d="M6.5 1.5 H9.5 L10 3.6 L12 4.4 L13.8 3.2 L15.8 6.6 L14 7.9 L14 9.1 L15.8 10.4 L13.8 13.8 L12 12.6 L10 13.4 L9.5 15.5 H6.5 L6 13.4 L4 12.6 L2.2 13.8 L0.2 10.4 L2 9.1 L2 7.9 L0.2 6.6 L2.2 3.2 L4 4.4 L6 3.6 Z"
+          transform="translate(1 0.7) scale(0.9)" fill="none" stroke="currentColor" stroke-width="1.2"/>
+    <circle cx="8" cy="8.5" r="2.1" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  </symbol>
+  <symbol id="ui-help" viewBox="0 0 16 16">
+    <circle cx="8" cy="8" r="6.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M6 6.2 Q6 4.4 8 4.4 Q10 4.4 10 6.2 Q10 7.6 8 8.2 V9.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <rect x="7.3" y="11" width="1.4" height="1.4" fill="currentColor"/>
+  </symbol>
+  <symbol id="ui-restart" viewBox="0 0 16 16">
+    <path d="M13 8 A5 5 0 1 1 11.2 4.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M11.6 1.4 L11.6 4.8 L8.2 4.8" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  </symbol>
+  <symbol id="ui-eye" viewBox="0 0 16 16">
+    <path d="M1.2 8 Q4 3.4 8 3.4 Q12 3.4 14.8 8 Q12 12.6 8 12.6 Q4 12.6 1.2 8 Z" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <circle cx="8" cy="8" r="2" fill="currentColor"/>
+  </symbol>
+  <symbol id="ui-wrench" viewBox="0 0 16 16">
+    <path d="M10.2 2 A3.6 3.6 0 0 0 6.9 7.1 L2 12 L4 14 L8.9 9.1 A3.6 3.6 0 0 0 14 5.8 L11.6 8.2 L7.8 4.4 Z"
+          fill="none" stroke="currentColor" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="ui-skin" viewBox="0 0 16 16">
+    <path d="M8 1.6 A6.4 6.4 0 1 0 8 14.4 A6.4 6.4 0 0 0 8 1.6 Z M4.4 8.9 A1.15 1.15 0 1 1 4.4 6.6 A1.15 1.15 0 0 1 4.4 8.9 Z M7.2 5 A1.15 1.15 0 1 1 7.2 2.7 A1.15 1.15 0 0 1 7.2 5 Z M11 6.4 A1.15 1.15 0 1 1 11 4.1 A1.15 1.15 0 0 1 11 6.4 Z"
+          fill="none" stroke="currentColor" stroke-width="1.2"/>
+  </symbol>
+  <symbol id="ui-sound" viewBox="0 0 16 16">
+    <path d="M2 6 H5 L9 2.4 V13.6 L5 10 H2 Z" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M11 5.4 Q12.4 6.4 12.4 8 Q12.4 9.6 11 10.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M13 3.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M12.8 3.4 Q14.6 4.9 14.6 8 Q14.6 11.1 12.8 12.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="ui-pin" viewBox="0 0 16 16">
+    <path d="M9.6 1.6 L14.4 6.4 L13.2 7.6 L12.2 7.2 L9.4 10 V12.6 L7.6 13.4 L5.2 11 L2.4 13.8 L2.2 13.6 L4.8 10.8 L2.6 8.4 L3.4 6.6 H6 L8.8 3.8 L8.4 2.8 Z"
+          fill="none" stroke="currentColor" stroke-width="1.2"/>
+  </symbol>
+  <symbol id="ui-x" viewBox="0 0 16 16">
+    <path d="M3.6 3.6 L12.4 12.4 M12.4 3.6 L3.6 12.4" stroke="currentColor" stroke-width="1.5"/>
+  </symbol>
+  <symbol id="ui-copy" viewBox="0 0 16 16">
+    <rect x="5.4" y="5.4" width="8.2" height="8.2" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M10.6 2.4 H2.4 V10.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+  </symbol>
+  <symbol id="ui-dl" viewBox="0 0 16 16">
+    <path d="M8 1.6 V10.4 M4.6 7.2 L8 10.6 L11.4 7.2" fill="none" stroke="currentColor" stroke-width="1.4"/>
+    <path d="M2.2 12.6 H13.8 V14.4 H2.2 Z" fill="currentColor"/>
+  </symbol>
+  <symbol id="ui-down" viewBox="0 0 16 16">
+    <path d="M3.2 5.6 L8 10.4 L12.8 5.6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  </symbol>
+  <symbol id="ui-search" viewBox="0 0 16 16">
+    <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+    <path d="M10.4 10.4 L14.4 14.4" stroke="currentColor" stroke-width="1.4"/>
+  </symbol>
+  <symbol id="ui-chart" viewBox="0 0 16 16">
+    <path d="M2 14 H14 M3.4 11 V7 M6.8 11 V4 M10.2 11 V8.6 M13.6 11 V5.6" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  </symbol>
+</svg>
+
+<div id="frame">
+  <div class="app" id="app" data-theme="neuro" data-locale="ru" data-profile="desktop"
+       data-anim="on" data-observer="off" data-scene="turn-human" data-drawer="">
+
+    <!-- ===================================================== region: top -->
+    <header id="top" data-od-id="top">
+      <div class="brand">
+        <svg width="17" height="17" aria-hidden="true"><use href="#ui-brand"/></svg>
+        <span class="brand-name t-value" data-i18n="top.title">● NEURO PROPERTY TRADE</span>
+      </div>
+
+      <div class="turn">
+        <span class="turn__av" id="turnAv"></span>
+        <span class="turn__meta">
+          <span class="turn__name t-value" id="turnName">—</span>
+          <span class="turn__sub t-value"><span data-i18n="top.turn">ХОД: </span><b id="turnPhase" data-i18n="top.cold">до старта</b></span>
+        </span>
+        <span class="steps" id="turnSteps" aria-hidden="true">
+          <i data-i18n-tip="ph.0"></i><i data-i18n-tip="ph.1"></i><i data-i18n-tip="ph.2"></i><i data-i18n-tip="ph.3"></i>
+        </span>
+      </div>
+
+      <div class="roundbar">
+        <span class="chip chip--round" id="hdrRoundWrap" data-i18n-tip="top.round">
+          <span class="t-value" data-i18n="top.round">РАУНД</span><b class="num t-value" id="hdrRound">1</b>
+        </span>
+        <span class="chip chip--pot" id="hdrPotWrap" data-i18n-tip="top.pot">
+          <span class="t-value" data-i18n="top.pot">БАНК ПАРКОВКИ</span><b class="num t-value" id="hdrPot">$0</b>
+        </span>
+      </div>
+
+      <div class="decision" id="decision"></div>
+
+      <span class="rolebadge t-value" id="roleBadge" data-i18n="mode.player" data-i18n-tip="mode.player">ИГРОК</span>
+
+      <div class="ctrls">
+        <button class="iconbtn hide-compact" id="btnSettings" data-i18n-tip="top.settings_tip" aria-label="settings">
+          <svg width="16" height="16" aria-hidden="true"><use href="#ui-gear"/></svg></button>
+        <button class="iconbtn hide-compact" id="btnRules" data-i18n-tip="modal.rules_tip" aria-label="rules">
+          <svg width="16" height="16" aria-hidden="true"><use href="#ui-help"/></svg></button>
+        <button class="iconbtn hide-compact" id="btnRestart" data-i18n-tip="top.restart_tip" aria-label="restart">
+          <svg width="16" height="16" aria-hidden="true"><use href="#ui-restart"/></svg></button>
+        <span class="sep"></span>
+        <button class="iconbtn t-value" id="btnLang" data-i18n-tip="top.lang_tip">RU</button>
+        <button class="iconbtn" id="btnSkin" data-i18n-tip="top.skin_tip" aria-label="skin">
+          <svg width="16" height="16" aria-hidden="true"><use href="#ui-skin"/></svg></button>
+        <button class="iconbtn" id="btnSound" data-i18n-tip="modal.sound_tip" aria-label="sound">
+          <svg width="16" height="16" aria-hidden="true"><use href="#ui-sound"/></svg></button>
+        <span class="sep"></span>
+        <button class="iconbtn" id="btnObserver" data-i18n-tip="top.eye_tip" aria-label="observer">
+          <svg width="16" height="16" aria-hidden="true"><use href="#ui-eye"/></svg></button>
+        <button class="iconbtn" id="btnAdmin" data-i18n-tip="top.admin_hint" aria-label="admin">
+          <svg width="16" height="16" aria-hidden="true"><use href="#ui-wrench"/></svg></button>
+      </div>
+    </header>
+
+    <!-- ==================================================== the working area -->
+    <div class="body">
+
+      <!-- ----------------------------------------------- region: seats -->
+      <aside id="seats" data-od-id="seats">
+        <div class="dock-h">
+          <span class="title caps t-value" data-i18n="ui.players">ИГРОКИ</span>
+          <span class="count num t-value" id="seatsCount">4</span>
+        </div>
+        <div class="plist" id="seatsList"></div>
+        <div class="stats" id="seatsStats"></div>
+        <div class="ownbar" id="seatsOwn"></div>
+      </aside>
+
+      <!-- ----------------------------------------------- region: stage -->
+      <section id="stage" data-od-id="stage">
+        <div id="board" data-od-id="board">
+          <div id="center" data-od-id="center"></div>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------- region: right dock -->
+      <div id="rightcol">
+        <div id="toast" data-od-id="toast"></div>
+
+        <section id="journal" data-od-id="journal">
+          <div class="jrn-h">
+            <span class="title caps t-value" data-i18n="jrn.title">◆ ХОД СОБЫТИЙ</span>
+            <span class="count t-value" id="jrnCount" data-i18n-tip="jrn.count_tip"></span>
+            <span class="sp" data-grow></span>
+            <button class="iconbtn" id="btnJrnExport" data-i18n-tip="jrn.export_tip" aria-label="export">
+              <svg width="15" height="15" aria-hidden="true"><use href="#ui-dl"/></svg></button>
+          </div>
+          <div class="filters">
+            <label class="t-value" data-i18n="jrn.player_lbl" data-i18n-tip="jrn.player_filter_tip">игрок</label>
+            <select id="flPlayer" class="t-value"></select>
+            <label class="t-value" data-i18n="jrn.type_lbl" data-i18n-tip="jrn.type_filter_tip">тип</label>
+            <select id="flType" class="t-value"></select>
+            <label class="money t-value" data-i18n-tip="jrn.money_tip">
+              <input type="checkbox" id="flMoney"><span data-i18n="ty.money">Деньги</span></label>
+          </div>
+          <div class="jrn-list" id="jrnList"></div>
+          <button class="jrn-scrollpin t-value" id="jrnPin" data-i18n="ui.ok">OK</button>
+        </section>
+
+        <section id="inspector" data-od-id="inspector">
+          <div class="ins-h">
+            <span class="title caps t-value" data-i18n="ins.title">КЛЕТКА</span>
+            <span class="sp" data-grow></span>
+            <button class="iconbtn" id="btnInsPin" data-i18n-tip="ins.pin_tip" aria-label="pin">
+              <svg width="14" height="14" aria-hidden="true"><use href="#ui-pin"/></svg></button>
+            <button class="iconbtn" id="btnInsClose" data-i18n-tip="ins.close_tip" aria-label="close">
+              <svg width="14" height="14" aria-hidden="true"><use href="#ui-x"/></svg></button>
+          </div>
+          <div class="ins-b" id="insBody"></div>
+        </section>
+      </div>
+
+      <!-- ------------------------------------------- region: action console -->
+      <section id="act" data-od-id="act">
+        <div class="row1">
+          <div class="ticker" id="ticker">
+            <span class="ticker__bar"></span>
+            <span class="ticker__text t-value" id="tickerText"></span>
+            <span class="ticker__more num t-value" id="tickerMore"></span>
+          </div>
+          <div class="prompt t-para" id="actPrompt" data-grow></div>
+          <div class="lastroll t-value" id="actLastRoll"></div>
+        </div>
+        <div class="row2" id="actRow2"></div>
+      </section>
+
+      <!-- compact rails -->
+      <div class="rail" id="rail-l" data-od-id="rail-left"></div>
+      <div class="rail" id="rail-r" data-od-id="rail-right"></div>
+
+      <!-- compact drawers -->
+      <aside class="drawer drawer--l ch" id="drawerL" data-od-id="drawer-seats">
+        <div class="dock-h"><span class="title caps t-value" data-i18n="ui.players">ИГРОКИ</span>
+          <span class="sp" data-grow></span>
+          <button class="iconbtn" data-drawer-close aria-label="close"><svg width="14" height="14"><use href="#ui-x"/></svg></button></div>
+        <div class="plist" id="drawerSeatsList"></div>
+        <div class="stats" id="drawerSeatsStats"></div>
+      </aside>
+      <aside class="drawer drawer--r ch" id="drawerR" data-od-id="drawer-journal">
+        <div class="dock-h"><span class="title caps t-value" data-i18n="jrn.title">◆ ХОД СОБЫТИЙ</span>
+          <span class="sp" data-grow></span>
+          <button class="iconbtn" data-drawer-close aria-label="close"><svg width="14" height="14"><use href="#ui-x"/></svg></button></div>
+        <div class="jrn-list" id="drawerJrnList"></div>
+      </aside>
+    </div>
+
+    <!-- ============================================ overlay: match settings -->
+    <div class="ov" id="ovSettings" data-od-id="ov-settings">
+      <div class="sheet ch">
+        <div class="sheet-h">
+          <span class="title t-value" data-i18n="settings.title">НАСТРОЙКИ МАТЧА</span>
+          <span class="sp" data-grow></span>
+          <button class="btn btn--ghost t-value" id="btnSetReset" data-i18n="settings.reset_btn" data-i18n-tip="settings.reset_tip">сброс</button>
+          <button class="iconbtn" id="btnSetClose" data-i18n-tip="settings.close_tip" aria-label="close"><svg width="15" height="15"><use href="#ui-x"/></svg></button>
+        </div>
+        <div class="sheet-b">
+          <div class="tabs" id="setTabs">
+            <button class="tab on" data-pane="players"><span class="n num">1</span><span class="t-value" data-i18n="settings.tab_players">Игроки</span></button>
+            <button class="tab" data-pane="rules"><span class="n num">2</span><span class="t-value" data-i18n="settings.tab_rules">Правила</span></button>
+            <button class="tab" data-pane="tempo"><span class="n num">3</span><span class="t-value" data-i18n="settings.tab_tempo">Темп</span></button>
+            <button class="tab" data-pane="iface"><span class="n num">4</span><span class="t-value" data-i18n="settings.tab_interface">Интерфейс</span></button>
+            <button class="tab" data-pane="data"><span class="n num">5</span><span class="t-value" data-i18n="settings.tab_data">Данные</span></button>
+          </div>
+          <div class="pane on" id="panePlayers"></div>
+          <div class="pane" id="paneRules"></div>
+          <div class="pane" id="paneTempo"></div>
+          <div class="pane" id="paneIface"></div>
+          <div class="pane" id="paneData"></div>
+        </div>
+        <div class="sheet-f">
+          <span class="status t-value" id="setStatus" data-grow></span>
+          <button class="btn btn--ghost t-value" id="btnSetRules" data-i18n="settings.rules_btn" data-i18n-tip="settings.rules_tip">📜 ПРАВИЛА</button>
+          <button class="btn btn--primary t-value" id="btnSetPrimary" data-i18n="settings.start_btn" data-i18n-tip="settings.start_tip">▶  СТАРТ ПАРТИЮ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================== overlay: rules -->
+    <div class="ov" id="ovRules" data-od-id="ov-rules">
+      <div class="sheet ch">
+        <div class="sheet-h">
+          <button class="btn btn--ghost t-value" id="btnRulesBack" data-i18n="ui.back" data-i18n-tip="modal.rules_back_tip">НАЗАД</button>
+          <span class="title caps t-value" data-i18n="rules.title">ПРАВИЛА (по текущим настройкам)</span>
+        </div>
+        <div class="sheet-b"><div class="rules-body" id="rulesBody"></div></div>
+      </div>
+    </div>
+
+    <!-- ================================================== overlay: admin -->
+    <div class="ov" id="ovAdmin" data-od-id="ov-admin">
+      <div class="sheet ch">
+        <div class="sheet-h">
+          <span class="title t-value" data-i18n="admin.title">АДМИН</span>
+          <span class="chip t-value hide-compact" data-i18n="top.admin_hint">F12 — админ</span>
+          <span class="sp" data-grow></span>
+          <button class="iconbtn" id="btnAdmClose" data-i18n-tip="settings.close_tip" aria-label="close"><svg width="15" height="15"><use href="#ui-x"/></svg></button>
+        </div>
+        <div class="sheet-b">
+          <div class="tabs" id="admTabs">
+            <button class="tab on" data-pane="quick"><span class="t-value" data-i18n="admin.tab_quick">Быстрые</span></button>
+            <button class="tab" data-pane="state"><span class="t-value" data-i18n="admin.tab_state">Состояние</span></button>
+            <button class="tab" data-pane="events"><span class="t-value" data-i18n="admin.tab_events">События</span></button>
+            <button class="tab" data-pane="edits"><span class="t-value" data-i18n="admin.tab_edits">Правки</span></button>
+          </div>
+          <div class="pane on" id="admQuick"></div>
+          <div class="pane" id="admState"></div>
+          <div class="pane" id="admEvents"></div>
+          <div class="pane" id="admEdits"></div>
+        </div>
+        <div class="sheet-f"><span class="status t-value" id="admStatus" data-grow></span></div>
+      </div>
+    </div>
+
+    <!-- =============================================== overlay: host invite -->
+    <div class="ov" id="ovInvite" data-od-id="ov-invite">
+      <div class="sheet ch" style="width:min(720px,92%);height:auto;max-height:88%">
+        <div class="sheet-h">
+          <span class="title t-value" data-i18n="invite.title">Партия создана — отправьте ссылку друзьям</span>
+          <span class="sp" data-grow></span>
+          <button class="iconbtn" id="btnInviteClose" aria-label="close"><svg width="15" height="15"><use href="#ui-x"/></svg></button>
+        </div>
+        <div class="sheet-b" style="flex-direction:column;gap:12px">
+          <div class="hint t-para" data-i18n="invite.hint"></div>
+          <div class="invite-list" id="inviteList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================================================ overlay: join lobby -->
+    <div class="ov" id="ovJoin" data-od-id="ov-join">
+      <div class="sheet ch" style="width:min(520px,92%);height:auto">
+        <div class="sheet-b" style="padding:24px">
+          <div class="join-box" style="margin:auto">
+            <span class="big t-value" data-i18n="join.title">Neuro Property Trade</span>
+            <div id="joinState"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================================================== modal host -->
+    <div id="modal" data-od-id="modal"></div>
+
+  </div><!-- /app -->
+</div><!-- /frame -->
+
+<div id="probe">
+  <div class="pbar" id="pbar"></div>
+</div>

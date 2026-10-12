@@ -1,0 +1,2254 @@
+{
+ "act.ai_status": {
+  "en": "%s: AI-controlled — turn runs automatically",
+  "ru": "%s: управляется ИИ — ход выполняется автоматически"
+ },
+ "act.bid": {
+  "en": "BID",
+  "ru": "СТАВКА"
+ },
+ "act.bid_tip": {
+  "en": "Place a bid in the auction for this tile",
+  "ru": "Сделать ставку на аукционе за эту клетку"
+ },
+ "act.build": {
+  "en": "Build",
+  "ru": "Строить"
+ },
+ "act.build_tip": {
+  "en": "Build a house on the selected tile (needs the whole group)",
+  "ru": "Построить дом на выбранной клетке (нужна вся группа)"
+ },
+ "act.buy": {
+  "en": "Buy",
+  "ru": "Купить"
+ },
+ "act.buy_price": {
+  "en": "Buy $%d",
+  "ru": "Купить $%d"
+ },
+ "act.buy_tip": {
+  "en": "Buy this tile at the listed price",
+  "ru": "Купить эту клетку за указанную цену"
+ },
+ "act.cold_status": {
+  "en": "Match not started yet",
+  "ru": "Партия ещё не начата"
+ },
+ "act.end_turn": {
+  "en": "End turn",
+  "ru": "Конец хода"
+ },
+ "act.end_turn_tip": {
+  "en": "Pass the turn",
+  "ru": "Передать ход дальше"
+ },
+ "act.hint_auction": {
+  "en": "Auction — current bid $%d",
+  "ru": "Аукцион — текущая ставка $%d"
+ },
+ "act.hint_auction_first": {
+  "en": "Auction — place the first bid",
+  "ru": "Аукцион — сделайте первую ставку"
+ },
+ "act.hint_purchase": {
+  "en": "Can buy «%s» for $%d or not buy",
+  "ru": "Можно купить «%s» за $%d или не покупать"
+ },
+ "act.hint_trade": {
+  "en": "Incoming offer — accept or decline",
+  "ru": "Входящее предложение — принять или отклонить"
+ },
+ "act.human_status": {
+  "en": "%s  ·  your turn — pick an action",
+  "ru": "%s  ·  ваш ход — выберите действие"
+ },
+ "act.mortgage": {
+  "en": "Mortgage",
+  "ru": "Залог"
+ },
+ "act.mortgage_tip": {
+  "en": "Mortgage the tile for 50% of its value",
+  "ru": "Заложить клетку и получить 50% её стоимости"
+ },
+ "act.no_buy": {
+  "en": "Decline",
+  "ru": "Отказ"
+ },
+ "act.observer_sdk": {
+  "en": " · awaiting Neuro…",
+  "ru": " · ожидание Neuro…"
+ },
+ "act.observer_status": {
+  "en": "turn: %s · decision for %s%s%s",
+  "ru": "ход: %s · решение за %s%s%s"
+ },
+ "act.observer_timer": {
+  "en": " · auto in 0:%02d",
+  "ru": " · авто-через 0:%02d"
+ },
+ "act.pass": {
+  "en": "Decline",
+  "ru": "Отказ"
+ },
+ "act.pass_tip": {
+  "en": "Do not buy this tile — it goes to auction",
+  "ru": "Не покупать клетку — она уйдёт на аукцион"
+ },
+ "act.pay": {
+  "en": "PAY $%d",
+  "ru": "ОПЛАТИТЬ $%d"
+ },
+ "act.pay_tip": {
+  "en": "Pay the fine and leave jail",
+  "ru": "Заплатить штраф и выйти из тюрьмы"
+ },
+ "act.respond_trade": {
+  "en": "RESPOND to trade",
+  "ru": "ОТВЕТИТЬ на сделку"
+ },
+ "act.respond_trade_tip": {
+  "en": "Accept or decline the incoming trade offer",
+  "ru": "Принять или отклонить входящее предложение сделки"
+ },
+ "act.roll": {
+  "en": "Roll",
+  "ru": "Бросок"
+ },
+ "act.roll_tip": {
+  "en": "Roll the dice and move the token by the rolled count",
+  "ru": "Бросить кубики и передвинуть фишку на выпавшее число клеток"
+ },
+ "act.sell": {
+  "en": "Sell house",
+  "ru": "Продать дом"
+ },
+ "act.sell_tip": {
+  "en": "Sell a house from the selected tile",
+  "ru": "Продать дом с выбранной клетки"
+ },
+ "act.start_btn": {
+  "en": "▶  START MATCH",
+  "ru": "▶  НАЧАТЬ ПАРТИЮ"
+ },
+ "act.start_tip": {
+  "en": "Open settings and start the match",
+  "ru": "Открыть настройки и начать партию"
+ },
+ "act.trade": {
+  "en": "Trade",
+  "ru": "Торг"
+ },
+ "act.trade_tip": {
+  "en": "Propose a trade to another player (tiles and/or cash)",
+  "ru": "Предложить сделку другому игроку (тайлы и/или деньги)"
+ },
+ "act.unmortgage": {
+  "en": "UNMORTGAGE",
+  "ru": "ВЫКУПИТЬ"
+ },
+ "act.unmortgage_tip": {
+  "en": "Unmortgage the tile (110% of value)",
+  "ru": "Выкупить заложенную клетку (110% стоимости)"
+ },
+ "act.use_card": {
+  "en": "Jail card",
+  "ru": "КАРТА выхода"
+ },
+ "act.use_card_tip": {
+  "en": "Use the get-out-of-jail card",
+  "ru": "Использовать карту «Выход из тюрьмы»"
+ },
+ "action.bid": {
+  "en": "bid",
+  "ru": "ставка"
+ },
+ "action.build_house": {
+  "en": "build",
+  "ru": "построить"
+ },
+ "action.buy": {
+  "en": "buy",
+  "ru": "купить"
+ },
+ "action.mortgage_property": {
+  "en": "mortgage",
+  "ru": "заложить"
+ },
+ "action.pass": {
+  "en": "pass",
+  "ru": "пас"
+ },
+ "action.pay": {
+  "en": "pay",
+  "ru": "оплатить"
+ },
+ "action.propose_trade": {
+  "en": "trade",
+  "ru": "торг"
+ },
+ "action.respond_trade": {
+  "en": "respond to trade",
+  "ru": "ответить на сделку"
+ },
+ "action.roll": {
+  "en": "roll",
+  "ru": "бросок"
+ },
+ "action.sell_house": {
+  "en": "sell house",
+  "ru": "продать дом"
+ },
+ "action.unmortgage_property": {
+  "en": "unmortgage",
+  "ru": "выкупить"
+ },
+ "action.use_card": {
+  "en": "use card",
+  "ru": "карта"
+ },
+ "admin.apply_btn": {
+  "en": "Apply",
+  "ru": "Применить"
+ },
+ "admin.away_pid_lbl": {
+  "en": "♻ reset away: pid",
+  "ru": "♻ сброс away: pid"
+ },
+ "admin.away_pid_tip": {
+  "en": "pid to restore turn priority to after “away”.",
+  "ru": "pid игрока, которому вернуть право хода после «away»."
+ },
+ "admin.cancelled": {
+  "en": "cancelled",
+  "ru": "отменено"
+ },
+ "admin.card_name_ph": {
+  "en": "card name",
+  "ru": "имя карты"
+ },
+ "admin.confirm_dlg": {
+  "en": "Confirmation",
+  "ru": "Подтверждение"
+ },
+ "admin.confirm_no": {
+  "en": "Cancel",
+  "ru": "Отмена"
+ },
+ "admin.confirm_op": {
+  "en": "Operation “%s” rewrites the match state. Continue?",
+  "ru": "Операция «%s» переписывает состояние партии. Продолжить?"
+ },
+ "admin.confirm_snap": {
+  "en": "Loading a snapshot will FULLY replace the current match. Continue?",
+  "ru": "Загрузка снапшота ПОЛНОСТЬЮ заменит текущую партию. Продолжить?"
+ },
+ "admin.confirm_yes": {
+  "en": "Continue",
+  "ru": "Продолжить"
+ },
+ "admin.copy_dump": {
+  "en": "copy JSON dump",
+  "ru": "копировать JSON-дамп"
+ },
+ "admin.copy_dump_tip": {
+  "en": "Copy the full state dump to the clipboard (debugging).",
+  "ru": "Скопировать полный дамп состояния в буфер обмена (для отладки)."
+ },
+ "admin.deck_chance": {
+  "en": "chance",
+  "ru": "chance"
+ },
+ "admin.deck_community": {
+  "en": "community",
+  "ru": "community"
+ },
+ "admin.dump_header": {
+  "en": "phase %s · turn p%s · away-wait visible in the list",
+  "ru": "фаза %s · ход p%s · away-ожидание видно в списке"
+ },
+ "admin.dump_row": {
+  "en": "p%d %-10s $%-6d @%-2d house:%-2d mort:%-2d jail:%s bankr:%s tiles:%s",
+  "ru": "p%d %-10s $%-6d @%-2d дом:%-2d залог:%-2d тюрьма:%s банкрот:%s tiles:%s"
+ },
+ "admin.edits_note": {
+  "en": "Each operation is a row with only its own fields. The result is shown inline.",
+  "ru": "Каждая операция — строка только со СВОИМИ полями. Результат показывается инлайн."
+ },
+ "admin.error": {
+  "en": "error: %s",
+  "ru": "ошибка: %s"
+ },
+ "admin.ev_all_types": {
+  "en": "all types",
+  "ru": "все типы"
+ },
+ "admin.ev_export": {
+  "en": "export .jsonl",
+  "ru": "экспорт .jsonl"
+ },
+ "admin.ev_export_tip": {
+  "en": "Export the FULL event log to user://admin_events_export.jsonl.",
+  "ru": "Экортировать ПОЛНЫЙ журнал событий в user://admin_events_export.jsonl."
+ },
+ "admin.ev_filter_tip": {
+  "en": "Show only events of the selected type (live feed, self-updating).",
+  "ru": "Показывать события только выбранного типа (лента live, обновляется сама)."
+ },
+ "admin.ev_type_lbl": {
+  "en": "type:",
+  "ru": "тип:"
+ },
+ "admin.export_fail": {
+  "en": "could not write file",
+  "ru": "не удалось записать файл"
+ },
+ "admin.flag_mortgage": {
+  "en": "mortgage",
+  "ru": "заложить"
+ },
+ "admin.flag_unmortgage": {
+  "en": "unmortgage",
+  "ru": "выкупить"
+ },
+ "admin.lbl_amount": {
+  "en": "amount",
+  "ru": "сумма"
+ },
+ "admin.lbl_count": {
+  "en": "houses",
+  "ru": "домов"
+ },
+ "admin.lbl_seed": {
+  "en": "seed",
+  "ru": "сид"
+ },
+ "admin.lbl_tile": {
+  "en": "tile",
+  "ru": "клетка"
+ },
+ "admin.lbl_value": {
+  "en": "value",
+  "ru": "значение"
+ },
+ "admin.load_snap": {
+  "en": "load snapshot",
+  "ru": "загрузить снапшот"
+ },
+ "admin.load_snap_done": {
+  "en": "engine replaced; scene reloaded",
+  "ru": "движок заменён; сцена переустановлена"
+ },
+ "admin.load_snap_tip": {
+  "en": "LOAD a match from user://admin_snapshot.json. Overwrites the current state. DESTRUCTIVE: asks for confirmation.",
+  "ru": "ЗАГРУЗИТЬ партию из user://admin_snapshot.json. Перезаписывает текущее состояние. ДЕСТРУКТИВНО: спросит подтверждение."
+ },
+ "admin.log_copy": {
+  "en": "copied JSON dump",
+  "ru": "копия JSON-дампа"
+ },
+ "admin.log_export": {
+  "en": "export events",
+  "ru": "экспорт событий"
+ },
+ "admin.log_head": {
+  "en": "ADMIN LOG",
+  "ru": "ЖУРНАЛ АДМИНА"
+ },
+ "admin.log_reset_away": {
+  "en": "reset away pid=%d",
+  "ru": "сброс away pid=%d"
+ },
+ "admin.log_save_snap": {
+  "en": "snapshot → file",
+  "ru": "снапшот → файл"
+ },
+ "admin.no_players": {
+  "en": "— no players —",
+  "ru": "— нет игроков —"
+ },
+ "admin.ok": {
+  "en": "ok",
+  "ru": "ok"
+ },
+ "admin.op_deck_insert": {
+  "en": "🃏 insert card",
+  "ru": "🃏 вставить карту"
+ },
+ "admin.op_deck_insert_tip": {
+  "en": "Place a card on top of the deck (drawn next). kind = community or chance, effect = collect/pay/advance/move_to/go_to_jail/jail_card/collect_from_all/pay_each_player.",
+  "ru": "Положить карту наверх колоды (будет вытянута следующей). kind = community или chance, effect = collect/pay/advance/move_to/go_to_jail/jail_card/collect_from_all/pay_each_player."
+ },
+ "admin.op_deck_remove": {
+  "en": "🃏 remove card",
+  "ru": "🃏 убрать карту"
+ },
+ "admin.op_deck_remove_tip": {
+  "en": "Remove the top deck card or a card by name.",
+  "ru": "Убрать верхнюю карту колоды или карту по имени."
+ },
+ "admin.op_force_dice": {
+  "en": "🎲 force-dice",
+  "ru": "🎲 форс-кубы"
+ },
+ "admin.op_force_dice_tip": {
+  "en": "Override the next roll. d1/d2 in 0..6, 0 = “not a real” die (set a sum without doubles).",
+  "ru": "Подменить следующий бросок кубов. d1/d2 в 0..6, 0 = «не настоящий» куб (можно задать сумму без дубля)."
+ },
+ "admin.op_grant": {
+  "en": "🏠 grant tile",
+  "ru": "🏠 дать тайл"
+ },
+ "admin.op_grant_tip": {
+  "en": "Transfer a tile to a player free. Houses/mortgage on it are unchanged.",
+  "ru": "Передать клетку игроку без оплаты. Дома/залог на клетке не меняются."
+ },
+ "admin.op_redo_turn": {
+  "en": "🔁 redo turn",
+  "ru": "🔁 переиграть ход"
+ },
+ "admin.op_redo_turn_tip": {
+  "en": "Re-seed RNG and reset the current turn to start. DESTRUCTIVE: confirmation.",
+  "ru": "Пере-сидировать RNG и сбросить текущий ход в начало. ДЕСТРУКТИВНО: подтверждение."
+ },
+ "admin.op_reorder": {
+  "en": "🔀 order",
+  "ru": "🔀 порядок"
+ },
+ "admin.op_reorder_tip": {
+  "en": "Turn order: list ALL pids comma-separated. DESTRUCTIVE: confirmation.",
+  "ru": "Порядок хода: перечислите ВСЕ pid через запятую. ДЕСТРУКТИВНО: подтверждение."
+ },
+ "admin.op_revoke": {
+  "en": "🏠 revoke tile",
+  "ru": "🏠 отнять тайл"
+ },
+ "admin.op_revoke_tip": {
+  "en": "Take a tile back from a player. Houses/mortgage are reset.",
+  "ru": "Забрать клетку у игрока. Дома и залог на клетке сбрасываются."
+ },
+ "admin.op_set_balance": {
+  "en": "💰 balance",
+  "ru": "💰 баланс"
+ },
+ "admin.op_set_balance_tip": {
+  "en": "Set an exact balance for a player. For compensating a mistake or fixing cash manually.",
+  "ru": "Установить игроку точный баланс. Применять, когда нужно компенсировать ошибку или исправить деньги вручную."
+ },
+ "admin.op_set_go_jail": {
+  "en": "⚖ to jail",
+  "ru": "⚖ в тюрьму"
+ },
+ "admin.op_set_go_jail_tip": {
+  "en": "Send a player to jail immediately (position = jail, tries = 0).",
+  "ru": "Отправить игрока в тюрьму немедленно (позиция = тюрьма, попытки = 0)."
+ },
+ "admin.op_set_houses": {
+  "en": "🏗 houses",
+  "ru": "🏗 домики"
+ },
+ "admin.op_set_houses_tip": {
+  "en": "Set the number of houses on a tile: 0..4, 5 = hotel. Ignores the even-build rule.",
+  "ru": "Задать число домов на клетке: 0..4, 5 = отель. Игнорирует правило ровной застройки."
+ },
+ "admin.op_set_mortgage": {
+  "en": "🚫 mortgage",
+  "ru": "🚫 залог"
+ },
+ "admin.op_set_mortgage_tip": {
+  "en": "Apply or remove a mortgage on a tile with no cash movement.",
+  "ru": "Включить или снять залог на клетке без денежных операций."
+ },
+ "admin.op_teleport": {
+  "en": "📍 teleport",
+  "ru": "📍 телепорт"
+ },
+ "admin.op_teleport_tip": {
+  "en": "Place a player on a tile without rolling. Use between turns.",
+  "ru": "Поставить игрока на выбранную клетку без броска кубов. Используйте между ходами."
+ },
+ "admin.op_tweak_tile": {
+  "en": "✏ tweak tile",
+  "ru": "✏ правка клетки"
+ },
+ "admin.op_tweak_tile_tip": {
+  "en": "Live-edit a tile's price/rent (price, base rent, monopoly rent, house cost). Applies until the match ends; board.json is unchanged.",
+  "ru": "Живая правка цены/аренды клетки (цена, базовая аренда, аренда монополии, стоимость дома). Действует до конца партии; board.json не меняется."
+ },
+ "admin.order_ph": {
+  "en": "e.g. 1,0,2,3",
+  "ru": "напр. 1,0,2,3"
+ },
+ "admin.quick_force_pass": {
+  "en": "⏭ force-pass",
+  "ru": "⏭ форс-пас"
+ },
+ "admin.quick_force_pass_tip": {
+  "en": "Skip the holder's current decision (purchase/auction/turn).",
+  "ru": "Пропустить текущее решение держателя (покупка/аукцион/ход)."
+ },
+ "admin.quick_force_roll": {
+  "en": "▶ force-roll (holder)",
+  "ru": "▶ форс-ролл (holder)"
+ },
+ "admin.quick_force_roll_tip": {
+  "en": "Force the current holder to roll. Use when the match is stalled at turn start.",
+  "ru": "Заставить текущего держателя решения бросить кубы. Когда применять: партия стоит на начале хода."
+ },
+ "admin.quick_hint": {
+  "en": "Unblocking the match: forced actions for the current decision holder.",
+  "ru": "Разблокировка партии: принудительные действия для текущего держателя решения."
+ },
+ "admin.quick_rollback": {
+  "en": "↩ decision rollback",
+  "ru": "↩ откат решения"
+ },
+ "admin.quick_rollback_tip": {
+  "en": "Clear a stuck decision wait (reset pending without changing cash/ownership).",
+  "ru": "Сбросить зависшее ожидание решения (очистить pending-состояние без изменения денег/владений)."
+ },
+ "admin.quick_summary": {
+  "en": "summary: phase %s · turn p%s",
+  "ru": "сводка: фаза %s · ход p%s"
+ },
+ "admin.quick_tag_pass": {
+  "en": "Quick/force-pass",
+  "ru": "Быстрые/форс-пас"
+ },
+ "admin.quick_tag_roll": {
+  "en": "Quick/force-roll",
+  "ru": "Быстрые/форс-ролл"
+ },
+ "admin.quick_tag_rollback": {
+  "en": "Quick/rollback",
+  "ru": "Быстрые/откат"
+ },
+ "admin.reason_load_fail": {
+  "en": "file not found or corrupt",
+  "ru": "файл не найден или повреждён"
+ },
+ "admin.reason_write_fail": {
+  "en": "could not write",
+  "ru": "не удалось записать"
+ },
+ "admin.reset_away": {
+  "en": "apply",
+  "ru": "применить"
+ },
+ "admin.reset_away_tip": {
+  "en": "Clear the “away” mark so the manager waits for its decision again.",
+  "ru": "Снять пометку «away» с места, чтобы менеджер снова ждал его решения."
+ },
+ "admin.save_snap": {
+  "en": "snapshot → file",
+  "ru": "снапшот → файл"
+ },
+ "admin.save_snap_tip": {
+  "en": "Save the full match state to user://admin_snapshot.json.",
+  "ru": "Сохранить полное состояние партии в user://admin_snapshot.json."
+ },
+ "admin.search_ph": {
+  "en": "🔍 search operation…",
+  "ru": "🔍 поиск операции…"
+ },
+ "admin.search_tip": {
+  "en": "Filter operations on the Edits tab by substring.",
+  "ru": "Фильтр операций на вкладке «Правки» по подстроке."
+ },
+ "admin.tab_edits": {
+  "en": "Edits",
+  "ru": "Правки"
+ },
+ "admin.tab_events": {
+  "en": "Events",
+  "ru": "События"
+ },
+ "admin.tab_quick": {
+  "en": "Quick",
+  "ru": "Быстрые"
+ },
+ "admin.tab_state": {
+  "en": "State",
+  "ru": "Состояние"
+ },
+ "admin.tip_amount": {
+  "en": "Cash amount (for balance — absolute value).",
+  "ru": "Сумма денег (для баланса — абсолютное значение)."
+ },
+ "admin.tip_card_name": {
+  "en": "Exact card name. Empty = top of deck (for removal).",
+  "ru": "Точное имя карты. Пусто = верхняя карта колоды (для удаления)."
+ },
+ "admin.tip_count": {
+  "en": "Number of houses 0..4, 5 = hotel.",
+  "ru": "Число домов 0..4, 5 = отель."
+ },
+ "admin.tip_deck": {
+  "en": "Which deck: community or chance.",
+  "ru": "Какая колода: community (общество) или chance (шанс)."
+ },
+ "admin.tip_die": {
+  "en": "Die value 0..6; 0 = “not a real” die (lets you set a sum without doubles).",
+  "ru": "Значение куба 0..6; 0 = «не настоящий» куб (позволяет задать сумму без дубля)."
+ },
+ "admin.tip_effect": {
+  "en": "Card effect (which engine effects exist).",
+  "ru": "Эффект карты (какие движковые эффекты существуют)."
+ },
+ "admin.tip_field": {
+  "en": "New tile field value (empty fields are not changed).",
+  "ru": "Новое значение поля клетки (пустые поля не меняются)."
+ },
+ "admin.tip_flag": {
+  "en": "mortgage = applies a mortgage, unmortgage = removes it.",
+  "ru": "заложить = ставит залог, выкупить = снимает."
+ },
+ "admin.tip_order": {
+  "en": "New turn order: ALL pids comma-separated, each exactly once.",
+  "ru": "Новый порядок хода: ВСЕ pid через запятую, каждый ровно один раз."
+ },
+ "admin.tip_pid": {
+  "en": "Player (pid). List updates live.",
+  "ru": "Игрок (pid). Список обновляется живьём."
+ },
+ "admin.tip_seed": {
+  "en": "New RNG seed to replay the turn (1..999999).",
+  "ru": "Новый сид RNG для переигрывания хода (1..999999)."
+ },
+ "admin.tip_tile": {
+  "en": "Tile index 0..39 (0 = START, 10 = jail, 20 = parking, 30 = go-to-jail).",
+  "ru": "Индекс клетки 0..39 (0 = СТАРТ, 10 = тюрьма, 20 = стоянка, 30 = «иди в тюрьму»)."
+ },
+ "admin.tip_value": {
+  "en": "Effect numeric value: cash amount or offset/tile for advance/move_to.",
+  "ru": "Числовое значение эффекта: сумма денег или смещение/клетка для advance/move_to."
+ },
+ "admin.title": {
+  "en": "ADMIN (host-local)",
+  "ru": "АДМИН (host-local)"
+ },
+ "event.admin_override": {
+  "en": "admin: %s",
+  "ru": "админ: %s"
+ },
+ "event.auction_start": {
+  "en": "auction starts on tile %d",
+  "ru": "аукцион начинается на клетке %d"
+ },
+ "event.auction_win": {
+  "en": "%s wins auction of tile %d",
+  "ru": "%s выигрывает аукцион клетки %d"
+ },
+ "event.bankrupt": {
+  "en": "%s is bankrupt",
+  "ru": "%s банкротится"
+ },
+ "event.build": {
+  "en": "%s builds on tile %d",
+  "ru": "%s строит на клетке %d"
+ },
+ "event.card_draw": {
+  "en": "%s draws a card",
+  "ru": "%s тянет карту"
+ },
+ "event.card_land": {
+  "en": "%s card → tile %d",
+  "ru": "%s карта → клетка %d"
+ },
+ "event.go_bonus": {
+  "en": "%s collects GO bonus",
+  "ru": "%s получает бонус GO"
+ },
+ "event.jail": {
+  "en": "%s goes to jail",
+  "ru": "%s попадает в тюрьму"
+ },
+ "event.land": {
+  "en": "%s lands on tile %d",
+  "ru": "%s приземляется на клетку %d"
+ },
+ "event.mortgage": {
+  "en": "%s mortgages tile %d",
+  "ru": "%s закладывает клетку %d"
+ },
+ "event.move": {
+  "en": "%s moves → %d",
+  "ru": "%s двигается → %d"
+ },
+ "event.pass": {
+  "en": "%s passes tile %d",
+  "ru": "%s пропускает клетку %d"
+ },
+ "event.pay": {
+  "en": "%s pays $%d",
+  "ru": "%s платит $%d"
+ },
+ "event.purchase": {
+  "en": "%s buys tile %d ($%d)",
+  "ru": "%s покупает клетку %d ($%d)"
+ },
+ "event.rent": {
+  "en": "%s pays rent",
+  "ru": "%s платит аренду"
+ },
+ "event.roll": {
+  "en": "%s rolls %d+%d",
+  "ru": "%s бросает %d+%d"
+ },
+ "event.sell": {
+  "en": "%s sells from tile %d",
+  "ru": "%s продаёт с клетки %d"
+ },
+ "event.tax": {
+  "en": "%s pays tax",
+  "ru": "%s платит налог"
+ },
+ "event.tile_name": {
+  "en": "tile %d",
+  "ru": "тайл %d"
+ },
+ "event.trade": {
+  "en": "trade complete",
+  "ru": "сделка завершена"
+ },
+ "event.winner": {
+  "en": "%s WINS!",
+  "ru": "%s ПОБЕДИЛ!"
+ },
+ "event_type.admin_override": {
+  "en": "admin",
+  "ru": "админ"
+ },
+ "event_type.aucnone": {
+  "en": "no auction",
+  "ru": "аукцион не разыгран"
+ },
+ "event_type.aucstart": {
+  "en": "auction",
+  "ru": "аукцион"
+ },
+ "event_type.auction_bid": {
+  "en": "bid",
+  "ru": "ставка"
+ },
+ "event_type.auction_pass": {
+  "en": "auction pass",
+  "ru": "пас на аукционе"
+ },
+ "event_type.auction_start": {
+  "en": "auction",
+  "ru": "аукцион"
+ },
+ "event_type.auction_unwon": {
+  "en": "auction unwon",
+  "ru": "аукцион не разыгран"
+ },
+ "event_type.auction_win": {
+  "en": "auction",
+  "ru": "аукцион"
+ },
+ "event_type.aucwin": {
+  "en": "auction won",
+  "ru": "аукцион выигран"
+ },
+ "event_type.bank": {
+  "en": "bankrupt",
+  "ru": "банкротство"
+ },
+ "event_type.bankrupt": {
+  "en": "bankrupt",
+  "ru": "банкрот"
+ },
+ "event_type.bid": {
+  "en": "bid",
+  "ru": "ставка"
+ },
+ "event_type.build": {
+  "en": "build",
+  "ru": "стройка"
+ },
+ "event_type.buy": {
+  "en": "buy",
+  "ru": "покупка"
+ },
+ "event_type.card": {
+  "en": "card",
+  "ru": "карта"
+ },
+ "event_type.card_draw": {
+  "en": "card",
+  "ru": "карта"
+ },
+ "event_type.card_gain": {
+  "en": "card gain",
+  "ru": "карта получена"
+ },
+ "event_type.card_land": {
+  "en": "card",
+  "ru": "карта"
+ },
+ "event_type.card_null": {
+  "en": "blank card",
+  "ru": "карта без эффекта"
+ },
+ "event_type.cash": {
+  "en": "cash",
+  "ru": "наличные"
+ },
+ "event_type.collect": {
+  "en": "collect",
+  "ru": "получение"
+ },
+ "event_type.collect_from_all": {
+  "en": "collect",
+  "ru": "сбор"
+ },
+ "event_type.free_parking": {
+  "en": "free parking",
+  "ru": "бесплатная парковка"
+ },
+ "event_type.go": {
+  "en": "GO lap",
+  "ru": "круг GO"
+ },
+ "event_type.go_bonus": {
+  "en": "bonus",
+  "ru": "бонус"
+ },
+ "event_type.jail": {
+  "en": "jail",
+  "ru": "тюрьма"
+ },
+ "event_type.land": {
+  "en": "land",
+  "ru": "клетка"
+ },
+ "event_type.land_self": {
+  "en": "own tile",
+  "ru": "своя клетка"
+ },
+ "event_type.mort": {
+  "en": "mortgage",
+  "ru": "залог"
+ },
+ "event_type.mortgage": {
+  "en": "mortgage",
+  "ru": "залог"
+ },
+ "event_type.move": {
+  "en": "move",
+  "ru": "ход"
+ },
+ "event_type.over": {
+  "en": "game over",
+  "ru": "конец игры"
+ },
+ "event_type.park": {
+  "en": "parking",
+  "ru": "парковка"
+ },
+ "event_type.pass": {
+  "en": "pass",
+  "ru": "пропуск"
+ },
+ "event_type.pass_on_purchase": {
+  "en": "pass on purchase",
+  "ru": "пас при покупке"
+ },
+ "event_type.pay": {
+  "en": "payment",
+  "ru": "платёж"
+ },
+ "event_type.pay_each_player": {
+  "en": "pay",
+  "ru": "выплата"
+ },
+ "event_type.purchase": {
+  "en": "purchase",
+  "ru": "покупка"
+ },
+ "event_type.purchase_dropped": {
+  "en": "purchase dropped",
+  "ru": "покупка сорвана"
+ },
+ "event_type.rent": {
+  "en": "rent",
+  "ru": "рента"
+ },
+ "event_type.roll": {
+  "en": "roll",
+  "ru": "бросок"
+ },
+ "event_type.round_limit": {
+  "en": "round limit",
+  "ru": "лимит раундов"
+ },
+ "event_type.sell": {
+  "en": "sell",
+  "ru": "продажа"
+ },
+ "event_type.setup": {
+  "en": "setup",
+  "ru": "подготовка"
+ },
+ "event_type.start": {
+  "en": "start",
+  "ru": "начало"
+ },
+ "event_type.tax": {
+  "en": "tax",
+  "ru": "налог"
+ },
+ "event_type.teleport": {
+  "en": "teleport",
+  "ru": "телепорт"
+ },
+ "event_type.trade": {
+  "en": "trade",
+  "ru": "сделка"
+ },
+ "event_type.trade_declined": {
+  "en": "trade declined",
+  "ru": "сделка отклонена"
+ },
+ "event_type.trade_proposed": {
+  "en": "trade proposed",
+  "ru": "сделка предложена"
+ },
+ "event_type.trdno": {
+  "en": "trade refused",
+  "ru": "сделка отклонена"
+ },
+ "event_type.trdoffer": {
+  "en": "trade offer",
+  "ru": "предложение сделки"
+ },
+ "event_type.unmort": {
+  "en": "unmortgage",
+  "ru": "выкуп"
+ },
+ "event_type.unmortgage": {
+  "en": "unmortgage",
+  "ru": "выкуп из залога"
+ },
+ "event_type.winner": {
+  "en": "win",
+  "ru": "победа"
+ },
+ "fl.player": {
+  "en": "All players",
+  "ru": "Все игроки"
+ },
+ "fl.type": {
+  "en": "All types",
+  "ru": "Все типы"
+ },
+ "gv.journal_export_fail_body": {
+  "en": "Could not write the file.",
+  "ru": "Не удалось записать файл."
+ },
+ "gv.journal_export_fail_title": {
+  "en": "Journal export",
+  "ru": "Экспорт журнала"
+ },
+ "gv.journal_export_ok_body": {
+  "en": "File: %s",
+  "ru": "Файл: %s"
+ },
+ "gv.journal_export_ok_title": {
+  "en": "Journal exported",
+  "ru": "Журнал экспортирован"
+ },
+ "gv.rejected_body": {
+  "en": "Reason: %s",
+  "ru": "Причина: %s"
+ },
+ "gv.rejected_title": {
+  "en": "Action rejected",
+  "ru": "Действие отклонено"
+ },
+ "gv.select_tile": {
+  "en": "Select a tile",
+  "ru": "Выберите тайл"
+ },
+ "gv.select_tile_body": {
+  "en": "Click the board tile you want to change.",
+  "ru": "Кликните по тайлу на доске, который хотите изменить."
+ },
+ "ins.body": {
+  "en": "«%s»  %s%s\nprice $%d · rent $%d · %s%s",
+  "ru": "«%s»  %s%s\nцена $%d · аренда $%d · %s%s"
+ },
+ "ins.close_tip": {
+  "en": "Close the tile inspector",
+  "ru": "Закрыть справку по клетке"
+ },
+ "ins.free": {
+  "en": "— unowned",
+  "ru": "— свободен"
+ },
+ "ins.hotel": {
+  "en": "HOTEL",
+  "ru": "HOTEL"
+ },
+ "ins.house": {
+  "en": " · house: %s",
+  "ru": " · дом: %s"
+ },
+ "ins.mortgaged": {
+  "en": " · MORTGAGED",
+  "ru": " · ЗАЛОЖЕН"
+ },
+ "ins.owner": {
+  "en": "owner: ",
+  "ru": "владелец: "
+ },
+ "ins.pin_tip": {
+  "en": "Pin this inspector (keep it open)",
+  "ru": "Закрепить справку (не скрывать автоматически)"
+ },
+ "ins.placeholder": {
+  "en": "Click a board tile",
+  "ru": "Кликните по тайлу доски"
+ },
+ "ins.title": {
+  "en": "TILE",
+  "ru": "КЛЕТКА"
+ },
+ "invite.close": {
+  "en": "Close",
+  "ru": "Закрыть"
+ },
+ "invite.copied": {
+  "en": "Link copied",
+  "ru": "Ссылка скопирована"
+ },
+ "invite.copy": {
+  "en": "Copy",
+  "ru": "Копировать"
+ },
+ "invite.hint": {
+  "en": "EACH friend gets their OWN link. They open it in a browser and are in the game: nothing to install. The link is valid for this match only.",
+  "ru": "Каждому другу — СВОЯ ссылка. Он открывает её в браузере и сразу попадает в игру: ничего устанавливать не нужно. Ссылка действует только для этой партии."
+ },
+ "invite.title": {
+  "en": "Match created — send the link to your friends",
+  "ru": "Партия создана — отправьте ссылку друзьям"
+ },
+ "join.connecting": {
+  "en": "Joining the match…",
+  "ru": "Подключаемся к партии…"
+ },
+ "join.failed": {
+  "en": "Could not connect",
+  "ru": "Не удалось подключиться"
+ },
+ "join.joined": {
+  "en": "You are in! Wait for your turn.",
+  "ru": "Вы в игре! Ожидайте своего хода."
+ },
+ "join.no_invite": {
+  "en": "This is a normal launch. To play with friends, open the invitation link from the host.",
+  "ru": "Это обычный запуск игры. Чтобы играть с друзьями, откройте ссылку-приглашение от ведущего."
+ },
+ "join.retry": {
+  "en": "Try again",
+  "ru": "Попробовать снова"
+ },
+ "join.title": {
+  "en": "Neuro Property Trade",
+  "ru": "Neuro Property Trade"
+ },
+ "jrn.all": {
+  "en": "all",
+  "ru": "все"
+ },
+ "jrn.count_tip": {
+  "en": "How many events are shown vs the total in the log.",
+  "ru": "Сколько событий показано из общего числа в журнале."
+ },
+ "jrn.export_tip": {
+  "en": "Export the full log to a JSONL file (user://journal_export.jsonl)",
+  "ru": "Экспортировать весь журнал в JSONL-файл (user://journal_export.jsonl)"
+ },
+ "jrn.money_tip": {
+  "en": "Show only money-related events (purchases, rent, taxes, payments).",
+  "ru": "Показывать только события, связанные с деньгами (покупки, аренда, налоги, выплаты)."
+ },
+ "jrn.player_filter_tip": {
+  "en": "Show events for this player only (or all).",
+  "ru": "Показывать события только этого игрока (или всех)."
+ },
+ "jrn.player_lbl": {
+  "en": "player",
+  "ru": "игрок"
+ },
+ "jrn.player_tip": {
+  "en": "Filter the log by player",
+  "ru": "Фильтр журнала по игроку"
+ },
+ "jrn.title": {
+  "en": "◆ EVENT LOG",
+  "ru": "◆ ХОД СОБЫТИЙ"
+ },
+ "jrn.type_filter_tip": {
+  "en": "Show events of this type only (or all).",
+  "ru": "Показывать события только этого типа (или все)."
+ },
+ "jrn.type_lbl": {
+  "en": "type",
+  "ru": "тип"
+ },
+ "jrn.type_tip": {
+  "en": "Filter the log by event type",
+  "ru": "Фильтр журнала по типу события"
+ },
+ "modal.accept": {
+  "en": "ACCEPT",
+  "ru": "ПРИНЯТЬ"
+ },
+ "modal.accept_tip": {
+  "en": "Accept the offer — the trade will execute",
+  "ru": "Принять предложение — обмен выполнится"
+ },
+ "modal.auction_high": {
+  "en": "Current bid: $%d",
+  "ru": "Текущая ставка: $%d"
+ },
+ "modal.auction_leader": {
+  "en": "Leading: %s",
+  "ru": "Лидирует: %s"
+ },
+ "modal.auction_none": {
+  "en": "No bids yet",
+  "ru": "Ставок ещё нет"
+ },
+ "modal.auction_title": {
+  "en": "AUCTION",
+  "ru": "АУКЦИОН"
+ },
+ "modal.auction_watch": {
+  "en": "Spectating the auction (bids are public)",
+  "ru": "Наблюдение за торгами (ставки публичны)"
+ },
+ "modal.banner_action_tip": {
+  "en": "Banner action",
+  "ru": "Действие баннера"
+ },
+ "modal.bid_btn": {
+  "en": "BID",
+  "ru": "СТАВКА"
+ },
+ "modal.bid_btn_tip": {
+  "en": "Place a bid on this tile",
+  "ru": "Сделать ставку на эту клетку"
+ },
+ "modal.bid_lbl": {
+  "en": "Bid $",
+  "ru": "Ставка $"
+ },
+ "modal.bid_tip": {
+  "en": "Your bid. Must be higher than the current one.",
+  "ru": "Ваша ставка. Должна быть выше текущей."
+ },
+ "modal.build_title": {
+  "en": "BUILD / MORTGAGE",
+  "ru": "СТРОЙКА / ЗАЛОГ"
+ },
+ "modal.cancel_tip": {
+  "en": "Close without sending",
+  "ru": "Закрыть окно без отправки"
+ },
+ "modal.close_btn": {
+  "en": "CLOSE",
+  "ru": "ЗАКРЫТЬ"
+ },
+ "modal.decline": {
+  "en": "DECLINE",
+  "ru": "ОТКЛОНИТЬ"
+ },
+ "modal.decline_tip": {
+  "en": "Decline the offer — the trade will not happen",
+  "ru": "Отклонить предложение — сделка не состоится"
+ },
+ "modal.empty_offer": {
+  "en": "Offer is not valid: pick tiles or enter an amount",
+  "ru": "Предложение недопустимо: выберите тайлы или укажите сумму"
+ },
+ "modal.game_over": {
+  "en": "MATCH OVER",
+  "ru": "ПАРТИЯ ОКОНЧЕНА"
+ },
+ "modal.give_cash": {
+  "en": "Give $",
+  "ru": "Даю $"
+ },
+ "modal.give_cash_tip": {
+  "en": "How much cash you give in the trade.",
+  "ru": "Сколько денег вы отдаёте в сделке."
+ },
+ "modal.give_hint": {
+  "en": "You give (pick your tiles by clicking the board):",
+  "ru": "Даёте (ваши тайлы выбирайте кликом по доске):"
+ },
+ "modal.give_placeholder": {
+  "en": "— select:  [ BUILD/MORTGAGE selects a tile ]",
+  "ru": "— выберите:  [ СТРОЙКА/ЗАЛОГ выбирает тайл ]"
+ },
+ "modal.house_cost": {
+  "en": "House: %s  ·  house cost $%s",
+  "ru": "Дом: %s  ·  стоимость дома $%s"
+ },
+ "modal.lot_name": {
+  "en": "Lot: «%s»",
+  "ru": "Лот: «%s»"
+ },
+ "modal.msg_ok_tip": {
+  "en": "Close this message",
+  "ru": "Закрыть это сообщение"
+ },
+ "modal.no_tiles": {
+  "en": "no tiles",
+  "ru": "нет тайлов"
+ },
+ "modal.offer": {
+  "en": "PROPOSE",
+  "ru": "ПРЕДЛОЖИТЬ"
+ },
+ "modal.offer_tip": {
+  "en": "Send this offer to the selected player",
+  "ru": "Отправить это предложение выбранному игроку"
+ },
+ "modal.pass_btn": {
+  "en": "PASS",
+  "ru": "ПАСС"
+ },
+ "modal.pass_tip": {
+  "en": "Leave the auction — you no longer participate in this lot",
+  "ru": "Выйти из аукциона — больше не участвуете в этом лоте"
+ },
+ "modal.recipient": {
+  "en": "Recipient:",
+  "ru": "Получатель:"
+ },
+ "modal.recipient_tip": {
+  "en": "Who you propose the trade to.",
+  "ru": "Кому вы предлагаете сделку."
+ },
+ "modal.rematch": {
+  "en": "REMATCH",
+  "ru": "РЕВАНШ"
+ },
+ "modal.rematch_tip": {
+  "en": "Start a new match with the same settings",
+  "ru": "Начать новую партию с теми же настройками"
+ },
+ "modal.rules_back_tip": {
+  "en": "Back to settings",
+  "ru": "Вернуться к настройкам"
+ },
+ "modal.rules_btn": {
+  "en": "RULES",
+  "ru": "ПРАВИЛА"
+ },
+ "modal.rules_tip": {
+  "en": "Show full game rules for the current settings",
+  "ru": "Показать полные правила игры по текущим настройкам"
+ },
+ "modal.settings": {
+  "en": "SETTINGS",
+  "ru": "НАСТРОЙКИ"
+ },
+ "modal.settings_panel_tip": {
+  "en": "Close the settings window",
+  "ru": "Закрыть окно настроек"
+ },
+ "modal.settings_tip": {
+  "en": "Open match settings",
+  "ru": "Открыть настройки матча"
+ },
+ "modal.sound_tip": {
+  "en": "Toggle sound: %s",
+  "ru": "Включить/выключить звук: %s"
+ },
+ "modal.sound_title": {
+  "en": "SOUND",
+  "ru": "ЗВУК"
+ },
+ "modal.stats": {
+  "en": "Turns: %d   ·   Players: %d   ·   Capital: $%d",
+  "ru": "Ходов: %d   ·   Игроков: %d   ·   Капитал: $%d"
+ },
+ "modal.tile_header": {
+  "en": "Tile: «%s» (%d)",
+  "ru": "Тайл: «%s» (%d)"
+ },
+ "modal.trade_offers": {
+  "en": "%s offers %s:",
+  "ru": "%s предлагает %s:"
+ },
+ "modal.trade_response": {
+  "en": "INCOMING TRADE",
+  "ru": "ВХОДЯЩАЯ СДЕЛКА"
+ },
+ "modal.trade_terms": {
+  "en": "Gives: $%d + %d tiles   ·   Asks: $%d + %d tiles",
+  "ru": "Даёт: $%d + %d тайл(а)   ·   Просит: $%d + %d тайл(а)"
+ },
+ "modal.trade_title": {
+  "en": "TRADE",
+  "ru": "ТОРГ"
+ },
+ "modal.want_cash": {
+  "en": "Want $",
+  "ru": "Хочу $"
+ },
+ "modal.want_cash_tip": {
+  "en": "How much cash you ask in the trade.",
+  "ru": "Сколько денег вы просите в сделке."
+ },
+ "modal.want_hint": {
+  "en": "You ask (their tiles):",
+  "ru": "Просите (его тайлы):"
+ },
+ "modal.want_placeholder": {
+  "en": "— specify tiles / cash below",
+  "ru": "— укажите тайлы / деньги ниже"
+ },
+ "modal.winner": {
+  "en": "Winner: %s",
+  "ru": "Победитель: %s"
+ },
+ "mode.admin": {
+  "en": "ADMIN",
+  "ru": "АДМИН"
+ },
+ "mode.player": {
+  "en": "PLAYER",
+  "ru": "ИГРОК"
+ },
+ "mode.stream": {
+  "en": "LIVE",
+  "ru": "ЭФИР"
+ },
+ "persona.aggressor": {
+  "en": "Aggressor",
+  "ru": "Агрессор"
+ },
+ "persona.cautious": {
+  "en": "Cautious",
+  "ru": "Осторожный"
+ },
+ "persona.collector": {
+  "en": "Collector",
+  "ru": "Коллекционер"
+ },
+ "persona.miser": {
+  "en": "Miser",
+  "ru": "Скряга"
+ },
+ "persona.random": {
+  "en": "Random",
+  "ru": "Случайный"
+ },
+ "persona.tycoon": {
+  "en": "Tycoon",
+  "ru": "Магнат"
+ },
+ "ph.0": {
+  "en": "Roll",
+  "ru": "Бросок"
+ },
+ "ph.1": {
+  "en": "Move",
+  "ru": "Ход"
+ },
+ "ph.2": {
+  "en": "Purchase",
+  "ru": "Покупка"
+ },
+ "ph.3": {
+  "en": "End",
+  "ru": "Конец"
+ },
+ "phase.AUCTION": {
+  "en": "Auction",
+  "ru": "Аукцион"
+ },
+ "phase.CARD_WAIT": {
+  "en": "Card",
+  "ru": "Карта"
+ },
+ "phase.END_GAME": {
+  "en": "Game over",
+  "ru": "Игра окончена"
+ },
+ "phase.END_TURN": {
+  "en": "End turn",
+  "ru": "Конец хода"
+ },
+ "phase.JAIL_DECISION": {
+  "en": "Jail",
+  "ru": "Тюрьма"
+ },
+ "phase.PURCHASE_WAIT": {
+  "en": "Purchase",
+  "ru": "Покупка"
+ },
+ "phase.RENT_SETTLE": {
+  "en": "Rent",
+  "ru": "Аренда"
+ },
+ "phase.ROLL_RESOLVE": {
+  "en": "Roll",
+  "ru": "Бросок"
+ },
+ "phase.SETUP": {
+  "en": "Setup",
+  "ru": "Подготовка"
+ },
+ "phase.TURN_START": {
+  "en": "Turn start",
+  "ru": "Начало хода"
+ },
+ "plr.active": {
+  "en": "▶ turn",
+  "ru": "▶ ход"
+ },
+ "plr.auto_pass": {
+  "en": "auto-pass",
+  "ru": "авто-пас"
+ },
+ "plr.bankrupt": {
+  "en": "BANKRUPT",
+  "ru": "БАНКРОТ"
+ },
+ "plr.cold": {
+  "en": "Match not started yet",
+  "ru": "Партия ещё не начата"
+ },
+ "plr.pos_tiles": {
+  "en": "@ %s · %d tiles.",
+  "ru": "@ %s · %d тайл."
+ },
+ "plr.tooltip": {
+  "en": "Player: %s\nDriver: %s\nCash: $%d\nPosition: %s\nTiles: %d\nHouses: %d · Mortgaged: %d",
+  "ru": "Игрок: %s\nДрайвер: %s\nДеньги: $%d\nПозиция: %s\nТайлы: %d\nДома: %d · Залоги: %d"
+ },
+ "rules.ai_aggression": {
+  "en": "AI aggression: %d",
+  "ru": "Агрессия ИИ: %d"
+ },
+ "rules.auction_timer": {
+  "en": "Auction timer: %ds",
+  "ru": "Таймер аукциона: %dс"
+ },
+ "rules.auctions": {
+  "en": "Auctions on refusal: %s",
+  "ru": "Аукционы при отказе: %s"
+ },
+ "rules.dialog_title": {
+  "en": "RULES",
+  "ru": "ПРАВИЛА"
+ },
+ "rules.doubles": {
+  "en": "Doubles: %s",
+  "ru": "Дубли: %s"
+ },
+ "rules.even_build": {
+  "en": "Even build: %s",
+  "ru": "Равномерная застройка: %s"
+ },
+ "rules.free_parking": {
+  "en": "Free parking: %s",
+  "ru": "Бесплатная стоянка: %s"
+ },
+ "rules.go_bonus": {
+  "en": "GO bonus: $%d",
+  "ru": "Бонус за GO: $%d"
+ },
+ "rules.housing": {
+  "en": "Building: %s",
+  "ru": "Строительство: %s"
+ },
+ "rules.jail": {
+  "en": "Jail: %s (fine $%d)",
+  "ru": "Тюрьма: %s (штраф $%d)"
+ },
+ "rules.monopoly_x2": {
+  "en": "Monopoly ×2 rent: %s",
+  "ru": "Монополия ×2 аренда: %s"
+ },
+ "rules.mortgage": {
+  "en": "Mortgage: %s (%d%% / %d%%)",
+  "ru": "Залог: %s (%d%% / %d%%)"
+ },
+ "rules.off": {
+  "en": "off",
+  "ru": "выкл"
+ },
+ "rules.on": {
+  "en": "on",
+  "ru": "вкл"
+ },
+ "rules.round_limit": {
+  "en": "Round limit: %s",
+  "ru": "Лимит раундов: %s"
+ },
+ "rules.round_limit_off": {
+  "en": "none",
+  "ru": "нет"
+ },
+ "rules.starting_cash": {
+  "en": "Starting cash: $%d",
+  "ru": "Стартовый капитал: $%d"
+ },
+ "rules.timeout": {
+  "en": "Timeout: %s",
+  "ru": "Тайм-аут: %s"
+ },
+ "rules.title": {
+  "en": "RULES (current settings)",
+  "ru": "ПРАВИЛА (по текущим настройкам)"
+ },
+ "rules.trades": {
+  "en": "Trades: %s",
+  "ru": "Торги: %s"
+ },
+ "rules.triple_doubles": {
+  "en": "Triple doubles → jail: %s",
+  "ru": "Тройные дубли → тюрьма: %s"
+ },
+ "rules.turn_timer": {
+  "en": "Turn timer: %ds",
+  "ru": "Таймер хода: %dс"
+ },
+ "settings.add_player": {
+  "en": "+ add player",
+  "ru": "+ добавить игрока"
+ },
+ "settings.add_player_tip": {
+  "en": "Add another player (up to 8)",
+  "ru": "Добавить ещё одного игрока (до 8)"
+ },
+ "settings.ai_aggression": {
+  "en": "AI aggression",
+  "ru": "Агрессия ИИ"
+ },
+ "settings.ai_aggression_tip": {
+  "en": "How aggressively the AI trades and builds.",
+  "ru": "Насколько агрессивно ИИ торгуется и строит."
+ },
+ "settings.animations": {
+  "en": "Animations",
+  "ru": "Анимации"
+ },
+ "settings.animations_lbl": {
+  "en": "animations",
+  "ru": "анимации"
+ },
+ "settings.animations_tip": {
+  "en": "Smooth token and camera animations. Disable on weak machines.",
+  "ru": "Плавные анимации фишек и камеры. Выключите для слабых машин."
+ },
+ "settings.apply_btn": {
+  "en": "APPLY: new match",
+  "ru": "ПРИМЕНИТЬ: новая партия"
+ },
+ "settings.apply_tip": {
+  "en": "Rebuild the engine with these settings (requires restart)",
+  "ru": "Пересобрать движок с этими настройками (нужен рестарт)"
+ },
+ "settings.auction_timer": {
+  "en": "Auction timer",
+  "ru": "Таймер аукциона"
+ },
+ "settings.auction_timer_tip": {
+  "en": "Seconds per auction bid. 0 = no limit.",
+  "ru": "Сколько секунд на ставку в аукционе. 0 = без лимита."
+ },
+ "settings.auctions": {
+  "en": "Auctions",
+  "ru": "Аукционы"
+ },
+ "settings.auctions_off": {
+  "en": "Auctions: off",
+  "ru": "Аукцион: выкл"
+ },
+ "settings.auctions_on": {
+  "en": "Auctions: on",
+  "ru": "Аукцион: вкл"
+ },
+ "settings.auctions_tip": {
+  "en": "Whether to run an auction when a player refuses to buy a tile.",
+  "ru": "Проводить ли аукцион, когда игрок отказывается покупать клетку."
+ },
+ "settings.close_btn": {
+  "en": "✕ ESC",
+  "ru": "✕ ESC"
+ },
+ "settings.close_tip": {
+  "en": "Close settings (ESC)",
+  "ru": "Закрыть настройки (ESC)"
+ },
+ "settings.doubles": {
+  "en": "Doubles",
+  "ru": "Дубли"
+ },
+ "settings.doubles_lbl": {
+  "en": "doubles",
+  "ru": "дубли"
+ },
+ "settings.doubles_tip": {
+  "en": "Extra turn when rolling doubles.",
+  "ru": "Повторный ход при выпадении дублей."
+ },
+ "settings.driver.ai": {
+  "en": "AI",
+  "ru": "ИИ"
+ },
+ "settings.driver.chat": {
+  "en": "CHAT",
+  "ru": "ЧАТ"
+ },
+ "settings.driver.local": {
+  "en": "LOCAL",
+  "ru": "ЛОКАЛ"
+ },
+ "settings.driver.remote": {
+  "en": "Remote player",
+  "ru": "Друг по сети"
+ },
+ "settings.driver.remote_tip": {
+  "en": "A remote player — they open the invitation link in a browser or a second copy of the game.",
+  "ru": "Друг по сети — он открывает ссылку-приглашение в браузере или во второй копии игры."
+ },
+ "settings.driver.sdk_evil": {
+  "en": "Neuro (evil)",
+  "ru": "Neuro (злой)"
+ },
+ "settings.driver.sdk_neuro": {
+  "en": "Neuro",
+  "ru": "Neuro"
+ },
+ "settings.driver_tip": {
+  "en": "LOCAL = a human at this computer, AI = computer, CHAT = chat, sdk:neuro = Neuro, sdk:evil = second SDK (plays as AI).",
+  "ru": "LOCAL = человек за этим компьютером, AI = компьютер, CHAT = чат, sdk:neuro = Neuro, sdk:evil = второй SDK (играет как ИИ)."
+ },
+ "settings.err_dup_color": {
+  "en": "Player colors must be unique.",
+  "ru": "Цвета игроков должны быть уникальными."
+ },
+ "settings.err_dup_name": {
+  "en": "Player names must be unique.",
+  "ru": "Имена игроков должны быть уникальными."
+ },
+ "settings.err_dup_token": {
+  "en": "Player tokens must be unique.",
+  "ru": "Фишки игроков должны быть уникальными."
+ },
+ "settings.err_empty_name": {
+  "en": "Player name cannot be empty.",
+  "ru": "Имя игрока не может быть пустым."
+ },
+ "settings.err_min2": {
+  "en": "Need at least 2 players.",
+  "ru": "Нужно минимум 2 игрока."
+ },
+ "settings.even_build": {
+  "en": "Even build",
+  "ru": "Ровная застройка"
+ },
+ "settings.even_build_lbl": {
+  "en": "even build",
+  "ru": "ровная застройка"
+ },
+ "settings.even_build_tip": {
+  "en": "Building is only allowed evenly across a group.",
+  "ru": "Строить можно только равномерно по группе."
+ },
+ "settings.event_overlay": {
+  "en": "Event log",
+  "ru": "Журнал событий"
+ },
+ "settings.event_overlay_lbl": {
+  "en": "event log",
+  "ru": "журнал событий"
+ },
+ "settings.event_overlay_tip": {
+  "en": "Whether to show the event log over the board.",
+  "ru": "Показывать ли журнал событий поверх доски."
+ },
+ "settings.fp_off": {
+  "en": "off",
+  "ru": "выкл"
+ },
+ "settings.fp_on": {
+  "en": "on",
+  "ru": "вкл"
+ },
+ "settings.free_parking": {
+  "en": "Free parking",
+  "ru": "Беспл. стоянка"
+ },
+ "settings.free_parking_tip": {
+  "en": "Whether taxes go to Free Parking and are paid to whoever lands there.",
+  "ru": "Собирать ли налоги в «Бесплатную стоянку» и отдавать их приземлившемуся."
+ },
+ "settings.go_bonus": {
+  "en": "GO bonus",
+  "ru": "Бонус за GO"
+ },
+ "settings.go_bonus_tip": {
+  "en": "How much a player gets when passing GO.",
+  "ru": "Сколько получает игрок, проходя через GO."
+ },
+ "settings.host_btn": {
+  "en": "Host a match for friends",
+  "ru": "Создать партию для друзей"
+ },
+ "settings.host_obs": {
+  "en": "watching only (no LOCAL)",
+  "ru": "только наблюдаю (без LOCAL)"
+ },
+ "settings.host_playing": {
+  "en": "playing (LOCAL)",
+  "ru": "играю (LOCAL)"
+ },
+ "settings.host_role_tip": {
+  "en": "“watching only” = the match has no LOCAL seat; AIs play themselves (observer mode).",
+  "ru": "«только наблюдаю» = в матче нет LOCAL-места, ИИ играют сами (режим наблюдателя)."
+ },
+ "settings.host_tip": {
+  "en": "Opens the server to other machines and shows invitation links",
+  "ru": "Поднимает сервер, открывает его для других машин и показывает ссылки-приглашения"
+ },
+ "settings.housing": {
+  "en": "Housing",
+  "ru": "Застройка"
+ },
+ "settings.housing_lbl": {
+  "en": "housing",
+  "ru": "застройка"
+ },
+ "settings.housing_tip": {
+  "en": "Allow building houses and hotels.",
+  "ru": "Разрешить строительство домов и отелей."
+ },
+ "settings.jail_both": {
+  "en": "both",
+  "ru": "оба"
+ },
+ "settings.jail_card_only": {
+  "en": "card",
+  "ru": "карта"
+ },
+ "settings.jail_fine": {
+  "en": "Jail fine",
+  "ru": "Штраф тюрьмы"
+ },
+ "settings.jail_fine_only": {
+  "en": "fine",
+  "ru": "штраф"
+ },
+ "settings.jail_fine_tip": {
+  "en": "How much it costs to leave jail with money.",
+  "ru": "Сколько стоит выйти из тюрьмы за деньги."
+ },
+ "settings.jail_rule": {
+  "en": "Jail",
+  "ru": "Тюрьма"
+ },
+ "settings.jail_rule_tip": {
+  "en": "How to leave jail: both ways, only fine, or only card.",
+  "ru": "Как можно выйти из тюрьмы: оба способа, только штраф или только карта."
+ },
+ "settings.lang_en": {
+  "en": "English",
+  "ru": "Английский"
+ },
+ "settings.lang_ru": {
+  "en": "Russian",
+  "ru": "Русский"
+ },
+ "settings.language_tip": {
+  "en": "Interface language (full localization).",
+  "ru": "Язык интерфейса (полная локализация)."
+ },
+ "settings.loan_pct": {
+  "en": "Loan %",
+  "ru": "Залог %"
+ },
+ "settings.loan_pct_tip": {
+  "en": "What percentage of value a mortgage gives.",
+  "ru": "Какой процент стоимости даёт залог."
+ },
+ "settings.monopoly_x2": {
+  "en": "Monopoly ×2",
+  "ru": "Монополия ×2"
+ },
+ "settings.monopoly_x2_lbl": {
+  "en": "monopoly ×2",
+  "ru": "монополия ×2"
+ },
+ "settings.monopoly_x2_tip": {
+  "en": "The owner of a full set gets double rent.",
+  "ru": "Владелец всей группы получает двойную аренду."
+ },
+ "settings.mortgage": {
+  "en": "Mortgage",
+  "ru": "Залог"
+ },
+ "settings.mortgage_lbl": {
+  "en": "mortgage",
+  "ru": "залог"
+ },
+ "settings.mortgage_tip": {
+  "en": "Allow mortgaging tiles.",
+  "ru": "Разрешить залог клеток."
+ },
+ "settings.name_tip": {
+  "en": "Player name shown on the board and in the list.",
+  "ru": "Имя игрока, отображаемое на доске и в списке."
+ },
+ "settings.no_limit": {
+  "en": "no limit",
+  "ru": "нет лимита"
+ },
+ "settings.order_manual": {
+  "en": "manual",
+  "ru": "вручную"
+ },
+ "settings.order_random": {
+  "en": "random",
+  "ru": "случайный"
+ },
+ "settings.persona": {
+  "en": "Character",
+  "ru": "Характер"
+ },
+ "settings.persona_tip": {
+  "en": "How this AI player behaves: buying, bidding, trading.",
+  "ru": "Как этот ИИ-игрок себя ведёт: покупает, ставит на аукционе, торгует."
+ },
+ "settings.players_lbl": {
+  "en": "players",
+  "ru": "игроки"
+ },
+ "settings.preset_classic": {
+  "en": "Classic",
+  "ru": "Классика"
+ },
+ "settings.preset_classic_tip": {
+  "en": "Standard Monopoly rules",
+  "ru": "Стандартные правила Monopoly"
+ },
+ "settings.preset_fast": {
+  "en": "Quick game",
+  "ru": "Быстрая партия"
+ },
+ "settings.preset_fast_tip": {
+  "en": "10s timer, 1000 capital",
+  "ru": "Таймер 10с, капитал 1000"
+ },
+ "settings.preset_hard": {
+  "en": "Hardcore",
+  "ru": "Хардкор"
+ },
+ "settings.preset_hard_tip": {
+  "en": "No mortgage/trades, aggression 80",
+  "ru": "Без залога/торгов, агрессия 80"
+ },
+ "settings.presets_lbl": {
+  "en": "PRESETS:",
+  "ru": "ПРЕСЕТЫ:"
+ },
+ "settings.remove_tip": {
+  "en": "Remove this player from the match",
+  "ru": "Удалить этого игрока из партии"
+ },
+ "settings.repay_pct": {
+  "en": "Repay %",
+  "ru": "Выкуп %"
+ },
+ "settings.repay_pct_tip": {
+  "en": "What percentage of value a mortgage costs to repay.",
+  "ru": "Какой процент стоимости стоит выкуп залога."
+ },
+ "settings.reset_btn": {
+  "en": "reset",
+  "ru": "сброс"
+ },
+ "settings.reset_tip": {
+  "en": "Reset all settings to defaults",
+  "ru": "Сбросить все настройки к значениям по умолчанию"
+ },
+ "settings.rng_seed": {
+  "en": "RNG seed (0 = random):",
+  "ru": "RNG-сид (0 = случайно):"
+ },
+ "settings.rng_seed_tip": {
+  "en": "Number for a reproducible match. 0 = random.",
+  "ru": "Число для воспроизводимой партии. 0 = случайная."
+ },
+ "settings.roles_label": {
+  "en": "players/seats:",
+  "ru": "игроки/места:"
+ },
+ "settings.round_limit": {
+  "en": "Round limit",
+  "ru": "Лимит раундов"
+ },
+ "settings.round_limit_off": {
+  "en": "0 — no limit",
+  "ru": "0 — без лимита"
+ },
+ "settings.round_limit_tip": {
+  "en": "After this many rounds the match ends and the RICHEST seat wins. 0 plays until one survivor.\n\nWithout a limit a match can be unbounded: with no colour group nothing is built, rent stays trivial, the bank pays out for passing GO and bankruptcy becomes impossible. Measured: a normal match ends in 19-45 rounds.",
+  "ru": "После стольких раундов партия кончается, и побеждает самый богатый. 0 — играть до последнего выжившего.\n\nБез лимита партия может не кончиться: если не собрать ни одной монополии, дома не строятся, аренда мизерная, банк платит за проход GO, и разориться невозможно. Замерено: обычная партия кончается за 19-45 раундов."
+ },
+ "settings.rules_btn": {
+  "en": "📜 RULES",
+  "ru": "📜 ПРАВИЛА"
+ },
+ "settings.rules_tip": {
+  "en": "Show full rules for the current settings",
+  "ru": "Показать полные правила по текущим настройкам"
+ },
+ "settings.seat_count": {
+  "en": "Players: %d",
+  "ru": "Игроки: %d"
+ },
+ "settings.sound": {
+  "en": "Sound",
+  "ru": "Звук"
+ },
+ "settings.sound_lbl": {
+  "en": "sound",
+  "ru": "звук"
+ },
+ "settings.sound_tip": {
+  "en": "Sound effects (dice, toasts, timer).",
+  "ru": "Звуковые эффекты (кубики, тосты, таймер)."
+ },
+ "settings.spectacle": {
+  "en": "Cinematic camera",
+  "ru": "Камера-«кино»"
+ },
+ "settings.spectacle_lbl": {
+  "en": "cinematic camera",
+  "ru": "камера-«кино»"
+ },
+ "settings.spectacle_tip": {
+  "en": "Camera that follows the action. Off by default — the board is always fully visible.",
+  "ru": "Камера, следящая за действием. По умолчанию выключена — доска всегда целиком."
+ },
+ "settings.start_btn": {
+  "en": "▶  START MATCH",
+  "ru": "▶  СТАРТ ПАРТИЮ"
+ },
+ "settings.start_tip": {
+  "en": "Start the match with the selected players and settings",
+  "ru": "Начать партию с выбранными игроками и настройками"
+ },
+ "settings.starting_cash": {
+  "en": "Starting cash",
+  "ru": "Стартовый капитал"
+ },
+ "settings.starting_cash_tip": {
+  "en": "How much cash each player starts with.",
+  "ru": "Сколько денег у каждого игрока в начале."
+ },
+ "settings.starting_order_tip": {
+  "en": "Random turn order or the order in the player list.",
+  "ru": "Случайный порядок ходов или порядок в списке игроков."
+ },
+ "settings.tab_data": {
+  "en": "Data",
+  "ru": "Данные"
+ },
+ "settings.tab_interface": {
+  "en": "Interface",
+  "ru": "Интерфейс"
+ },
+ "settings.tab_players": {
+  "en": "Players",
+  "ru": "Игроки"
+ },
+ "settings.tab_rules": {
+  "en": "Rules",
+  "ru": "Правила"
+ },
+ "settings.tab_tempo": {
+  "en": "Tempo",
+  "ru": "Темп"
+ },
+ "settings.tile_count": {
+  "en": "Board tiles:",
+  "ru": "Клеток на доске:"
+ },
+ "settings.tile_count_tip": {
+  "en": "Board perimeter size (16–64, multiple of 4). Smaller = more compact, larger = longer match.",
+  "ru": "Размер периметра доски (16–64, кратно 4). Меньше — компактнее, больше — длиннее партия."
+ },
+ "settings.timeout": {
+  "en": "Timeout",
+  "ru": "Тайм-аут"
+ },
+ "settings.timeout_auto_pass": {
+  "en": "auto-pass",
+  "ru": "авто-пас"
+ },
+ "settings.timeout_away": {
+  "en": "mark away",
+  "ru": "пометить away"
+ },
+ "settings.timeout_tip": {
+  "en": "What to do when a player misses the timer.",
+  "ru": "Что делать, когда игрок не успел сходить за таймер."
+ },
+ "settings.title": {
+  "en": "MATCH SETTINGS",
+  "ru": "НАСТРОЙКИ МАТЧА"
+ },
+ "settings.token_tip": {
+  "en": "Player token (unique).",
+  "ru": "Фишка игрока (уникальная)."
+ },
+ "settings.trades": {
+  "en": "Trades",
+  "ru": "Торги"
+ },
+ "settings.trades_lbl": {
+  "en": "trades",
+  "ru": "торги"
+ },
+ "settings.trades_tip": {
+  "en": "Allow trades between players.",
+  "ru": "Разрешить сделки между игроками."
+ },
+ "settings.triple_doubles": {
+  "en": "3 doubles → jail",
+  "ru": "3 дубля → тюрьма"
+ },
+ "settings.triple_doubles_lbl": {
+  "en": "3 doubles → jail",
+  "ru": "3 дубля → тюрьма"
+ },
+ "settings.triple_doubles_tip": {
+  "en": "Three doubles in a row send you to jail.",
+  "ru": "Три дубля подряд отправляют в тюрьму."
+ },
+ "settings.turn_timer": {
+  "en": "Turn timer",
+  "ru": "Таймер хода"
+ },
+ "settings.turn_timer_tip": {
+  "en": "Seconds per turn. 0 = no limit.",
+  "ru": "Сколько секунд у игрока на ход. 0 = без лимита."
+ },
+ "stat.hotels": {
+  "en": "Hotel",
+  "ru": "Отель"
+ },
+ "stat.houses": {
+  "en": "1 house",
+  "ru": "1 дом"
+ },
+ "stat.mortgaged": {
+  "en": "Mortgaged",
+  "ru": "В залоге"
+ },
+ "toast.admin_override": {
+  "en": "Admin: %s",
+  "ru": "Админ: %s"
+ },
+ "toast.auction_start": {
+  "en": "Auction: «%s»",
+  "ru": "Аукцион: «%s»"
+ },
+ "toast.auction_win": {
+  "en": "%s won auction of «%s»",
+  "ru": "%s выиграл аукцион «%s»"
+ },
+ "toast.bankrupt": {
+  "en": "%s went bankrupt!",
+  "ru": "%s обанкротился!"
+ },
+ "toast.build": {
+  "en": "%s built on «%s»",
+  "ru": "%s построил на «%s»"
+ },
+ "toast.dismiss_tip": {
+  "en": "Close",
+  "ru": "Закрыть"
+ },
+ "toast.go_bonus": {
+  "en": "%s gets GO bonus",
+  "ru": "%s получает бонус GO"
+ },
+ "toast.jail": {
+  "en": "%s went to jail",
+  "ru": "%s попал в тюрьму"
+ },
+ "toast.mortgage": {
+  "en": "%s mortgaged «%s»",
+  "ru": "%s заложил «%s»"
+ },
+ "toast.pass": {
+  "en": "%s did not buy «%s»",
+  "ru": "%s не купил «%s»"
+ },
+ "toast.pay": {
+  "en": "%s paid $%d",
+  "ru": "%s заплатил $%d"
+ },
+ "toast.purchase": {
+  "en": "%s bought «%s» for $%d",
+  "ru": "%s купил «%s» за $%d"
+ },
+ "toast.rematch": {
+  "en": "REMATCH",
+  "ru": "РЕВАНШ"
+ },
+ "toast.rent": {
+  "en": "%s paid rent",
+  "ru": "%s заплатил аренду"
+ },
+ "toast.rent_merged": {
+  "en": "%s pays $%d: %d payments",
+  "ru": "%s платит $%d: %d платежа"
+ },
+ "toast.sell": {
+  "en": "%s sold from «%s»",
+  "ru": "%s продал с «%s»"
+ },
+ "toast.tax": {
+  "en": "%s paid tax",
+  "ru": "%s заплатил налог"
+ },
+ "toast.trade": {
+  "en": "Trade complete",
+  "ru": "Сделка завершена"
+ },
+ "toast.winner": {
+  "en": "%s WINS!",
+  "ru": "%s ПОБЕДИЛ!"
+ },
+ "top.admin_hint": {
+  "en": "F12 — admin",
+  "ru": "F12 — админ"
+ },
+ "top.cold": {
+  "en": "not started",
+  "ru": "до старта"
+ },
+ "top.eye_tip": {
+  "en": "Observer mode: return to match settings (seats without LOCAL play themselves)",
+  "ru": "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)"
+ },
+ "top.lang_tip": {
+  "en": "Interface language",
+  "ru": "Язык интерфейса"
+ },
+ "top.phase": {
+  "en": "PHASE: ",
+  "ru": "ФАЗА: "
+ },
+ "top.pot": {
+  "en": "PARKING POT",
+  "ru": "БАНК ПАРКОВКИ"
+ },
+ "top.restart_tip": {
+  "en": "Rebuild the match with a new seed (restart)",
+  "ru": "Пересобрать партию с новым сидом (рестарт)"
+ },
+ "top.round": {
+  "en": "ROUND",
+  "ru": "РАУНД"
+ },
+ "top.settings_tip": {
+  "en": "Open settings and game rules",
+  "ru": "Открыть настройки и правила игры"
+ },
+ "top.skin_tip": {
+  "en": "Interface theme",
+  "ru": "Тема оформления"
+ },
+ "top.title": {
+  "en": "● NEURO PROPERTY TRADE",
+  "ru": "● NEURO PROPERTY TRADE"
+ },
+ "top.turn": {
+  "en": "TURN: ",
+  "ru": "ХОД: "
+ },
+ "ty.auction": {
+  "en": "Auctions",
+  "ru": "Аукционы"
+ },
+ "ty.build": {
+  "en": "Build and mortgage",
+  "ru": "Стройка и залог"
+ },
+ "ty.buy": {
+  "en": "Purchases",
+  "ru": "Покупки"
+ },
+ "ty.card": {
+  "en": "Cards",
+  "ru": "Карты"
+ },
+ "ty.money": {
+  "en": "Money",
+  "ru": "Деньги"
+ },
+ "ty.other": {
+  "en": "Other",
+  "ru": "Прочее"
+ },
+ "ty.roll": {
+  "en": "Rolls",
+  "ru": "Броски"
+ },
+ "ty.trade": {
+  "en": "Trades",
+  "ru": "Торги"
+ },
+ "ui.back": {
+  "en": "BACK",
+  "ru": "НАЗАД"
+ },
+ "ui.cancel": {
+  "en": "Cancel",
+  "ru": "Отмена"
+ },
+ "ui.close": {
+  "en": "Close",
+  "ru": "Закрыть"
+ },
+ "ui.host_role": {
+  "en": "Host role:",
+  "ru": "Роль хоста:"
+ },
+ "ui.language": {
+  "en": "Language",
+  "ru": "Язык"
+ },
+ "ui.ok": {
+  "en": "OK",
+  "ru": "OK"
+ },
+ "ui.players": {
+  "en": "PLAYERS",
+  "ru": "ИГРОКИ"
+ },
+ "ui.reset": {
+  "en": "reset",
+  "ru": "сброс"
+ },
+ "ui.starting_order": {
+  "en": "Start order:",
+  "ru": "Нач. порядок:"
+ }
+}

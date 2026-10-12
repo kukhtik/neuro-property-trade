@@ -14,6 +14,15 @@
 и `ui-redesign-brief-2026-10.md` (те описывали текущую раскладку и тем самым
 фиксировали её как требование).
 
+## Поставка дизайна (v3 «Broadcast Table»)
+
+Пакет в `design/`: `DESIGN.md` (дизайн-система + §9 интеграция в приложение),
+`ui-prototype.html` (автономный прототип, собран из `design/src/`), `tokens.json`
+(токены в форме скина), `coverage.md` (карта F-01…F-73 / P-1…P-16, проверяется
+машинно), `regions.json`, `renders/` (PNG всех состояний, стили neuro/evil).
+Сборка/проверка: `design/tools/{build_data,build_prototype,check_package}.py`,
+рендеры — `py -3.12 design/tools/render_prototype.py --all`.
+
 ## Коротко о сути
 
 Регрессию внесла одна правка (`game/ui/theme.gd`, коммит `3d6928c`): фабрика меток
