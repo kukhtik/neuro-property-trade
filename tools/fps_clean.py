@@ -29,6 +29,9 @@ from statistics import mean, median
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 EXE = os.path.join(REPO, "build", "windows", "NeuroPropertyTrade.exe")
+## The host writes its PERF samples to `<log-dir>/perf.log` — they must not ride in the run log
+## (146 of 160 lines there were samples). The game truncates the file when a session starts.
+LOGDIR = os.path.join(REPO, "build", "fps_run")
 
 TOKEN_RE = re.compile(r"SERVER seat=(\d+) token=([0-9a-f]+)")
 ADDR_RE = re.compile(r"SERVER ready (ws://[\d.]+:\d+)")
@@ -93,6 +96,13 @@ def main() -> int:
         print("нет build/web — сначала соберите web-экспорт")
         return 1
 
+    # a stale perf.log from a previous run would be read as this run's numbers — remove it
+    # (the game truncates on its first write anyway)
+    os.makedirs(LOGDIR, exist_ok=True)
+    perf_path = os.path.join(LOGDIR, "perf.log")
+    if os.path.exists(perf_path):
+        os.remove(perf_path)
+
     web_port, host_port = free_port(8160), free_port(9760)
     site = subprocess.Popen(
         [sys.executable, os.path.join(HERE, "serve.py"), str(web_port),
@@ -105,7 +115,7 @@ def main() -> int:
         [EXE, "--resolution", "1440x900", "--rendering-driver", "opengl3", "--",
          "--autostart", "--smoke-drive", "--smoke-seats=2", "--remote-seats=1",
          "--seed=4242", "--server-bind=0.0.0.0", f"--server-port={host_port}",
-         "--round-limit=25", "--perf"],
+         "--round-limit=25", "--perf", f"--log-dir={LOGDIR.replace(os.sep, '/')}"],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         encoding="utf-8", errors="replace", bufsize=1, cwd=REPO,
     )
@@ -121,11 +131,6 @@ def main() -> int:
                 tokens[int(m.group(1))] = m.group(2)
             elif m := ADDR_RE.search(line):
                 addr = m.group(1)
-            elif line.startswith("PERF fps="):
-                try:
-                    host_fps.append(int(line.split("fps=")[1].split()[0]))
-                except (IndexError, ValueError):
-                    pass
 
     threading.Thread(target=read_host, daemon=True).start()
     dl = time.time() + 60
@@ -167,6 +172,17 @@ def main() -> int:
         b.close()
 
     host.terminate(); site.terminate()
+
+    # the host's samples come from perf.log, not from its process output: the run log keeps only
+    # events now. Read after the host stopped writing.
+    if os.path.exists(perf_path):
+        with open(perf_path, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.startswith("PERF fps="):
+                    try:
+                        host_fps.append(int(line.split("fps=")[1].split()[0]))
+                    except (IndexError, ValueError):
+                        pass
 
     print()
     print("=" * 68)

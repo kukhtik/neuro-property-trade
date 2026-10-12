@@ -19,6 +19,8 @@ var _elapsed := 0.0
 var _fps := 0.0
 var _worst_ms := 0.0
 var _say := true
+var _log_dir := ""
+var _perf_log_started := false
 
 
 func _init() -> void:
@@ -69,12 +71,14 @@ func _process(delta: float) -> void:
 	# Performance gives the working set, which is the number a player cares about.
 	var mem := float(Performance.get_monitor(Performance.MEMORY_STATIC)) / 1048576.0
 	var vp := get_viewport().get_visible_rect().size
-	_say = not _say   # print every other sample: twice a second is plenty
-	# AND TO STDOUT, not only to the screen: a screen cannot be captured from a session with no
+	_say = not _say   # write every other sample: once a second is plenty
+	# AND TO A FILE, not only to the screen: a screen cannot be captured from a session with no
 	# desktop (CI, an SSH run, a probe), and performance that cannot be measured cannot be tuned.
-	# "PERF" is a single stable line so any harness can grep it.
+	# "PERF" is a single stable line so any harness can grep it. It USED to go to stdout as well —
+	# which turned every captured run log into 146 PERF lines out of 160. The samples live in
+	# `perf.log` next to the role log now: one file for numbers, the other for events.
 	if _say:
-		print("PERF fps=%d max_ms=%.1f mem=%dMB viewport=%dx%d" % [int(round(_fps)), _worst_ms, int(mem), int(vp.x), int(vp.y)])
+		_append_perf("PERF fps=%d max_ms=%.1f mem=%dMB viewport=%dx%d" % [int(round(_fps)), _worst_ms, int(mem), int(vp.x), int(vp.y)])
 	_lbl_fps.text = "FPS %d" % int(round(_fps))
 	if _fps < 30.0:
 		_lbl_fps.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
@@ -87,3 +91,30 @@ func _process(delta: float) -> void:
 	# the same number a probe reads from the render
 	set_meta("fps", _fps)
 	set_meta("mem_mb", mem)
+
+
+## Where perf.log lives: the same directory the role logs go to (--log-dir), else user://.
+func set_log_dir(dir: String) -> void:
+	_log_dir = dir
+
+
+## Append one sample to perf.log. Truncated on the first write of a session: the file is THIS
+## run's history, and appending across runs would grow without bound — the same complaint the
+## stdout stream produced, one file over.
+func _append_perf(line: String) -> void:
+	var dir := _log_dir
+	if dir == "":
+		dir = ProjectSettings.globalize_path("user://")
+	var path := dir.path_join("perf.log")
+	var f: FileAccess = null
+	if _perf_log_started:
+		f = FileAccess.open(path, FileAccess.READ_WRITE)
+		if f != null:
+			f.seek_end()
+	else:
+		f = FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return   # nowhere to write (a read-only sandbox): the on-screen read-out still works
+	f.store_line(line)
+	f.close()
+	_perf_log_started = true

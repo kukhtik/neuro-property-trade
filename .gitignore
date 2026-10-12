@@ -43,3 +43,4 @@ game/tools/_*
 game/_*
 dist/
 build/
+__pycache__/

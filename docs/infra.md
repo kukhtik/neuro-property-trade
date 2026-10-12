@@ -160,3 +160,31 @@ git clone https://github.com/kukhtik/neuro-property-trade && cd neuro-property-t
 tools/ci/fetch_godot.sh      # ~86 MB, sha512-verified
 tools/ci/run_tests.sh        # expect: ORACLE PASSED (227 tests, 0 SCRIPT ERROR)
 ```
+
+## 8. Logs and measurement
+
+One run, one directory (`--log-dir=<dir>`, default `user://`):
+
+| File | Contents |
+|---|---|
+| `<role>.log` | events only: `ready`, `SERVER seat=… token=…`, `SEAT CLAIMED`, `VERDICT` — what a parent process needs in order to follow the run |
+| `perf.log` | `PERF fps=… max_ms=… mem=…`, one line per second, and **only with `--perf`** |
+
+Why PERF is NOT on stdout: with `--perf` the samples used to be printed there,
+and a captured run log was a log in name only — **146 of 160 lines were the
+samples** (`docs/specs/ui-defect-report.md` §D-02). The samples now live in
+their own file; `tools/fps_clean.py` and `tools/cycle_check.py` read `perf.log`
+from the run's log directory. The file is truncated when a session starts, so
+it is this run's history and nothing else.
+
+Frame-rate numbers are a gate, not a ritual: `tools/fps_clean.py` refuses to
+start while another host or `serve.py` is alive (a number taken next to a
+competing process measures the machine), prints `document.visibilityState` next
+to the number, and exits 1 below 30 median fps — 2 when the page was hidden
+(Chromium throttles rAF to ~1 fps; that artifact must not be published).
+
+Known engine teardown noise — not a defect, and not suppressible from the game:
+at exit Godot may print `ERROR: BUG: Unreferenced static string to 0: …`,
+`RID allocations of type … were leaked at exit`, `ObjectDB instances were
+leaked`. These come from the engine's own cleanup. Verdicts in this repo are
+never read from exit codes, so they affect neither the oracle nor the probes.

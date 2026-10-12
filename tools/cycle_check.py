@@ -24,6 +24,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 EXE = os.path.join(REPO, "build", "windows", "NeuroPropertyTrade.exe")
 WEB_ROOT = os.path.join(REPO, "build", "web")
+## PERF-сэмплы хоста живут здесь (perf.log), а не в выводе процесса: вывод — лог событий.
+LOGDIR = os.path.join(REPO, "build", "cycle_run")
 
 TOKEN_RE = re.compile(r"SERVER seat=(\d+) token=([0-9a-f]+)")
 ADDR_RE = re.compile(r"SERVER ready (ws://[\d.]+:\d+)")
@@ -57,11 +59,15 @@ def main() -> int:
     time.sleep(2.0)
 
     # «настройка партии», как её задаёт диалог: сид, два места, лимит времени на ход и на партию.
+    os.makedirs(LOGDIR, exist_ok=True)
+    perf_path = os.path.join(LOGDIR, "perf.log")
+    if os.path.exists(perf_path):
+        os.remove(perf_path)
     host_cmd = [
         EXE, "--resolution", "1440x900", "--rendering-driver", "opengl3", "--",
         "--autostart", "--smoke-drive", "--smoke-seats=2", "--remote-seats=1",
         "--seed=4242", "--server-bind=0.0.0.0", f"--server-port={host_port}",
-        "--round-limit=25", "--perf",
+        "--round-limit=25", "--perf", f"--log-dir={LOGDIR.replace(os.sep, '/')}",
     ]
     host = subprocess.Popen(host_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, encoding="utf-8", errors="replace", bufsize=1, cwd=REPO)
@@ -82,11 +88,6 @@ def main() -> int:
             if m := ADDR_RE.search(line):
                 addr = m.group(1)
                 continue
-            if line.startswith("PERF fps="):
-                try:
-                    perf.append(int(line.split("fps=")[1].split()[0]))
-                except (IndexError, ValueError):
-                    pass
 
     threading.Thread(target=read_host, daemon=True).start()
     deadline = time.time() + 60.0
@@ -153,9 +154,19 @@ def main() -> int:
             pass
         b.close()
 
+    # PERF-сэмплы: из perf.log хоста, не из его вывода — в выводе их больше нет
+    perf = []
+    if os.path.exists(perf_path):
+        with open(perf_path, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.startswith("PERF fps="):
+                    try:
+                        perf.append(int(line.split("fps=")[1].split()[0]))
+                    except (IndexError, ValueError):
+                        pass
+
     verdicts = [l for l in client_lines if "VERDICT" in l]
     played = [l for l in client_lines if "PLAYED" in l]
-    idle = [l for l in client_lines if "IDLE" in l]
     claims = [l for l in host_lines if "SEAT CLAIMED" in l]
 
     print()
@@ -168,7 +179,6 @@ def main() -> int:
     print(f"  вердиктов движка:         {len(verdicts)}"
           f"  (принято {sum(1 for l in verdicts if 'ok=true' in l)},"
           f" отказано {sum(1 for l in verdicts if 'ok=false' in l)})")
-    print(f"  холостых состояний:       {len(idle)}")
     hp = [v for v in perf if v > 5]
     if hp:
         print(f"  FPS хоста  (.exe):  median={median(hp):.0f} mean={mean(hp):.0f} min={min(hp)} max={max(hp)} n={len(hp)}")

@@ -129,6 +129,15 @@ func _ready() -> void:
 		_force_port = int(port)
 
 
+## The directory this process's logs go to: --log-dir=<dir>, else user://. The role log and
+## perf.log share it, so one directory holds one run.
+func _log_dir() -> String:
+	var dir: String = _cli_value("--log-dir=")
+	if dir == "":
+		dir = ProjectSettings.globalize_path("user://")
+	return dir
+
+
 ## Append a line to this process's role log so a parent can observe it.
 func _mirror_log(line: String) -> void:
 	var role := "player"
@@ -136,9 +145,7 @@ func _mirror_log(line: String) -> void:
 		role = str(_profile.id)
 	# an ABSOLUTE path, optionally redirected by --log-dir, so a parent process
 	# (the smoke) can read a detached child's readiness
-	var dir: String = _cli_value("--log-dir=")
-	if dir == "":
-		dir = ProjectSettings.globalize_path("user://")
+	var dir: String = _log_dir()
 	var path := dir.path_join("%s.log" % role)
 	if not FileAccess.file_exists(path):
 		# touch it first: READ_WRITE will not create a missing file
@@ -166,9 +173,7 @@ func _rewrite_counter(tag: String, value: String) -> void:
 	var role := "player"
 	if _profile != null:
 		role = str(_profile.id)
-	var dir: String = _cli_value("--log-dir=")
-	if dir == "":
-		dir = ProjectSettings.globalize_path("user://")
+	var dir: String = _log_dir()
 	var path := dir.path_join("%s.log" % role)
 	var kept: Array = []
 	if FileAccess.file_exists(path):
@@ -218,11 +223,11 @@ func _on_remote_state(proj: Dictionary) -> void:
 	if _game_view != null and _game_view.has_method("apply_projection"):
 		_game_view.apply_projection(proj)
 	var legal: Array = proj.get("legal", [])
-	# WHY: this is the whole game for a browser player, so silence here is invisible — the seat is
-	# taken away, nothing is played, and the match looks alive from the host. Log the reason the
-	# seat stays empty instead of returning without a trace.
+	# Nothing to answer: either the seat is simply not the one being asked, or the host is gone.
+	# This path used to write an IDLE line per idle state — hundreds of lines per match, and both
+	# cases read the same. The connection state tells them apart (a lost host logs DISCONNECTED),
+	# so the idle case stays silent.
 	if legal.is_empty():
-		_mirror_log("IDLE state legal=[] phase=%s turn=%s" % [str(proj.get("phase", "?")), str(proj.get("current", "?"))])
 		return
 	var action := str(legal[0])
 	var params := {}
@@ -621,6 +626,7 @@ func _show_invite() -> void:
 
 func _add_perf_overlay() -> void:
 	var o = PerfOverlay.new()
+	o.set_log_dir(_log_dir())   # samples go to perf.log next to the role log, not to stdout
 	add_child(o)
 
 

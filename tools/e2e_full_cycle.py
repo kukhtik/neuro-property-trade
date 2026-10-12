@@ -31,6 +31,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
+## PERF-сэмплы хоста живут здесь (perf.log): вывод процесса — лог событий, не чисел.
+LOGDIR = os.path.join(REPO, "build", "e2e_run")
 
 ADDR_RE = re.compile(r"SERVER ready (ws://[\d.]+:\d+)")
 TOKEN_RE = re.compile(r"SERVER seat=(\d+) token=([0-9a-f]+)")
@@ -93,6 +95,10 @@ def main() -> int:
     # ---- 2. the host, configured the way the settings dialog does it ----------------------
     # `--autostart --smoke-drive --smoke-seats=2 --remote-seats=1` is exactly the host's
     # "invite a friend" fixture: seat 0 is the host's own seat, seat 1 is REMOTE.
+    os.makedirs(LOGDIR, exist_ok=True)
+    perf_path = os.path.join(LOGDIR, "perf.log")
+    if os.path.exists(perf_path):
+        os.remove(perf_path)
     host_cmd = [
         os.path.join(REPO, "build", "windows", "NeuroPropertyTrade.exe"),
         "--resolution", "1440x900", "--rendering-driver", "opengl3",
@@ -100,6 +106,7 @@ def main() -> int:
         "--autostart", "--smoke-drive", "--smoke-seats=2", "--remote-seats=1",
         "--server-bind=0.0.0.0", f"--server-port={args.port}",
         f"--round-limit={args.rounds}", "--perf",
+        f"--log-dir={LOGDIR.replace(os.sep, '/')}",
         "--proxy-remote=1",          # so a stalled friend never hangs the match
     ]
     host = subprocess.Popen(host_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -107,7 +114,6 @@ def main() -> int:
 
     tokens: dict[int, str] = {}
     addr: str | None = None
-    perf: list[str] = []
     deadline = time.time() + 30.0
 
     def reader() -> None:
@@ -122,8 +128,6 @@ def main() -> int:
             if m:
                 addr = m.group(1)
                 continue
-            if line.startswith("PERF"):
-                perf.append(line)
 
     import threading
     t = threading.Thread(target=reader, daemon=True)
@@ -216,13 +220,20 @@ def main() -> int:
         ok_n = sum(1 for l in verdicts if "ok=true" in l)
         no_n = sum(1 for l in verdicts if "ok=false" in l)
         print(f"    принято: {ok_n}   отвергнуто: {no_n}")
-        if perf:
+        host_vals: list[int] = []
+        if os.path.exists(perf_path):
+            with open(perf_path, encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    if line.startswith("PERF fps="):
+                        try:
+                            host_vals.append(int(line.split("fps=")[1].split()[0]))
+                        except (IndexError, ValueError):
+                            pass
+        vals = [v for v in host_vals if v > 5]
+        if vals:
             import statistics
-            vals = [int(l.split("fps=")[1].split()[0]) for l in perf]
-            vals = [v for v in vals if v > 5]
-            if vals:
-                print(f"  FPS хоста (.exe): median={statistics.median(vals):.0f} mean={statistics.mean(vals):.0f} "
-                      f"min={min(vals)} max={max(vals)} замеров={len(vals)}")
+            print(f"  FPS хоста (.exe): median={statistics.median(vals):.0f} mean={statistics.mean(vals):.0f} "
+                  f"min={min(vals)} max={max(vals)} замеров={len(vals)}")
         if fps:
             import statistics
             print(f"  FPS браузера: median={statistics.median(fps):.0f} mean={statistics.mean(fps):.0f} "
