@@ -5,6 +5,14 @@ The earlier "catastrophic FPS" reading was taken while several test hosts and br
 were still alive — the machine was competing with itself. This script exists so the number has one
 meaning: host in one process, one browser as the friend, nothing else on the box.
 
+The measurement is a GATE, not a ritual:
+  * a PREFLIGHT refuses to start while another game host or serve.py is already on the machine —
+    numbers taken next to a competing process measure the machine, not the build;
+  * exit 1 when the browser lands under 30 median fps — that is the regression signal, and a run
+    catches it without a human judging a number;
+  * exit 2 when the number itself is invalid (the page was hidden: Chromium throttles
+    requestAnimationFrame to ~1 fps, an artifact that must not be published as a regression).
+
 Run: python tools/fps_clean.py
 """
 from __future__ import annotations
@@ -41,7 +49,50 @@ def free_port(start: int) -> int:
     return start
 
 
+def stray_processes() -> list[str]:
+    """Game hosts and serve.py instances already alive on this machine.
+
+    A measurement taken next to another host measures the competition, not the build — that was
+    the whole lesson of the first "catastrophic FPS" reading. Windows: command lines via CIM.
+    A check that cannot LOOK must not pretend it looked: if the listing fails, the run proceeds
+    without the preflight, and says so.
+    """
+    hits: list[str] = []
+    try:
+        ps = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process | ForEach-Object { $_.Name + '|' + $_.CommandLine }"],
+            # decode, do not explode: some command lines carry OEM-encoded Cyrillic (0xCD) and a
+            # strict utf-8 reader thread dies on them, leaving `stdout = None` — the exact crash
+            # the first run of this preflight produced. ASCII markers survive replacement chars.
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+        )
+    except Exception:  # noqa: BLE001 — no listing, no preflight; the run is not blocked by it
+        return []
+    for line in (ps.stdout or "").splitlines():
+        low = line.lower()
+        # `neuropropertytrade` without dashes: the repo folder is named neuro-property-trade and
+        # must NOT match its own path
+        if "neuropropertytrade" in low or "godot" in low or "serve.py" in low:
+            hits.append(line.strip())
+    return hits
+
+
 def main() -> int:
+    strays = stray_processes()
+    if strays:
+        print("СТОП: на машине уже крутится игра или serve.py — замер мерил бы конкуренцию машины с собой:")
+        for s in strays[:10]:
+            print("   " + s)
+        print("остановите лишние процессы и повторите: число без этого не значит ничего")
+        return 1
+    if not os.path.exists(EXE):
+        print(f"нет {EXE} — сначала соберите билд (tools/build_all.sh)")
+        return 1
+    if not os.path.isdir(os.path.join(REPO, "build", "web")):
+        print("нет build/web — сначала соберите web-экспорт")
+        return 1
+
     web_port, host_port = free_port(8160), free_port(9760)
     site = subprocess.Popen(
         [sys.executable, os.path.join(HERE, "serve.py"), str(web_port),
@@ -125,9 +176,21 @@ def main() -> int:
     cf = [v for v in client_fps if v > 0]
     if hp:
         print(f"  ХОСТ .exe 1440x900 : median={median(hp):.0f} mean={mean(hp):.0f} min={min(hp)} max={max(hp)} n={len(hp)}")
-    if cf:
-        print(f"  БРАУЗЕР   1280x800 : median={median(cf):.0f} mean={mean(cf):.0f} min={min(cf)} max={max(cf)} n={len(cf)}")
-    return 0
+    if not cf:
+        print("  БРАУЗЕР: ни одного кадра — замер недействителен, повторите прогон")
+        return 1
+    med = median(cf)
+    print(f"  БРАУЗЕР   1280x800 : median={med:.0f} mean={mean(cf):.0f} min={min(cf)} max={max(cf)} n={len(cf)}")
+    # `1 fps + hidden` is throttling, not the game. The same reading must not be both published
+    # AND acted upon: visibility decides whether a low number is a regression or an artifact.
+    if med >= 30:
+        print(f"  ==> FPS OK (браузер median={med:.0f} >= 30, порог регрессии)")
+        return 0
+    if vis == "visible":
+        print(f"  ==> FPS REGRESSION: браузер median={med:.0f} < 30")
+        return 1
+    print(f"  ==> замер НЕДЕЙСТВИТЕЛЕН: median={med:.0f}, но страница считала себя «{vis}» — троттлинг, не дефект")
+    return 2
 
 
 if __name__ == "__main__":
