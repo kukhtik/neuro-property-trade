@@ -164,7 +164,10 @@ func _build_nodes() -> void:
 	_sheen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sheen.z_index = 2
 	_sheen.visible = false
-	_sheen.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# NO ANCHOR PRESET HERE. The sheen's rect is dictated entirely by the code in `_start_sheen`
+	# (a 35%-wide bar at an explicit position), and a full-rect preset fought that: Godot warned
+	# on every one of the 40 tiles that the manual size "will be overridden after _ready()" —
+	# 40 warnings per match, for a decoration that is off by default.
 	add_child(_sheen)
 	# --- flow: a Row for vertical bands, a Column for horizontal ones -------
 	var vertical: bool = _band_side == "left" or _band_side == "right"
