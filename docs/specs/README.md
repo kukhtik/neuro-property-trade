@@ -7,6 +7,12 @@
 | [`ui-defect-report.md`](ui-defect-report.md) | **всем** | что сломано и почему, с замерами |
 | [`ui-design-brief.md`](ui-design-brief.md) | **дизайнеру** | как должно выглядеть и какие правила задать |
 | [`ui-fix-plan.md`](ui-fix-plan.md) | **второму агенту** | что именно править и по какому критерию принять |
+| [`ui-full-redesign-spec.md`](ui-full-redesign-spec.md) | **дизайн-агенту (OpenDesign)** | полный редизайн: функции неизменны (F-список), форма свободна |
+
+`ui-full-redesign-spec.md` — действующее задание на дизайн: он заменяет
+как задание прежние промпты `docs/superpowers/prompts/ui-ux-opendesign-prompt.md`
+и `ui-redesign-brief-2026-10.md` (те описывали текущую раскладку и тем самым
+фиксировали её как требование).
 
 ## Коротко о сути
 
