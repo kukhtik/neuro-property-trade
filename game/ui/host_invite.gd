@@ -45,16 +45,17 @@ func _build() -> void:
 
 	var title := UiTheme.label(I18n.t("invite.title"), 24, UiTheme.COL().text)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(title)
 
 	_addr_lbl = UiTheme.label("", 13, UiTheme.COL().accent2)
 	_addr_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_addr_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(_addr_lbl)
 
 	card.add_child(_rows)
 
-	_hint = UiTheme.label_muted(I18n.t("invite.hint"), 12)
-	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hint = UiTheme.label_wrap(I18n.t("invite.hint"), 12, UiTheme.COL().text_dim)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(_hint)
 

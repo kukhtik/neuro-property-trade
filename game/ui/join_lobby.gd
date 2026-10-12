@@ -55,21 +55,21 @@ func _build() -> void:
 
 	_title = UiTheme.label(I18n.t("join.title"), 26, UiTheme.COL().text)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(_title)
 
 	_spinner = UiTheme.label("●", 22, UiTheme.COL().accent)
 	_spinner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_spinner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(_spinner)
 
-	_status = UiTheme.label(I18n.t("join.connecting"), 15, UiTheme.COL().text)
+	_status = UiTheme.label_wrap(I18n.t("join.connecting"), 15, UiTheme.COL().text)
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(_status)
 
 	# the address, so a player can SEE where it is connecting to when it does not work
-	_detail = UiTheme.label_muted("", 12)
+	_detail = UiTheme.label_wrap("", 12, UiTheme.COL().text_dim)
 	_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card.add_child(_detail)
 
 	_retry = UiTheme.button(I18n.t("join.retry"))

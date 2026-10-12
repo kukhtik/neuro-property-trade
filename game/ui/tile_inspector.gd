@@ -39,7 +39,7 @@ func _init() -> void:
 	_close.connect("pressed", Callable(self, "clear"))
 	head.add_child(_close)
 	v.add_child(head)
-	_text = UiTheme.label(I18n.t("ins.placeholder"), 13, UiTheme.COL().text_dim)
+	_text = UiTheme.label_wrap(I18n.t("ins.placeholder"), 13, UiTheme.COL().text_dim)
 	v.add_child(_text)
 	# A3: hidden until a tile is selected
 	visible = false

@@ -320,7 +320,7 @@ func _build_trade() -> void:
 	cols.add_theme_constant_override("separation", 12)
 
 	var give_box := VBoxContainer.new()
-	give_box.add_child(UiTheme.label_muted(I18n.t("modal.give_hint"), 12))
+	give_box.add_child(UiTheme.label_wrap(I18n.t("modal.give_hint"), 12, UiTheme.skin().color("muted")))
 	var give_list := _tile_checklist(proj, proposer, "give")
 	give_box.add_child(give_list)
 	var give_cash_row := _cash_spin("modal.give_cash", "modal.give_cash_tip")
@@ -329,7 +329,7 @@ func _build_trade() -> void:
 
 	var first_recipient: int = _first_other(seats, proposer)
 	var want_box := VBoxContainer.new()
-	want_box.add_child(UiTheme.label_muted(I18n.t("modal.want_hint"), 12))
+	want_box.add_child(UiTheme.label_wrap(I18n.t("modal.want_hint"), 12, UiTheme.skin().color("muted")))
 	var want_holder := VBoxContainer.new()
 	want_holder.name = "WantHolder"
 	_repopulate_want(want_holder, proj, first_recipient)
@@ -448,7 +448,8 @@ func _offer_lines(proj: Dictionary, pending: Dictionary, tag: String, label_key:
 		(", ".join(names) if names.size() > 0 else I18n.t("modal.no_tiles"))]
 	if cash > 0:
 		line += "   %s" % MoneyFmt.make("$").amount(cash)
-	box.add_child(UiTheme.label(line, 13))
+	# a tile list runs long — it is prose, so it wraps instead of leaving the dialog
+	box.add_child(UiTheme.label_wrap(line, 13))
 	return box
 
 
@@ -538,8 +539,7 @@ func open_rules(text: String) -> void:
 func _build_rules() -> void:
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(I18n.t("modal.rules_btn")))
-	var txt := UiTheme.label(str(_current_data.get("text", "")), 13)
-	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var txt := UiTheme.label_wrap(str(_current_data.get("text", "")), 13)
 	txt.custom_minimum_size = Vector2(420, 300)
 	body.add_child(txt)
 	var close_btn := UiTheme.button(I18n.t("modal.close_btn"), I18n.t("modal.rules_back_tip"))
@@ -555,7 +555,7 @@ func show_message(title: String, msg: String) -> void:
 func _build_message() -> void:
 	var body := UiTheme.vbox(8)
 	body.add_child(_heading(str(_current_data.get("title", ""))))
-	body.add_child(UiTheme.label(str(_current_data.get("msg", "")), 14))
+	body.add_child(UiTheme.label_wrap(str(_current_data.get("msg", "")), 14))
 	var ok := UiTheme.button("OK", I18n.t("modal.msg_ok_tip"))
 	ok.connect("pressed", Callable(self, "close"))
 	body.add_child(ok)
@@ -599,6 +599,8 @@ func _on_sound_toggled(on: bool, key: String) -> void:
 func _heading(txt: String) -> Label:
 	var h := UiTheme.label(txt, 18, UiTheme.skin().color("money"))
 	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	# a centred heading needs the width it centres WITHIN (values otherwise shrink to text)
+	h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return h
 
 

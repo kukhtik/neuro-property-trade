@@ -343,9 +343,8 @@ func _event_row(e: Dictionary, names: Array) -> Control:
 	line.add_child(body)
 
 	var txt: String = EventMessagesScript.describe(e)
-	var head := UiTheme.label("#%d  %s" % [int(e.get("index", -1)), txt], 12, UiTheme.COL().text)
-	head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# a journal line is PROSE: it wraps inside its row and takes the row's width
+	var head := UiTheme.label_wrap("#%d  %s" % [int(e.get("index", -1)), txt], 12, UiTheme.COL().text)
 	body.add_child(head)
 
 	var type_lbl: String = I18n.t("event_type." + t)

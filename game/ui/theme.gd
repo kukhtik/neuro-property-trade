@@ -112,27 +112,43 @@ static func chamfer_panel(cut: String = "tr") -> Chamfer:
 
 ## Label with a skin font size + colour. `size` is a px override; -1 means the
 ## skin's default body size.
+##
+## THIS IS THE *VALUE* ROLE: one line, sized to its own content. It neither wraps nor
+## stretches. A value inside an HBox that also stretches takes the free width and pushes
+## its neighbours out of the row — money, badges, counters and hotkeys are values and must
+## not do that. Prose goes through `label_wrap` below.
 static func label(text: String, size: int = -1, color: Color = Color.TRANSPARENT) -> Label:
 	var s := skin()
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", s.size("m", 14) if size < 0 else size)
 	l.add_theme_color_override("font_color", s.color("text") if color.a <= 0.0 else color)
-	# WHY: a Label defaults to NO wrapping (autowrap_mode=0) with a fill size flag, so a long string
-	# in a rail column forces that column to grow horizontally instead of wrapping — the text
-	# renders as one narrow vertical stripe down the side of the screen. Every side panel is built
-	# from this helper, so the fix belongs here rather than in each panel.
+	l.autowrap_mode = TextServer.AUTOWRAP_OFF
+	l.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	return l
+
+
+## THE *PARAGRAPH* ROLE: prose that wraps by words and takes the width of its parent
+## column — rules, a tile description, a hint, invitation text.
+##
+## WHY THERE ARE TWO: one factory used to force WORD_SMART + EXPAND_FILL on all 86 call
+## sites. That is right for a rail's prose and wrong for every value in a row: layout got
+## 2.6-3.6x more expensive (measured; docs/specs/ui-defect-report.md) and the values pushed
+## their neighbours around. The wrap belongs to the text that IS a paragraph, not to the
+## widget that happens to be a label — the two roles are different components.
+static func label_wrap(text: String, size: int = -1, color: Color = Color.TRANSPARENT) -> Label:
+	var l := label(text, size, color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return l
 
 
-## A muted (secondary) label.
+## A muted (secondary) label — the VALUE role (see label()).
 static func label_muted(text: String, size: int = -1) -> Label:
 	return label(text, size, skin().color("muted"))
 
 
-## A money label (monospace-ish colour token).
+## A money label (monospace-ish colour token) — the VALUE role (see label()).
 static func label_money(text: String, size: int = -1) -> Label:
 	return label(text, size, skin().color("money"))
 

@@ -1,76 +1,146 @@
 extends Node
-## СКОЛЬКО СТОИТ ПРАВКА В `UiTheme.label`.
+## СКОЛЬКО СТОИТ ФАБРИКА МЕТОК — и во что обошлась её ошибка.
 ##
-## Вопрос, на который отвечает проба: включение auto-wrap + expand-fill на КАЖДОЙ метке —
-## это косметика или это цена в кадре? Меряем раскладку настоящей панели журнала (40 строк)
-## с правкой и без неё, в одном прогоне, на одном тексте.
+## Вопрос, на который отвечает проба: правка `UiTheme.label` (3d6928c) навязала перенос
+## строк и растяжение КАЖДОЙ метке проекта. Это была цена в кадре или косметика?
 ##
-## ЧТО МЕРЯЕТСЯ: время полного прохода пересчёта размеров (то, что движок делает при любом
-## изменении данных). Если правка удорожает проход во много раз — это и есть «упал fps».
+## ПРОБА ИДЁТ ЧЕРЕЗ ЖИВЫЕ ФАБРИКИ, а не через захардкоженные флаги: проверка, которая
+## сама расставляет флаги, не заметит, что фабрика их больше не ставит.
+##
+## ГИГИЕНА ЗАМЕРА (без неё проба врёт): контейнеры освобождаются НЕМЕДЛЕННО (`free`, не
+## `queue_free`) — отложенные освобождения копятся в дереве, и каждый следующий замер
+## меряет более тяжёлое дерево; перед серией идёт прогрев (первый расчёт текста платит
+## шрифт и атлас); порядок конфигураций РОТИРУЕТСЯ по раундам, вердикт — по МЕДИАНЕ
+## отношений. Замеры в фиксированном порядке давали монотонный дрейф 1.58–1.91 x на
+## ровном месте — это артефакт харнесса, а не цена кода.
+##
+## Меряем четыре конфигурации на одном тексте:
+##   1. `эталон`     — метка до 3d6928c: ни переноса, ни растяжения (значение);
+##   2. `значение`   — UiTheme.label() как он есть сейчас;
+##   3. `3d6928c`    — WORD_SMART + EXPAND_FILL на каждой метке (эталон регрессии);
+##   4. `абзац`      — UiTheme.label_wrap() как он есть сейчас (для прозы в рейках).
+##
+## ВЕРДИКТ: медиана цена(значение)/цена(эталон) <= 1.10. Exit-код — не вердикт
+## (см. tools/ci/run_probes.sh), решает строка PASSED/FAILED.
+const UiTheme := preload("res://ui/theme.gd")
+
+const TEXT := "Рента удваивается, когда у владельца полный набор всех улиц этой группы — длинная строка"
+const N := 40
+## 2000, а не 200: окно замера ≈ 150 мс, и один системный «тычок» (тик ОС, Chrome рядом)
+## даёт на нём доли процента, а не треть числа. При 200 проходах медианы прыгали 1.01–1.25
+## на ровном месте — шум был шире допуска.
+const PASSES := 2000
+
 func _ready() -> void:
-	var n: int = 40
-	var long_text := "Рента удваивается, когда у владельца полный набор всех улиц этой группы — длинная строка"
-	var short_text := "Игрок 1"
+	# прогрев — первый расчёт текста платит за шрифт и атлас, он не в счёт
+	for m in ["plain", "value", "regressed", "wrap"]:
+		_cost(8, m)
 
-	# --- с правкой (как сейчас в theme.gd) ---
-	var t_on := _cost(n, long_text, true)
-	# --- без правки (как было до 3d6928c) ---
-	var t_off := _cost(n, long_text, false)
+	# ротация: каждая конфигурация попадает на каждую позицию в порядке ровно один раз
+	var orders := [
+		["plain", "value", "regressed", "wrap"],
+		["value", "regressed", "wrap", "plain"],
+		["regressed", "wrap", "plain", "value"],
+		["wrap", "plain", "value", "regressed"],
+	]
+	var ms := {"plain": [], "value": [], "regressed": [], "wrap": []}
+	var value_ratio: Array = []
+	var regressed_ratio: Array = []
+	print("РАСКЛАДКА %d строк журнала, %d проходов, %d раунда (ротация порядка):" % [N, PASSES, orders.size()])
+	for round_i in orders.size():
+		var t := {}
+		for m in orders[round_i]:
+			t[m] = _cost(N, m)
+			(ms[m] as Array).append(t[m])
+		var rv: float = _ratio(t["value"], t["plain"])
+		var rr: float = _ratio(t["regressed"], t["plain"])
+		value_ratio.append(rv)
+		regressed_ratio.append(rr)
+		print("  раунд %d: эталон %5.1f · значение %5.1f · 3d6928c %5.1f · абзац %5.1f мс"
+			% [round_i + 1, t["plain"], t["value"], t["regressed"], t["wrap"]])
 
-	print("РАСКЛАДКА %d строк журнала, 200 проходов:" % n)
-	print("  с auto-wrap + expand-fill: %8.1f мс" % t_on)
-	print("  без правки:                %8.1f мс" % t_off)
-	if t_off > 0.0:
-		print("  отношение:                 %8.2f x" % (t_on / t_off))
+	var mv: float = _median(value_ratio)
+	var mr: float = _median(regressed_ratio)
+	print("МЕДИАНЫ (4 раунда):")
+	print("  эталон:            %6.1f мс" % _median(ms["plain"]))
+	print("  значение:          %6.1f мс" % _median(ms["value"]))
+	print("  3d6928c:           %6.1f мс" % _median(ms["regressed"]))
+	print("  абзац:             %6.1f мс" % _median(ms["wrap"]))
+	print("  отношение значение/эталон:  %5.2f x   (допуск 1.10)" % mv)
+	print("  отношение 3d6928c/эталон:   %5.2f x   (вот это и стоило кадров)" % mr)
 
-	# --- и цена на КОРОТКИХ метках: там wrap не нужен, но он всё равно платится ---
-	var s_on := _cost(n, short_text, true)
-	var s_off := _cost(n, short_text, false)
-	print("КОРОТКИЕ метки («Игрок 1»), 200 проходов:")
-	print("  с правкой: %.1f мс   без правки: %.1f мс   отношение: %.2f x"
-		% [s_on, s_off, (s_on / s_off) if s_off > 0.0 else 0.0])
-
-	# --- и главное: растёт ли МИНИМАЛЬНАЯ ВЫСОТА от wrap (это ломает сетку) ---
-	var l := Label.new()
-	l.text = short_text
+	# --- растёт ли МИНИМАЛЬНАЯ ВЫСОТА подписи от переноса (именно это ломает строки) ---
+	var l := UiTheme.label("Игрок 1", 13)
 	add_child(l)
-	l.autowrap_mode = TextServer.AUTOWRAP_OFF
-	var h_off: float = l.get_minimum_size().y
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var h_wrap: float = l.get_minimum_size().y
-	l.size.x = 90.0
-	var h_narrow: float = l.get_minimum_size().y
-	print("МИНИМАЛЬНАЯ ВЫСОТА метки «%s»:" % short_text)
-	print("  без wrap: %.0f px   с wrap при широкой полосе: %.0f px   с wrap в 90 px: %.0f px"
-		% [h_off, h_wrap, h_narrow])
-	if h_narrow > h_off:
-		print("  -> wrap ЛОМАЕТ однострочные подписи: они становятся двух- и трёхстрочными")
-	get_tree().quit(0)
+	var h_one: float = l.get_minimum_size().y
+	var w := UiTheme.label_wrap("Игрок 1", 13)
+	add_child(w)
+	w.size.x = 50.0
+	var h_two: float = w.get_minimum_size().y
+	print("МИНИМАЛЬНАЯ ВЫСОТА подписи «Игрок 1»:")
+	print("  значение: %.0f px   абзац в колонке 50 px: %.0f px" % [h_one, h_two])
+	if h_two > h_one:
+		print("  -> перенос ЛОМАЕТ однострочные подписи: подпись становится двухстрочной")
+
+	if mv <= 1.10:
+		print("==> LABEL COST PASSED (значение %.2f x от эталона по медиане, допуск 1.10)" % mv)
+		get_tree().quit(0)
+	else:
+		print("==> LABEL COST FAILED (значение %.2f x от эталона по медиане, допуск 1.10)" % mv)
+		get_tree().quit(1)
 
 
-## Полная пересборка размеров панели: строим колонку, считаем минимальные размеры и
-## прогоняем раскладку `passes` раз.
-func _cost(n: int, text: String, wrap: bool) -> float:
+func _ratio(a: float, b: float) -> float:
+	return a / b if b > 0.0 else 0.0
+
+
+func _median(values: Array) -> float:
+	if values.is_empty():
+		return 0.0
+	var v: Array = values.duplicate()
+	v.sort()
+	var mid: int = v.size() / 2
+	if v.size() % 2 == 1:
+		return float(v[mid])
+	return (float(v[mid - 1]) + float(v[mid])) * 0.5
+
+
+## Полная пересборка размеров панели: строим колонку меток и прогоняем раскладку
+## `PASSES` раз. Конфигурации «эталон» и «3d6928c» собираются вручную НАМЕРЕННО:
+## регрессия должна воспроизводиться и после того, как фабрика перестала её выдавать.
+## Освобождается НЕМЕДЛЕННО: queue_free оставил бы контейнеры в дереве, и следующий
+## замер мерил бы уже более тяжёлое дерево — это и была ошибка первых прогонов.
+func _cost(n: int, mode: String) -> float:
 	var holder := VBoxContainer.new()
 	holder.custom_minimum_size.x = 240.0
 	add_child(holder)
 	var labels: Array = []
 	for i in n:
-		var l := Label.new()
-		l.text = "%s %d" % [text, i]
-		l.add_theme_font_size_override("font_size", 13)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
-		if wrap:
-			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var s := "%s %d" % [TEXT, i]
+		var l: Label
+		match mode:
+			"value":
+				l = UiTheme.label(s, 13)
+			"wrap":
+				l = UiTheme.label_wrap(s, 13)
+			"regressed":
+				l = Label.new()
+				l.text = s
+				l.add_theme_font_size_override("font_size", 13)
+				l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_:
+				l = Label.new()
+				l.text = s
+				l.add_theme_font_size_override("font_size", 13)
 		holder.add_child(l)
 		labels.append(l)
 
-	var passes := 200
 	var t0 := Time.get_ticks_usec()
-	for _p in passes:
+	for _p in PASSES:
 		for l in labels:
 			l.get_minimum_size()
 		holder.queue_sort()
 	var t1 := Time.get_ticks_usec()
-	holder.queue_free()
+	holder.free()
 	return float(t1 - t0) / 1000.0

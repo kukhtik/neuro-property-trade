@@ -357,9 +357,7 @@ class BannerItem extends PanelContainer:
 
 		var head = HBoxContainer.new()
 		head.add_theme_constant_override("separation", 12)
-		var lbl = UiTheme.label(text, 15, UiTheme.skin().color("dice_bg"))
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var lbl = UiTheme.label_wrap(text, 15, UiTheme.skin().color("dice_bg"))
 		head.add_child(lbl)
 		var close = UiTheme.button("✕", I18n.t("toast.dismiss_tip"))
 		I18n.tip_on(close, "toast.dismiss_tip")   # re-localize on locale change

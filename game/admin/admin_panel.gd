@@ -166,8 +166,7 @@ func _build_quick_tab() -> void:
 	_tabs.add_child(tab)
 	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_quick"))
 
-	var hint := UiTheme.label(I18n.t("admin.quick_hint"), 12, UiTheme.COL().text_dim)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var hint := UiTheme.label_wrap(I18n.t("admin.quick_hint"), 12, UiTheme.COL().text_dim)
 	tab.add_child(hint)
 
 	_b_force_roll = UiTheme.button_accent(I18n.t("admin.quick_force_roll"), I18n.t("admin.quick_force_roll_tip"))
@@ -196,8 +195,7 @@ func _build_quick_tab() -> void:
 	tab.add_child(_status_summary_label())
 
 func _status_summary_label() -> Label:
-	var l := UiTheme.label("", 12, UiTheme.COL().text_dim)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var l := UiTheme.label_wrap("", 12, UiTheme.COL().text_dim)
 	l.name = "QuickSummary"
 	return l
 
@@ -260,8 +258,7 @@ func _build_edits_tab() -> void:
 	_tabs.add_child(tab)
 	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("admin.tab_edits"))
 
-	var note := UiTheme.label(I18n.t("admin.edits_note"), 11, UiTheme.COL().text_dim)
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var note := UiTheme.label_wrap(I18n.t("admin.edits_note"), 11, UiTheme.COL().text_dim)
 	tab.add_child(note)
 
 	var scroll := ScrollContainer.new()
@@ -382,10 +379,8 @@ func _build_edit_row(def: Dictionary) -> Control:
 				widgets["seed"] = sd
 				h.add_child(_labeled(I18n.t("admin.lbl_seed"), sd, sd.tooltip_text))
 
-	var result := UiTheme.label("", 12, UiTheme.COL().text_dim)
+	var result := UiTheme.label_wrap("", 12, UiTheme.COL().text_dim)
 	result.custom_minimum_size.x = 150
-	result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	result.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	widgets["result"] = result
 	h.add_child(result)
 

@@ -51,7 +51,7 @@ func _init() -> void:
 	row.add_child(_status)
 
 	_v = UiTheme.vbox(6)
-	_hint = UiTheme.label("", 11, UiTheme.COL().text_dim)
+	_hint = UiTheme.label_wrap("", 11, UiTheme.COL().text_dim)
 	_hint.visible = false   # the mockup's hint lives in the status area, not on its own line
 
 var _v: VBoxContainer
