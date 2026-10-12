@@ -127,18 +127,30 @@ def main() -> int:
         pg.bring_to_front()
 
         t0 = time.time()
+        browser_closed = False
         while time.time() - t0 < 900:
             time.sleep(3)
-            fps = pg.evaluate("window.__fps")
-            if fps:
-                client_fps.extend(fps)
-                pg.evaluate("window.__fps=[]")
+            # The game can be stopped by a human at any moment (it is a real window). Without this
+            # guard a stop surfaces as a Playwright traceback and the numbers collected so far are
+            # thrown away — which is how two full-cycle runs were lost.
+            try:
+                fps = pg.evaluate("window.__fps")
+                if fps:
+                    client_fps.extend(fps)
+                    pg.evaluate("window.__fps=[]")
+            except Exception as exc:  # noqa: BLE001
+                browser_closed = True
+                print(f"  окно игры закрыто извне ({type(exc).__name__}) — отчитываюсь по собранному")
+                break
             if any("END_GAME" in l or "winner" in l.lower() for l in client_lines[-40:]):
                 ended = True
                 break
             if host.poll() is not None:
                 break
-        pg.screenshot(path=os.path.join(REPO, "build", "cycle_final.png"))
+        try:
+            pg.screenshot(path=os.path.join(REPO, "build", "cycle_final.png"))
+        except Exception:  # noqa: BLE001
+            pass
         b.close()
 
     verdicts = [l for l in client_lines if "VERDICT" in l]
@@ -164,6 +176,8 @@ def main() -> int:
     if cf:
         print(f"  FPS браузера       :  median={median(cf):.0f} mean={mean(cf):.0f} min={min(cf)} max={max(cf)} n={len(cf)}")
     print(f"  ПОБЕДА:                   {'да' if ended else 'НЕТ (партия не завершилась)'}")
+    if browser_closed:
+        print("  (окно игры закрыто извне — цикл прерван, а не доведён до конца)")
     win = [l for l in client_lines if "winner" in l.lower() or "EVENT" in l]
     for w in win[:3]:
         print(f"     {w[:110]}")
