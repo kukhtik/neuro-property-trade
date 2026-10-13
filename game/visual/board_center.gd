@@ -13,6 +13,7 @@ const SkinManager := preload("res://visual/skin_manager.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
 const Layout := preload("res://ui/core/layout_profile.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 var skin: SkinManager
 
@@ -20,6 +21,7 @@ var _root: VBoxContainer
 var _logo: Label
 var _sub: Label
 var _banner: Label
+var _doubles: Label
 var _card: Control
 var _card_title: Label
 var _card_owner: Label
@@ -75,6 +77,18 @@ func _build() -> void:
 		var d := _make_die()
 		d.name = "Die%d" % i
 		_dice.add_child(d)
+
+	# F-16: a doubles roll is marked ON the dice, where the roll lives — the mockup puts a
+	# chip under the faces and the engine treats doubles as a real event (again / jail)
+	_doubles = Label.new()
+	_doubles.name = "Doubles"
+	_doubles.text = I18n.t("die.doubles")
+	_doubles.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_doubles.add_theme_font_size_override("font_size", skin.size("s", 11))
+	_doubles.add_theme_color_override("font_color", skin.color("accent"))
+	_doubles.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_doubles.visible = false
+	_root.add_child(_doubles)
 
 	# --- turn banner --------------------------------------------------------
 	_banner = Label.new()
@@ -170,6 +184,11 @@ func set_dice(a: int, b: int) -> void:
 		var d := _dice.get_child(i)
 		d.set_meta("value", a if i == 0 else b)
 		d.queue_redraw()
+	# F-16: the chip lights when both faces match (`a > 0` keeps an unrolled 0/0 dark)
+	if _doubles != null:
+		_doubles.visible = a > 0 and a == b
+		if _doubles.visible:
+			_doubles.text = I18n.t("die.doubles")
 
 
 ## Show the turn banner: "Ada · Purchase · Sunset Blvd".

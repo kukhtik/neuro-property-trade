@@ -40,8 +40,6 @@ const D := {
 	"act.observer_note": {"ru": "Паузы нет — матч живёт по таймерам.", "en": "No pause — the match runs on its timers."},
 	"jrn.empty_title":  {"ru": "Пока пусто", "en": "Nothing yet"},
 	"jrn.empty_body":   {"ru": "События появятся, когда партия начнётся. Нажмите «НАЧАТЬ ПАРТИЮ» внизу.", "en": "Events appear once the match starts. Press “START MATCH” below."},
-	"ins.price":        {"ru": "цена", "en": "price"},
-	"ins.rent":         {"ru": "аренда", "en": "rent"},
 	"die.doubles":      {"ru": "ДУБЛЬ", "en": "DOUBLE"},
 	"top.wait_sdk":     {"ru": "ожидание Neuro…", "en": "awaiting Neuro…"},
 
