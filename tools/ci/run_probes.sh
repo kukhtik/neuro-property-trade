@@ -31,6 +31,9 @@ PROBES=(
 	# added to TYPE_MAP without a label in data_event.gd must turn this red — that miss shipped
 	# once and cost a commit that added 16 labels nobody read.
 	journal_text_probe
+	# Toasts never cover the board/console (F-68), and every settings field carries its
+	# live/restart tag plus a tooltip (F-48/F-52) — measured on the real app, not a fixture.
+	toast_guard_probe settings_tags_probe
 )
 
 failed=0

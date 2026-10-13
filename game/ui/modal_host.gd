@@ -626,11 +626,10 @@ func _first_other(seats: Array, pid: int) -> int:
 
 
 func _panelize(content: Control) -> void:
-	# THE DIALOG BOX, to the mockup's spec.
+	# THE DIALOG BOX, to the v3 mockup's spec.
 	#
-	# `#mbox` is: 440px wide, a 2px ACCENT border, `box-shadow: 10px 10px 0 var(--line)` — an
-	# offset hard shadow, not a soft one — over a scrim at 75%. Ours was a 460px chamfer with a
-	# 1px line border and no shadow, which is why our dialogs looked like plain boxes.
+	# `.modal` is: min(560px, 92%) wide, an inset 1px LINE frame, and a soft glow of
+	# `ink` at 55% over the scrim at 75% — the box keeps the project's chamfer cut.
 	var wrap := Control.new()
 	wrap.name = "ModalWrap"
 	wrap.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -639,7 +638,7 @@ func _panelize(content: Control) -> void:
 	# the offset shadow: its own flat panel BEHIND the box, shifted 10px right and down
 	var stack := MarginContainer.new()
 	stack.name = "ModalBox"
-	stack.custom_minimum_size = Vector2(440, 0)
+	stack.custom_minimum_size = Vector2(560, 0)   # v3 .modal: min(560px, 92%)
 	stack.add_theme_constant_override("margin_left", 0)
 	stack.add_theme_constant_override("margin_right", 0)
 	stack.add_theme_constant_override("margin_top", 0)
@@ -654,8 +653,10 @@ func _panelize(content: Control) -> void:
 
 	var shadow := Panel.new()
 	shadow.name = "Shadow"
+	# v3: a soft glow of `ink` — Godot has no blur, the alpha carries the weight
+	var ink: Color = UiTheme.COL().get("ink", Color.BLACK)
 	shadow.add_theme_stylebox_override("panel",
-		UiTheme.box(UiTheme.COL().border, Color.TRANSPARENT, 0, 0))
+		UiTheme.box(Color(ink.r, ink.g, ink.b, 0.55), Color.TRANSPARENT, 0, 0))
 	shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shadow.offset_left = 10
 	shadow.offset_top = 10
@@ -667,9 +668,9 @@ func _panelize(content: Control) -> void:
 	_panel = UiTheme.chamfer_panel("tr")
 	(_panel as Control).name = "Box"
 	(_panel as Control).fill_token = "surface.1"
-	# the border is the ACCENT at 2px, as `#mbox` draws it
-	(_panel as Control).border_token = "accent"
-	(_panel as Control).border_bonus = int(UiTheme.skin().shape("line_active", 2.0)) - 1
+	# v3 `.modal`: a 1px LINE frame, not the old mockup's 2px accent one
+	(_panel as Control).border_token = "line"
+	(_panel as Control).border_bonus = 0
 	(_panel as Control).set_anchors_preset(Control.PRESET_FULL_RECT)
 	# The border is painted by THIS panel, but its content is a child — and children paint on
 	# top. The frame therefore sat UNDER the margin box and was invisible however carefully it

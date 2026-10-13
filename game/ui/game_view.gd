@@ -14,6 +14,7 @@ const UiTheme := preload("res://ui/theme.gd")
 const Layout := preload("res://ui/core/layout_profile.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
 const RailPanel := preload("res://ui/components/rail_panel.gd")
+const DrawerPanel := preload("res://ui/components/drawer_panel.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
 const TopBar := preload("res://ui/top_bar.gd")
@@ -65,6 +66,8 @@ var _last_vp := Vector2.ZERO
 var _body: HBoxContainer      # seats | stage+console | rightcol (v3 body grid)
 var _stage_col: VBoxContainer # the stage: board over the action console
 var _rightcol: VBoxContainer  # journal over the inspector
+var _drawer: DrawerPanel      # compact: dock content slid over the stage (.drawer)
+var _drawer_side := ""        # "seats" | "journal" | ""
 var _cold := true
 var _game_over_shown := false
 var _toast_stack: ToastStack
@@ -133,6 +136,8 @@ func set_profile(pr) -> void:
 
 ## Full setup after the engine is built (START / restart).
 func setup(eng, mgr, seat_list: Array, s) -> void:
+	# a restart must not strand a compact drawer with someone else's content
+	_close_drawer()
 	# restart: this same GameView instance is re-setup, so disconnect any
 	# previously-connected signals before reconnecting (avoids duplicate errors)
 	if _board_scene != null and _board_scene.tile_clicked.is_connected(_on_tile_clicked):
@@ -453,6 +458,16 @@ func _build_layout() -> void:
 	add_child(_modals)
 	_connect_modals()
 
+	# compact drawer (v3 mockup .drawer): one dock's content slides in beside the rail, over
+	# the stage — a dock expanded in place would eat a third of a 1100px window's board
+	_drawer = DrawerPanel.new()
+	_drawer.visible = false
+	_drawer.z_index = 80
+	_drawer.closed.connect(_close_drawer)
+	add_child(_drawer)
+	_players_rail.toggled.connect(_on_rail_toggled.bind("seats"))
+	_jpanel_rail.toggled.connect(_on_rail_toggled.bind("journal"))
+
 ## Recompute the proportional panel sizes + board frame. Called on setup and
 ## whenever the viewport size changes (A1). The HBox re-sizes the side panels
 ## and the board fills the remaining center region automatically.
@@ -479,6 +494,12 @@ func _layout() -> void:
 	if _toast_stack != null:
 		_toast_stack.set_compact(lp.is_compact())
 		_toast_stack.place_in_dock(float(_journal_w()), float(_TOP_H) + 8.0)
+	# the compact drawer rides beside its rail and follows any resize
+	if _drawer_side != "":
+		if lp.is_compact():
+			_place_drawer(_drawer_side)
+		else:
+			_close_drawer()
 	_fits_left = 3
 	# the board scene fills the center region between the panels (HBox handles it)
 	_board_scene.set_frame(Rect2(0, 0, 0, 0))   # signal it to re-fit its own rect
@@ -659,6 +680,70 @@ func _on_toast_shown(text: String, kind: String) -> void:
 	var lp = Layout.for_screen(Vector2i(int(size.x), int(size.y)))
 	if lp.is_compact():
 		_actions.show_ticker(text, kind)
+
+
+## Rail clicked by the user. In the docked profiles the rail keeps its in-place
+## expand/collapse; on compact the mockup swaps the dock for a DRAWER beside the rail, so
+## the rail goes back to its rail state and the content slides over the stage.
+func _on_rail_toggled(collapsed: bool, side: String) -> void:
+	var lp = Layout.for_screen(Vector2i(int(size.x), int(size.y)))
+	if not lp.is_compact():
+		return
+	if collapsed:
+		if _drawer_side == side:
+			_close_drawer()
+		return
+	if _drawer_side != "":
+		_close_drawer()
+	var rail: RailPanel = _players_rail if side == "seats" else _jpanel_rail
+	rail.set_collapsed(true, false)   # the rail stays a rail; the drawer carries the content
+	_open_drawer(side)
+
+
+func _open_drawer(side: String) -> void:
+	if _drawer == null:
+		return
+	_drawer.set_title_key("ui.players" if side == "seats" else "ui.journal")
+	var c: Control = _players if side == "seats" else _journal
+	_drawer.put(c)
+	_place_drawer(side)
+	_drawer.visible = true
+	_drawer_side = side
+
+
+func _close_drawer() -> void:
+	if _drawer_side == "":
+		return
+	var side := _drawer_side
+	var rail: RailPanel = _players_rail if side == "seats" else _jpanel_rail
+	var c := _drawer.take()
+	if c != null and rail != null:
+		c.reparent(rail, false)
+		c.visible = not rail.is_collapsed()
+	_drawer.visible = false
+	_drawer_side = ""
+
+
+## Place the drawer beside its rail: docked to the rail's inner edge, never over it — the
+## rail must stay clickable (it is the drawer's own toggle).
+func _place_drawer(side: String) -> void:
+	if _drawer == null:
+		return
+	_drawer.anchor_top = 0.0
+	_drawer.anchor_bottom = 1.0
+	_drawer.offset_top = float(_TOP_H)
+	_drawer.offset_bottom = 0.0
+	var rail_w := float(RailPanel.RAIL_W)
+	if side == "seats":
+		_drawer.anchor_left = 0.0
+		_drawer.anchor_right = 0.0
+		_drawer.offset_left = rail_w
+		_drawer.offset_right = rail_w + float(DrawerPanel.W)
+	else:
+		_drawer.anchor_left = 1.0
+		_drawer.anchor_right = 1.0
+		_drawer.offset_left = -float(DrawerPanel.W) - rail_w
+		_drawer.offset_right = -rail_w
 
 ## P2: mark the selected tile on the board with a dashed accent frame
 func _mark_selected_tile(idx: int) -> void:

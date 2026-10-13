@@ -320,7 +320,10 @@ class ToastItem extends PanelContainer:
 		_count_label.add_theme_color_override("font_color", UiTheme.skin().color("on_panel"))
 		_count_label.visible = false
 		h.add_child(_count_label)
-		custom_minimum_size = Vector2(380, 0)
+		# v3: the toast host lives in the right dock (268..400px wide), so an item must FIT a
+		# 344px dock, not the old 400px full-width host this 380 was written for. The item
+		# still stretches to the host's width; the minimum only guards its readability.
+		custom_minimum_size = Vector2(240, 0)
 
 	func _process(delta: float) -> void:
 		_timer += delta

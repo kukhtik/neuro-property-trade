@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://toastguard"]
+
+[ext_resource type="Script" path="res://tools/toast_guard_probe.gd" id="1_tg"]
+
+[node name="ToastGuardProbe" type="Node"]
+script = ExtResource("1_tg")
