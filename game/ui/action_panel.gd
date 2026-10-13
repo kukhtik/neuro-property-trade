@@ -133,8 +133,10 @@ func set_cold(v: bool) -> void:
 		_btn_row.remove_child(c); c.queue_free()
 	_last_legal = []
 	if v:
-		_status.text = I18n.t("act.cold_status")
-		_hint.text = ""
+		# the mockup's cold prompt is the status sentence on the PROMPT line (#actPrompt);
+		# the right-hand status strip stays quiet
+		_status.text = ""
+		_hint.text = I18n.t("act.cold_status")
 		var start := UiTheme.button_accent(I18n.t("act.start_btn"), I18n.t("act.start_tip"))
 		start.custom_minimum_size.y = 50   # `#act button.pri`
 		start.connect("pressed", Callable(self, "_on_start"))
@@ -206,7 +208,9 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 
 	if not human:
 		_status.text = I18n.t("act.ai_status", [nm])
-		_hint.text = ""
+		# the mockup's promptFor() shows act.ai_status ON THE PROMPT LINE while an AI seat
+		# decides; the prompt is never empty while a match runs
+		_hint.text = I18n.t("act.ai_status", [nm])
 		# clear buttons when control passes to an AI seat
 		_clear_buttons()
 		return
@@ -223,8 +227,13 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 	# tells the player what the game is; a missing one tells them nothing.
 	_sync_buttons(pid, legal, human, proj)
 
-	# contextual hint — the v3 console prompt: what is being decided right now
-	_hint.text = _context_hint(proj)
+	# contextual hint — the v3 console prompt: what is being decided right now. The mockup's
+	# promptFor() never leaves the line empty: contexts first (purchase/auction/trade), then
+	# the state sentence (`act.human_status`) — otherwise the console reads as a dead strip.
+	var prompt := _context_hint(proj)
+	if prompt == "":
+		prompt = I18n.t("act.human_status", [nm])
+	_hint.text = prompt
 	_hint.visible = not _observer and (_ticker == null or not _ticker.visible)
 
 

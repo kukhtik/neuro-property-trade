@@ -144,8 +144,11 @@ func _spacer() -> Control:
 func _make_die() -> Control:
 	var holder := Chamfer.new()
 	(holder as Chamfer).set_skin(skin)
-	(holder as Chamfer).fill_token = "surface.1"
-	(holder as Chamfer).border_token = "text"
+	# v3: the mockup's dice are LIGHT faces with dark pips (`.die { background: var(--dice-bg);
+	# color: var(--dice-ink) }`). They used surface.1 + text — dark faces with light pips —
+	# which vanished into the board centre and read as "no dice at all".
+	(holder as Chamfer).fill_token = "dice_bg"
+	(holder as Chamfer).border_token = "dice_ink"
 	(holder as Chamfer).cut = "none"
 	var d: int = maxi(16, skin.size("xl", 28))
 	(holder as Chamfer).custom_minimum_size = Vector2(d, d)
@@ -160,7 +163,7 @@ func _draw_die(holder: Control) -> void:
 	var s: Vector2 = holder.size
 	var pad: float = maxf(2.0, minf(s.x, s.y) * 0.18)
 	var cell: float = (minf(s.x, s.y) - pad * 2.0) / 3.0
-	var col: Color = skin.color("text")
+	var col: Color = skin.color("dice_ink", skin.color("text"))
 	var pips := _pip_positions(v)
 	for p in pips:
 		var c := Vector2(pad + (float(p[0]) + 0.5) * cell, pad + (float(p[1]) + 0.5) * cell)
