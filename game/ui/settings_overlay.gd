@@ -437,20 +437,20 @@ func _build_interface_tab() -> void:
 	_animations = CheckButton.new(); _animations.text = I18n.t("settings.animations_lbl")
 	_animations.button_pressed = true
 	_animations.tooltip_text = I18n.t("settings.animations_tip")
-	grid.add_child(_h("settings.animations", _animations))
+	grid.add_child(_h("settings.animations", _animations, "settings.tag_live"))
 	_event_overlay = CheckButton.new(); _event_overlay.text = I18n.t("settings.event_overlay_lbl")
 	_event_overlay.button_pressed = true
 	_event_overlay.tooltip_text = I18n.t("settings.event_overlay_tip")
-	grid.add_child(_h("settings.event_overlay", _event_overlay))
+	grid.add_child(_h("settings.event_overlay", _event_overlay, "settings.tag_live"))
 
 	_spectacle = CheckButton.new(); _spectacle.text = I18n.t("settings.spectacle_lbl")
 	_spectacle.button_pressed = false
 	_spectacle.tooltip_text = I18n.t("settings.spectacle_tip")
-	grid.add_child(_h("settings.spectacle", _spectacle))
+	grid.add_child(_h("settings.spectacle", _spectacle, "settings.tag_live"))
 	_sound = CheckButton.new(); _sound.text = I18n.t("settings.sound_lbl")
 	_sound.button_pressed = true
 	_sound.tooltip_text = I18n.t("settings.sound_tip")
-	grid.add_child(_h("settings.sound", _sound))
+	grid.add_child(_h("settings.sound", _sound, "settings.tag_live"))
 
 	_language = OptionButton.new()
 	# the labels are localized like everything else: a hardcoded pair cannot follow a locale
@@ -459,7 +459,7 @@ func _build_interface_tab() -> void:
 	_language.selected = 0
 	_language.tooltip_text = I18n.t("settings.language_tip")
 	_language.connect("item_selected", Callable(self, "_on_language"))
-	grid.add_child(_h("ui.language", _language))
+	grid.add_child(_h("ui.language", _language, "settings.tag_live"))
 
 	# P6 Phase 3: parametric board size (16..64, step 4). Changing it rebuilds
 	# the board at the new tile count on the next START/ПРИМЕНИТЬ.
@@ -510,12 +510,19 @@ func _build_data_tab() -> void:
 	row.add_child(_rng_seed)
 	tab.add_child(row)
 
-func _h(lbl: String, ctl: Control) -> HBoxContainer:
+## One settings field row: label + control + the "when it applies" tag (F-48). Every field
+## says whether it takes effect in this match or needs a new one — the design marks it per
+## FIELD, so nobody has to hunt for the setting that silently needed a restart.
+func _h(lbl: String, ctl: Control, tag_key: String = "settings.tag_restart") -> HBoxContainer:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
 	h.add_child(UiTheme.label(lbl, 13))
 	ctl.custom_minimum_size.x = 120
 	h.add_child(ctl)
+	var tag := UiTheme.label(I18n.t(tag_key), 10, UiTheme.COL().text_dim)
+	tag.name = "Tag"
+	I18n.key_on(tag, tag_key)
+	h.add_child(tag)
 	return h
 
 func _spin(minv: int, maxv: int, def: int, _lbl: String, tip: String) -> SpinBox:

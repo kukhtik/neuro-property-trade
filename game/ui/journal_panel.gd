@@ -287,6 +287,10 @@ func _rebuild() -> void:
 	var vis := filter_entries(_entries, _selected_pid(), _selected_type(), _money_only.button_pressed)
 	for e in vis:
 		_feed.add_child(_event_row(e, _player_names))
+	# F-15/F-36: a cold log states that the match has not begun. Before this it rendered as an
+	# empty strip under a working toolbar — it read as a broken panel, not as "not started".
+	if vis.is_empty() and _entries.is_empty():
+		_feed.add_child(_cold_state())
 	# keep the newest line in view, as the rich-text version did
 	if _scroll != null:
 		await get_tree().process_frame
@@ -294,6 +298,27 @@ func _rebuild() -> void:
 	_rendered = _entries.size()
 	_filters_dirty = false
 	_count_lbl.text = "%d/%d" % [vis.size(), _entries.size()]
+
+
+## F-15/F-36: what a cold journal says instead of nothing — the title and how to start.
+## Both lines are PARAGRAPHS (they wrap in the rail), so they come from `label_wrap`.
+func _cold_state() -> Control:
+	var pad := MarginContainer.new()
+	pad.name = "EmptyState"
+	pad.add_theme_constant_override("margin_left", 10)
+	pad.add_theme_constant_override("margin_right", 10)
+	pad.add_theme_constant_override("margin_top", 12)
+	var box := UiTheme.vbox(6)
+	pad.add_child(box)
+	var t := UiTheme.label_wrap(I18n.t("jrn.empty_title"), 13, UiTheme.COL().text)
+	t.name = "EmptyTitle"
+	I18n.key_on(t, "jrn.empty_title")
+	box.add_child(t)
+	var b := UiTheme.label_wrap(I18n.t("jrn.empty_body"), 12, UiTheme.COL().text_dim)
+	b.name = "EmptyBody"
+	I18n.key_on(b, "jrn.empty_body")
+	box.add_child(b)
+	return pad
 
 
 ## One event, drawn the way the mockup draws `.ev`: a coloured square with a letter, then the

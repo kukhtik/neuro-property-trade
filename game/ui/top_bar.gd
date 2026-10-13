@@ -28,6 +28,7 @@ var _hint: Label
 var _restart_btn: Button
 var _settings_btn: Button
 var _timer_ring: TimerRing
+var _wait_lbl: Label          # P-12: "awaiting Neuro…" when the turn seat has no timer window
 var _is_host := true
 ## The header builds its text from live state, so a locale change cannot fix it by re-running
 ## `I18n.t` on the strings it happens to hold — it has to rebuild them. These remember what the
@@ -127,6 +128,14 @@ func _init() -> void:
 	# P3: Timer ring next to phase
 	_timer_ring = TimerRing.new()
 	h.add_child(_timer_ring)
+	_timer_ring.tooltip_text = I18n.t("act.timer_tip")
+	I18n.tip_on(_timer_ring, "act.timer_tip")
+	# P-12: when the decision belongs to an SDK seat there IS no window to count down. The
+	# ring stays empty; this line names the thing we are actually waiting for instead of
+	# showing a blank where a timer would sit.
+	_wait_lbl = UiTheme.label("", 12, UiTheme.COL().text_dim)
+	_wait_lbl.name = "SdkWait"
+	h.add_child(_wait_lbl)
 	
 	# The mockup puts `RU / EN` in the header. `I18n` has had two locales all along, but the only
 	# way to change one was inside the settings dialog — so an English player reading a Russian
@@ -207,6 +216,10 @@ func retranslate() -> void:
 		_eye_btn.tooltip_text = I18n.t("top.eye_tip")
 	if _hint != null:
 		_hint.text = I18n.t("top.admin_hint")
+	if _timer_ring != null:
+		_timer_ring.tooltip_text = I18n.t("act.timer_tip")
+	if _wait_lbl != null and _wait_lbl.visible:
+		_wait_lbl.text = I18n.t("top.wait_sdk")
 
 ## Enlarge the bar's own type for a role that is read from a distance (the OBS window).
 func scale_text(factor: float) -> void:
@@ -289,6 +302,15 @@ func sync(proj: Dictionary, players: Array) -> void:
 		var elapsed: float = float(proj.get("timer_elapsed", 0.0))
 		var active: bool = bool(proj.get("timer_active", false))
 		_timer_ring.set_state(window, elapsed, active)
+	if _wait_lbl != null:
+		# P-12: an SDK seat has no decision window — a blank ring reads as "nothing is
+		# happening"; say what we are waiting for instead
+		var drv := ""
+		if tp >= 0 and tp < players.size():
+			drv = str(players[tp].driver_label)
+		_wait_lbl.visible = drv.begins_with("sdk:") and not bool(proj.get("timer_active", false))
+		if _wait_lbl.visible:
+			_wait_lbl.text = I18n.t("top.wait_sdk")
 
 
 ## Which of the mockup's four steps an engine phase belongs to (0..3), or -1 for none.

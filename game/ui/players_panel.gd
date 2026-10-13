@@ -61,6 +61,24 @@ func _init() -> void:
 	_own_bar.add_theme_stylebox_override("fill", _gradient_box())
 	_v.add_child(_own_bar)
 
+	# F-14: the bar gets its caption and its share in words — an unlabelled sliver of gradient
+	# does not say WHAT it measures, and the design's statistics block promises the number.
+	var ow_row := HBoxContainer.new()
+	ow_row.name = "OwnedRow"
+	_v.add_child(ow_row)
+	_owned_lbl = UiTheme.label(I18n.t("plr.owned"), 9, UiTheme.COL().text_dim)
+	_owned_lbl.name = "OwnedLabel"
+	I18n.key_on(_owned_lbl, "plr.owned")
+	_owned_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_owned_lbl.tooltip_text = I18n.t("plr.owned_tip")
+	I18n.tip_on(_owned_lbl, "plr.owned_tip")
+	ow_row.add_child(_owned_lbl)
+	_pct_lbl = UiTheme.label("", 9, UiTheme.COL().text)
+	_pct_lbl.name = "OwnedPct"
+	_pct_lbl.tooltip_text = I18n.t("plr.owned_tip")
+	I18n.tip_on(_pct_lbl, "plr.owned_tip")
+	ow_row.add_child(_pct_lbl)
+
 
 ## One statistics tile: a label above a value, as `#stat div` in the mockup.
 func _stat_tile(key: String) -> Control:
@@ -94,6 +112,8 @@ func _gradient_box() -> StyleBoxFlat:
 	return sb
 
 var _v: VBoxContainer
+var _owned_lbl: Label
+var _pct_lbl: Label
 var _list: VBoxContainer
 var _stat: HBoxContainer
 var _own_bar: ProgressBar
@@ -169,6 +189,8 @@ func _sync_stat(proj: Dictionary, players: Array) -> void:
 	_set_stat("mortgaged", str(mortgaged) if total > 0 else "—")
 	if _own_bar != null:
 		_own_bar.value = (100.0 * float(owned) / float(total)) if total > 0 else 0.0
+	if _pct_lbl != null:
+		_pct_lbl.text = ("%d%%" % int(round(_own_bar.value))) if total > 0 else "—"
 
 
 ## Money as the player reads it. MoneyFmt owns the format; this only builds one.
@@ -303,7 +325,10 @@ func _build_row(p: Dictionary, seats: Array, pid: int, active: bool,
 	if mg > 0:
 		badges.add_child(UiTheme.label("💼 %d" % mg, 12, UiTheme.COL().text_dim))
 	if bool(p.get("in_jail", false)):
-		badges.add_child(UiTheme.label("⚖ %d" % int(p.get("jail_turns", 0)), 12, UiTheme.COL().jail))
+		var jb := UiTheme.label("⚖ %d" % int(p.get("jail_turns", 0)), 12, UiTheme.COL().jail)
+		jb.tooltip_text = I18n.t("plr.jail_tip")
+		I18n.tip_on(jb, "plr.jail_tip")
+		badges.add_child(jb)
 	if away:
 		badges.add_child(UiTheme.label(I18n.t("plr.auto_pass"), 12, UiTheme.COL().text_dim))
 	if bankrupt:

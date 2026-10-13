@@ -88,6 +88,12 @@ func set_observer(v: bool) -> void:
 		_clear_buttons()
 		_last_legal = []
 	_hint.visible = not v
+	# F-58: the spectator bar carries the honest note — there is no pause, the match runs on
+	# its timers — as a tooltip on the status line (the thin bar has no room for prose)
+	if _status != null:
+		_status.tooltip_text = I18n.t("act.observer_note") if v else ""
+		if v:
+			I18n.tip_on(_status, "act.observer_note")
 
 func _clear_buttons() -> void:
 	if _btn_row == null:

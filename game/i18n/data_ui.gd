@@ -43,6 +43,7 @@ const D := {
 	"ins.price":        {"ru": "цена", "en": "price"},
 	"ins.rent":         {"ru": "аренда", "en": "rent"},
 	"die.doubles":      {"ru": "ДУБЛЬ", "en": "DOUBLE"},
+	"top.wait_sdk":     {"ru": "ожидание Neuro…", "en": "awaiting Neuro…"},
 
 	# ---- top bar ----
 	"top.title":            {"ru": "● NEURO PROPERTY TRADE", "en": "● NEURO PROPERTY TRADE"},
