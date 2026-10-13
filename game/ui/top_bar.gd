@@ -18,6 +18,7 @@ signal observer_toggle_requested
 signal skin_requested(skin_id: String)
 
 var _title: Label
+var _brand_dot: Label
 var _turn: Label
 var _phase: Label
 var _steps: HBoxContainer          # the mockup's `#steps`: four phases, the live one lit
@@ -98,7 +99,14 @@ func _init() -> void:
 	add_child(m)
 	m.add_child(h)
 
-	_title = UiTheme.label(I18n.t("top.title"), 15, UiTheme.COL().gold)
+	# mockup .brand: the mark in ACCENT (a glyph), the name in --tx at --fs-s. It used to be
+	# ONE string coloured by `money` — a cyan brand where the design has a pink mark and a
+	# white name.
+	var brand_sz: int = UiTheme.skin().size("s", 12)
+	_brand_dot = UiTheme.label("● ", brand_sz, UiTheme.COL().accent)
+	_brand_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(_brand_dot)
+	_title = UiTheme.label(I18n.t("top.title"), brand_sz, UiTheme.COL().text)
 	I18n.key_on(_title, "top.title")
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(_title)

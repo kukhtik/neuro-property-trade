@@ -44,7 +44,7 @@ const D := {
 	"top.wait_sdk":     {"ru": "ожидание Neuro…", "en": "awaiting Neuro…"},
 
 	# ---- top bar ----
-	"top.title":            {"ru": "● NEURO PROPERTY TRADE", "en": "● NEURO PROPERTY TRADE"},
+	"top.title":            {"ru": "NEURO PROPERTY TRADE", "en": "NEURO PROPERTY TRADE"},
 	"top.turn":             {"ru": "ХОД: ", "en": "TURN: "},
 	"top.phase":            {"ru": "ФАЗА: ", "en": "PHASE: "},
 	# THE ENGINE'S PHASE NAMES WERE NEVER TRANSLATED. Both the header and the action bar build
