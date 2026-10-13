@@ -75,6 +75,17 @@ jobs:
       - name: Behavioral probes - every probe in game/tools
         run: tools/ci/run_probes.sh
 
+      - name: Design - the mockup vs the game (palette, dock widths, regions)
+        run: |
+          # The mockup is design/ui-prototype.html, GENERATED from the game, so this gate
+          # catches drift: a skin whose palette no longer matches the design, or a region
+          # the registry names but the prototype stopped declaring. Needs no Godot and no
+          # Pillow: the frame-based dock-width check only runs when a smoke frame exists.
+          python3 tools/ci/compare_mockup.py neuro
+
+      - name: Design - the package checks itself (prototype vs game)
+        run: python3 design/tools/check_package.py
+
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@v4

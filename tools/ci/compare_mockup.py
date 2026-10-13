@@ -1,14 +1,18 @@
 """Compare the MOCKUP with the RESULT, exactly, on the things that can be compared.
 
-The mockup is not a picture of the target — it IS the specification, and it carries its
-design in machine-readable form:
+The mockup is `design/ui-prototype.html` — UI v3 "Broadcast Table" — and it is GENERATED
+from the game (design/tools/build_prototype.py), so its palette blocks carry the skins'
+own hex values. It declares its design in machine-readable form:
 
-  * `:root[data-theme="neuro"]` declares the SAME palette the skin does, under names that
-    differ but mean the same (--tx = text, --ac = accent, --bad = danger, ...). Those are
+  * `:root[data-theme="<skin>"]` declares the SAME palette the skin does, under the bridge
+    names the first mockup used (--tx = text, --ac = accent, --bad = danger, ...). Those are
     exact hex values on both sides, so they can be matched exactly instead of eyeballed.
 
-  * `:root` declares the panel widths (--L, --R) and the responsive steps that change
-    them. The app's panels can be MEASURED from a frame, so the layout is checkable too.
+  * `:root` declares the dock widths (--L, --R) at the 1440x900 design size. The app's
+    panels can be MEASURED from a frame, so the layout is checkable too — optional: with no
+    frame (or no Pillow) the palette and structure checks still run.
+
+  * `design/regions.json` is the REGISTRY: the region ids the prototype must declare.
 
 What this deliberately does NOT do: pixel-compare the two images. Different renderers,
 different fonts, different scales — a pixel diff would flag everything and say nothing.
@@ -18,11 +22,12 @@ import pathlib
 import re
 import sys
 
-from PIL import Image
-
 PROJ = pathlib.Path(__file__).resolve().parents[2]
-MOCKUP = pathlib.Path.home() / "Desktop" / "Neuro Property Trade — UI.html"
-SKIN = PROJ / "game" / "assets" / "skins" / "neuro" / "skin.json"
+## The mockup lives IN the repository since the v3 redesign: it is generated from the game,
+## so it cannot drift from the skins, and a desktop path no longer decides whether CI can
+## check the design at all.
+MOCKUP = PROJ / "design" / "ui-prototype.html"
+REGIONS = PROJ / "design" / "regions.json"
 
 ## The mockup names its tokens differently. This is the only place the two vocabularies
 ## are related — the same role IntentMap plays for intents.
@@ -94,6 +99,7 @@ def measure_panels(frame, line_rgb):
     the layout comparison was measuring noise while printing confident numbers. A detector
     that hard-codes a value from the thing it is checking cannot detect that value changing.
     """
+    from PIL import Image   # only the layout check needs Pillow; palette/registry run anywhere
     im = Image.open(frame).convert("RGB")
     W, H = im.size
     px = im.load()
@@ -118,18 +124,25 @@ def measure_panels(frame, line_rgb):
 def main():
     theme = sys.argv[1] if len(sys.argv) > 1 else "neuro"
     frame = PROJ / "build" / "smoke" / "admin.png"
+    layout_ok = frame.exists()
+    if layout_ok:
+        try:
+            import PIL  # noqa: F401 — the layout check is the only part that needs it
+        except ImportError:
+            layout_ok = False
     if not MOCKUP.exists():
         print("FAIL: no mockup at %s" % MOCKUP)
         return 1
-    if not frame.exists():
-        print("FAIL: no frame at %s (run smoke_all_roles.py first)" % frame)
+    skin_path = PROJ / "game" / "assets" / "skins" / theme / "skin.json"
+    if not skin_path.exists():
+        print("FAIL: no skin %r at %s" % (theme, skin_path))
         return 1
 
     m_toks, m_widths = mockup_theme(theme)
     if not m_toks:
         print("FAIL: the mockup declares no theme %r" % theme)
         return 1
-    a_toks = json.loads(SKIN.read_text(encoding="utf-8"))["tokens"]["color"]
+    a_toks = json.loads(skin_path.read_text(encoding="utf-8"))["tokens"]["color"]
 
     print("=== %s: mockup vs result ===" % theme)
     print("mockup  %s" % MOCKUP.name)
@@ -173,44 +186,51 @@ def main():
     print()
 
     # --- 2. layout ------------------------------------------------------------------
-    print("[2] layout — the mockup declares the panel widths, the frame shows them")
+    print("[2] layout — the mockup declares the dock widths, the frame shows them")
     print("    mockup: --L=%spx --R=%spx" % (m_widths.get("L", "?"), m_widths.get("R", "?")))
-    line_rgb = parse_hex(a_toks.get("line", "")) or (57, 64, 77)
-    panels, W, edges = measure_panels(frame, line_rgb)
-    if panels:
-        lw, rw = panels
-        print("    frame %dpx: left panel %spx, right panel %spx (%d edges)"
-              % (W, lw, rw, len(edges)))
-        ml, mr = m_widths.get("L"), m_widths.get("R")
-        if ml and mr:
-            # the app runs at 1440 and the mockup's widest step targets a desktop too, so
-            # the RATIO is the comparable quantity — what a responsive design preserves
-            m_ratio = mr / ml
-            a_ratio = rw / max(lw, 1)
-            print("    right/left ratio   mockup=%.2f   app=%.2f" % (m_ratio, a_ratio))
-            if abs(m_ratio - a_ratio) > 0.6:
-                fails.append("layout: right/left ratio mockup %.2f vs app %.2f"
-                             % (m_ratio, a_ratio))
-                print("    -> DIFFERENT")
-            else:
-                print("    -> comparable")
+    panels = None
+    if not layout_ok:
+        print("    no frame (build/smoke/admin.png) or no Pillow — layout check skipped;")
+        print("    run smoke_all_roles.py to add it")
     else:
-        print("    could not isolate the panel edges in the frame")
+        line_rgb = parse_hex(a_toks.get("line", "")) or (57, 64, 77)
+        panels, W, edges = measure_panels(frame, line_rgb)
+        if panels:
+            lw, rw = panels
+            print("    frame %dpx: left panel %spx, right panel %spx (%d edges)"
+                  % (W, lw, rw, len(edges)))
+            ml, mr = m_widths.get("L"), m_widths.get("R")
+            if ml and mr:
+                # the app runs at 1440 and the mockup's widest step targets a desktop too, so
+                # the RATIO is the comparable quantity — what a responsive design preserves
+                m_ratio = mr / ml
+                a_ratio = rw / max(lw, 1)
+                print("    right/left ratio   mockup=%.2f   app=%.2f" % (m_ratio, a_ratio))
+                if abs(m_ratio - a_ratio) > 0.6:
+                    fails.append("layout: right/left ratio mockup %.2f vs app %.2f"
+                                 % (m_ratio, a_ratio))
+                    print("    -> DIFFERENT")
+                else:
+                    print("    -> comparable")
+        else:
+            print("    could not isolate the panel edges in the frame")
     print()
 
     # --- 3. structure ---------------------------------------------------------------
-    print("[3] structure — the same regions, in the same order")
+    print("[3] structure — every region the registry names is declared by the mockup")
+    reg = json.loads(REGIONS.read_text(encoding="utf-8"))
+    want = [str(r.get("id", "")) for r in reg.get("regions", []) if str(r.get("id", ""))]
     txt = MOCKUP.read_text(encoding="utf-8")
-    ids = [str(m.group(1)) for m in re.finditer(r'id="([a-z]+)"', txt)]
-    print("    mockup regions: %s" % ", ".join(ids[:10]))
-    # the mockup names its regions semantically: header/footer plus pl (players, left),
-    # stage (the board), jr (journal, right). Those are the five bands the app must show.
-    expected = {"top", "mid", "pl", "stage", "jr", "act"}
-    found = expected.intersection(set(ids))
-    print("    present: %d of %d" % (len(found), len(expected)))
-    if len(found) < 5:
-        fails.append("structure: only %d of the mockup's 6 regions are identifiable" % len(found))
-    if panels:
+    declared = set(m.group(1) for m in re.finditer(r'id="([a-z0-9_-]+)"', txt))
+    missing = [r for r in want if r not in declared]
+    print("    registry design/regions.json: %d regions" % len(want))
+    print("    declared by the mockup:       %d" % (len(want) - len(missing)))
+    if missing:
+        fails.append("structure: the mockup never declares its own regions: %s"
+                     % ", ".join(missing))
+    else:
+        print("    -> all %d declared" % len(want))
+    if layout_ok and panels:
         print("    app frame shows left panel | board | right panel, in that order")
     print()
 

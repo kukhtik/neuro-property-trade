@@ -15,7 +15,10 @@ import sys
 from playwright.sync_api import sync_playwright
 
 PROJ = pathlib.Path(__file__).resolve().parents[2]
-MOCKUP = pathlib.Path.home() / "Desktop" / "Neuro Property Trade — UI.html"
+## The mockup lives IN the repository since the v3 redesign and is generated from the game
+## (design/tools/build_prototype.py); a desktop path would make this tool usable on exactly
+## one machine.
+MOCKUP = PROJ / "design" / "ui-prototype.html"
 OUT = PROJ / "build" / "smoke"
 APP = OUT / "admin.png"
 WIDTH, HEIGHT = 1440, 900
@@ -30,33 +33,22 @@ def main():
         print("FAIL: no app frame at %s (run smoke_all_roles.py first)" % APP)
         return 1
 
+    # The prototype is driven by its own query contract (design/tools/render_prototype.py
+    # uses the same one): `scene=` picks the demo state, `static=1` freezes the demo loop,
+    # `anim=off` kills tweens. `turn-human` is the mid-match state the app frame shows;
+    # another scene can be passed as the second argument.
+    scene = sys.argv[2] if len(sys.argv) > 2 else "turn-human"
     mock_png = OUT / "mockup.png"
-    print("mockup  %s" % MOCKUP.name)
+    print("mockup  %s (scene=%s)" % (MOCKUP.name, scene))
     print("theme   %s" % theme)
     print("size    %dx%d (the app's own)" % (WIDTH, HEIGHT))
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
         page = browser.new_page(viewport={"width": WIDTH, "height": HEIGHT})
-        # the mockup picks its theme from a data attribute on <html>
-        page.goto(MOCKUP.as_uri(), wait_until="networkidle", timeout=60000)
-        page.evaluate("document.documentElement.setAttribute('data-theme', '%s')" % theme)
-        # THE MOCKUP OPENS WITH ITS SETTINGS DIALOG OVER EVERYTHING — a full-screen overlay at
-        # z=60. Every screenshot this script ever took therefore showed the mockup's SETTINGS
-        # SCREEN, and put it next to a frame of the running GAME. The comparison was between two
-        # different screens, and no amount of looking at it could have said anything about
-        # whether the game matches the design. The overlay is dismissed before the shot.
-        page.evaluate(
-            "typeof closeSet === 'function' ? closeSet()"
-            " : document.querySelectorAll('.on').forEach(e => e.classList.remove('on'))")
-        # AND START A MATCH. Dismissing the dialog leaves the mockup on its "Партия ещё не
-        # начата" screen: an empty player column, an empty journal, an empty bottom bar. Every
-        # comparison this script produced therefore put a NOT-STARTED mockup beside a RUNNING
-        # game, and the only regions that matched were the ones that look the same in both —
-        # which is exactly what a header and a board frame are. `startMatch()` fills the panels
-        # the way the app fills them, so the comparison finally describes the same screen.
-        page.evaluate("typeof startMatch === 'function' ? startMatch() : 0")
-        page.wait_for_timeout(2500)
+        url = "%s?theme=%s&scene=%s&static=1&anim=off&probe=off" % (MOCKUP.as_uri(), theme, scene)
+        page.goto(url, wait_until="networkidle", timeout=60000)
+        page.wait_for_timeout(600)
         page.screenshot(path=str(mock_png), full_page=False)
         browser.close()
     print("wrote   %s" % mock_png)
