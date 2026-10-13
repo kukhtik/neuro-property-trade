@@ -24,7 +24,9 @@ static func from_settings(settings) -> Array:
 			var a: Dictionary = assignments[i]
 			driver_label = str(a.get("driver", ""))
 			s.name = str(a.get("name", "Seat #%d" % (i + 1)))
-			s.color = _color_from_name(str(a.get("token_color", "")), PI.color_of(i))
+			var raw_col := str(a.get("token_color", "")).strip_edges()
+			s.color = _color_from_name(raw_col, PI.color_of(i))
+			s.color_custom = raw_col != ""
 			s.token_id = str(a.get("token_id", PI.token_of(i)))
 		else:
 			var drv: String = "AI"
@@ -86,6 +88,13 @@ static func resolve_driver(driver_label: String, sdk_already_used: bool) -> Stri
 
 static func _color_from_name(c: String, fallback: Color) -> Color:
 	var name := c.to_lower()
+	# the settings picker writes `Color.to_html()` — a hex string. It used to fall
+	# through every named branch to the fallback, so a custom colour never left the
+	# picker; the seat row, the piece and the owner marker all read this value (P-2).
+	if name.begins_with("#"):
+		var h := name.substr(1)
+		if (h.length() == 6 or h.length() == 8) and h.is_valid_hex_number(false):
+			return Color.html(h)
 	match name:
 		"red": return Color(1, 0.3, 0.3)
 		"blue": return Color(0.35, 0.6, 1)

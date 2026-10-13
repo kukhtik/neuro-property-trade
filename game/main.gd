@@ -68,6 +68,10 @@ func _ready() -> void:
 	_profile = _force_profile if _force_profile != null 		else UiProfileScript.infer(OS.has_feature("web"), OS.get_cmdline_user_args())
 	_is_host = _profile.shows_admin_tools
 
+	# the seat palette follows the skin from the first frame (P-2): seed the
+	# identity colours before any seat or token is built
+	SkinManager.sync_identity_palette()
+
 	# one screen: build the game view immediately (cold board, no engine yet)
 	_game_view = GameView.new()
 	add_child(_game_view)
@@ -512,6 +516,12 @@ func _on_skin_requested(skin_id: String) -> void:
 	if not SkinManager.new().available().has(skin_id):
 		return
 	SkinManager.chosen = skin_id
+	# the palette follows the skin; seats that never got an explicit pick recolour
+	# with it (custom picks stay — they are the seat's own colour, not the palette's)
+	SkinManager.sync_identity_palette()
+	for s in _seats_cache:
+		if not s.color_custom:
+			s.color = SkinManager.PI.color_of(int(s.pid))
 	var old = _game_view
 	_game_view = GameView.new()
 	add_child(_game_view)

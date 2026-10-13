@@ -318,6 +318,30 @@ func player_color(idx: int) -> Color:
 	return _as_color(a[posmod(idx, a.size())])
 
 
+## The active skin's player palette as Colors — what the app seeds PlayerIdentity
+## with so every display agrees (P-2). A skin that ships no palette falls back to
+## the built-in identity colours, never to another theme's values.
+func player_palette() -> Array:
+	var arr: Variant = token("color.player", null)
+	var out: Array = []
+	if arr is Array:
+		for v in arr:
+			var c := _as_color(v)
+			if c.a >= 0.0:
+				out.append(c)
+	if out.is_empty():
+		out = PI.COLORS.duplicate()
+	return out
+
+
+## Seed PlayerIdentity with the ACTIVE skin's palette. THE single place the identity
+## palette follows the skin; the app calls it at launch and on every skin switch.
+static func sync_identity_palette() -> void:
+	var sm: SkinManager = SkinManager.new()
+	sm.load_skin(chosen)
+	PI.set_palette(sm.player_palette())
+
+
 ## Group color (brown/lightblue/...); gray when the skin does not define it.
 func group_color(group: String) -> Color:
 	var c := _as_color(_lookup("colors.group." + group))

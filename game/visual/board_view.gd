@@ -103,6 +103,12 @@ func refresh_state(proj: Dictionary) -> void:
 	for entry in tiles:
 		var idx: int = int(entry.get("index", 0))
 		if idx < 0 or idx >= _tile_nodes.size(): continue
+		# ONE colour per seat (P-2 / F-06): the tile's owner badge and stripe read the
+		# same value the token halo and the seat row use — _player_color is that resolver
+		# (the seat's own colour when known, the skin-seeded identity palette otherwise).
+		var ow: int = int(entry.get("owner", -1))
+		if ow >= 0:
+			entry["owner_color"] = _player_color(ow)
 		_tile_nodes[idx].refresh(entry)
 	update_highlight(proj)
 

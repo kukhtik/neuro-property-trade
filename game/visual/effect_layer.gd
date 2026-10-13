@@ -88,7 +88,15 @@ func sync_tokens(players: Array) -> void:
 		_player_pos[pid] = int(p.get("pos", 0))
 		_token_names[pid] = str(p.get("name", "?"))
 		var ci: int = int(p.get("color_idx", pid))
-		_token_colors[pid] = skin.player_color(ci)
+		# prefer the seat's own colour (P-2): the payload carries it as hex so a custom
+		# pick shows here exactly as it shows on the tile's owner marker and the piece
+		var hex: String = str(p.get("color_hex", "")).strip_edges()
+		if hex.begins_with("#"):
+			hex = hex.substr(1)
+		if (hex.length() == 6 or hex.length() == 8) and hex.is_valid_hex_number(false):
+			_token_colors[pid] = Color.html(hex)
+		else:
+			_token_colors[pid] = skin.player_color(ci)
 		if not _tokens.has(pid):
 			_tokens[pid] = _make_token(pid)
 		_refresh_token_label(pid)

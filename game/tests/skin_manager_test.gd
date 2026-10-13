@@ -8,6 +8,7 @@ extends RefCounted
 
 const SM := preload("res://visual/skin_manager.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
+const PI := preload("res://core/player_identity.gd")
 
 static func test_list() -> Array[String]:
 	return ["test_default_skin_loads", "test_neuro_overrides_bg",
@@ -21,7 +22,7 @@ static func test_list() -> Array[String]:
 		"test_chamfer_polygon_shapes", "test_unknown_skin_uses_defaults",
 		"test_dotted_slot_id_resolves", "test_dotted_color_tokens_come_from_the_skin",
 		"test_metric_not_shadowed_by_fallback", "test_token_path_follows_the_skin",
-		"test_motion_not_shadowed_by_fallback"]
+		"test_motion_not_shadowed_by_fallback", "test_identity_palette_follows_skin"]
 
 static func test_default_skin_loads() -> String:
 	var s = SM.new()
@@ -318,4 +319,37 @@ static func test_token_path_follows_the_skin() -> String:
 	s._cfg = cfg
 	if not s.token_path("cat").begins_with("res://assets/skins/evil/"):
 		return "a skin must be able to redirect its token folder, got %s" % s.token_path("cat")
+	return ""
+
+
+## The app seeds PlayerIdentity from the active skin (main calls
+## SkinManager.sync_identity_palette at launch and on every skin switch). If that link
+## breaks, the owner marker on a tile keeps the PREVIOUS skin's colours while the piece
+## and the seat row move with the new one — the four-way colour drift P-2 closed.
+## Restores the built-in palette so later modules still test the default state.
+static func test_identity_palette_follows_skin() -> String:
+	var sm = SM.new()
+	sm.load_skin("neuro")
+	var neuro_first: Color = sm.player_color(0)
+	# the app path itself: chosen is "neuro" for the whole suite
+	SM.sync_identity_palette()
+	if PI.color_of(0) != neuro_first:
+		PI.set_palette(PI.COLORS)
+		return "sync_identity_palette must seed the identity palette from the chosen skin"
+	# a live SWITCH moves the palette with it
+	sm.load_skin("default")
+	var def_first: Color = sm.player_color(0)
+	if def_first == neuro_first:
+		PI.set_palette(PI.COLORS)
+		return "neuro and default palettes must differ for this check to mean anything"
+	PI.set_palette(sm.player_palette())
+	if PI.color_of(0) != def_first:
+		PI.set_palette(PI.COLORS)
+		return "identity palette should follow a skin switch"
+	# an empty palette must not wipe the identity colours
+	PI.set_palette([])
+	if PI.color_of(0) != def_first:
+		PI.set_palette(PI.COLORS)
+		return "an empty palette must be ignored"
+	PI.set_palette(PI.COLORS)
 	return ""

@@ -7,6 +7,7 @@ var name: String = ""
 var input_driver: String = "AI"     # LOCAL | CHAT | SDK | AI | ADMIN
 var driver_label: String = ""       # raw assignment for display/routing, e.g. "sdk:neuro"
 var color: Color = Color.WHITE
+var color_custom := false            # true when the colour came from an explicit pick, not the palette
 var token_id: String = ""
 var away: bool = false              # flagged true once auto-passed (spec §3)
 ## This seat's AI character (see seats/ai_persona.gd). Empty means "not assigned";

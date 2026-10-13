@@ -19,6 +19,7 @@ const SkinManager := preload("res://visual/skin_manager.gd")
 const TL := preload("res://visual/tile_layout.gd")
 const BL := preload("res://visual/board_layout.gd")
 const BoardView := preload("res://visual/board_view.gd")
+const PI := preload("res://core/player_identity.gd")
 const Spectacle := preload("res://visual/spectacle.gd")
 const EventOverlay := preload("res://visual/event_overlay.gd")
 const EventMessages := preload("res://visual/event_messages.gd")
@@ -424,16 +425,28 @@ func _paint(animate: bool, wire: Dictionary = {}) -> void:
 			_center.set_dice(int(d[0]), int(d[1]))
 
 
+## The seat's colour when we know the seat, else the skin-seeded identity palette —
+## the resolver the effect layer consumes, so a landing flash is the same colour as
+## the piece that landed (P-2).
+func _seat_color(pid: int) -> Color:
+	for s in _seats:
+		if int(s.pid) == pid:
+			return s.color
+	return PI.color_of(pid)
+
+
 ## Player view models for the effect layer's tokens (id/name/pos/colour).
 func _token_vms(proj: Dictionary) -> Array:
 	var out: Array = []
 	var players: Array = proj.get("players", [])
 	for p in players:
+		var pid: int = int(p.get("index", -1))
 		out.append({
-			"id": int(p.get("index", -1)),
+			"id": pid,
 			"name": str(p.get("name", "")),
 			"pos": int(p.get("position", 0)),
 			"color_idx": int(p.get("index", 0)),
+			"color_hex": _seat_color(pid).to_html(false),
 			"bankrupt": bool(p.get("bankrupt", false)),
 		})
 	return out

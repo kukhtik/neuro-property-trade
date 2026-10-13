@@ -355,7 +355,7 @@ func _update_owner_stripe(entry: Dictionary) -> void:
 	if owner < 0:
 		_owner_stripe.visible = false
 		return
-	var col: Color = _owner_color(owner)
+	var col: Color = entry.get("owner_color", _owner_color(owner))
 	_owner_stripe.visible = true
 	_owner_stripe.color = col
 	# the stripe lies on the edge facing the CENTRE of the ring
@@ -455,10 +455,12 @@ func refresh(entry: Dictionary) -> void:
 	if _step >= 2:
 		_icon.visible = false
 
-	# owner badge + tile border, coloured from the SKIN palette
+	# owner badge + tile border: the SAME colour the token halo and the seat row use —
+	# board_view injects `owner_color` (P-2); the skin lookup stays as the fallback for
+	# a tile rendered without a seat list (tests, bare views).
 	var ow: int = int(entry.get("owner", -1))
 	if ow >= 0:
-		var col: Color = _skin.player_color(ow)
+		var col: Color = entry.get("owner_color", _skin.player_color(ow))
 		_bg.set_meta("border_override", col)
 		_badge.visible = true
 		_badge_label.text = _initial_of(str(entry.get("owner_name", "")))

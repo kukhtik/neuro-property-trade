@@ -21,9 +21,29 @@ const TOKENS := [
 	"ship", "top_hat", "dog", "cat", "race_car", "boot", "iron", "wheelbarrow",
 ]
 
-## Color for a player index (wraps after 8).
+## The ACTIVE palette. Starts as the built-in eight; the app seeds it from the
+## chosen skin (SkinManager.sync_identity_palette) so the owner marker on a tile,
+## the piece's halo, the seat row and the journal's name all read ONE value
+## (P-2 / F-06). Never touched by the engine: seat colours are cosmetic and stay
+## out of snapshots, so replays stay byte-stable under any skin.
+static var _palette: Array = COLORS.duplicate()
+
+## Replace the active palette (only Color entries are accepted; empty is ignored
+## so a skin-less environment keeps the built-in eight).
+static func set_palette(colors: Array) -> void:
+	var clean: Array = []
+	for c in colors:
+		if c is Color:
+			clean.append(c)
+	if not clean.is_empty():
+		_palette = clean
+
+static func palette() -> Array:
+	return _palette
+
+## Color for a player index (wraps after the ACTIVE palette's size).
 static func color_of(pid: int) -> Color:
-	return COLORS[pid % COLORS.size()]
+	return _palette[posmod(pid, _palette.size())]
 
 ## Token id for a player index (wraps after 8).
 static func token_of(pid: int) -> String:
