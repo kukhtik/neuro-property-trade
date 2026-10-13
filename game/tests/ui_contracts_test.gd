@@ -14,6 +14,7 @@ const ActionPanel := preload("res://ui/action_panel.gd")
 const PlayersPanel := preload("res://ui/players_panel.gd")
 const TopBar := preload("res://ui/top_bar.gd")
 const Journal := preload("res://ui/journal_panel.gd")
+const SettingsOverlay := preload("res://ui/settings_overlay.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
@@ -267,7 +268,7 @@ static func test_list() -> Array[String]:
 		"test_phase_to_step_mapping", "test_buy_button_shows_the_price",
 		"test_journal_filters_by_category", "test_hotkeys_respect_the_button_gate",
 		"test_language_button_cycles_locales", "test_skin_switcher",
-		"test_header_sheds_pieces_when_narrow",
+		"test_header_sheds_pieces_when_narrow", "test_settings_rows_carry_tags",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
@@ -950,3 +951,47 @@ static func test_header_sheds_pieces_when_narrow() -> String:
 		return "the header must still report a minimum"
 	tb.free()
 	return ""
+
+
+## F-48: every settings FIELD row carries its "when it applies" tag — the design marks each
+## field live/restart so nobody hunts for the setting that silently needed a new match. The
+## overlay builds itself in `_init` (no tree needed), so a headless test can walk the rows.
+## The tag is machine-readable twice: its text AND its `i18n_key` metadata (the relabel path
+## rewrites it on a locale change).
+static func test_settings_rows_carry_tags() -> String:
+	var so = SettingsOverlay.new()
+	so.call("_build")   # the app builds from _ready(); without a tree the test builds directly
+	var tags: Array = []
+	_collect_tags(so, tags)
+	if tags.is_empty():
+		so.free()
+		return "no settings row carries a tag: _h() must append one"
+	var restart_text: String = I18n.t("settings.tag_restart")
+	var live_text: String = I18n.t("settings.tag_live")
+	var live := 0
+	var bad := 0
+	for t in tags:
+		if t == live_text:
+			live += 1
+		elif t != restart_text:
+			bad += 1
+	if bad > 0:
+		so.free()
+		return "%d tag label(s) neither live nor restart" % bad
+	# the five interface fields are the live ones; everything else waits for a new match
+	if live != 5:
+		so.free()
+		return "5 interface fields must be tagged live, got %d" % live
+	if tags.size() < 26:
+		so.free()
+		return "the overlay builds 26 _h() rows, only %d carry a tag" % tags.size()
+	so.free()
+	return ""
+
+
+## Walk the built overlay for tag labels (`name == "Tag"`, set by _h()).
+static func _collect_tags(n: Node, out: Array) -> void:
+	if n is Label and n.name == "Tag":
+		out.append(str(n.text))
+	for c in n.get_children():
+		_collect_tags(c, out)

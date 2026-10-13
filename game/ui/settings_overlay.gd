@@ -199,7 +199,12 @@ func _build() -> void:
 	_root.reset_size()
 	_root.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_root.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_root.position = (get_viewport().get_visible_rect().size - _root.size) * 0.5
+	# A Control built OFF-tree (headless tests, tooling) has no viewport to centre in; the
+	# app always has one. Skipping the centring must not abort the rest of the build —
+	# it used to, leaving an overlay that consisted of nothing but its own dim background.
+	var vp := get_viewport()
+	if vp != null:
+		_root.position = (vp.get_visible_rect().size - _root.size) * 0.5
 	add_child(_root)
 
 	var margin := MarginContainer.new()
