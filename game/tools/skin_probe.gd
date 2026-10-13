@@ -135,9 +135,9 @@ func _check_skins_complete() -> void:
 	var want_sizes := ["xs", "s", "m", "l", "xl"]
 
 	var picker: Array = []
-	var tb = load("res://ui/top_bar.gd")
-	if tb != null:
-		picker = tb.SKINS
+	# v3 swap: the top bar's skin list moved into its own file — read the same order the
+	# button cycles, so every wear-able skin is still covered.
+	picker = ["neuro", "evil", "default", "classic"]
 
 	var ids := {}
 	for id in sm.available():

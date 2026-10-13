@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://v3cap001"]
+
+[ext_resource type="Script" path="res://tools/v3_cap.gd" id="1_v3c"]
+
+[node name="V3Cap" type="Node"]
+script = ExtResource("1_v3c")

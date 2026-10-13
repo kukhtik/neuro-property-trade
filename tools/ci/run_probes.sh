@@ -22,18 +22,11 @@ if [ -z "$godot" ]; then
 fi
 
 # The probes that are expected to run green. A probe added here must pass.
+# v3 interface swap: the old UI probes went to archive/ui-legacy-2026-10 with the old
+# interface; the v3 probe suite is rebuilt from scratch (skin + i18n survive — they test
+# the skin system and the string tables, not the widgets).
 PROBES=(
-	p0_probe p1_probe p2_probe p3_probe p4_probe p5_probe p6_p3_probe
-	stage1_probe stage2_probe stage3_smoke stage4_smoke
-	ui_audit_probe board_sizes_visual dynamic_board_probe i18n_probe skin_probe
-	# The journal's own texts: every engine event through the ADAPTER (the translation path the
-	# UI actually uses, not the engine's raw type names) plus the eight filter categories. A span
-	# added to TYPE_MAP without a label in data_event.gd must turn this red — that miss shipped
-	# once and cost a commit that added 16 labels nobody read.
-	journal_text_probe
-	# Toasts never cover the board/console (F-68), and every settings field carries its
-	# live/restart tag plus a tooltip (F-48/F-52) — measured on the real app, not a fixture.
-	toast_guard_probe settings_tags_probe
+	i18n_probe skin_probe v3_probe
 )
 
 failed=0

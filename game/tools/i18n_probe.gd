@@ -52,10 +52,12 @@ func _check_live_tree() -> void:
 		_fail("no GameView")
 		return
 	var overlay = launcher.get("_overlay")
-	overlay.call("_start_pressed")
+	# v3 swap: the overlay's start entry point is `_emit` now (the old `_start_pressed`
+	# went to the archive with the old interface).
+	overlay.call("_emit")
 	for _i in 15:
 		await get_tree().process_frame
-	if gv.engine == null:
+	if gv.get("_engine") == null:
 		_fail("game did not start")
 		return
 

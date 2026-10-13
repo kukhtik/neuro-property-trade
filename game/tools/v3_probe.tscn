@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://v3probe01"]
+
+[ext_resource type="Script" path="res://tools/v3_probe.gd" id="1_v3p"]
+
+[node name="V3Probe" type="Node"]
+script = ExtResource("1_v3p")

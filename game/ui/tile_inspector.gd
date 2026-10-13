@@ -1,13 +1,7 @@
-class_name TileInspector
 extends PanelContainer
-## Right dock bottom: the tile reference card (v3 mockup #inspector). The empty state is
-## the placeholder hint; a selected tile fills the card with the name + group band, the
-## price / rent / owner ROWS, the house / mortgage FLAGS and the four management buttons —
-## the same intents the build modal submits (the engine still validates them).
-##
-## Pin keeps the selection past the 5s auto-clear; that clear goes back to the EMPTY STATE
-## (the hint stays on screen — the mockup never leaves the dock without the card). Reads a
-## spectator projection only.
+## The tile card docked at the bottom of the right column (`#inspector`): the selected
+## tile's name / group band / price / rent / owner rows, the flags and the four
+## management buttons. v3 rebuild; reads the spectator projection only.
 
 signal action_requested(tile: int, op: String)
 
@@ -21,33 +15,25 @@ var _body: VBoxContainer
 var _name_lbl: Label
 var _band: ColorRect
 var _type_lbl: Label
-var _price_row: HBoxContainer
+var _rows_box: VBoxContainer
 var _price_val: Label
-var _rent_row: HBoxContainer
 var _rent_val: Label
-var _owner_row: HBoxContainer
 var _owner_val: Label
-var _k_price: Label
-var _k_rent: Label
-var _k_owner: Label
 var _flags: HBoxContainer
 var _acts: GridContainer
 var _b_build: Button
 var _b_sell: Button
 var _b_mortgage: Button
 var _b_unmortgage: Button
-var _close: Button
-var _pin: Button
 var _hide_timer := 0.0
 const _HIDE_AFTER := 5.0
 var _pinned := false
 
 
 func _init() -> void:
-	# v3: a DOCK card (right dock bottom), not a floating bubble. Width comes from the
-	# column; the minimum is vertical only, so a railed column never gets blown up.
 	custom_minimum_size = Vector2(0, 150)
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
+	add_theme_stylebox_override("panel",
+		UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var m := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		m.add_theme_constant_override(edge, 10)
@@ -55,38 +41,35 @@ func _init() -> void:
 	var v := UiTheme.vbox(6)
 	m.add_child(v)
 
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 6)
-	var lbl := UiTheme.label(I18n.t("ins.title"), 12, UiTheme.COL().accent)
-	I18n.key_on(lbl, "ins.title")
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(lbl)
-	_pin = UiTheme.button("📌", I18n.t("ins.pin_tip"))
-	I18n.tip_on(_pin, "ins.pin_tip")
-	_pin.custom_minimum_size = Vector2(26, 22)
-	_pin.toggle_mode = true
-	_pin.connect("toggled", Callable(self, "_on_pin_toggled"))
-	head.add_child(_pin)
-	_close = UiTheme.button("✕", I18n.t("ins.close_tip"))
-	I18n.tip_on(_close, "ins.close_tip")
-	_close.custom_minimum_size = Vector2(26, 22)
-	_close.connect("pressed", Callable(self, "deselect"))
-	head.add_child(_close)
+	var head := UiTheme.hbox(6)
+	var title := UiTheme.label(I18n.t("ins.title"), 12, UiTheme.COL().accent)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var pin := UiTheme.button("📌", I18n.t("ins.pin_tip"))
+	pin.custom_minimum_size = Vector2(26, 22)
+	pin.toggle_mode = true
+	pin.connect("toggled", func(pressed: bool) -> void:
+		_pinned = pressed
+		if pressed:
+			_hide_timer = _HIDE_AFTER)
+	head.add_child(pin)
+	var close := UiTheme.button("✕", I18n.t("ins.close_tip"))
+	close.custom_minimum_size = Vector2(26, 22)
+	close.connect("pressed", Callable(self, "clear"))
+	head.add_child(close)
 	v.add_child(head)
 
 	_placeholder = UiTheme.label_wrap(I18n.t("ins.placeholder"), 12, UiTheme.COL().text_dim)
-	I18n.key_on(_placeholder, "ins.placeholder")
 	v.add_child(_placeholder)
 
 	_body = UiTheme.vbox(6)
 	_body.visible = false
 	v.add_child(_body)
 
-	# name + group band + type, as the mockup's .ins-name
 	var name_row := UiTheme.hbox(6)
 	_name_lbl = UiTheme.label("", 14)
-	_name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_row.add_child(_name_lbl)
 	_band = ColorRect.new()
 	_band.custom_minimum_size = Vector2(10, 10)
@@ -96,36 +79,15 @@ func _init() -> void:
 	name_row.add_child(_type_lbl)
 	_body.add_child(name_row)
 
-	_price_row = HBoxContainer.new()
-	_price_row.add_theme_constant_override("separation", 6)
-	_k_price = UiTheme.label(I18n.t("ins.price") + ":", 11, UiTheme.COL().text_dim)
-	_price_row.add_child(_k_price)
-	_price_val = UiTheme.label("", 12)
-	_price_row.add_child(_price_val)
-	_body.add_child(_price_row)
+	_rows_box = UiTheme.vbox(3)
+	_price_val = _fact_row(_rows_box, "ins.price")
+	_rent_val = _fact_row(_rows_box, "ins.rent")
+	_owner_val = _fact_row(_rows_box, "ins.owner")
+	_body.add_child(_rows_box)
 
-	_rent_row = HBoxContainer.new()
-	_rent_row.add_theme_constant_override("separation", 6)
-	_k_rent = UiTheme.label(I18n.t("ins.rent") + ":", 11, UiTheme.COL().text_dim)
-	_rent_row.add_child(_k_rent)
-	_rent_val = UiTheme.label("", 12)
-	_rent_row.add_child(_rent_val)
-	_body.add_child(_rent_row)
-
-	_owner_row = HBoxContainer.new()
-	_owner_row.add_theme_constant_override("separation", 6)
-	_k_owner = UiTheme.label(I18n.t("ins.owner"), 11, UiTheme.COL().text_dim)
-	_owner_row.add_child(_k_owner)
-	_owner_val = UiTheme.label("", 12)
-	_owner_row.add_child(_owner_val)
-	_body.add_child(_owner_row)
-
-	_flags = HBoxContainer.new()
-	_flags.add_theme_constant_override("separation", 6)
+	_flags = UiTheme.hbox(6)
 	_body.add_child(_flags)
 
-	# the four management buttons, 2x2 (the mockup lets .ins-acts flex-wrap; a grid is the
-	# same deterministic thing in a Godot container)
 	_acts = GridContainer.new()
 	_acts.columns = 2
 	_acts.add_theme_constant_override("h_separation", 6)
@@ -137,24 +99,28 @@ func _init() -> void:
 	_body.add_child(_acts)
 
 
+func _fact_row(box: VBoxContainer, key: String) -> Label:
+	var row := UiTheme.hbox(6)
+	var k := UiTheme.label(I18n.t(key) + ":", 11, UiTheme.COL().text_dim)
+	k.custom_minimum_size.x = 84
+	row.add_child(k)
+	var val := UiTheme.label("", 12)
+	row.add_child(val)
+	box.add_child(row)
+	return val
+
+
 func _act_btn(key: String, op: String) -> Button:
 	var b := UiTheme.button(I18n.t(key), I18n.t(key + "_tip"))
-	I18n.key_on(b, key)
-	I18n.tip_on(b, key + "_tip")
 	b.custom_minimum_size.y = 28
-	b.connect("pressed", Callable(self, "_emit").bind(op))
+	b.connect("pressed", func() -> void:
+		if selected >= 0:
+			action_requested.emit(selected, op))
 	_acts.add_child(b)
 	return b
 
 
-func _emit(op: String) -> void:
-	if selected >= 0:
-		action_requested.emit(selected, op)
-
-
 func _process(delta: float) -> void:
-	# auto-clear back to the EMPTY STATE a few seconds after the last selection, unless
-	# pinned. The card itself stays in the dock — the mockup never leaves it blank.
 	if selected >= 0 and not _pinned:
 		_hide_timer -= delta
 		if _hide_timer <= 0.0:
@@ -163,57 +129,18 @@ func _process(delta: float) -> void:
 
 func select(idx: int) -> void:
 	selected = idx
-	_hide_timer = _HIDE_AFTER   # reset the auto-clear countdown
-	visible = true              # docked profiles always show the card; compact re-shows it
+	_hide_timer = _HIDE_AFTER
+	visible = true
 
 
-## ✕: back to the empty state (the card stays where the mockup keeps it).
-func deselect() -> void:
-	clear()
-
-
-func _on_pin_toggled(pressed: bool) -> void:
-	_pinned = pressed
-	if pressed:
-		_hide_timer = _HIDE_AFTER  # keep alive while pinned
-	# Update pin button appearance
-	if _pinned:
-		_pin.add_theme_color_override("font_color", UiTheme.COL().accent)
-		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL().accent, UiTheme.COL().border_accent, 2, 6))
-	else:
-		_pin.add_theme_color_override("font_color", UiTheme.COL().text)
-		_pin.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 6))
-
-
-## P6 CR-5: re-apply the localized placeholder and row keys when the locale changes.
-## (Buttons carry i18n_key metadata and are relabelled by I18n.relabel.)
-func retranslate() -> void:
-	if _placeholder != null:
-		_placeholder.text = I18n.t("ins.placeholder")
-	if _k_price != null:
-		_k_price.text = I18n.t("ins.price") + ":"
-	if _k_rent != null:
-		_k_rent.text = I18n.t("ins.rent") + ":"
-	if _k_owner != null:
-		_k_owner.text = I18n.t("ins.owner")
-
-
-## Back to the empty state (still visible — see the header comment).
 func clear() -> void:
 	selected = -1
-	_hide_timer = 0.0
-	_pinned = false
-	if _pin != null:
-		_pin.button_pressed = false
-		_on_pin_toggled(false)
 	_placeholder.visible = true
 	_body.visible = false
 
 
-## Fill from a spectator projection. `legal` = the decision holder's legal engine actions;
-## `human_pid` = this execution's LOCAL seat (-1 for spectators). The four buttons are
-## enabled only when the engine offers the action AND the tile belongs to the local seat —
-## the same gating the mockup draws as `owner === 0`.
+## Fill from the projection. `legal` = the decision holder's legal actions;
+## `human_pid` = this execution's local seat (-1 spectator).
 func sync(proj: Dictionary, seats: Array, legal: Array = [], human_pid: int = -1) -> void:
 	if selected < 0:
 		_placeholder.visible = true
@@ -226,20 +153,16 @@ func sync(proj: Dictionary, seats: Array, legal: Array = [], human_pid: int = -1
 			break
 	if t.is_empty():
 		return
-	# name + group band + type (raw group/type strings, as the mockup prints them)
 	_name_lbl.text = str(t.get("name", ""))
 	var group: String = str(t.get("group", ""))
 	_band.visible = group != ""
 	if _band.visible:
 		_band.color = UiTheme.skin().group_color(group)
 	_type_lbl.text = group if group != "" else str(t.get("type", ""))
-	# rows
 	var cost: int = int(t.get("cost", 0))
 	var rent: int = int(t.get("rent_set", t.get("rent", 0)))
-	_price_row.visible = cost > 0
-	_price_val.text = MoneyFmt.new().amount(cost)
-	_rent_row.visible = rent > 0
-	_rent_val.text = MoneyFmt.new().amount(rent)
+	_price_val.text = MoneyFmt.make("$").amount(cost)
+	_rent_val.text = MoneyFmt.make("$").amount(rent)
 	var owner: int = int(t.get("owner", -1))
 	if owner < 0:
 		_owner_val.text = I18n.t("ins.free")
@@ -251,39 +174,36 @@ func sync(proj: Dictionary, seats: Array, legal: Array = [], human_pid: int = -1
 			if int(s.pid) == owner:
 				nm = str(s.name)
 				col = s.color
-				break
 		_owner_val.text = nm
 		_owner_val.add_theme_color_override("font_color", col)
-	# flags
 	for c in _flags.get_children():
 		_flags.remove_child(c)
 		c.queue_free()
 	var houses: int = int(t.get("houses", 0))
 	if houses > 0:
 		_flags.add_child(_chip(I18n.t("ins.house", [I18n.t("ins.hotel") if houses >= 5 else str(houses)])))
-	var mortgaged: bool = bool(t.get("mortgaged", false))
-	if mortgaged:
+	if bool(t.get("mortgaged", false)):
 		_flags.add_child(_chip(I18n.t("ins.mortgaged")))
-	# acts
 	var mine: bool = human_pid >= 0 and owner == human_pid
 	_b_build.disabled = not (mine and legal.has("build_house"))
 	_b_sell.disabled = not (mine and houses > 0 and legal.has("sell_house"))
-	_b_mortgage.disabled = not (mine and not mortgaged and legal.has("mortgage_property"))
-	_b_unmortgage.disabled = not (mine and mortgaged and legal.has("unmortgage_property"))
+	_b_mortgage.disabled = not (mine and not bool(t.get("mortgaged", false)) and legal.has("mortgage_property"))
+	_b_unmortgage.disabled = not (mine and bool(t.get("mortgaged", false)) and legal.has("unmortgage_property"))
 	_placeholder.visible = false
 	_body.visible = true
 
 
-## A small chip like the mockup's `.ins-flags .chip`.
 func _chip(text: String) -> Control:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel",
-		UiTheme.box(UiTheme.COL().get("surface3", UiTheme.COL().panel), UiTheme.COL().border, 1, 3))
-	var mm := MarginContainer.new()
-	mm.add_theme_constant_override("margin_left", 6)
-	mm.add_theme_constant_override("margin_right", 6)
-	mm.add_theme_constant_override("margin_top", 1)
-	mm.add_theme_constant_override("margin_bottom", 1)
-	p.add_child(mm)
-	mm.add_child(UiTheme.label(text, 11, UiTheme.COL().text_dim))
+	p.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 3))
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 6)
+	m.add_theme_constant_override("margin_right", 6)
+	p.add_child(m)
+	m.add_child(UiTheme.label(text, 11, UiTheme.COL().text_dim))
 	return p
+
+
+func retranslate() -> void:
+	if _placeholder != null:
+		_placeholder.text = I18n.t("ins.placeholder")

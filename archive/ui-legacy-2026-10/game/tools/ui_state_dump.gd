@@ -38,8 +38,16 @@ func _process(_dt: float) -> void:
 			var center = bs.get("_center")
 			if center != null:
 				var dice = center.get("_dice")
+				print("CENTER size=%s cell=%s" % [str(center.size), str(center.call("_cell"))])
+				print("SKIN dice_bg=%s dice_ink=%s" % [
+					str(center.skin.color("dice_bg")), str(center.skin.color("dice_ink"))])
 				if dice != null:
 					print("DICE hbox rect=%s" % str(dice.get_global_rect()))
 					for d in dice.get_children():
-						print("  die rect=%s value=%s visible=%s" % [str(d.get_global_rect()), str(d.get_meta("value", -1)), str(d.visible)])
+						var fill := ""
+						if d.has_method("get") and typeof(d.get("fill_token")) != TYPE_NIL:
+							fill = str(d.get("fill_token"))
+						print("  child=%s rect=%s value=%s visible=%s fill=%s min=%s" % [
+							str(d.name), str(d.get_global_rect()), str(d.get_meta("value", -1)),
+							str(d.visible), fill, str(d.custom_minimum_size)])
 		get_tree().quit(0)

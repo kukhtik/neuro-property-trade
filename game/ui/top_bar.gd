@@ -1,398 +1,177 @@
-class_name TopBar
 extends PanelContainer
-## Fixed top bar: game title + current turn (player) + phase + timer ring +
-## settings/restart buttons + F12 hint (host-only). Reads a spectator-safe
-## projection dict. Shape-only for future art swap.
-
-const UiTheme := preload("res://ui/theme.gd")
-const SkinPaint := preload("res://visual/skin_paint.gd")
-const I18n := preload("res://i18n/i18n.gd")
-const TimerRing := preload("res://ui/timer_ring.gd")
-const SkinManager := preload("res://visual/skin_manager.gd")
+## The v3 header (`#top` in design/src/proto.html): brand, whose turn it is, the round
+## and pot chips, the decision area, the role badge and the control strip.
+##
+## Rebuilt from the prototype markup for the interface swap; reads only the spectator
+## projection and emits requests — it never touches the engine.
 
 signal settings_requested
 signal restart_requested
-signal observer_toggle_requested
-## The user picked a skin. The header only announces it: the app rewears the skin and
-## rebuilds, because widget styles are baked in at construction time.
 signal skin_requested(skin_id: String)
 
-var _title: Label
-var _brand_dot: Label
-var _turn: Label
-var _phase: Label
-var _steps: HBoxContainer          # the mockup's `#steps`: four phases, the live one lit
-var _step_labels: Array = []
-var _round: Label                  # `#cRound`
-var _pot: Label                    # `#cPot` (only meaningful when free parking banks)
-var _hint: Label
-var _restart_btn: Button
-var _settings_btn: Button
-var _timer_ring: TimerRing
-var _wait_lbl: Label          # P-12: "awaiting Neuro…" when the turn seat has no timer window
-var _is_host := true
-## The header builds its text from live state, so a locale change cannot fix it by re-running
-## `I18n.t` on the strings it happens to hold — it has to rebuild them. These remember what the
-## header was showing so `retranslate()` can rebuild it in the new language.
-var _cold := true
-var _last_phase := ""
-var _last_turn := ""
-var _last_turn_color := Color.TRANSPARENT
-## The execution role. Drives what the header shows — the role is NOT switchable
-## here (owner decision, docs/ui_migration_notes §9), only reported.
-var _profile = null
-var _role_badge: Label = null
-var _eye_btn: Button
-var _lang_btn: Button
-var _skin_btn: Button
-var _sfx = null   # optional Sfx for the per-second timer tick
+const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
 
-## Provide the procedural Sfx node so the timer ring can play a tick each second.
-func set_sfx(sfx) -> void:
-	_sfx = sfx
-	if _timer_ring != null:
-		_timer_ring.set_tick_callback(_timer_tick)
-
-## P5 SFX: one tick per elapsed decision-timer second (routed by TimerRing).
-func _timer_tick() -> void:
-	if _sfx != null and _sfx.has_method("play_timer_tick"):
-		_sfx.play_timer_tick()
-
-var _underline: TextureRect
+var _brand: Label
+var _turn_av: Control
+var _turn_halo: Panel
+var _turn_name: Label
+var _turn_phase: Label
+var _steps: HBoxContainer
+var _round_chip: Label
+var _pot_chip: Label
+var _decision: Label
+var _rolebadge: Label
+var _btn_settings: Button
+var _btn_restart: Button
+var _btn_lang: Button
+var _btn_skin: Button
+var _skin_idx := 0
+var _locale := "ru"
+var _skin: SkinManager
 
 
 func _init() -> void:
-	# the mockup fills the header with `var(--s1)` — surface.1 — not surface.2
-	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
-	# the mockup sweeps an animated accent gradient along the header's bottom edge
-	# (`#top::after`): it is the one moving thing on a still screen, and its absence is part
-	# of why our header read as a plain bar
-	_underline = TextureRect.new()
-	_underline.name = "Sweep"
-	_underline.texture = SkinPaint.sweep_texture(UiTheme.skin(), 300)
-	_underline.stretch_mode = TextureRect.STRETCH_TILE
-	_underline.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_underline.custom_minimum_size = Vector2(0, 2)
-	_underline.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_underline.offset_top = -2
-	_underline.offset_bottom = 0
-	# THE SWEEP NEEDS ITS OWN LAYER. This is a `PanelContainer`, and a container positions its
-	# children itself — anchors and offsets on a direct child are simply overwritten. The 2px
-	# sweep was therefore laid out at the container's full content rect and its accent gradient
-	# covered the entire header bar, 44px tall, in every screenshot the game ever took. Inside a
-	# plain `Control` that fills the bar, the anchors the sweep sets are the ones that apply.
-	var sweep_layer := Control.new()
-	sweep_layer.name = "SweepLayer"
-	sweep_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	sweep_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(sweep_layer)
-	sweep_layer.add_child(_underline)
-
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 16)
+	custom_minimum_size.y = 56   # `--hdr-h`
+	add_theme_stylebox_override("panel",
+		UiTheme.box(UiTheme.COL().panel, Color(0, 0, 0, 0), 0, 0))
 	var m := MarginContainer.new()
-	m.add_theme_constant_override("margin_left", 14)
-	m.add_theme_constant_override("margin_right", 14)
-	m.add_theme_constant_override("margin_top", 6)
-	m.add_theme_constant_override("margin_bottom", 6)
+	m.add_theme_constant_override("margin_left", 16)
+	m.add_theme_constant_override("margin_right", 12)
 	add_child(m)
-	m.add_child(h)
+	var row := UiTheme.hbox(12)
+	row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	m.add_child(row)
 
-	# mockup .brand: the mark in ACCENT (a glyph), the name in --tx at --fs-s. It used to be
-	# ONE string coloured by `money` — a cyan brand where the design has a pink mark and a
-	# white name.
-	var brand_sz: int = UiTheme.skin().size("s", 12)
-	_brand_dot = UiTheme.label("● ", brand_sz, UiTheme.COL().accent)
-	_brand_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_child(_brand_dot)
-	_title = UiTheme.label(I18n.t("top.title"), brand_sz, UiTheme.COL().text)
-	I18n.key_on(_title, "top.title")
-	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(_title)
-	_turn = UiTheme.label("", 15)
-	h.add_child(_turn)
-	_phase = UiTheme.label("", 13, UiTheme.COL().text_dim)
-	# THE MOCKUP SHOWS A FOUR-STEP TIMELINE HERE, NOT A PHASE NAME. Its `#steps` is
-	# `[0,1,2,3].map(i => <span class=(i==V.ph?"on")>` — Бросок / Ход / Покупка / Конец with the
-	# current one lit. We printed "ФАЗА: <engine enum>", which is a different thing entirely and
-	# does not tell the player where they are in the turn.
-	_steps = HBoxContainer.new()
-	_steps.name = "Steps"
-	_steps.add_theme_constant_override("separation", 12)
-	h.add_child(_steps)
+	# brand: the diamond in accent + the name in text colour (proto `.brand`)
+	_brand = UiTheme.label("●  NEURO PROPERTY TRADE", 12, UiTheme.COL().text)
+	_brand.add_theme_constant_override("letter_spacing", 2)
+	row.add_child(_brand)
+
+	# turn block: a haloed avatar dot + name / phase
+	_turn_av = Control.new()
+	_turn_av.custom_minimum_size = Vector2(26, 26)
+	_turn_halo = Panel.new()
+	_turn_halo.add_theme_stylebox_override("panel",
+		UiTheme.box(Color(0, 0, 0, 0), UiTheme.COL().accent, 2, 13))
+	_turn_halo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_turn_av.add_child(_turn_halo)
+	row.add_child(_turn_av)
+	var meta := UiTheme.vbox(0)
+	_turn_name = UiTheme.label("—", 13, UiTheme.COL().text)
+	_turn_phase = UiTheme.label("", 10, UiTheme.COL().text_dim)
+	meta.add_child(_turn_name)
+	meta.add_child(_turn_phase)
+	row.add_child(meta)
+
+	_steps = UiTheme.hbox(3)
 	for i in 4:
-		var st := UiTheme.label(I18n.t("ph.%d" % i), 13, UiTheme.COL().text_dim)
-		st.name = "Step%d" % i
-		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_steps.add_child(st)
-		_step_labels.append(st)
-	h.add_child(_phase)
-	_round = UiTheme.label("", 13, UiTheme.COL().text_dim)
-	h.add_child(_round)
-	_pot = UiTheme.label("", 13, UiTheme.COL().text_dim)
-	h.add_child(_pot)
-	
-	# P3: Timer ring next to phase
-	_timer_ring = TimerRing.new()
-	h.add_child(_timer_ring)
-	_timer_ring.tooltip_text = I18n.t("act.timer_tip")
-	I18n.tip_on(_timer_ring, "act.timer_tip")
-	# P-12: when the decision belongs to an SDK seat there IS no window to count down. The
-	# ring stays empty; this line names the thing we are actually waiting for instead of
-	# showing a blank where a timer would sit.
-	_wait_lbl = UiTheme.label("", 12, UiTheme.COL().text_dim)
-	_wait_lbl.name = "SdkWait"
-	h.add_child(_wait_lbl)
-	
-	# The mockup puts `RU / EN` in the header. `I18n` has had two locales all along, but the only
-	# way to change one was inside the settings dialog — so an English player reading a Russian
-	# interface had to find the right tab first.
-	# the mockup puts the skin picker in the header too
-	_skin_btn = UiTheme.button(_skin_label(), I18n.t("top.skin_tip"))
-	_skin_btn.custom_minimum_size = Vector2(30, 24)
-	I18n.tip_on(_skin_btn, "top.skin_tip")
-	_skin_btn.connect("pressed", Callable(self, "_on_skin"))
-	h.add_child(_skin_btn)
-	_lang_btn = UiTheme.button("RU / EN", I18n.t("top.lang_tip"))
-	_lang_btn.custom_minimum_size = Vector2(30, 24)
-	I18n.tip_on(_lang_btn, "top.lang_tip")
-	_lang_btn.connect("pressed", Callable(self, "_on_lang"))
-	h.add_child(_lang_btn)
-	_settings_btn = UiTheme.button("⚙", I18n.t("top.settings_tip"))
-	_settings_btn.custom_minimum_size = Vector2(30, 24)
-	_settings_btn.connect("pressed", Callable(self, "_on_settings"))
-	h.add_child(_settings_btn)
-	_restart_btn = UiTheme.button("↻", I18n.t("top.restart_tip"))
-	_restart_btn.custom_minimum_size = Vector2(30, 24)
-	_restart_btn.connect("pressed", Callable(self, "_on_restart"))
-	h.add_child(_restart_btn)
-	# P4 §7: observer button — shown only when the match has no LOCAL seat
-	# (otherwise it would "disconnect" the live human player).
-	_eye_btn = UiTheme.button("👁", I18n.t("top.eye_tip"))
-	_eye_btn.custom_minimum_size = Vector2(30, 24)
-	_eye_btn.visible = false
-	_eye_btn.connect("pressed", Callable(self, "_on_eye"))
-	h.add_child(_eye_btn)
-	_hint = UiTheme.label(I18n.t("top.admin_hint"), 12, UiTheme.COL().text_dim)
-	h.add_child(_hint)
-	resized.connect(_apply_density)
+		var tick := ColorRect.new()
+		tick.color = UiTheme.COL().border
+		tick.custom_minimum_size = Vector2(14, 3)
+		_steps.add_child(tick)
+	row.add_child(_steps)
 
-## Host-only gate: hide the F12 hint on non-host (WebGL / spectator).
-func set_host(v: bool) -> void:
-	_is_host = v
-	_apply_density()
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(spacer)
+
+	_round_chip = _chip("РАУНД 1")
+	row.add_child(_round_chip)
+	_pot_chip = _chip("БАНК $0")
+	row.add_child(_pot_chip)
+
+	_decision = UiTheme.label("", 12, UiTheme.COL().accent)
+	row.add_child(_decision)
+
+	_rolebadge = _chip(I18n.t("mode.player"))
+	row.add_child(_rolebadge)
+
+	_btn_settings = _icon_btn("⚙", I18n.t("top.settings_tip"))
+	_btn_settings.connect("pressed", func() -> void: settings_requested.emit())
+	row.add_child(_btn_settings)
+	_btn_restart = _icon_btn("⟳", I18n.t("top.restart_tip"))
+	_btn_restart.connect("pressed", func() -> void: restart_requested.emit())
+	row.add_child(_btn_restart)
+	_btn_lang = _icon_btn("RU", I18n.t("top.lang_tip"))
+	_btn_lang.connect("pressed", func() -> void:
+		_locale = "en" if _locale == "ru" else "ru"
+		I18n.set_locale(_locale)
+		retranslate())
+	row.add_child(_btn_lang)
+	_btn_skin = _icon_btn("◐", I18n.t("top.skin_tip"))
+	_btn_skin.connect("pressed", Callable(self, "_cycle_skin"))
+	row.add_child(_btn_skin)
 
 
-## Apply the execution role. Stream runs get a compact header, a "LIVE" marker
-## and NO admin hint; player/admin keep the full one.
-func set_profile(pr) -> void:
-	if pr == null:
-		return
-	_profile = pr
-	_is_host = pr.shows_admin_tools
-	_apply_density()
-	if _role_badge != null:
-		_role_badge.visible = pr.shows_role_badge
-		_role_badge.text = I18n.t("mode." + str(pr.id))
-
-## P5: re-apply static localized labels after a locale change.
-func retranslate() -> void:
-	# REBUILD what the header currently shows. `_phase` is composed at sync time, so a locale
-	# change used to leave the OLD language sitting in the header: probing RU -> EN reported
-	# `_phase` still reading "до старта" while every caption around it had switched. The strings
-	# are not independent of state, so they cannot simply be re-fetched — they must be re-derived.
-	if _phase != null:
-		if _cold:
-			_phase.text = I18n.t("top.cold")
-		elif _last_phase != "":
-			var lbl: String = I18n.t("phase." + _last_phase)
-			if lbl.begins_with("{phase."):
-				lbl = _last_phase
-			_phase.text = I18n.t("top.phase") + lbl
-	if _turn != null:
-		if _cold or _last_turn == "":
-			_turn.text = ""
-		else:
-			_turn.text = I18n.t("top.turn") + _last_turn
-			_turn.add_theme_color_override("font_color", _last_turn_color)
-	if _settings_btn != null:
-		_settings_btn.tooltip_text = I18n.t("top.settings_tip")
-	if _restart_btn != null:
-		_restart_btn.tooltip_text = I18n.t("top.restart_tip")
-	if _eye_btn != null:
-		_eye_btn.tooltip_text = I18n.t("top.eye_tip")
-	if _hint != null:
-		_hint.text = I18n.t("top.admin_hint")
-	if _timer_ring != null:
-		_timer_ring.tooltip_text = I18n.t("act.timer_tip")
-	if _wait_lbl != null and _wait_lbl.visible:
-		_wait_lbl.text = I18n.t("top.wait_sdk")
-
-## Enlarge the bar's own type for a role that is read from a distance (the OBS window).
-func scale_text(factor: float) -> void:
-	if factor <= 0.0 or is_equal_approx(factor, 1.0):
-		return
-	for lbl in [_turn, _phase, _hint, _role_badge]:
-		if lbl == null:
-			continue
-		var base: int = int(lbl.get_meta("base_size", 0))
-		if base == 0:
-			base = lbl.get_theme_font_size("font_size")
-			if base <= 0:
-				base = 13
-			lbl.set_meta("base_size", base)
-		lbl.add_theme_font_size_override("font_size", int(round(base * factor)))
+func _chip(text: String) -> Label:
+	var l := UiTheme.label(text, 10, UiTheme.COL().text_dim)
+	l.add_theme_stylebox_override("normal",
+		UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
+	l.add_theme_constant_override("outline_size", 0)
+	return l
 
 
-func set_cold(v: bool) -> void:
-	_cold = true
-	_turn.text = ""
-	_phase.text = I18n.t("top.cold")
-	_restart_btn.visible = false
+func _icon_btn(glyph: String, tip: String) -> Button:
+	var b := UiTheme.button(glyph, tip)
+	b.custom_minimum_size = Vector2(30, 30)
+	b.add_theme_stylebox_override("normal", UiTheme.box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0, 0))
+	b.add_theme_stylebox_override("hover", UiTheme.box(UiTheme.COL().panel_dark, Color(0, 0, 0, 0), 0, 0))
+	return b
 
-func sync_cold() -> void:
-	_cold = true
-	_turn.text = ""
-	_phase.text = I18n.t("top.cold")
-	_restart_btn.visible = false
 
-func _on_settings() -> void:
-	settings_requested.emit()
+func _cycle_skin() -> void:
+	var order := ["neuro", "evil", "default", "classic"]
+	_skin_idx = (_skin_idx + 1) % order.size()
+	skin_requested.emit(order[_skin_idx])
 
-func _on_restart() -> void:
-	restart_requested.emit()
 
-func _on_eye() -> void:
-	observer_toggle_requested.emit()
+func set_cold() -> void:
+	_turn_name.text = "—"
+	_turn_phase.text = I18n.t("top.cold")
 
-## P4 §7: the 👁 button exists only in a match WITHOUT a LOCAL seat (host is a
-## pure spectator) — clicking it returns to the settings overlay.
-func set_observer(v: bool) -> void:
-	if _eye_btn != null:
-		_eye_btn.visible = v
 
-func sync(proj: Dictionary, players: Array) -> void:
-	# proj = for_spectator(engine); players = the seat list (to resolve names+colors)
-	var tp: int = int(proj.get("turn_player", -1))
-	if tp >= 0 and tp < players.size():
-		var s = players[tp]
-		_cold = false
-		_last_turn = str(s.name)
-		_last_turn_color = s.color
-		_turn.text = I18n.t("top.turn") + _last_turn
-		_turn.add_theme_color_override("font_color", _last_turn_color)
-	else:
-		_last_turn = ""
-		_turn.text = ""
-	# CS-1: localize the phase name (phase.* keys), fall back to the raw enum.
+## Paint from the spectator projection + seat list.
+func sync(proj: Dictionary, seats: Array) -> void:
+	var turn: int = int(proj.get("turn_player", proj.get("turn", -1)))
+	var name_txt := "—"
+	var color: Color = UiTheme.COL().accent
+	for s in seats:
+		if int(s.pid) == turn:
+			name_txt = str(s.name)
+			color = s.color
+			break
+	_turn_name.text = name_txt
+	_turn_name.add_theme_color_override("font_color", color)
+	_turn_halo.add_theme_stylebox_override("panel",
+		UiTheme.box(Color(0, 0, 0, 0), color, 2, 13))
 	var ph: String = str(proj.get("phase", ""))
-	_last_phase = ph
 	var ph_lbl: String = I18n.t("phase." + ph)
 	if ph_lbl.begins_with("{phase."):
 		ph_lbl = ph
-	_phase.text = I18n.t("top.phase") + ph_lbl
-	# light the step the engine's phase belongs to
-	var idx := _step_index(ph)
-	for i in _step_labels.size():
-		(_step_labels[i] as Label).add_theme_color_override("font_color",
-			UiTheme.COL().accent if i == idx else UiTheme.COL().text_dim)
-	var rnd := int(proj.get("round", 0))
-	_round.text = "" if rnd <= 0 else "%s %d" % [I18n.t("top.round"), rnd]
-	var pot := int(proj.get("pot", 0))
-	_pot.text = "" if pot <= 0 else "%s $%d" % [I18n.t("top.pot"), pot]
-	(_steps.tooltip_text) = ph_lbl
-	_restart_btn.visible = true
-	
-	# P3: Update timer ring
-	if _timer_ring != null:
-		var window: float = float(proj.get("timer_window", 0.0))
-		var elapsed: float = float(proj.get("timer_elapsed", 0.0))
-		var active: bool = bool(proj.get("timer_active", false))
-		_timer_ring.set_state(window, elapsed, active)
-	if _wait_lbl != null:
-		# P-12: an SDK seat has no decision window — a blank ring reads as "nothing is
-		# happening"; say what we are waiting for instead
-		var drv := ""
-		if tp >= 0 and tp < players.size():
-			drv = str(players[tp].driver_label)
-		_wait_lbl.visible = drv.begins_with("sdk:") and not bool(proj.get("timer_active", false))
-		if _wait_lbl.visible:
-			_wait_lbl.text = I18n.t("top.wait_sdk")
+	_turn_phase.text = I18n.t("top.turn") + " " + ("—" if ph_lbl == "" else ph_lbl)
+	# round chip (`top.round`) + parking pot (`top.pot`)
+	var round_n: int = int(proj.get("round", 1))
+	_round_chip.text = I18n.t("top.round") + " " + str(round_n)
+	var pot: int = int(proj.get("pot", 0))
+	_pot_chip.text = I18n.t("top.pot") + " $%d" % pot
+	# the step ticks follow the turn player's position around the ring
+	var pos: int = 0
+	for p in (proj.get("players", []) as Array):
+		if int(p.get("index", -1)) == turn:
+			pos = int(p.get("position", 0))
+	var step: int = pos % 11
+	for i in _steps.get_child_count():
+		(_steps.get_child(i) as ColorRect).color = UiTheme.COL().accent if i <= step / 3 else UiTheme.COL().border
+	var pend: Dictionary = proj.get("pending", {})
+	_decision.text = ""
+	if str(pend.get("type", "")) == "purchase":
+		_decision.text = I18n.t("top.decision")
+	_decision.visible = _decision.text != ""
 
 
-## Which of the mockup's four steps an engine phase belongs to (0..3), or -1 for none.
-##
-## The engine has ten phases; the design shows four. This is the only place the two vocabularies
-## meet — the counts differ, so the mapping has to be stated somewhere and this is it.
-func _step_index(phase: String) -> int:
-	match phase:
-		"TURN_START", "ROLL_RESOLVE":
-			return 0          # Бросок
-		"RENT_SETTLE", "CARD_WAIT", "JAIL_DECISION":
-			return 1          # Ход
-		"PURCHASE_WAIT", "AUCTION":
-			return 2          # Покупка
-		"END_TURN":
-			return 3          # Конец
-	return -1
-
-
-## Cycle the interface language. `game_view` already listens for `locale_changed` and re-syncs
-## the whole HUD, so nothing else has to be told.
-func _on_lang() -> void:
-	var i: int = I18n.LOCALES.find(I18n.current)
-	var next: String = I18n.LOCALES[(i + 1) % I18n.LOCALES.size()]
-	I18n.set_locale(next)
-
-
-## The skins the switcher cycles, in order. `default` is included: it is the grey-blue theme the
-## game used to wear by accident, and it is a legitimate look.
-const SKINS := ["neuro", "evil", "default"]
-
-
-func _skin_label() -> String:
-	return str(SkinManager.chosen).capitalize()
-
-
-func _on_skin() -> void:
-	var i: int = SKINS.find(SkinManager.chosen)
-	skin_requested.emit(SKINS[(i + 1) % SKINS.size()])
-
-
-## Called after the app has actually reworn the skin.
-func set_skin_name(id: String) -> void:
-	if _skin_btn != null:
-		_skin_btn.text = str(id).capitalize()
-
-
-## A HEADER THAT CANNOT SHRINK WALKS OFF THE SCREEN. The board and the rails collapse when the
-## window narrows — the rails drop to 46px — but the header kept a hard 885px minimum, so below
-## roughly 900px its right end (the skin picker, the language, the settings gear) sat outside the
-## window and could not be clicked at all. Dropping a caption beats losing a control, so the row
-## sheds its least important pieces first and degrades instead of clipping.
-func _apply_density() -> void:
-	# THE WINDOW, not `size`: this Control's own size is already inflated to its minimum, so
-	# asking it would answer "885" on a 700px screen and hide nothing.
-	var w: float = 0.0
-	var win := get_window()
-	if win != null:
-		w = float(win.size.x)
-	_apply_visibility(w)
-
-
-## What the header can afford at a given width. Split out from `_apply_density` so a test can ask
-## about a 700px window without having one.
-func _apply_visibility(w: float) -> void:
-	if w <= 0.0:
-		return
-	if _hint != null:
-		_hint.visible = _is_host and w >= 1150
-	if _pot != null:
-		_pot.visible = w >= 1040
-	if _round != null:
-		_round.visible = w >= 900
-	if _title != null:
-		_title.visible = w >= 700
-	if _steps != null:
-		_steps.visible = w >= 620
+func retranslate() -> void:
+	_brand.text = "●  " + I18n.t("top.title")
+	_btn_lang.text = "EN" if _locale == "ru" else "RU"
+	_rolebadge.text = I18n.t("mode.player")

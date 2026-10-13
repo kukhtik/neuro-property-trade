@@ -17,6 +17,11 @@ var vertical := false     # true on the left/right ring edges
 var skin: SkinManager
 var cell := 64
 
+## `.tile__houses i` sizes (proto.css): a house is 5x5 px, a hotel 8x6 px.
+const HOUSE_PX := 5.0
+const HOTEL_W := 8.0
+const HOTEL_H := 6.0
+
 ## Skin slot ids (so a skin can, if it wants, point these elsewhere).
 const SLOT_HOUSE := "building.house"
 const SLOT_HOTEL := "building.hotel"
@@ -45,38 +50,32 @@ func _draw() -> void:
 	var s: float = minf(size.x, size.y)
 	if s <= 1.0:
 		return
-	var px: float = maxf(4.0, minf(float(cell) * skin.metric("house_size", 0.019) * 7.0, s * 0.8))
+	# `.tile__houses i { width: 5px; height: 5px }` and `.hotel i { width: 8px; height: 6px }`
+	# — the mockup's marks are FIXED pixels on the band, not cell-scaled figures.
 	var hotel: bool = count >= 5
 	var n: int = 1 if hotel else mini(count, 4)
+	var w: float = HOTEL_W if hotel else HOUSE_PX
+	var h: float = HOTEL_H if hotel else HOUSE_PX
 	var tex: Texture2D = skin.texture(SLOT_HOTEL if hotel else SLOT_HOUSE)
-	var gap: float = maxf(1.0, px * 0.15)
-	var total: float = float(n) * px + float(n - 1) * gap
-	var x: float = (size.x - (px if vertical else total)) * 0.5
-	var y: float = (size.y - (total if vertical else px)) * 0.5
+	var gap: float = 1.0
+	var step: float = (h if vertical else w) + gap
+	var total: float = float(n) * (h if vertical else w) + float(n - 1) * gap
+	var x: float = (size.x - (w if vertical else total)) * 0.5
+	var y: float = (size.y - (total if vertical else h)) * 0.5
 
 	for i in n:
-		var r := Rect2(Vector2(x, y), Vector2(px, px))
+		var r := Rect2(Vector2(x, y), Vector2(h, w) if vertical else Vector2(w, h))
 		if tex != null:
 			draw_texture_rect(tex, r, false)
 		else:
 			_draw_fallback(r, hotel)
 		if vertical:
-			y += px + gap
+			y += step
 		else:
-			x += px + gap
+			x += step
 
 
-## A token-coloured house/hotel when the skin ships no art.
-func _draw_fallback(r: Rect2, hotel: bool) -> void:
-	var body: Color = skin.color("money", skin.color("accent"))
-	var roof: Color = skin.color("accent")
-	if hotel:
-		draw_rect(r, body)
-		draw_rect(Rect2(r.position, Vector2(r.size.x, maxf(1.0, r.size.y * 0.25))), roof)
-	else:
-		# house: a roof triangle-ish band over a body
-		var roof_h: float = maxf(1.5, r.size.y * 0.38)
-		draw_rect(Rect2(r.position + Vector2(r.size.x * 0.15, roof_h),
-			Vector2(r.size.x * 0.7, r.size.y - roof_h)), body)
-		draw_rect(Rect2(r.position + Vector2(r.size.x * 0.15, 0.0),
-			Vector2(r.size.x * 0.7, roof_h)), roof)
+## `.tile__houses { color: var(--good) }` — solid good-coloured marks when the skin ships
+## no house art (none of the four skins does today; the mockup draws plain squares).
+func _draw_fallback(r: Rect2, _hotel: bool) -> void:
+	draw_rect(r, skin.color("good", skin.color("accent")))

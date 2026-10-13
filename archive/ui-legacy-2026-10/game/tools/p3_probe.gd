@@ -159,6 +159,56 @@ func _check_dice_instant(gv) -> void:
 	print("PASS: dice animations=false shows result instantly (3+4)")
 	ds.set_animations(true)
 	ds._hide()
+	_check_dice_tray(gv)
+
+
+## v3: the centre dice tray is the dice (mockup diceHTML()): cell*0.62 faces, the sum
+## chip, the doubles chip, the to-jail mark, and roll_tray() tumbling then settling on
+## the decided faces. This is the NEW contract the board scene drives on roll events.
+func _check_dice_tray(gv) -> void:
+	var center = gv._board_scene._center
+	if center == null:
+		_fail("no board centre in scene")
+		return
+	var tray = center.get("_dice")
+	if tray == null or tray.get_child_count() < 4:
+		_fail("dice tray children missing (want 2 dice + sum + dbl + tojail)")
+		return
+	if minf(center.size.x, center.size.y) < 10.0:
+		center.set("size", Vector2(560, 560))
+	var cell: float = minf(center.size.x, center.size.y) / 9.0
+	var die = tray.get_child(0)
+	var want: float = maxf(16.0, roundf(cell * 0.62))
+	if absf(die.custom_minimum_size.x - want) > 1.5:
+		_fail("die size %s != cell*0.62 = %s" % [die.custom_minimum_size.x, want])
+		return
+	center.set_dice(3, 4)
+	var sum = center.get("_sum")
+	if sum == null or not sum.visible or str(sum.text) != "7":
+		_fail("sum chip missing/wrong after 3+4")
+		return
+	center.set_dice(5, 5)
+	var dbl = center.get("_doubles")
+	if dbl == null or not dbl.visible:
+		_fail("doubles chip not shown on 5+5")
+		return
+	center.roll_tray(2, 6)
+	for i in 200:
+		center._process(0.01)
+	if center.get("_rolling"):
+		_fail("tray still rolling after 2s")
+		return
+	if int(die.get_meta("value", 0)) != 2:
+		_fail("tray did not settle onto the decided faces")
+		return
+	var toj = center.get("_tojail")
+	if toj != null:
+		center.set_dice(4, 4, true)
+		if not toj.visible or dbl.visible:
+			_fail("third-doubles state must show to-jail and hide the doubles chip")
+			return
+		center.set_dice(4, 4, false)
+	print("PASS: v3 dice tray — cell*0.62 faces, sum/dbl/tojail chips, tumble settles")
 
 func _dice_faces(ds) -> Array:
 	var out: Array = []

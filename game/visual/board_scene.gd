@@ -1,473 +1,431 @@
-class_name BoardScene
 extends Control
-## The assembled visual layer: board + tokens + spectacle camera + overlay + sfx.
-## Reads the engine (spectator-safe projection) and event log. Read-only
-## downstream consumer — never mutates engine state.
+## The board (`#stage` → `#board`): the 40-tile ring, the centre (watermark / dice tray /
+## banner / decision card) and the player tokens. v3 rebuild from the prototype: flat,
+## cell = side/11, band-facing-centre tiles, dice that tumble IN the centre.
 ##
-## The "camera" is a clip_contents Control that pans the board inside the root
-## viewport (so it is physically rendered/capturable — no SubViewport, which
-## would be a separate render target and show black in a root-viewport grab).
-##
-## A1: the board SCALES to fit the available frame. The cell size is recomputed
-## from the frame each layout pass; when it changes the board is rebuilt at the
-## new cell size (so it never clips — it always fits the center region).
-
-const ProjectionScript := preload("res://sdk/projection.gd")
-const MarkdownRenderer := preload("res://sdk/markdown_renderer.gd")
-const UiTheme := preload("res://ui/theme.gd")
-const SkinManager := preload("res://visual/skin_manager.gd")
-const TL := preload("res://visual/tile_layout.gd")
-const BL := preload("res://visual/board_layout.gd")
-const BoardView := preload("res://visual/board_view.gd")
-const PI := preload("res://core/player_identity.gd")
-const Spectacle := preload("res://visual/spectacle.gd")
-const EventOverlay := preload("res://visual/event_overlay.gd")
-const EventMessages := preload("res://visual/event_messages.gd")
-const Sfx := preload("res://visual/sfx.gd")
-const DiceStage := preload("res://ui/dice_stage.gd")
-const BoardCenterScript := preload("res://visual/board_center.gd")
-const EffectLayerScript := preload("res://visual/effect_layer.gd")
-const EventAdapterScript := preload("res://ui/core/event_adapter.gd")
-const EventPresenterScript := preload("res://ui/core/event_presenter.gd")
-const UiStoreScript := preload("res://ui/core/ui_store.gd")
-const SkinPaint := preload("res://visual/skin_paint.gd")
-
-const MIN_CELL := 24
-const MAX_CELL := 72
-const BOARD_TILES := 40   # default; overridden by settings.tile_count in setup()
-
-var _engine
-var _settings
-var _seats: Array = []
-var _board: BoardView
-var _camera: Control          # clip_contents frustum holding the board
-var _spectacle: Spectacle
-var _overlay: EventOverlay
-var _sfx: Sfx
-var _dice_stage: DiceStage
-var _effects                 # EffectLayer: tokens/particles above the ring
-var _center                  # BoardCenterV2: the interactive centre
-var _skin                    # SkinManager, shared by the centre and the effects
-var _presenter               # EventPresenter: the presentation queue (stage 5)
-var _adapter                 # EventAdapter: engine event -> UI schema
-var _store                   # UiStore: the view model the presenter feeds
-var _timer := 0.0
-var _cell := 0
-var _tile_count := BOARD_TILES
-var _frame_override: Rect2 = Rect2(-1, -1, -1, -1)   # when set, fill this rect instead of the viewport
-var _managed_by_container := false   # when true, a parent container sets our size
-
-## Optional: constrain this scene to a sub-rect (e.g. the center board region
-## of a larger HUD). Leave unset to fill the whole viewport (plain Node parent).
-func set_frame(r: Rect2) -> void:
-	_frame_override = r
-	_apply_viewport_rect()
-
-## When the scene is a child of a container (HBox/VBox), the container manages
-## our size — call this so we don't fight it with the viewport rect.
-func set_managed_by_container(v: bool) -> void:
-	_managed_by_container = v
-
-func setup(engine, settings, seats: Array = []) -> void:
-	_engine = engine
-	_settings = settings
-	_seats = seats
-	# parametric board: read the tile count from settings (default 40)
-	if settings != null and "tile_count" in settings:
-		_tile_count = int(settings.tile_count)
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_viewport_rect()
-
-	# background fills the whole scene.
-	#
-	# The mockup does not paint the stage a flat colour: it lays a pool of accent light in
-	# one corner fading into the backdrop. A single fill is why our board looked pasted on
-	# rather than lit — palettes matched 11 of 11 tokens and still nothing about the LOOK did.
-	var bg := TextureRect.new()
-	bg.name = "Stage"
-	bg.texture = SkinPaint.stage_texture(UiTheme.skin(), Vector2(1440, 900))
-	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_SCALE
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
-
-	# camera frustum: clips to our rect, pans the board child
-	_camera = Control.new()
-	_camera.name = "Camera"
-	_camera.clip_contents = true
-	_camera.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_camera)
-
-	# spectacle pans the camera (frustum) to follow the action. P6 CS-7: it is
-	# gated by settings.spectacle (off by default — the board is always whole).
-	_spectacle = Spectacle.new()
-	_spectacle.set_animations(_settings.animations if _settings != null else true)
-	_spectacle.set_enabled(_settings.spectacle if _settings != null else false)
-	add_child(_spectacle)
-
-	# overlay + sfx + dice are siblings of the camera so they stay fixed on screen
-	_overlay = EventOverlay.new()
-	_overlay.name = "EventOverlay"
-	_overlay.visible = _settings.event_overlay if _settings != null else true
-	add_child(_overlay)
-
-	_sfx = Sfx.new()
-	_sfx.set_enabled(true)
-	add_child(_sfx)
-
-	# P3: dice stage (center-screen BG3 dice)
-	_dice_stage = DiceStage.new()
-	_dice_stage.name = "DiceStage"
-	_dice_stage.set_animations(_settings.animations if _settings != null else true)
-	_dice_stage.set_sfx(_sfx)
-	_dice_stage.dice_rolled.connect(_on_dice_rolled)
-	add_child(_dice_stage)
-
-	# P3: board center — now the interactive centre built from skin tokens
-	_skin = SkinManager.new()
-	_skin.load_skin()
-	_add_board_center()
-
-	# effects overlay ABOVE the ring (tokens, floats, particles) — spec 5.6
-	_effects = EffectLayerScript.new()
-	_effects.name = "EffectLayer"
-	_effects.setup(_skin, _settings.animations if _settings != null else true)
-	_camera.add_child(_effects)
-
-	# the presentation queue (stage 5): events are shown in order, not all at once
-	_adapter = EventAdapterScript.new()
-	_store = UiStoreScript.new()
-	_presenter = EventPresenterScript.new()
-	_presenter.animations = _settings.animations if _settings != null else true
-	_presenter.name = "EventPresenter"
-	add_child(_presenter)
-	_presenter.set_sink({
-		"play": Callable(self, "_play_event"),
-		"apply": Callable(self, "_play_event"),
-		"on_drained": Callable(self, "_resync_store"),
-	})
-	_presenter.set_resync(Callable(self, "_resync_store"))
-
-	if _engine != null:
-		EventMessages.bind_engine(_engine)
-		_engine.log.event_appended.connect(_on_engine_event)
-
-	# build the board now (default cell) so it's never null; _resize_children
-	# will rebuild at the correct size once the container lays us out
-	_cell = MAX_CELL
-	_rebuild_board()
-
-	# size children now that we know our rect
-	_resize_children()
-
-	_paint(false)
-
-## Set this control's rect to the root viewport's visible rect (works even
-## when parented under a plain Node, where anchors have no parent to size from).
-func _apply_viewport_rect() -> void:
-	if _managed_by_container:
-		return   # the parent container sets our size; don't fight it
-	var r := _frame_override
-	if r.size.x < 0 or r.size.y < 0:
-		r = Rect2()
-		if get_viewport() != null:
-			r = get_viewport().get_visible_rect()
-		if r.size.x <= 0 or r.size.y <= 0:
-			r = Rect2(0, 0, 1152, 648)
-	position = r.position
-	size = r.size
-
-## Recompute the cell size to fit the frame, rebuild the board if it changed,
-## and position the camera + board. This is what makes the board ADAPT to the
-## window instead of clipping (A1).
-func _resize_children() -> void:
-	var w := size.x
-	var h := size.y
-	if w <= 0 or h <= 0:
-		return
-	# the camera is created after the first viewport-rect pass; without it there
-	# is nothing to size (`_process` calls this every frame from the start)
-	if _camera == null or not is_instance_valid(_camera):
-		return
-	var grid := TL.grid_cells(_tile_count)
-	var bx := 8.0
-	var by := 8.0
-	var frustum_w := w - bx - 8.0
-	var frustum_h := h - by - 8.0
-	# cell size that fits the frustum (integer so tiles stay crisp)
-	var cell := int(minf(frustum_w / grid, frustum_h / grid))
-	cell = clampi(cell, MIN_CELL, MAX_CELL)
-	if cell != _cell:
-		_cell = cell
-		_rebuild_board()
-		if _engine != null:
-			_paint(false)   # fill the fresh board right away
-	# camera frustum: leave room for the overlay (bottom-right) when event_overlay
-	_camera.position = Vector2(bx, by)
-	_camera.size = Vector2(frustum_w, frustum_h)
-	# center the board inside the frustum, clamped so tiles stay in view
-	var board_px := grid * _cell
-	var cx := maxf(0.0, (frustum_w - board_px) * 0.5)
-	var cy := maxf(0.0, (frustum_h - board_px) * 0.5)
-	_board.position = Vector2(cx, cy)
-	_place_board_center()
-	# background covers our rect
-	for child in get_children():
-		if child is TextureRect and child.name == "Stage":   # our stage backdrop
-			# `child as ColorRect` returned NULL here: the node is a TextureRect (it carries a
-			# gradient now), and a failed cast does not raise — it hands back null and the next
-			# line throws. Every autostart printed a SCRIPT ERROR and the backdrop never sized.
-			var b := child as TextureRect
-			if b == null:
-				continue
-			b.position = Vector2.ZERO
-			b.size = Vector2(w, h)
-			b.set_anchors_preset(Control.PRESET_FULL_RECT)
-			b.anchor_left = 0; b.anchor_top = 0
-			b.anchor_right = 1; b.anchor_bottom = 1
-			b.offset_left = 0; b.offset_top = 0
-			b.offset_right = 0; b.offset_bottom = 0
-
-## (Re)build the board at the current `_cell`. Frees the old board and creates
-## a fresh one, reconnecting the tile-click signal.
-func _rebuild_board() -> void:
-	# _resize_children() can run before the camera exists (the viewport rect is
-	# applied on the first _process), so guard instead of touching a null node.
-	if _camera == null or not is_instance_valid(_camera):
-		return
-	if _board != null and is_instance_valid(_board):
-		_board.queue_free()
-	_board = BoardView.new()
-	_board.name = "BoardView"
-	_board.build(_tile_count, _cell)
-	_board.set_seats(_seats)
-	_camera.add_child(_board)
-	_board.tile_clicked.connect(_on_tile_clicked)
-	_board.tile_hovered.connect(func(i: int) -> void: tile_hovered.emit(i))
-	_spectacle.setup(_camera, _board, _cell, _tile_count)
-	# the effects overlay sits ABOVE the ring; it takes the board's own geometry
-	# so tokens ride the real tile rects for any tile count (spec 5.6)
-	_sync_effect_layer()
-
-
-## Feed the effect layer the board's geometry and current tokens.
-func _sync_effect_layer() -> void:
-	if _effects == null or _board == null:
-		return
-	_effects.set_layout(_board._layout, float(_cell))
-	_effects.position = _board.position
-	_effects.size = _board.size
-
-
-## The interactive centre (spec 5.7) built from skin tokens, replacing the old
-## decorative SVG. It sheds the mini-log, card and subtitle as the centre shrinks.
-func _add_board_center() -> void:
-	_center = BoardCenterScript.new()
-	_center.name = "center"
-	_center.setup(_skin)
-	_camera.add_child(_center)
-	_place_board_center()
-
-func _on_tile_clicked(idx: int) -> void:
-	tile_clicked.emit(idx)
+## Reads the spectator projection; emits tile clicks. It never touches the engine.
 
 signal tile_clicked(index: int)
-signal tile_hovered(index: int)   # P4 §7: observer inspector on hover
+
+const TileView := preload("res://visual/tile_view.gd")
+const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
+const SkinManager := preload("res://visual/skin_manager.gd")
+
+var _skin: SkinManager
+var _board: Array = []
+var _tiles: Array = []
+var _cell := 0.0
+var _selected := -1
+var _entries: Dictionary = {}       # index -> state dict handed to the tiles
+
+var _wm1: Label
+var _wm2: Label
+var _tray: HBoxContainer
+var _dice: Array = []
+var _sum: Label
+var _doubles: Label
+var _banner: Label
+var _card: PanelContainer
+var _card_name: Label
+var _card_price: Label
+var _tokens: Dictionary = {}        # pid -> Control
+var _token_pos: Dictionary = {}     # pid -> int (tile index)
+
+var _rolling := false
+var _roll_t := 0.0
+var _roll_swap := 0.0
+var _roll_to := Vector2i(1, 1)
+var _watermark := true
+
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	_skin = SkinManager.new()
+	_skin.load_skin()
+	_load_board()
+	resized.connect(_layout)
+	_build_centre()
+
+
+func _load_board() -> void:
+	var f := FileAccess.open("res://data/board.json", FileAccess.READ)
+	if f == null:
+		push_error("board_scene: cannot read res://data/board.json")
+		return
+	var parsed = JSON.parse_string(f.get_as_text())
+	if parsed is Dictionary:
+		_board = parsed.get("tiles", [])
+	elif parsed is Array:
+		_board = parsed
+
+
+func _build_centre() -> void:
+	_wm1 = UiTheme.label("NEURO\nPROPERTY TRADE", 18, UiTheme.COL().text_dim)
+	_wm1.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_wm1.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_wm1)
+	_wm2 = UiTheme.label(I18n.t("top.cold"), 10, UiTheme.COL().text_dim)
+	_wm2.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_wm2.modulate = Color(1, 1, 1, 0.6)
+	add_child(_wm2)
+
+	_tray = UiTheme.hbox(12)
+	_tray.alignment = BoxContainer.ALIGNMENT_CENTER
+	add_child(_tray)
+	for i in 2:
+		var d := Control.new()
+		d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		d.set_meta("value", 1)
+		d.draw.connect(_draw_die.bind(d))
+		_tray.add_child(d)
+		_dice.append(d)
+	_sum = UiTheme.label("", 24, UiTheme.COL().text)
+	_sum.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_sum.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
+	_sum.visible = false
+	_tray.add_child(_sum)
+	_doubles = UiTheme.label(I18n.t("die.doubles"), 11, UiTheme.COL().accent2)
+	_doubles.add_theme_stylebox_override("normal", UiTheme.box(Color(0, 0, 0, 0), UiTheme.COL().accent2, 1, 0))
+	_doubles.visible = false
+	_tray.add_child(_doubles)
+
+	_banner = UiTheme.label("", 15, UiTheme.COL().text)
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.visible = false
+	add_child(_banner)
+
+	_card = PanelContainer.new()
+	_card.add_theme_stylebox_override("panel",
+		UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
+	_card.visible = false
+	add_child(_card)
+	var cv := UiTheme.vbox(4)
+	_card.add_child(cv)
+	_card_name = UiTheme.label("", 16, UiTheme.COL().text)
+	_card_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(_card_name)
+	_card_price = UiTheme.label("", 14, UiTheme.COL().money)
+	_card_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cv.add_child(_card_price)
+
+
+## Ring coordinates for board index (classic order: GO bottom-right, anti-clockwise).
+static func _grid_pos(i: int) -> Vector2i:
+	if i == 0:
+		return Vector2i(10, 10)
+	if i < 10:
+		return Vector2i(10 - i, 10)
+	if i == 10:
+		return Vector2i(0, 10)
+	if i < 20:
+		return Vector2i(0, 10 - (i - 10))
+	if i == 20:
+		return Vector2i(0, 0)
+	if i < 30:
+		return Vector2i(i - 20, 0)
+	if i == 30:
+		return Vector2i(10, 0)
+	return Vector2i(10, i - 30)
+
+
+static func _ring_side(i: int) -> String:
+	if i <= 10:
+		return "b"
+	if i <= 20:
+		return "l"
+	if i <= 30:
+		return "t"
+	return "r"
+
+
+func _is_corner(i: int) -> bool:
+	return i in [0, 10, 20, 30]
+
+
+func _layout() -> void:
+	var side_px: float = minf(size.x, size.y)
+	if side_px <= 1.0:
+		return
+	_place_board(side_px)
+	_place_centre()
+
+
+func _place_board(side_px: float) -> void:
+	var cell: float = side_px / 11.0
+	var ox: float = (size.x - side_px) * 0.5
+	var oy: float = (size.y - side_px) * 0.5
+	var rebuild: bool = _tiles.is_empty() or absf(cell - _cell) > 0.5
+	_cell = cell
+	if rebuild:
+		for t in _tiles:
+			t.queue_free()
+		_tiles.clear()
+		for i in _board.size():
+			var tv = TileView.new()
+			var data: Dictionary = _board[i]
+			var ring_side: String = "corner" if _is_corner(i) else _ring_side(i)
+			add_child(tv)
+			tv.setup(_skin, i, data, cell, ring_side)
+			tv.pressed.connect(func(idx: int) -> void: tile_clicked.emit(idx))
+			_tiles.append(tv)
+	for i in _tiles.size():
+		var g: Vector2i = _grid_pos(i)
+		var tv2 = _tiles[i]
+		tv2.position = Vector2(ox + g.x * cell, oy + g.y * cell)
+		tv2.size = Vector2(cell, cell)
+	for pid in _tokens.keys():
+		var tok: Control = _tokens[pid]
+		var idx: int = int(_token_pos.get(pid, 0))
+		tok.position = _token_screen_pos(idx, int(pid), 4)
+
+
+func _place_centre() -> void:
+	var side_px: float = _cell * 11.0
+	var ox: float = (size.x - side_px) * 0.5 + _cell
+	var oy: float = (size.y - side_px) * 0.5 + _cell
+	var cw: float = _cell * 9.0
+	# watermark: two centred lines above the tray
+	_wm1.position = Vector2(ox, oy + cw * 0.30)
+	_wm1.size = Vector2(cw, 64)
+	_wm1.add_theme_font_size_override("font_size", maxi(12, int(_cell * 0.30)))
+	_wm2.position = Vector2(ox, oy + cw * 0.30 + 68.0)
+	_wm2.size = Vector2(cw, 20)
+	_wm2.add_theme_font_size_override("font_size", maxi(8, int(_cell * 0.14)))
+	# tray at the vertical middle
+	var die_px: float = maxf(18.0, roundf(_cell * 0.62))
+	for d in _dice:
+		d.custom_minimum_size = Vector2(die_px, die_px)
+	_tray.position = Vector2(ox, oy + cw * 0.5 - die_px * 0.5)
+	_tray.size = Vector2(cw, die_px)
+	_sum.add_theme_font_size_override("font_size", maxi(14, int(_cell * 0.5)))
+	# banner: top 4% of the centre
+	_banner.position = Vector2(ox, oy + cw * 0.04)
+	_banner.size = Vector2(cw, 30)
+	_banner.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.26)))
+	# card: centred panel
+	_card.position = Vector2(ox + cw * 0.25, oy + cw * 0.62)
+	_card.size = Vector2(cw * 0.5, 92)
+
+
+## Watermark shows in the cold state only (proto renderCenter).
+func set_watermark(v: bool) -> void:
+	_watermark = v
+	_wm1.visible = v
+	_wm2.visible = v
+
+
+func set_cold() -> void:
+	set_watermark(true)
+	_banner.visible = false
+	_card.visible = false
+	for pid in _tokens:
+		(_tokens[pid] as Control).visible = false
+
+
+## Paint from the spectator projection.
+func sync(proj: Dictionary, seats: Array, human_pid: int) -> void:
+	var entries := {}
+	var by_index := {}
+	for e in (proj.get("board", []) as Array):
+		by_index[int(e.get("index", -1))] = e
+	var turn: int = int(proj.get("turn_player", proj.get("turn", -1)))
+	var turn_pos := -1
+	for p in (proj.get("players", []) as Array):
+		if int(p.get("index", -1)) == turn:
+			turn_pos = int(p.get("position", -1))
+	for i in _board.size():
+		var e: Dictionary = by_index.get(i, {})
+		var owner: int = int(e.get("owner", -1))
+		if owner >= 0:
+			var nm := str(e.get("owner_name", ""))
+			var col: Color = UiTheme.COL().accent
+			for s in seats:
+				if int(s.pid) == owner:
+					col = s.color
+					if nm == "":
+						nm = str(s.name)
+			e["owner_color"] = col
+			e["owner_name"] = nm
+		e["active"] = i == turn_pos and not _watermark
+		e["selected"] = i == _selected
+		entries[i] = e
+	_entries = entries
+	for i in _tiles.size():
+		_tiles[i].apply(entries.get(i, {}))
+	_sync_tokens(proj, seats)
+	_sync_centre(proj, seats)
+
+
+func _sync_centre(proj: Dictionary, seats: Array) -> void:
+	var phase: String = str(proj.get("phase", ""))
+	var dice: Array = proj.get("dice", [0, 0])
+	if int(dice[0]) > 0 and not _rolling:
+		set_dice(int(dice[0]), int(dice[1]))
+	var turn: int = int(proj.get("turn_player", proj.get("turn", -1)))
+	var nm := ""
+	var col: Color = UiTheme.COL().accent
+	for s in seats:
+		if int(s.pid) == turn:
+			nm = str(s.name)
+			col = s.color
+	var ph_lbl: String = I18n.t("phase." + phase)
+	if ph_lbl.begins_with("{phase."):
+		ph_lbl = phase
+	_banner.text = "%s · %s" % [nm, ph_lbl]
+	_banner.add_theme_color_override("font_color", col)
+	_banner.visible = nm != "" and phase != ""
+	var pend: Dictionary = proj.get("pending", {})
+	var is_card: bool = str(pend.get("type", "")) in ["purchase", "auction"] or phase == "AUCTION"
+	_card.visible = is_card
+	if is_card:
+		var tile_idx: int = int(pend.get("tile", -1))
+		var t: Dictionary = {}
+		for e in (proj.get("board", []) as Array):
+			if int(e.get("index", -1)) == tile_idx:
+				t = e
+		_card_name.text = str(t.get("name", ""))
+		_card_price.text = "$%d" % int(t.get("cost", 0))
+
+
+func _sync_tokens(proj: Dictionary, seats: Array) -> void:
+	var players: Array = proj.get("players", [])
+	var seen := {}
+	for p in players:
+		var pid: int = int(p.get("index", 0))
+		seen[pid] = true
+		var col: Color = UiTheme.COL().accent
+		for s in seats:
+			if int(s.pid) == pid:
+				col = s.color
+		var tok: Control = _tokens.get(pid)
+		if tok == null:
+			tok = Panel.new()
+			tok.custom_minimum_size = Vector2(16, 16)
+			tok.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tok.add_theme_stylebox_override("panel",
+				UiTheme.box(Color(col.r, col.g, col.b, 0.35), col, 2, 8))
+			add_child(tok)
+			_tokens[pid] = tok
+		var pos: int = int(p.get("position", 0))
+		var target := _token_screen_pos(pos, pid, players.size())
+		var old: int = int(_token_pos.get(pid, -1))
+		if old != pos and old >= 0:
+			var tw := create_tween()
+			tw.tween_property(tok, "position", target, 0.19)
+		else:
+			tok.position = target
+		_token_pos[pid] = pos
+		tok.visible = not bool(p.get("bankrupt", false))
+	for pid in _tokens.keys():
+		if not seen.has(pid):
+			(_tokens[pid] as Control).visible = false
+
+
+func _token_screen_pos(idx: int, pid: int, count: int) -> Vector2:
+	if _cell <= 0.0 or _tiles.is_empty():
+		return Vector2.ZERO
+	var i: int = clampi(idx, 0, _tiles.size() - 1)
+	var base: Vector2 = (_tiles[i] as Control).position + Vector2(_cell * 0.5, _cell * 0.5)
+	var fan: float = 16.0
+	return base + Vector2((pid % 3 - 1) * fan, ((pid / 3) % 2 - 0.5) * fan) - Vector2(8, 8) * 0.5
+
+
+## Select a tile: re-apply the state layer only.
+func set_selected(idx: int) -> void:
+	_selected = idx
+	for i in _tiles.size():
+		var e: Dictionary = _entries.get(i, {})
+		e["selected"] = i == idx
+		_tiles[i].apply(e)
+
+
+## The roll: the TRAY tumbles and settles on the decided faces (0.85s).
+func roll_tray(d1: int, d2: int) -> void:
+	_roll_to = Vector2i(clampi(d1, 1, 6), clampi(d2, 1, 6))
+	_rolling = true
+	_roll_t = 0.0
+	_roll_swap = 0.0
+	_sum.visible = false
+	_doubles.visible = false
+	set_process(true)
+
+
+func set_dice(a: int, b: int) -> void:
+	for i in _dice.size():
+		(_dice[i] as Control).set_meta("value", a if i == 0 else b)
+		(_dice[i] as Control).queue_redraw()
+	_sum.visible = a > 0
+	if a > 0:
+		_sum.text = str(a + b)
+	_doubles.visible = a > 0 and a == b
+
 
 func _process(delta: float) -> void:
-	# keep our rect synced to the viewport (root is a plain Node)
-	_apply_viewport_rect()
-	_resize_children()
-	_timer += delta
-	if _timer >= 0.5:
-		_timer = 0.0
-		if _engine != null:
-			_paint(false)   # safety slow refresh (catches non-event changes)
-
-func _on_engine_event(entry: Dictionary) -> void:
-	# immediate, non-animated reactions stay direct: sound, the spectator feed
-	# and the camera should not wait behind the presentation queue.
-	_sfx.play_type(entry.get("type", ""))
-	_overlay.append(entry)
-	_spectacle.on_event(entry)
-
-	# the VISUAL playback goes through the queue (spec 8.1), so several events
-	# from one engine call are shown in order instead of all at once.
-	if _presenter == null:
-		_paint(true)
+	if not _rolling:
 		return
-	var ev = _adapter.adapt(entry)
-	if not ev.is_empty() or entry.get("type", "") == "roll":
-		# `roll` is a board effect with no journal line, but it still needs the
-		# dice animation, so it reaches the presenter too
-		if not ev.is_empty():
-			_presenter.push(ev)
-		else:
-			_play_local(entry, false)
+	var dur := 0.85
+	_roll_t += delta
+	_roll_swap += delta
+	if _roll_swap >= 0.085:
+		_roll_swap = 0.0
+		for i in _dice.size():
+			(_dice[i] as Control).set_meta("value", 1 + (i * 3 + int(_roll_t * 24.0)) % 6)
+			(_dice[i] as Control).queue_redraw()
+	var p: float = clampf(_roll_t / dur, 0.0, 1.0)
+	for i in _dice.size():
+		var d: Control = _dice[i]
+		d.pivot_offset = d.size * 0.5
+		d.rotation = sin(p * TAU * 2.4 + float(i) * 1.7) * 0.55 * (1.0 - p)
+		d.scale = Vector2(1.0, 1.0 - 0.25 * sin(p * PI))
+	if _roll_t >= dur:
+		_rolling = false
+		set_process(false)
+		for d in _dice:
+			(d as Control).rotation = 0.0
+			(d as Control).scale = Vector2.ONE
+		set_dice(_roll_to.x, _roll_to.y)
 
 
-## Play one event's own animation (dice, walk, effects). Called by the presenter
-## when it is wired, or directly when it is not.
-func _play_event(ev: Dictionary, instant: bool) -> void:
-	# apply the deltas so the view model keeps up with the animation
-	if _store != null:
-		_store.apply_delta(ev.get("d", []))
+## Play one engine event (adapter shape): roll tumbles the tray, move hops the token.
+func play_event(ev: Dictionary) -> void:
 	var k: String = str(ev.get("k", ""))
-	if k == "roll" and not instant:
-		if _dice_stage != null:
-			_dice_stage.roll(int(ev.get("a", 1)), int(ev.get("b", 1)))
-	elif k == "move" and not instant:
-		if _effects != null:
-			_effects.move_player(int(ev.get("p", -1)), [int(ev.get("ti", 0))])
-	elif k == "buy" and not instant:
-		if _effects != null:
-			_effects.burst(int(ev.get("ti", -1)), _skin.color("accent"))
-	elif k in ["rent", "tax", "go", "park"] and not instant:
-		if _effects != null:
-			var positive: bool = k in ["go", "park"]
-			_effects.float_over_tile(int(ev.get("ti", -1)),
-				str(ev.get("a", 0)), positive)
-	# the board is repainted from the store/projection after each step
-	if instant:
-		_paint(false)
-	else:
-		_paint(true)
+	if k == "roll":
+		roll_tray(int(ev.get("a", 1)), int(ev.get("b", 1)))
+	elif k in ["move", "teleport"]:
+		var pid: int = int(ev.get("p", -1))
+		var to: int = int(ev.get("ti", -1))
+		if pid >= 0 and to >= 0 and _tokens.has(pid):
+			var tw := create_tween()
+			tw.tween_property(_tokens[pid], "position", _token_screen_pos(to, pid, 4), 0.19)
 
 
-## Fall back to the legacy one-shot path for events the adapter drops.
-func _play_local(entry: Dictionary, instant: bool) -> void:
-	if entry.get("type", "") == "roll":
-		var d: Dictionary = entry.get("data", {})
-		if _dice_stage != null and not instant:
-			_dice_stage.roll(int(d.get("d1", 1)), int(d.get("d2", 1)))
-	_paint(not instant)
-	# the projection is the truth: resync the view model once we are done
-	_resync_store()
+func _draw_die(holder: Control) -> void:
+	var v: int = int(holder.get_meta("value", 1))
+	var s: Vector2 = holder.size
+	var side: float = maxf(4.0, minf(s.x, s.y))
+	var base := Rect2((s - Vector2(side, side)) * 0.5, Vector2(side, side))
+	holder.draw_rect(base, UiTheme.skin().color("dice_bg", Color(0.95, 0.96, 0.98)))
+	var col: Color = UiTheme.skin().color("dice_ink", Color(0.09, 0.1, 0.12))
+	var foot: Color = col
+	foot.a = 0.2
+	var fh: float = maxf(2.0, minf(4.0, side * 0.11))
+	holder.draw_rect(Rect2(base.position + Vector2(0.0, base.size.y - fh), Vector2(side, fh)), foot)
+	var pad: float = maxf(2.0, side * 0.12)
+	var cell: float = (side - pad * 2.0) / 3.0
+	for p in _pip_positions(v):
+		var c := base.position + Vector2(
+			pad + (float(p[0]) + 0.5) * cell,
+			pad + (float(p[1]) + 0.5) * cell)
+		holder.draw_circle(c, maxf(1.5, cell * 0.31), col)
 
 
-## The presenter finished its queue — reconcile the view with the projection.
-func _resync_store() -> void:
-	if _store == null or _engine == null:
-		_paint(false)
-		return
-	_store.resync(ProjectionScript.new().for_spectator(_engine))
-	_paint(false)
-
-## Paint from a projection that came over the WIRE (a networked client has no engine of
-## its own). This is the counterpart of `_resync_store`, which can only read a LOCAL
-## engine: without it a joining browser played correctly and showed nothing.
-func apply_projection(proj: Dictionary) -> void:
-	if _store == null:
-		return
-	if _tile_count != int(proj.get("tile_count", _tile_count)) and proj.has("tile_count"):
-		_tile_count = int(proj["tile_count"])
-		_rebuild_board()
-	_store.resync(proj)
-	_paint(false, proj)
-	# the client's own seat is the one it may act for; the board needs it to highlight
-	# the right player and to know where the tokens are
-	if _board != null and is_instance_valid(_board):
-		_board.set_seats(_seats)
-
-
-## Skip the animation queue and jump to the truth (spec 8.1: Space / click).
-func skip_all_animations() -> void:
-	if _presenter != null:
-		_presenter.skip_all()
-
-## Set the animations master toggle (settings.animations).
-func set_animations(on: bool) -> void:
-	if _presenter != null:
-		_presenter.animations = on
-	if _effects != null:
-		_effects.animations = on
-	if _dice_stage != null:
-		_dice_stage.set_animations(on)
-
-## Draw the truth. `wire` is the projection a networked client received from the host —
-## such a client has NO engine, so reading one is not an option and bailing out early (as
-## this did) left the board blank for a whole match.
-func _paint(animate: bool, wire: Dictionary = {}) -> void:
-	var proj: Dictionary = wire
-	if proj.is_empty():
-		if _engine == null:
-			return
-		proj = ProjectionScript.new().for_spectator(_engine)
-	_board.refresh_state(proj)
-	_board.refresh_tokens(proj.get("players", []))
-	if not animate:
-		_board.update_highlight(proj)
-	# the effects overlay owns the tokens now, and the centre mirrors the turn
-	if _effects != null:
-		_effects.sync_tokens(_token_vms(proj))
-	if _center != null:
-		var players: Array = proj.get("players", [])
-		var tp: int = int(proj.get("turn_player", -1))
-		var pname := ""
-		if tp >= 0 and tp < players.size():
-			pname = str(players[tp].get("name", ""))
-		var board: Array = proj.get("board", [])
-		var tile_name := ""
-		if tp >= 0 and tp < players.size():
-			var pos: int = int(players[tp].get("position", -1))
-			if pos >= 0 and pos < board.size():
-				tile_name = str(board[pos].get("name", ""))
-		# THE BANNER SHOWED THE ENGINE'S ENUM. `top_bar` and `action_panel` both translate the phase
-		# before displaying it; the board centre was handed the raw string, so the middle of the
-		# board read "Host · TURN_START · Start" while the header two inches above it read correctly.
-		var ph_raw: String = str(proj.get("phase", ""))
-		var ph_lbl: String = I18n.t("phase." + ph_raw)
-		if ph_lbl.begins_with("{phase."):
-			ph_lbl = ph_raw
-		_center.set_turn(pname, ph_lbl, tile_name)
-		if int(proj.get("dice", [0, 0])[0]) > 0:
-			var d: Array = proj.get("dice", [0, 0])
-			_center.set_dice(int(d[0]), int(d[1]))
-
-
-## The seat's colour when we know the seat, else the skin-seeded identity palette —
-## the resolver the effect layer consumes, so a landing flash is the same colour as
-## the piece that landed (P-2).
-func _seat_color(pid: int) -> Color:
-	for s in _seats:
-		if int(s.pid) == pid:
-			return s.color
-	return PI.color_of(pid)
-
-
-## Player view models for the effect layer's tokens (id/name/pos/colour).
-func _token_vms(proj: Dictionary) -> Array:
-	var out: Array = []
-	var players: Array = proj.get("players", [])
-	for p in players:
-		var pid: int = int(p.get("index", -1))
-		out.append({
-			"id": pid,
-			"name": str(p.get("name", "")),
-			"pos": int(p.get("position", 0)),
-			"color_idx": int(p.get("index", 0)),
-			"color_hex": _seat_color(pid).to_html(false),
-			"bankrupt": bool(p.get("bankrupt", false)),
-		})
-	return out
-
-## Position/size the interactive centre inside the board's inner area (between
-## the tile ring). Called after every layout pass. Uses BoardLayout's real
-## centre rect so it works for any tile count, not just 40.
-func _place_board_center() -> void:
-	if _center == null or _board == null or not is_instance_valid(_camera):
-		return
-	var side: float = float(board_px())
-	var inner: Rect2 = BL.center_rect(_tile_count, side,
-		_skin.metric("corner_ratio", 1.4), _skin.metric("board_gap", 2.0))
-	_center.position = _board.position + inner.position
-	_center.size = inner.size
-	_center.fit(Rect2(Vector2.ZERO, inner.size))
-
-func board_px() -> int:
-	return TL.grid_cells(_tile_count) * _cell
-
-## P3: dice stage finished presenting — nothing to do engine-side (the engine
-## already advanced); kept as the presentation-completion hook.
-func _on_dice_rolled(d1: int, d2: int, sum: int) -> void:
-	pass  # presentation-completion hook
+static func _pip_positions(v: int) -> Array:
+	match v:
+		1: return [[1, 1]]
+		2: return [[0, 0], [2, 2]]
+		3: return [[0, 0], [1, 1], [2, 2]]
+		4: return [[0, 0], [2, 0], [0, 2], [2, 2]]
+		5: return [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]]
+		6: return [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]]
+	return []

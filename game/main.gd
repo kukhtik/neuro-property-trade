@@ -18,9 +18,7 @@ const AdminGate := preload("res://admin/admin_gate.gd")
 const AdminPanel := preload("res://admin/admin_panel.gd")
 const SettingsOverlay := preload("res://ui/settings_overlay.gd")
 const GameView := preload("res://ui/game_view.gd")
-const JoinLobby := preload("res://ui/join_lobby.gd")
-const HostInvite := preload("res://ui/host_invite.gd")
-const PerfOverlay := preload("res://ui/perf_overlay.gd")
+# v3 swap: JoinLobby / HostInvite / PerfOverlay were archived with the old interface.
 const SkinManager := preload("res://visual/skin_manager.gd")
 
 var _engine
@@ -93,10 +91,6 @@ func _ready() -> void:
 	_overlay_layer.add_child(_overlay)
 	_overlay.set_mode(true)
 	_overlay.started.connect(_on_started)
-	# IT MUST BE SUBSCRIBED HERE, where the overlay exists. The first attempt wired this in
-	# `_ready()` several lines earlier, before `_overlay` was constructed, so the button was
-	# connected to nothing and pressing it did exactly as much as pressing a picture.
-	_overlay.host_invite_requested.connect(_on_host_invite)
 	_overlay.apply_requested.connect(_on_apply)
 	_overlay.closed.connect(_on_overlay_closed)
 
@@ -118,15 +112,11 @@ func _ready() -> void:
 	# A seat was handed to us (by the page URL or the CLI): join the host's match
 	# over the wire rather than playing a local one.
 	if LaunchParams.has_seat():
-		# A FRIEND OPENING A LINK GETS A SCREEN, NOT A SILENT CONNECTION. `_join_as_remote` wired
-		# the socket and painted nothing until the host pushed state, so a failure to reach the
-		# host looked like a frozen empty window. The lobby says what is happening and what to
-		# check if nothing happens.
-		call_deferred("_open_join_lobby")
-	# --perf: put the frame rate on screen. Performance cannot be judged by eye, and a desktop
-	# build has no console unless one opens it.
-	if _has_cli_flag("--perf"):
-		call_deferred("_add_perf_overlay")
+		# v3 swap: the join lobby went to the archive with the old interface; the seat link is
+		# still parseable but the screen for it is yet to be rebuilt.
+		push_warning("join-by-link is not wired in the v3 interface yet")
+	# --perf: the perf overlay went to the archive with the old interface (its replacement
+	# comes with the v3 pass).
 	# --server-port=<n>: bind the game server on a FIXED port (0 = ephemeral)
 	var port := _cli_value("--server-port=")
 	if port != "":
@@ -313,7 +303,6 @@ func _autostart() -> void:
 	# green because the assertions looked at colours that happen to sit outside the dialog.
 	_overlay.visible = false
 	_game_started = true
-	_game_view.on_game_started()
 	_game_view.on_game_started()
 
 func _has_cli_flag(flag: String) -> bool:
@@ -553,20 +542,10 @@ func _lan_address() -> String:
 	return "127.0.0.1"
 
 
-## Show the join screen for a seat handed to us by an invitation link, and let it open the socket.
-## On success the normal game view takes over; the lobby removes itself.
+## Show the join screen for a seat handed to us by an invitation link…
+## v3 swap: archived with the old interface — rebuilt after the shell.
 func _open_join_lobby() -> void:
-	# `layer` belongs to CanvasLayer, not Control — the lobby draws in the normal tree, so it only
-	# needs `z_index`. (Assigning `layer` on a Control raises "Invalid assignment" at runtime, which
-	# is how this was caught: by running it.)
-	var lobby = JoinLobby.new()
-	add_child(lobby)
-	lobby.z_index = 40   # above the cold board
-	lobby.joined.connect(_on_lobby_joined)
-	lobby.gave_up.connect(_on_lobby_gave_up)
-	_join_lobby = lobby
-	if _overlay != null and is_instance_valid(_overlay):
-		_overlay.visible = false   # a joining player must not be shown the host's settings
+	push_warning("_open_join_lobby: the v3 join screen is not built yet")
 
 
 func _on_lobby_joined(pid: int) -> void:
@@ -593,51 +572,19 @@ func _on_lobby_gave_up(_reason: String) -> void:
 	pass   # the lobby keeps showing the problem and a retry button
 
 
-## "Создать партию для друзей": build the match with the configured seats, turn the seats into
-## REMOTE ones a browser can take, open the server wide enough to be reached, and SHOW the links.
+## "Создать партию для друзей" — v3 swap: archived with the old interface, rebuilt later.
 func _on_host_invite() -> void:
-	var seats: Array = SeatConfigScript.from_settings(_overlay.call("_collect_settings"))
-	# every seat but the host's own becomes something another machine can take
-	var remote := 0
-	for st in seats:
-		if int(st.pid) != 0:
-			st.input_driver = "REMOTE"
-			remote += 1
-	if remote == 0:
-		# nothing to invite anyone to: say so instead of opening a linkless screen
-		push_warning("host invite: every seat is local — add a friend's seat first")
-		return
-	var st = _overlay.call("_collect_settings")
-	_on_started(st, seats)
-	# the server mints tokens during the build, so the links exist only after it
-	_show_invite()
+	push_warning("host invite: the v3 invite screen is not built yet")
 
 
 ## The invitation screen, filled from what the server actually bound.
+## v3 swap: archived with the old interface.
 func _show_invite() -> void:
-	var base := "ws://%s:%d" % [_lan_address(), _server_port]
-	var links: Array = []
-	# a browser link is the whole point: the friend installs nothing. Without a web build the
-	# address is still useful, so the row falls back to the desktop command.
-	var web := _cli_value("--web-url=")
-	for pid in _seat_tokens.keys():
-		var tok: String = str(_seat_tokens[pid])
-		if web != "":
-			links.append("%s?seat=%s&host=%s" % [web, tok, base])
-		else:
-			links.append("%s  seat=%s" % [base, tok])
-	if _host_invite != null and is_instance_valid(_host_invite):
-		_host_invite.queue_free()
-	_host_invite = HostInvite.new()
-	add_child(_host_invite)
-	_host_invite.z_index = 45
-	_host_invite.set_invitation(base, links)
+	push_warning("_show_invite: the v3 invite screen is not built yet")
 
 
 func _add_perf_overlay() -> void:
-	var o = PerfOverlay.new()
-	o.set_log_dir(_log_dir())   # samples go to perf.log next to the role log, not to stdout
-	add_child(o)
+	push_warning("_add_perf_overlay: the v3 perf overlay is not built yet")
 
 
 ## A real client identified itself with a valid seat token. Hand the seat over: the host stops

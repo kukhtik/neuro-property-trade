@@ -1,0 +1,472 @@
+class_name JournalPanel
+extends PanelContainer
+## Event journal (spec P4 / problem 15): replaces the raw 10-line label with a
+## real panel — scrollable (auto-scroll pinned to the newest line), filterable
+## (by player, by event type, money-only), with .jsonl export. Reads ONLY the
+## engine event log entries (public fields) — spectator-safe.
+##
+## Observer layout: game_view widens this panel and the filters stay visible;
+## nothing here depends on which seat is human.
+
+signal exported(path: String)
+
+const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
+
+var _feed: VBoxContainer
+var _scroll: ScrollContainer
+var _player_filter: OptionButton
+var _type_filter: OptionButton
+var _money_only: CheckButton
+var _export_btn: Button
+var _count_lbl: Label
+var _head_title: Label       # the panel title (hidden while railed)
+var _rail                    # RailPanel wrapper
+
+
+## Attach the rail wrapper: the rail carries the title while collapsed, so the
+## panel hides its own header (spec §5.2).
+func set_rail(rail) -> void:
+	_rail = rail
+	if rail != null:
+		rail.set_title(I18n.t("jrn.title"))
+		rail.toggled.connect(func(collapsed: bool) -> void:
+			if _head_title != null:
+				_head_title.visible = not collapsed)
+var _entries: Array = []          # full engine log (Array of Dictionary)
+var _player_names: Array = []     # index == pid
+var _rendered := 0                # how many entries are already in the label
+var _filters_dirty := true
+
+const EXPORT_PATH := "user://journal_export.jsonl"
+
+## Event types that move money (the "деньги" quick filter).
+## The design groups events into EIGHT categories (`ty.*`). The filter used to list the raw
+## engine types it had seen in the log — `roll`, `move`, `purchase`, `cash`, `setup` — which is a
+## debugging vocabulary. A player reads "Броски / Деньги / Покупки", not "roll / move / cash".
+const CATEGORY_KEYS := ["ty.roll", "ty.money", "ty.buy", "ty.auction",
+	"ty.build", "ty.card", "ty.trade", "ty.other"]
+
+## Which category an engine event type belongs to. Anything unlisted lands in `ty.other`, so a
+## new event type degrades into a real category instead of vanishing from the filter.
+const CATEGORY_OF := {
+	"roll": "ty.roll", "move": "ty.roll", "land": "ty.roll", "go": "ty.roll",
+	"rent": "ty.money", "tax": "ty.money", "pay": "ty.money", "cash": "ty.money",
+	"collect": "ty.money", "collect_from_all": "ty.money", "pay_each_player": "ty.money",
+	"go_bonus": "ty.money", "pass_go": "ty.money",
+	"purchase": "ty.buy", "buy": "ty.buy",
+	"auction_start": "ty.auction", "auction_bid": "ty.auction", "auction_win": "ty.auction",
+	"auction_none": "ty.auction", "bid": "ty.auction",
+	"build": "ty.build", "sell_house": "ty.build", "sell": "ty.build",
+	"mortgage": "ty.build", "unmortgage": "ty.build",
+	"card": "ty.card", "deck": "ty.card", "chance": "ty.card", "community": "ty.card",
+	"trade_offer": "ty.trade", "trade_accept": "ty.trade", "trade_reject": "ty.trade",
+	"trade": "ty.trade",
+}
+
+static func category_of(t: String) -> String:
+	return str(CATEGORY_OF.get(t, "ty.other"))
+
+const MONEY_TYPES := ["purchase", "pay", "rent", "tax", "go_bonus",
+	"auction_win", "collect", "collect_from_all", "pay_each_player"]
+
+func _solid_tex(c: Color) -> ImageTexture:
+	var img := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	img.fill(c)
+	return ImageTexture.create_from_image(img)
+
+
+func _init() -> void:
+	add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
+	var outer := MarginContainer.new()
+	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
+		outer.add_theme_constant_override(edge, 8)
+	add_child(outer)
+	var v := UiTheme.vbox(6)
+	outer.add_child(v)
+
+	# header: title + live count + export
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	_head_title = UiTheme.label(I18n.t("jrn.title"), 12, UiTheme.COL().accent)
+	I18n.key_on(_head_title, "jrn.title")
+	_head_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_head_title)
+	_count_lbl = UiTheme.label("0", 11, UiTheme.COL().text_dim)
+	_count_lbl.tooltip_text = I18n.t("jrn.count_tip")
+	I18n.tip_on(_count_lbl, "jrn.count_tip")
+	head.add_child(_count_lbl)
+	_export_btn = UiTheme.button("⭳", I18n.t("jrn.export_tip"))
+	I18n.tip_on(_export_btn, "jrn.export_tip")
+	_export_btn.custom_minimum_size = Vector2(26, 22)
+	_export_btn.connect("pressed", Callable(self, "_on_export"))
+	head.add_child(_export_btn)
+	v.add_child(head)
+
+	# filter row: player | type | money-only
+	var filters := HBoxContainer.new()
+	filters.add_theme_constant_override("separation", 6)
+	var plbl := UiTheme.label(I18n.t("jrn.player_lbl"), 11, UiTheme.COL().text_dim)
+	I18n.key_on(plbl, "jrn.player_lbl")
+	plbl.tooltip_text = I18n.t("jrn.player_tip")
+	I18n.tip_on(plbl, "jrn.player_tip")
+	filters.add_child(plbl)
+	_player_filter = OptionButton.new()
+	_player_filter.tooltip_text = I18n.t("jrn.player_filter_tip")
+	I18n.tip_on(_player_filter, "jrn.player_filter_tip")
+	_player_filter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_player_filter.clip_text = true
+	# min width follows the WIDEST ENTRY by default, which is what pushed the whole
+	# rail 76px past its declared width and shrank the board. The panel width is set
+	# by the layout profile; the dropdown must not overrule it.
+	_player_filter.fit_to_longest_item = false
+	_player_filter.connect("item_selected", Callable(self, "_on_filter_changed"))
+	filters.add_child(_player_filter)
+	var tlbl := UiTheme.label(I18n.t("jrn.type_lbl"), 11, UiTheme.COL().text_dim)
+	I18n.key_on(tlbl, "jrn.type_lbl")
+	tlbl.tooltip_text = I18n.t("jrn.type_tip")
+	I18n.tip_on(tlbl, "jrn.type_tip")
+	filters.add_child(tlbl)
+	_type_filter = OptionButton.new()
+	_type_filter.tooltip_text = I18n.t("jrn.type_filter_tip")
+	I18n.tip_on(_type_filter, "jrn.type_filter_tip")
+	_type_filter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_type_filter.clip_text = true
+	_type_filter.fit_to_longest_item = false
+	_type_filter.connect("item_selected", Callable(self, "_on_filter_changed"))
+	filters.add_child(_type_filter)
+	_money_only = CheckButton.new()
+	_money_only.text = "$"
+	_money_only.tooltip_text = I18n.t("jrn.money_tip")
+	I18n.tip_on(_money_only, "jrn.money_tip")
+	_money_only.connect("toggled", Callable(self, "_on_filter_changed"))
+	filters.add_child(_money_only)
+	v.add_child(filters)
+
+	# The feed is a stack of ROWS, not rich text.
+	#
+	# The mockup draws every event as `.ev`: a 20x20 square in the event's colour with a
+	# letter in it, then the text beside it, separated by a rule. RichTextLabel can colour
+	# words but cannot lay out that badge, which is why our journal read as a wall of small
+	# grey text rather than a log you can scan.
+	_feed = VBoxContainer.new()
+	_feed.name = "Feed"
+	_feed.add_theme_constant_override("separation", 0)
+	_feed.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	_scroll = ScrollContainer.new()
+	_scroll.name = "FeedScroll"
+	# A ScrollContainer draws a `panel` stylebox, and ours was never overridden — so it used the
+	# engine's default theme fill instead of the skin. The journal's rows are transparent and the
+	# area below the last one therefore painted a colour that exists in no skin: measured #0e111e
+	# where the mockup has #130b1f. The scroll region must be a window onto the panel, not a
+	# surface of its own.
+	_scroll.add_theme_stylebox_override("panel",
+		UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_feed)
+	v.add_child(_scroll)
+
+## Cold state: no engine yet.
+func sync_cold() -> void:
+	set_entries([], [])
+	_filters_dirty = true
+
+## P5: re-apply localized static labels after a locale change. Dynamic filter
+## options are rebuilt (in the current locale) by a re-render.
+func retranslate() -> void:
+	I18n.relabel(self)
+	if _entries.size() > 0 or _player_names.size() > 0:
+		set_entries(_entries, _player_names)
+
+## Full refresh: replace the entry list + player names, rebuild if needed.
+## entries = engine.log.entries(); player_names[i] = display name of pid i.
+func set_entries(entries: Array, player_names: Array) -> void:
+	_entries = entries
+	_player_names = player_names
+	_sync_filter_options()
+	_rebuild()
+
+## Incremental feed: same as set_entries (kept for API symmetry with sync()).
+func refresh(entries: Array, player_names: Array) -> void:
+	set_entries(entries, player_names)
+
+func _sync_filter_options() -> void:
+	# index 0 is always the "all" display option (I18n.t("jrn.all")); the
+	# comparison logic below relies on that position, not on the literal.
+	var want: Array[String] = [I18n.t("fl.player")]
+	for i in _player_names.size():
+		want.append("%d·%s" % [i, str(_player_names[i])])
+	var cur_p: int = _player_filter.selected
+	if _options_changed(_player_filter, want):
+		_fill_options(_player_filter, want)
+		_restore_selection(_player_filter, cur_p)
+	# type filter: "all" + unique types present in the log
+	var types: Array[String] = [I18n.t("fl.type")]
+	for k in CATEGORY_KEYS:
+		types.append(I18n.t(k))
+	var cur_t := _selected_text(_type_filter)
+	if _options_changed(_type_filter, types):
+		_fill_type_options(_type_filter, types)
+		_restore_text(_type_filter, cur_t)
+
+func _fill_type_options(o: OptionButton, items: Array[String]) -> void:
+	o.clear()
+	for it in items:
+		o.add_item(it)
+
+func _options_changed(o: OptionButton, items: Array[String]) -> bool:
+	if o.item_count != items.size():
+		return true
+	for i in items.size():
+		if o.get_item_text(i) != items[i]:
+			return true
+	return false
+
+func _fill_options(o: OptionButton, items: Array[String]) -> void:
+	o.clear()
+	for it in items:
+		o.add_item(it)
+
+func _restore_selection(o: OptionButton, idx: int) -> void:
+	if idx >= 0 and idx < o.item_count:
+		o.select(idx)
+	else:
+		o.select(0)
+
+func _selected_text(o: OptionButton) -> String:
+	if o.selected < 0 or o.selected >= o.item_count:
+		return ""
+	return o.get_item_text(o.selected)
+
+func _restore_text(o: OptionButton, txt: String) -> void:
+	for i in o.item_count:
+		if o.get_item_text(i) == txt:
+			o.select(i)
+			return
+	o.select(0)
+
+func _selected_pid() -> int:
+	# index 0 = "все"; option i corresponds to pid i-1
+	if _player_filter.selected <= 0:
+		return -1
+	return _player_filter.selected - 1
+
+func _selected_type() -> String:
+	# index 0 is the "all" option — compare by position, not by the
+	# locale-dependent display text.
+	if _type_filter.selected <= 0:
+		return ""
+	var i := _type_filter.selected - 1
+	return CATEGORY_KEYS[i] if i < CATEGORY_KEYS.size() else ""
+
+func _money_only_on() -> bool:
+	return _money_only.button_pressed
+
+func _on_filter_changed(_idx: int = 0) -> void:
+	_filters_dirty = true
+	_rendered = 0
+	if _feed != null:
+		for c in _feed.get_children():
+			_feed.remove_child(c); c.queue_free()
+	_rebuild()
+
+func _process(_delta: float) -> void:
+	# rebuild lazily (new entries appended since last render, or filter change)
+	if _filters_dirty or _rendered < _entries.size():
+		_rebuild()
+
+## Core: rebuild the visible text so it matches the current filters.
+func _rebuild() -> void:
+	if _feed == null:
+		return
+	for c in _feed.get_children():
+		_feed.remove_child(c)
+		c.queue_free()
+	var vis := filter_entries(_entries, _selected_pid(), _selected_type(), _money_only.button_pressed)
+	for e in vis:
+		_feed.add_child(_event_row(e, _player_names))
+	# F-15/F-36: a cold log states that the match has not begun. Before this it rendered as an
+	# empty strip under a working toolbar — it read as a broken panel, not as "not started".
+	if vis.is_empty() and _entries.is_empty():
+		_feed.add_child(_cold_state())
+	# keep the newest line in view, as the rich-text version did
+	if _scroll != null:
+		await get_tree().process_frame
+		_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+	_rendered = _entries.size()
+	_filters_dirty = false
+	_count_lbl.text = "%d/%d" % [vis.size(), _entries.size()]
+
+
+## F-15/F-36: what a cold journal says instead of nothing — the title and how to start.
+## Both lines are PARAGRAPHS (they wrap in the rail), so they come from `label_wrap`.
+func _cold_state() -> Control:
+	var pad := MarginContainer.new()
+	pad.name = "EmptyState"
+	pad.add_theme_constant_override("margin_left", 10)
+	pad.add_theme_constant_override("margin_right", 10)
+	pad.add_theme_constant_override("margin_top", 12)
+	var box := UiTheme.vbox(6)
+	pad.add_child(box)
+	var t := UiTheme.label_wrap(I18n.t("jrn.empty_title"), 13, UiTheme.COL().text)
+	t.name = "EmptyTitle"
+	I18n.key_on(t, "jrn.empty_title")
+	box.add_child(t)
+	var b := UiTheme.label_wrap(I18n.t("jrn.empty_body"), 12, UiTheme.COL().text_dim)
+	b.name = "EmptyBody"
+	I18n.key_on(b, "jrn.empty_body")
+	box.add_child(b)
+	return pad
+
+
+## One event, drawn the way the mockup draws `.ev`: a coloured square with a letter, then the
+## text beside it, and a rule underneath.
+func _event_row(e: Dictionary, names: Array) -> Control:
+	var t: String = str(e.get("type", "?"))
+	var col: Color = _kind_color(t)
+
+	var row := PanelContainer.new()
+	row.name = "Event"
+	row.add_theme_stylebox_override("panel",
+		UiTheme.box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
+	# `.ev.hl` — a highlighted event carries an accent bar on its left
+	var hl: bool = bool(e.get("hl", false))
+	if hl:
+		row.add_theme_stylebox_override("panel",
+			UiTheme.box(UiTheme.COL().get("surface2", UiTheme.COL().panel), Color.TRANSPARENT, 0, 0))
+
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_left", 4 if hl else 10)
+	m.add_theme_constant_override("margin_right", 10)
+	m.add_theme_constant_override("margin_top", 7)
+	m.add_theme_constant_override("margin_bottom", 7)
+	row.add_child(m)
+
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 10)
+	m.add_child(line)
+
+	# the badge: a 20x20 square in the event's colour carrying its first letter
+	var badge := ColorRect.new()
+	badge.custom_minimum_size = Vector2(20, 20)
+	badge.color = col
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var bl := UiTheme.label(_badge_letter(t), 11, UiTheme.COL().get("ink", Color.BLACK))
+	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(bl)
+	line.add_child(badge)
+
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 2)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(body)
+
+	var txt: String = EventMessagesScript.describe(e)
+	# a journal line is PROSE: it wraps inside its row and takes the row's width
+	var head := UiTheme.label_wrap("#%d  %s" % [int(e.get("index", -1)), txt], 12, UiTheme.COL().text)
+	body.add_child(head)
+
+	var type_lbl: String = I18n.t("event_type." + t)
+	if type_lbl.begins_with("{event_type."):
+		type_lbl = t
+	var tag := UiTheme.label(type_lbl, 10, UiTheme.COL().text_dim)
+	body.add_child(tag)
+
+	return row
+
+
+## The single letter on an event's badge. Derived from the localized type name so it matches
+## whatever language the log is in.
+func _badge_letter(t: String) -> String:
+	var lbl: String = I18n.t("event_type." + t)
+	if lbl.begins_with("{event_type."):
+		lbl = t
+	for ch in lbl:
+		if ch.strip_edges() != "":
+			return ch.to_upper()
+	return "?"
+
+## PURE (headless-testable): filter log entries by player pid (-1 = all),
+## event type ("" = all) and money-only.
+static func filter_entries(entries: Array, pid: int, type: String, money_only: bool) -> Array:
+	var out: Array = []
+	for e in entries:
+		var d: Dictionary = e.get("data", {})
+		if pid >= 0 and not _mentions_player(d, pid):
+			continue
+		if type != "" and category_of(str(e.get("type", ""))) != type:
+			continue
+		if money_only and not _is_money(e):
+			continue
+		out.append(e)
+	return out
+
+static func _mentions_player(d: Dictionary, pid: int) -> bool:
+	for key in ["player", "from", "to", "proposer", "recipient", "winner"]:
+		var v = d.get(key, null)
+		if v == null:
+			continue
+		if v is int and int(v) == pid:
+			return true
+	return false
+
+static func _is_money(e: Dictionary) -> bool:
+	if MONEY_TYPES.has(str(e.get("type", ""))):
+		return true
+	var d: Dictionary = e.get("data", {})
+	return d.has("amount") or d.has("cost") or d.has("price")
+
+## PURE: serialize entries to .jsonl text (one JSON object per line).
+static func to_jsonl(entries: Array) -> String:
+	var lines: Array[String] = []
+	for e in entries:
+		lines.append(JSON.stringify(e))
+	return "\n".join(lines) + "\n"
+
+## One colored BBCode line for the log.
+func _line_bbcode(e: Dictionary, names: Array) -> String:
+	var idx := int(e.get("index", -1))
+	var t: String = str(e.get("type", "?"))
+	var txt: String = EventMessagesScript.describe(e)
+	var col: Color = _kind_color(t)
+	# MD-4: the [type] tag is localized (event_type.* keys), falling back to the
+	# raw engine type if no label exists.
+	var type_lbl: String = I18n.t("event_type." + t)
+	if type_lbl.begins_with("{event_type."):
+		type_lbl = t
+	# the dim tag comes from the THEME: a colour baked into markup ignores the skin and
+	# survives every palette change (this one did, through the whole stage-8 audit)
+	var dim: String = UiTheme.COL().text_dim.to_html(false)
+	return "[color=#%s]#%d[/color] [color=#%s][%s][/color] %s\n" % [
+		col.to_html(false), idx, dim, type_lbl, txt]
+
+const EventMessagesScript := preload("res://visual/event_messages.gd")
+
+static func _kind_color(t: String) -> Color:
+	match t:
+		"purchase", "auction_win", "go_bonus", "collect":
+			return UiTheme.skin().color("ev.money")
+		"pay", "rent", "tax":
+			return UiTheme.skin().color("ev.build")
+		"jail", "bankrupt":
+			return UiTheme.skin().color("ev.danger")
+		"admin_override":
+			return UiTheme.skin().color("ev.card")
+		_:
+			return UiTheme.skin().color("ev.text")
+
+func _export() -> void:
+	var f := FileAccess.open(EXPORT_PATH, FileAccess.WRITE)
+	if f == null:
+		exported.emit("")
+		return
+	f.store_string(to_jsonl(_entries))
+	f.close()
+	var global := ProjectSettings.globalize_path(EXPORT_PATH)
+	exported.emit(global)
