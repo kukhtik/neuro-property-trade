@@ -100,14 +100,14 @@ func _test_inspector_retranslate() -> void:
 	if ti.has_method("clear"):
 		ti.call("clear")
 	var ru_text: String = ""
-	var txt_node: Node = ti.get("_text")
+	var txt_node: Node = ti.get("_placeholder")
 	if txt_node != null:
 		ru_text = str(txt_node.get("text"))
 	I.set_locale("en")
 	if ti.has_method("retranslate"):
 		ti.call("retranslate")
 	var en_text: String = ""
-	txt_node = ti.get("_text")
+	txt_node = ti.get("_placeholder")
 	if txt_node != null:
 		en_text = str(txt_node.get("text"))
 	if ru_text == en_text and ru_text != "":

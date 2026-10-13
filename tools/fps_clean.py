@@ -74,6 +74,13 @@ def stray_processes() -> list[str]:
         return []
     for line in (ps.stdout or "").splitlines():
         low = line.lower()
+        # A PROCESS THAT MENTIONS THIS SCRIPT IS THIS CHECK'S OWN FAMILY. Run
+        # `python tools/fps_clean.py` from a shell whose command line also quotes 'godot' or
+        # 'serve.py' (a compound command, a log message, a grep) and the preflight used to
+        # refuse the very run it was asked to protect — observed live. The wrapper carrying the
+        # script's own name is skipped.
+        if "fps_clean" in low:
+            continue
         # `neuropropertytrade` without dashes: the repo folder is named neuro-property-trade and
         # must NOT match its own path
         if "neuropropertytrade" in low or "godot" in low or "serve.py" in low:

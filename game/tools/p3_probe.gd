@@ -201,14 +201,18 @@ func _check_inspector(gv) -> void:
 		_fail("pinned inspector auto-hid (must stay open)")
 		return
 	print("PASS: pinned inspector stays open past 5s")
-	# unpin + let the timer expire
+	# unpin + let the timer expire: the card clears back to the EMPTY STATE (it stays in
+	# the dock — the v3 mockup never leaves the right column without it)
 	insp._on_pin_toggled(false)
 	for i in 600:
 		insp._process(0.01)
-	if insp.visible:
-		_fail("unpinned inspector did not auto-hide after 5s")
+	if insp.selected >= 0 or insp._body.visible:
+		_fail("unpinned inspector did not clear back to the empty state after 5s")
 		return
-	print("PASS: unpinned inspector auto-hides after 5s")
+	if not insp.visible or not insp._placeholder.visible:
+		_fail("the empty state must stay visible with the hint")
+		return
+	print("PASS: unpinned inspector clears back to the empty state after 5s")
 	insp.clear()
 
 ## Autoprobe: every interactive control in the live tree has a tooltip.

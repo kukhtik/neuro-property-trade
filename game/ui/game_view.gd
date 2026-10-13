@@ -437,11 +437,12 @@ func _build_layout() -> void:
 	_journal.set_rail(_jpanel_rail)
 	_jpanel_rail.set_content(_journal)
 
-	# tile inspector at the bottom of the right dock (v3 mockup). It auto-hides, so the
-	# journal owns the whole column until a tile is picked and gives the space back.
+	# tile inspector at the bottom of the right dock (v3 mockup): rows + flags + the four
+	# management buttons; the empty state is the placeholder hint and it stays visible
 	_inspector = TileInspector.new()
 	_inspector.name = "inspector"
 	_inspector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inspector.action_requested.connect(_on_inspector_action)
 	_rightcol.add_child(_inspector)
 
 	# modal host (above everything)
@@ -500,6 +501,10 @@ func _layout() -> void:
 			_place_drawer(_drawer_side)
 		else:
 			_close_drawer()
+	# v3: docked profiles keep the inspector card visible at rest (empty state = the hint);
+	# compact hides the whole right column — the card lives in the drawer there
+	if _inspector != null:
+		_inspector.visible = true if not lp.is_compact() else (_drawer_side == "inspector")
 	_fits_left = 3
 	# the board scene fills the center region between the panels (HBox handles it)
 	_board_scene.set_frame(Rect2(0, 0, 0, 0))   # signal it to re-fit its own rect
@@ -569,7 +574,6 @@ func _sync_all() -> void:
 func _sync_from_spectator(proj: Dictionary) -> void:
 	_top.sync(proj, seats)
 	_players.sync(proj, seats)
-	_inspector.sync(proj, seats)
 	var holder: int = SeatManager.find_decision_holder(engine, engine.player_count())
 
 	# P4 §7: observer mode = no LOCAL seat in the match. Detect from seats.
@@ -586,6 +590,9 @@ func _sync_from_spectator(proj: Dictionary) -> void:
 	if holder >= 0:
 		legal = engine.legal_actions(holder)
 	_actions.sync(holder, legal, is_human, proj, seats)
+	# v3: the inspector's rows and management buttons gate on the SAME legal set, for the
+	# local seat — one source of truth with the console and the modal
+	_inspector.sync(proj, seats, legal, _human_pid)
 
 	# observer extras: decision-holder status + follow-highlight of tiles
 	if _observer:
@@ -638,6 +645,11 @@ func _set_observer(v: bool) -> void:
 func _on_tile_clicked(idx: int) -> void:
 	_inspector.select(idx)
 	_mark_selected_tile(idx)
+	# compact: the right column is a rail — the card rides in the drawer (mockup: the rail
+	# right opens the inspector drawer)
+	var lp = Layout.for_screen(Vector2i(int(size.x), int(size.y)))
+	if lp.is_compact():
+		_open_drawer("inspector")
 
 ## P4 observer: clicking a player row follows (or unfollows) that player.
 func _on_player_row_clicked(pid: int) -> void:
@@ -703,8 +715,15 @@ func _on_rail_toggled(collapsed: bool, side: String) -> void:
 func _open_drawer(side: String) -> void:
 	if _drawer == null:
 		return
-	_drawer.set_title_key("ui.players" if side == "seats" else "ui.journal")
-	var c: Control = _players if side == "seats" else _journal
+	var title_key := "ins.title"
+	var c: Control = _inspector
+	if side == "seats":
+		title_key = "ui.players"
+		c = _players
+	elif side == "journal":
+		title_key = "ui.journal"
+		c = _journal
+	_drawer.set_title_key(title_key)
 	_drawer.put(c)
 	_place_drawer(side)
 	_drawer.visible = true
@@ -715,11 +734,19 @@ func _close_drawer() -> void:
 	if _drawer_side == "":
 		return
 	var side := _drawer_side
-	var rail: RailPanel = _players_rail if side == "seats" else _jpanel_rail
 	var c := _drawer.take()
-	if c != null and rail != null:
-		c.reparent(rail, false)
-		c.visible = not rail.is_collapsed()
+	if c != null:
+		if side == "seats":
+			c.reparent(_players_rail, false)
+			c.visible = not _players_rail.is_collapsed()
+		elif side == "journal":
+			c.reparent(_jpanel_rail, false)
+			c.visible = not _jpanel_rail.is_collapsed()
+		else:
+			c.reparent(_rightcol, false)
+			# the inspector belongs at the BOTTOM of the right dock
+			_rightcol.move_child(c, _rightcol.get_child_count() - 1)
+			c.visible = true
 	_drawer.visible = false
 	_drawer_side = ""
 
@@ -791,6 +818,12 @@ func _on_action_requested(act: String, _params: Dictionary) -> void:
 func _on_build(tile: int, op: String) -> void:
 	_submit(_human_pid, op, {"tile": tile})
 	_modals.close()
+
+
+## The inspector's management buttons (v3 mockup .ins-acts): the same intents the build
+## modal submits, without opening the modal — the engine validates either way.
+func _on_inspector_action(tile: int, op: String) -> void:
+	_submit(_human_pid, op, {"tile": tile})
 
 func _on_trade_proposed(to: int, give: Array, gcash: int, want: Array, wcash: int) -> void:
 	_submit(_human_pid, "propose_trade", {
