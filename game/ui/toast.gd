@@ -11,6 +11,7 @@ const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
 signal dismissed(id: int)
+signal toast_shown(text: String, kind: String)   # v3: routes to the console ticker on compact
 
 var _toast_container: VBoxContainer
 var _banner_container: VBoxContainer
@@ -28,16 +29,27 @@ const _RENT_PAY_WINDOW := 1.2
 func set_sfx(sfx) -> void:
 	_sfx = sfx
 
-## C3: position the toast stack BELOW the top row of board tiles so toasts
-## never cover the board. `board_top` = the y of the board's top edge (top bar
-## + margin); `cell` = the tile size. Toasts start one cell below the top edge.
-func set_board_top(board_top: float, cell: float) -> void:
-	_toast_container.offset_top = int(board_top + cell + 8.0)
+## v3: the toast host lives in the RIGHT DOCK (mockup #toast inside #rightcol) — the stack
+## starts under the header and is as wide as the dock, so it never covers the board or the
+## console (F-68). Called on every relayout.
+func place_in_dock(dock_w: float, top_y: float) -> void:
+	if _toast_container == null:
+		return
+	_toast_container.offset_left = -maxf(220.0, dock_w - 12.0)
+	_toast_container.offset_right = -12.0
+	_toast_container.offset_top = int(top_y)
+
+
+## Compact profile: the dock is a rail, and the mockup swaps toasts for the console's
+## one-line ticker (game_view routes them there) — never float over the board.
+func set_compact(v: bool) -> void:
+	if _toast_container != null:
+		_toast_container.visible = not v
 
 func _init() -> void:
 	# Toast stack: top-right, newest on top, auto-dismiss
 	_toast_container = VBoxContainer.new()
-	_toast_container.name = "ToastStack"
+	_toast_container.name = "ToastList"
 	_toast_container.add_theme_constant_override("separation", 6)
 	_toast_container.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_toast_container.offset_left = -420
@@ -80,6 +92,7 @@ func show_toast(text: String, kind: String = "info", duration: float = 4.0) -> i
 	_toast_container.add_child(item)
 	_toast_container.move_child(item, 0)  # newest on top
 	_remember_toast(text, now)
+	toast_shown.emit(text, kind)
 	if _sfx != null and _sfx.has_method("play_toast_pop"):
 		_sfx.play_toast_pop()
 	return item.id

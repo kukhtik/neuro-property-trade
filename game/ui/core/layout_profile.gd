@@ -22,14 +22,13 @@ const WIDE_MIN := 1600
 const DESKTOP_MIN := 1280
 const COMPACT_HEIGHT := 700
 
-## Auto-collapse rails.
-const RAIL_LEFT_BELOW := 1000
-const RAIL_RIGHT_BELOW := 1180
-const RAIL_WIDTH := 46
+## Auto-collapse rails: the v3 mockup rails BOTH docks on the compact profile.
+const RAIL_WIDTH := 48
 
-## Panel widths per profile (spec §5.1).
-const LEFT_W := {WIDE: 272, DESKTOP: 272, COMPACT: 240}
-const RIGHT_W := {WIDE: 340, DESKTOP: 330, COMPACT: 300}
+## Panel widths per profile (v3 mockup: --dock-l 268 / --dock-l-wide 280; --dock-r 344 /
+## --dock-r-wide 380).
+const LEFT_W := {WIDE: 280, DESKTOP: 268, COMPACT: 240}
+const RIGHT_W := {WIDE: 380, DESKTOP: 344, COMPACT: 300}
 
 var id := DESKTOP
 var screen := Vector2i(1440, 900)
@@ -52,13 +51,15 @@ func is_compact() -> bool:
 
 
 ## Should the left players panel auto-collapse to a rail?
+## v3 mockup: the compact profile (x < 1280 or h <= 700) turns BOTH docks into rails;
+## wider windows keep both docks open.
 func rail_left() -> bool:
-	return screen.x < RAIL_LEFT_BELOW
+	return is_compact()
 
 
 ## Should the right journal panel auto-collapse to a rail?
 func rail_right() -> bool:
-	return screen.x < RAIL_RIGHT_BELOW
+	return is_compact()
 
 
 func left_width() -> int:
@@ -69,15 +70,17 @@ func right_width() -> int:
 	return RIGHT_W.get(id, 300)
 
 
-## TopBar / BottomBar heights (compact trims both).
+## TopBar / console heights. The v3 mockup keeps the header at 56 (--hdr-h) and the console
+## at 96 (--cons-h) in every profile — the compact profile trims their CONTENT, not their
+## height (steps hidden, brand name hidden, ticker instead of the dock toast host).
 func top_height() -> int:
-	return 38 if is_compact() else 46
+	return 56
 
 
 func bottom_height(stream: bool = false) -> int:
 	if stream:
 		return 76 if is_compact() else 92
-	return 56 if is_compact() else 72
+	return 96
 
 
 ## Text scale trim for compact (one step down).

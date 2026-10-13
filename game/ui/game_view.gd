@@ -28,11 +28,13 @@ const ToastStack := preload("res://ui/toast.gd")
 const JournalPanel := preload("res://ui/journal_panel.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
-const _TOP_H := 46   # body grid in the mockup: 46px header
-const _ACTION_H := 72   # body grid in the mockup: 72px control bar
+## The v3 mockup's numbers (design/ui-prototype.html): --hdr-h 56 header, --cons-h 96
+## console UNDER the board in the centre column, docks running the full height beside it.
+const _TOP_H := 56
+const _ACTION_H := 96
 const _MIN_PANEL_W := 150
 const _MIN_JOURNAL_W := 180
-const _OBSERVER_JOURNAL_W := 380   # spec §7: observer layout widens the journal
+const _OBSERVER_JOURNAL_W := 400   # v3 mockup --dock-r-observer
 
 signal restart_requested
 signal settings_requested
@@ -60,7 +62,9 @@ var _players_rail           # RailPanel around the players panel
 var _jpanel_rail            # RailPanel around the journal
 var _skin                   # SkinManager shared by the rails
 var _last_vp := Vector2.ZERO
-var _center: HBoxContainer   # players | board | journal (ties the panels together)
+var _body: HBoxContainer      # seats | stage+console | rightcol (v3 body grid)
+var _stage_col: VBoxContainer # the stage: board over the action console
+var _rightcol: VBoxContainer  # journal over the inspector
 var _cold := true
 var _game_over_shown := false
 var _toast_stack: ToastStack
@@ -86,10 +90,12 @@ func setup_cold(launcher) -> void:
 	_actions.set_cold(true)
 	_sync_cold()
 	
-	# P3: Create toast stack (always on top)
+	# P3/v3: the toast host — inside the right dock, named for the region registry
 	_toast_stack = ToastStack.new()
-	_toast_stack.name = "ToastStack"
+	_toast_stack.name = "toast"
 	add_child(_toast_stack)
+	_toast_stack.toast_shown.connect(_on_toast_shown)
+	_layout()   # place the host now that it exists
 
 
 ## Apply the execution role to the COLD screen.
@@ -162,13 +168,8 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_board_scene.setup(engine, settings, seats)
 	if _toast_stack != null and _board_scene != null and _board_scene._sfx != null:
 		_toast_stack.set_sfx(_board_scene._sfx)
-	# C3: toasts must sit BELOW the top row of board tiles (never cover the board).
-	# The board scene's top edge is at _TOP_H (top bar) + its own margin; the
-	# toast stack is a full-viewport CanvasLayer, so offset by the board's top.
-	if _toast_stack != null and _board_scene != null:
-		var bs_top: float = float(_TOP_H) + 8.0   # top bar + board margin
-		var cell: float = float(_board_scene._cell)
-		_toast_stack.set_board_top(bs_top, cell)
+	# v3: _layout() places the toast host in the right dock (under the header) and folds it
+	# away on the compact profile, where notifications ride in the console's ticker instead.
 	_layout()
 	# P6 Phase 5: the event overlay must NOT float over the board center. It is
 	# reparented to the full viewport and anchored bottom-right (over the
@@ -354,50 +355,75 @@ func _build_layout() -> void:
 
 	# top bar (anchored top-wide)
 	_top = TopBar.new()
+	_top.name = "top"
 	_top.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	_top.anchor_right = 1.0
 	_top.offset_bottom = _TOP_H
 	add_child(_top)
 
-	# CENTER ROW: players | board | journal — a single HBox so the three panels
-	# are tied together and the board always fills the space between them.
-	_center = HBoxContainer.new()
-	_center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_center.anchor_top = 0.0
-	_center.offset_top = _TOP_H
-	_center.offset_bottom = -_ACTION_H
-	_center.add_theme_constant_override("separation", 8)
-	add_child(_center)
+	# THE BODY GRID (v3 mockup):
+	#   "seats stage right"
+	#   "seats act   right"
+	# The console sits UNDER the board in the centre column and the docks run the full
+	# height beside it. The old shape put a full-width control bar across the bottom,
+	# which is a different composition.
+	_body = HBoxContainer.new()
+	_body.name = "body"
+	_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_body.anchor_top = 0.0
+	_body.offset_top = _TOP_H
+	_body.add_theme_constant_override("separation", 8)
+	add_child(_body)
 
-	# left players panel — wrapped in a rail so it can collapse to a 46px strip
-	# with a vertical title instead of becoming an empty band (spec §5.2)
+	# left dock (seats) — full height; collapses to a rail on the compact profile
 	_players_rail = RailPanel.new()
-	_players_rail.name = "PlayersRail"
+	_players_rail.name = "seats"
 	_players_rail.setup(_skin, "ui.players", true)
 	_players_rail.set_expanded_width(_panel_w())
 	_players_rail.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_center.add_child(_players_rail)
+	_body.add_child(_players_rail)
 	_players = PlayersPanel.new()
 	_players.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_players.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_players.set_rail(_players_rail)
 	_players_rail.set_content(_players)
 
-	# board (center) — expands to fill whatever the side panels leave
+	# centre column: the stage (board) over the action console
+	_stage_col = VBoxContainer.new()
+	_stage_col.name = "stage"
+	_stage_col.add_theme_constant_override("separation", 8)
+	_stage_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_stage_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_body.add_child(_stage_col)
+
 	_board_scene = BoardScene.new()
-	_board_scene.name = "BoardScene"
+	_board_scene.name = "board"
 	_board_scene.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_board_scene.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_board_scene.set_managed_by_container(true)
-	_center.add_child(_board_scene)
+	_stage_col.add_child(_board_scene)
 
-	# right journal panel — also railed (spec §5.2)
+	_actions = ActionPanel.new()
+	_actions.name = "act"
+	_actions.custom_minimum_size.y = _ACTION_H   # mockup --cons-h
+	_stage_col.add_child(_actions)
+	_actions.action_requested.connect(_on_action_requested)
+	_actions.start_requested.connect(_on_start_requested)
+
+	# right dock: journal over the inspector (mockup #rightcol)
+	_rightcol = VBoxContainer.new()
+	_rightcol.name = "rightcol"
+	_rightcol.add_theme_constant_override("separation", 8)
+	_rightcol.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_body.add_child(_rightcol)
+
 	_jpanel_rail = RailPanel.new()
-	_jpanel_rail.name = "JournalRail"
+	_jpanel_rail.name = "journal"
 	_jpanel_rail.setup(_skin, "ui.journal", false)
 	_jpanel_rail.set_expanded_width(_journal_w())
-	_jpanel_rail.size_flags_horizontal = Control.SIZE_SHRINK_END
-	_center.add_child(_jpanel_rail)
+	_jpanel_rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_jpanel_rail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_rightcol.add_child(_jpanel_rail)
 	_journal = JournalPanel.new()
 	_journal.name = "JournalPanel"
 	_journal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -406,8 +432,16 @@ func _build_layout() -> void:
 	_journal.set_rail(_jpanel_rail)
 	_jpanel_rail.set_content(_journal)
 
+	# tile inspector at the bottom of the right dock (v3 mockup). It auto-hides, so the
+	# journal owns the whole column until a tile is picked and gives the space back.
+	_inspector = TileInspector.new()
+	_inspector.name = "inspector"
+	_inspector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_rightcol.add_child(_inspector)
+
 	# modal host (above everything)
 	_modals = ModalHost.new()
+	_modals.name = "modal"
 	_modals.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_modals.visible = false
 	# IT SAID "above everything" AND WAS NOT. Children added later paint on top, and both the
@@ -418,27 +452,6 @@ func _build_layout() -> void:
 	_modals.z_index = 100
 	add_child(_modals)
 	_connect_modals()
-
-	# bottom action panel
-	_actions = ActionPanel.new()
-	_actions.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	_actions.anchor_top = 1.0
-	_actions.offset_top = -_ACTION_H
-	_actions.offset_bottom = 0
-	_actions.anchor_right = 1.0
-	_actions.offset_right = 0
-	add_child(_actions)
-	_actions.action_requested.connect(_on_action_requested)
-	_actions.start_requested.connect(_on_start_requested)
-
-	# tile inspector above the action panel (bottom-left), clear of the buttons
-	_inspector = TileInspector.new()
-	_inspector.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_inspector.offset_left = 8
-	_inspector.offset_top = -(_ACTION_H + 8 + 90)   # above the action bar
-	_inspector.offset_right = 360
-	_inspector.offset_bottom = -(_ACTION_H + 8)
-	add_child(_inspector)
 
 ## Recompute the proportional panel sizes + board frame. Called on setup and
 ## whenever the viewport size changes (A1). The HBox re-sizes the side panels
@@ -461,6 +474,11 @@ func _layout() -> void:
 		_players_rail.set_expanded_width(_panel_w())
 	if not _jpanel_rail.is_collapsed():
 		_jpanel_rail.set_expanded_width(_journal_w())
+	# v3: the toast host is the right dock's top (mockup #toast); the compact profile folds
+	# it away and the console's one-line ticker takes over (see _on_toast_shown)
+	if _toast_stack != null:
+		_toast_stack.set_compact(lp.is_compact())
+		_toast_stack.place_in_dock(float(_journal_w()), float(_TOP_H) + 8.0)
 	_fits_left = 3
 	# the board scene fills the center region between the panels (HBox handles it)
 	_board_scene.set_frame(Rect2(0, 0, 0, 0))   # signal it to re-fit its own rect
@@ -617,6 +635,12 @@ func _on_tile_hovered(idx: int) -> void:
 func _on_events_emitted(events: Array) -> void:
 	for ev in events:
 		_toast_stack.show_event_toast(ev)
+		# F-30: keep the last roll readable in the console, after the animation is gone
+		if str(ev.get("type", "")) == "roll" and _actions != null:
+			var d: Dictionary = ev.get("data", {})
+			var d1: int = int(d.get("d1", 0))
+			var d2: int = int(d.get("d2", 0))
+			_actions.set_last_roll(d1, d2, bool(d.get("doubles", d1 == d2 and d1 > 0)))
 	# THE JOURNAL IS FED BY EVENTS, NOT BY STATE CHANGES.
 	#
 	# It was refreshed only from `_on_state_changed`, which fires when the state settles —
@@ -624,6 +648,17 @@ func _on_events_emitted(events: Array) -> void:
 	# appeared and vanished; the written record of what happened never grew.
 	if not events.is_empty():
 		_refresh_journal()
+
+
+## Compact profile: notifications ride in the console's one-line ticker (mockup `.ticker`,
+## which REPLACES the prompt while it is on). The dock host is folded away there — see
+## _layout() — so nothing ever floats over the board.
+func _on_toast_shown(text: String, kind: String) -> void:
+	if _actions == null:
+		return
+	var lp = Layout.for_screen(Vector2i(int(size.x), int(size.y)))
+	if lp.is_compact():
+		_actions.show_ticker(text, kind)
 
 ## P2: mark the selected tile on the board with a dashed accent frame
 func _mark_selected_tile(idx: int) -> void:

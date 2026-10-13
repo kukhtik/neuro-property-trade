@@ -16,6 +16,10 @@ var _launcher
 var _had_fail := false
 
 func _ready() -> void:
+	# Headless CI starts with a 64x64 root viewport — below every layout threshold. The fan
+	# spacing under test is a property of the REAL layout, so pin the design size first
+	# (the probe's contract says "run windowed"; this makes headless measure the same thing).
+	get_tree().root.size = Vector2i(1440, 900)
 	_launcher = MainScript.new()
 	add_child(_launcher)
 	for _i in 20:

@@ -269,6 +269,7 @@ static func test_list() -> Array[String]:
 		"test_journal_filters_by_category", "test_hotkeys_respect_the_button_gate",
 		"test_language_button_cycles_locales", "test_skin_switcher",
 		"test_header_sheds_pieces_when_narrow", "test_settings_rows_carry_tags",
+		"test_mockup_metrics",
 		# UiProfile
 		"test_profile_roles", "test_profile_infer_from_launch",
 		"test_profile_infer_web_is_player", "test_profile_infer_desktop_is_admin",
@@ -710,8 +711,8 @@ static func test_layout_compact_by_height() -> String:
 	var p = Layout.for_screen(Vector2i(1920, 600))
 	if p.id != "compact":
 		return "a <=700px tall window should be compact, got %s" % p.id
-	if p.top_height() >= 46:
-		return "compact should trim the top bar"
+	if p.top_height() != 56:
+		return "the header is 56 in every profile (v3 mockup), got %d" % p.top_height()
 	if p.is_supported() and p.screen.x < Layout.MIN_WIDTH:
 		return "widths below %d are unsupported" % Layout.MIN_WIDTH
 	var narrow = Layout.for_screen(Vector2i(800, 900))
@@ -720,12 +721,34 @@ static func test_layout_compact_by_height() -> String:
 	return ""
 
 static func test_layout_rails() -> String:
-	if not Layout.for_screen(Vector2i(950, 900)).rail_left():
-		return "left rail should collapse below 1000px"
+	# v3 mockup: the compact profile rails BOTH docks (<1280 wide or <=700 tall)
+	var c = Layout.for_screen(Vector2i(950, 900))
+	if not c.rail_left() or not c.rail_right():
+		return "a 950px window (compact) should rail both docks"
 	if Layout.for_screen(Vector2i(1440, 900)).rail_left():
 		return "left rail should stay open at 1440px"
+	if Layout.for_screen(Vector2i(1440, 900)).rail_right():
+		return "right rail should stay open at 1440px"
 	if not Layout.for_screen(Vector2i(1100, 900)).rail_right():
-		return "right rail should collapse below 1180px"
+		return "1100px is compact — the right rail should collapse"
+	if not Layout.for_screen(Vector2i(1920, 600)).rail_left():
+		return "a <=700px tall window is compact — rails collapse"
+	return ""
+
+
+## The v3 mockup's numbers, verbatim (design/ui-prototype.html :root): dock widths, rail,
+## header and console. These are what compare_mockup.py measures the frame against.
+static func test_mockup_metrics() -> String:
+	var d = Layout.for_screen(Vector2i(1440, 900))
+	if d.left_width() != 268 or d.right_width() != 344:
+		return "desktop docks should be 268/344, got %d/%d" % [d.left_width(), d.right_width()]
+	var w = Layout.for_screen(Vector2i(1920, 1080))
+	if w.left_width() != 280 or w.right_width() != 380:
+		return "wide docks should be 280/380, got %d/%d" % [w.left_width(), w.right_width()]
+	if Layout.RAIL_WIDTH != 48:
+		return "rail should be 48"
+	if d.top_height() != 56 or d.bottom_height() != 96:
+		return "header 56 / console 96, got %d/%d" % [d.top_height(), d.bottom_height()]
 	return ""
 
 static func test_layout_label_degradation() -> String:

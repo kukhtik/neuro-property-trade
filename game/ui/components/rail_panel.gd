@@ -21,7 +21,7 @@ const SkinManager := preload("res://visual/skin_manager.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
 const UiTheme := preload("res://ui/theme.gd")
 
-const RAIL_W := 46
+const RAIL_W := 48
 
 var _skin: SkinManager
 var _title_key := ""

@@ -32,10 +32,36 @@ func _init() -> void:
 	outer.add_theme_constant_override("margin_bottom", 0)
 	add_child(outer)
 
+	var col := UiTheme.vbox(6)
+	outer.add_child(col)
+
+	# row 1 (mockup #act .row1): the compact ticker + the PROMPT sentence + the last roll.
+	# The prompt used to be built and never added to the tree ("the hint lives in the status
+	# area") — the v3 console makes it real text: it says what is being decided right now.
+	var row1 := HBoxContainer.new()
+	row1.name = "Row1"
+	row1.add_theme_constant_override("separation", 10)
+	row1.custom_minimum_size.y = 22
+	col.add_child(row1)
+	_ticker = UiTheme.label("", 12, UiTheme.COL().accent)
+	_ticker.name = "Ticker"
+	_ticker.visible = false
+	row1.add_child(_ticker)
+	_hint = UiTheme.label_wrap("", 12, UiTheme.COL().text)
+	_hint.name = "Prompt"
+	_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row1.add_child(_hint)
+	_lastroll = UiTheme.label("", 12, UiTheme.COL().text_dim)
+	_lastroll.name = "LastRoll"
+	_lastroll.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row1.add_child(_lastroll)
+
+	# row 2: the buttons, as in the mockup, and the status line on the right
 	var row := HBoxContainer.new()
+	row.name = "Row2"
 	row.add_theme_constant_override("separation", 10)
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	outer.add_child(row)
+	col.add_child(row)
 
 	# button row: the buttons come first, as in the mockup
 	_btn_row = HBoxContainer.new()
@@ -50,11 +76,51 @@ func _init() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(_status)
 
-	_v = UiTheme.vbox(6)
-	_hint = UiTheme.label_wrap("", 11, UiTheme.COL().text_dim)
-	_hint.visible = false   # the mockup's hint lives in the status area, not on its own line
+## v3 console extras: the compact ticker line and the last-roll chip (F-30/F-68).
+var _ticker: Label
+var _lastroll: Label
+var _ticker_until := 0.0
 
-var _v: VBoxContainer
+## Compact profile: one line of the newest notification replaces the prompt (mockup:
+## `.ticker.on ~ .prompt { display:none }`) — notifications never float over the board.
+func show_ticker(text: String, kind: String = "info") -> void:
+	if _ticker == null:
+		return
+	_ticker.text = text
+	var c := UiTheme.COL()
+	var col2: Color = c.accent
+	if kind == "success":
+		col2 = c.get("good", c.accent)
+	elif kind == "warning":
+		col2 = c.get("warn", c.accent)
+	elif kind == "error":
+		col2 = c.danger
+	_ticker.add_theme_color_override("font_color", col2)
+	_ticker.visible = true
+	if _hint != null:
+		_hint.visible = false
+	_ticker_until = 4.0
+	set_process(true)
+
+
+## F-30: the result of the last roll stays readable after the animation — the console keeps
+## it on the right of row 1 (mockup #act .lastroll).
+func set_last_roll(d1: int, d2: int, doubles: bool) -> void:
+	if _lastroll == null:
+		return
+	var suffix := " · " + I18n.t("die.doubles") if doubles else ""
+	_lastroll.text = "%d + %d = %d%s" % [d1, d2, d1 + d2, suffix]
+
+
+func _process(delta: float) -> void:
+	if _ticker_until > 0.0:
+		_ticker_until -= delta
+		if _ticker_until <= 0.0:
+			if _ticker != null:
+				_ticker.visible = false
+			if _hint != null and not _observer:
+				_hint.visible = true
+			set_process(false)
 
 ## Cold state (pre-game): show a single START button that opens the settings
 ## overlay. No engine yet.
@@ -157,8 +223,9 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 	# tells the player what the game is; a missing one tells them nothing.
 	_sync_buttons(pid, legal, human, proj)
 
-	# contextual hint
+	# contextual hint — the v3 console prompt: what is being decided right now
 	_hint.text = _context_hint(proj)
+	_hint.visible = not _observer and (_ticker == null or not _ticker.visible)
 
 
 ## The mockup's control set, in its own order.

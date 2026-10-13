@@ -263,7 +263,7 @@ func _sync_effect_layer() -> void:
 ## decorative SVG. It sheds the mini-log, card and subtitle as the centre shrinks.
 func _add_board_center() -> void:
 	_center = BoardCenterScript.new()
-	_center.name = "BoardCenterV2"
+	_center.name = "center"
 	_center.setup(_skin)
 	_camera.add_child(_center)
 	_place_board_center()

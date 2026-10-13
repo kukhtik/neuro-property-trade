@@ -32,6 +32,24 @@ func _ready() -> void:
 		return
 	print("PASS: GameView built immediately, cold state")
 
+	# --- 1b) v3 skeleton: regions by the registry + the mockup's numbers ---
+	var want := ["top", "seats", "stage", "board", "center", "journal", "inspector", "act", "toast", "modal"]
+	var missing: Array = []
+	for id in want:
+		if gv.find_child(id, true, false) == null:
+			missing.append(id)
+	if not missing.is_empty():
+		_fail("regions missing from the GameView: %s" % ", ".join(missing))
+		return
+	var LP := preload("res://ui/core/layout_profile.gd")
+	var lp = LP.for_screen(Vector2i(1440, 900))
+	if lp.top_height() != 56 or lp.bottom_height() != 96 or LP.RAIL_WIDTH != 48 \
+			or lp.left_width() != 268 or lp.right_width() != 344:
+		_fail("v3 metrics drifted: hdr %d cons %d rail %d docks %d/%d" % [
+			lp.top_height(), lp.bottom_height(), LP.RAIL_WIDTH, lp.left_width(), lp.right_width()])
+		return
+	print("PASS: v3 skeleton — region ids (registry) + mockup metrics 56/96/48/268/344")
+
 	# --- 2) settings overlay opens on first run, pre-game mode ---
 	var overlay = _launcher.get("_overlay")
 	if overlay == null:
