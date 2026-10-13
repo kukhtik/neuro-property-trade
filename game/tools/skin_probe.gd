@@ -123,7 +123,9 @@ func _check_skins_complete() -> void:
 	var want_colors := {}
 	for k in ["bg", "surface.1", "surface.2", "surface.3", "line", "text", "muted", "accent",
 			"on_accent", "on_panel", "money", "danger", "warn", "ink", "dice_bg", "dice_ink",
-			"board.bg2", "board.bg3"]:
+			"board.bg2", "board.bg3",
+			# design v3 additions (design/coverage.md §2): chrome the new layout needs
+			"scrim", "glow", "good", "ring_bg", "group"]:
 		want_colors[k] = true
 	sm.load_skin("default")
 	var base: Variant = sm._lookup("tokens.color")
@@ -168,6 +170,9 @@ func _check_skins_complete() -> void:
 					miss.append("size." + s)
 		else:
 			miss.append("size.*")
+		var pl: Variant = sm._lookup("tokens.color.player")
+		if not (pl is Array) or (pl as Array).size() < 8:
+			miss.append("color.player >= 8 (seats 2..8)")
 		if miss.is_empty():
 			var have: int = (col as Dictionary).size() if col is Dictionary else 0
 			var from := (" (наследует от %s)" % parent) if parent != "" else ""

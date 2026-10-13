@@ -20,6 +20,9 @@
       "money": "#5fe3ff",
       "danger": "#ff4d6d",
       "warn": "#ffb020",
+      "scrim": "#0b0613b8",
+      "glow": "#ff6fae55",
+      "good": "#2fa862",
       "ring_bg": "#3b2a5e99",
       "ink": "#000000",
       "player": [
@@ -28,7 +31,9 @@
         "#5fe3ff",
         "#b6ff6b",
         "#ffb020",
-        "#b36bff"
+        "#b36bff",
+        "#ffd166",
+        "#8f9bff"
       ],
       "group": {
         "brown": "#8b5a3c",

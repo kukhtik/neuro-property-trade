@@ -19,6 +19,10 @@
       "money": "#ffd34d",
       "danger": "#e8615c",
       "warn": "#e08a3c",
+      "scrim": "#16191fb8",
+      "glow": "#4fb3d955",
+      "good": "#3f8f5f",
+      "ring_bg": "#39404d99",
       "ink": "#000000",
       "player": [
         "#4fb3d9",
@@ -26,8 +30,20 @@
         "#5cb85c",
         "#ffd34d",
         "#9a86c9",
-        "#e08a3c"
+        "#e08a3c",
+        "#46c8b8",
+        "#d46a9e"
       ],
+      "group": {
+        "brown": "#6b3a2a",
+        "lightblue": "#7bb8d4",
+        "pink": "#d98aa8",
+        "orange": "#e08a3c",
+        "red": "#b3403d",
+        "yellow": "#d9c44a",
+        "green": "#3f8f5f",
+        "darkblue": "#2f4a7a"
+      },
       "dice_bg": "#f2f6fa",
       "dice_ink": "#16191f",
       "on_panel": "#e8edf3",

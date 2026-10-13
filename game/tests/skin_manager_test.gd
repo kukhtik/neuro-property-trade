@@ -92,9 +92,13 @@ static func test_color_token_and_legacy_path() -> String:
 static func test_player_color_cycles() -> String:
 	var s = SM.new()
 	s.load_skin("neuro")
+	var pal: Variant = s._lookup("tokens.color.player")
+	var n: int = (pal as Array).size() if pal is Array else 0
+	if n < 8:
+		return "neuro should ship >= 8 player colours for seats 2..8, got %d" % n
 	var first = s.player_color(0)
-	if s.player_color(6) != first:
-		return "player_color should cycle every 6 entries"
+	if s.player_color(n) != first:
+		return "player_color should cycle every palette entry (%d)" % n
 	if s.player_color(0) == s.player_color(1):
 		return "player colours must differ"
 	return ""

@@ -136,6 +136,9 @@ Without a limit a match can be unbounded: with no colour group nothing is built,
 
 	# data tab
 	"settings.tab_data":       {"ru": "Данные", "en": "Data"},
+	# ---- design v3: per-field "when it applies" tags (F-48; design/coverage.md §4) ----
+	"settings.tag_live":       {"ru": "применится живьём", "en": "applies live"},
+	"settings.tag_restart":    {"ru": "нужен рестарт", "en": "needs restart"},
 	"settings.rng_seed":       {"ru": "RNG-сид (0 = случайно):", "en": "RNG seed (0 = random):"},
 	"settings.rng_seed_tip":   {"ru": "Число для воспроизводимой партии. 0 = случайная.", "en": "Number for a reproducible match. 0 = random."},
 	"settings.tile_count":     {"ru": "Клеток на доске:", "en": "Board tiles:"},

@@ -32,6 +32,17 @@ const D := {
 	"stat.houses":      {"ru": "1 дом", "en": "1 house"},
 	"stat.hotels":      {"ru": "Отель", "en": "Hotel"},
 	"stat.mortgaged":   {"ru": "В залоге", "en": "Mortgaged"},
+	# ---- design v3 (design/coverage.md §4): proposed keys, now shipping ----
+	"plr.owned":        {"ru": "В собственности", "en": "Owned"},
+	"plr.owned_tip":    {"ru": "Доля клеток доски, находящихся в собственности игроков.", "en": "Share of board tiles owned by players."},
+	"plr.jail_tip":     {"ru": "Попытки выйти из тюрьмы.", "en": "Attempts to leave jail."},
+	"act.timer_tip":    {"ru": "Осталось времени на решение.", "en": "Time left for the decision."},
+	"act.observer_note": {"ru": "Паузы нет — матч живёт по таймерам.", "en": "No pause — the match runs on its timers."},
+	"jrn.empty_title":  {"ru": "Пока пусто", "en": "Nothing yet"},
+	"jrn.empty_body":   {"ru": "События появятся, когда партия начнётся. Нажмите «НАЧАТЬ ПАРТИЮ» внизу.", "en": "Events appear once the match starts. Press “START MATCH” below."},
+	"ins.price":        {"ru": "цена", "en": "price"},
+	"ins.rent":         {"ru": "аренда", "en": "rent"},
+	"die.doubles":      {"ru": "ДУБЛЬ", "en": "DOUBLE"},
 
 	# ---- top bar ----
 	"top.title":            {"ru": "● NEURO PROPERTY TRADE", "en": "● NEURO PROPERTY TRADE"},
