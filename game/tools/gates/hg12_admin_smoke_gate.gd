@@ -6,19 +6,35 @@ extends Node
 ##   - F12 toggles it through the REAL key handler;
 ##   - the token gate exists (admin actions are guarded);
 ##   - a STREAM-role instance has NO admin panel at all (the role is decided at launch and
-##     cannot be flipped from inside the app - the audit's "три роли изолированы").
-## The observer/stream layout contract (input dead, wider journal) extends this gate in P2.
+##     cannot be flipped from inside the app - the audit's "три роли изолированы");
+##   - the OBSERVER contract (P2): the stream role drives the view into observer mode, an
+##     observer's input is dead even with a live session attached (the wire path included),
+##     its console offers no buttons, and the journal widens to 400px (F-57).
 ##
-## Verdict: ==> HG-12 PASSED / FAILED: <first reason>   (quarantine until P2 closes it fully)
+## Verdict: ==> HG-12 PASSED / FAILED: <first reason>
 ## Run: godot --headless --path game res://tools/gates/hg12_admin_smoke_gate.tscn
 
 const MainScript := preload("res://main.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
+const GameViewScript := preload("res://ui/game_view.gd")
+
+const MIN_OBSERVER_CHECKS := 6
 
 var _host = null
 var _stream = null
 var _frame := 0
 var _fails: Array = []
+var _obs_checks := 0
+
+
+## A live wire with a recorder: if anything reaches it during the observer checks, input was
+## not dead.
+class FakeRemote:
+	var sent: Array = []
+	func is_joined() -> bool:
+		return true
+	func act(action: String, params: Dictionary) -> void:
+		sent.append([action, params])
 
 
 func _ready() -> void:
@@ -92,12 +108,76 @@ func _report() -> void:
 	print("HG-12: admin panel anatomy: %d labels, %d buttons" % [labels, buttons])
 	if labels < 10 or buttons < 8:
 		_fail("the admin panel is an empty shell (%d labels, %d buttons)" % [labels, buttons])
+	_check_observer()
 	_finish()
 
 
+## The observer half (HG-12 / UiProfile.stream): input dead on every path, no buttons, wider
+## journal. The real stream instance gives the launch-role half; a crafted view with a live
+## FakeRemote proves the input half (with the guard the wire hears nothing, without it - it
+## does, which is exactly what makes the first assert meaningful).
+func _check_observer() -> void:
+	var sgv = _stream.get("_game_view")
+	if sgv == null:
+		_fail("stream: no game view")
+	elif not bool(sgv.get("_observer")):
+		_fail("stream role: the view is not in observer mode (input_enabled=%s)" % str(_stream.get("_profile").input_enabled))
+	else:
+		_obs_checks += 1
+		var src = sgv.find_child("rightcol", true, false)
+		var w: float = (src as Control).custom_minimum_size.x if src != null else -1.0
+		if absf(w - 400.0) > 1.0:
+			_fail("stream: the observer journal is %spx wide, F-57 wants 400" % str(w))
+		else:
+			_obs_checks += 1
+			print("HG-12: stream view is observer (input dead, journal 400px)")
+
+	# crafted tree: a LOCAL seat that turns into an observer (the autodetect path)
+	var gv = GameViewScript.new()
+	add_child(gv)
+	gv.setup_cold(null)
+	var fake := FakeRemote.new()
+	gv.set_remote_session(fake)
+	gv.set_human_pid(0)
+	gv.set_observer(true)
+	gv.apply_projection({
+		"phase": "TURN_START", "round": 1, "turn_player": 0, "holder": 0,
+		"legal": ["roll", "buy"], "pending": {}, "players": [], "board": [],
+	})
+	var row = gv.find_child("act", true, false).get("_btn_row")
+	var nbtn: int = (row as Container).get_child_count() if row != null else -1
+	if nbtn != 0:
+		_fail("an observer's console offered %d button(s)" % nbtn)
+	else:
+		_obs_checks += 1
+	# a press (or a hotkey path) must not reach the wire - the session is attached and live
+	gv.call("_submit", 0, "roll", {})
+	if not fake.sent.is_empty():
+		_fail("an observer SENT over the wire: %s" % str(fake.sent))
+	else:
+		_obs_checks += 1
+	# ...and the same call without the guard DOES reach it: the stub proves the check bites
+	gv.set_observer(false)
+	gv.call("_submit", 0, "roll", {})
+	if fake.sent.size() != 1:
+		_fail("the wire recorder never fired even unguarded - the observer check proves nothing")
+	else:
+		_obs_checks += 1
+		print("HG-12: observer input is dead (0 sent guarded, 1 sent unguarded)")
+	# the AUTODETECT: a screen with no LOCAL/ADMIN seat becomes an observer by itself
+	gv.set_human_pid(-1)
+	if not bool(gv.get("_observer")):
+		_fail("a screen with no local seat did not fall into observer mode")
+	else:
+		_obs_checks += 1
+	gv.queue_free()
+
+
 func _finish() -> void:
+	if _obs_checks < MIN_OBSERVER_CHECKS and _fails.is_empty():
+		_fail("only %d observer check(s) ran - the gate aborted silently (want >= %d)" % [_obs_checks, MIN_OBSERVER_CHECKS])
 	if _fails.is_empty():
-		print("==> HG-12 PASSED (admin panel builds, F12 toggles, token gate present, stream role clean)")
+		print("==> HG-12 PASSED (admin panel builds, F12 toggles, token gate present, stream role clean, observer input dead)")
 		get_tree().quit(0)
 	else:
 		print("==> HG-12 FAILED: %s (%d total)" % [_fails[0], _fails.size()])

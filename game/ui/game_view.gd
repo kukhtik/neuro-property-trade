@@ -163,7 +163,25 @@ func _build() -> void:
 
 func set_profile(pr) -> void:
 	_profile = pr
+	# a launch role that disables input IS the observer (UiProfile.stream)
+	if pr != null and not bool(pr.input_enabled):
+		set_observer(true)
 	_apply_profile()
+
+
+## THE OBSERVER ROLE (HG-12 / UiProfile.stream): spectator data, input dead, the journal
+## widens to 400px (F-57) because reading is all this screen does. Reached by the launch role
+## or by the autodetect above; the console paints the observer status instead of buttons.
+func set_observer(v: bool) -> void:
+	_observer = v
+	if _console != null:
+		_console.set_observer(_observer)
+	_apply_dock_width()
+
+
+func _apply_dock_width() -> void:
+	if _rightcol != null:
+		_rightcol.custom_minimum_size.x = 400.0 if _observer else DOCK_R
 
 
 func _apply_profile() -> void:
@@ -203,7 +221,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if ke.keycode != KEY_B and ke.keycode != KEY_N:
 		return
-	if _console == null or not bool(_console.get("_human_now")):
+	if _observer or _console == null or not bool(_console.get("_human_now")):
 		return
 	_console.call("press_action", "buy" if ke.keycode == KEY_B else "end_turn")
 
@@ -420,6 +438,10 @@ func on_overlay_closed() -> void:
 ## on this client's own turn.
 func set_human_pid(pid: int) -> void:
 	_human_pid = pid
+	# AUTODETECT (HG-12): no LOCAL/ADMIN seat on this screen means nobody here can play -
+	# the stream window, a spectator host. Input dies with the same switch either way.
+	if pid < 0:
+		set_observer(true)
 	_sync_all()
 
 
@@ -536,6 +558,10 @@ func _on_inspector_action(tile: int, op: String) -> void:
 
 
 func _submit(pid: int, action: String, params: Dictionary) -> void:
+	# AN OBSERVER SENDS NOTHING, EVER (HG-12): the launch role (`--stream`) and the autodetect
+	# (no LOCAL/ADMIN seat) both land here - before the wire path, before the manager path.
+	if _observer:
+		return
 	# A CLIENT SUBMITS OVER THE WIRE. It has no manager and no engine: `_mgr.push_intent` was
 	# the only path, so in the joined browser every press died here — the audit's "консольные
 	# кнопки" defect, one layer down. The host still validates everything; the verdict comes
