@@ -14,6 +14,7 @@ const POLL_INTERVAL := 0.4
 var engine
 var seats: Array = []        # of Seat (RefCounted)
 var _drivers := {}           # pid -> Node driver instance
+var _sdk_adapters := {}      # pid -> SdkAdapter node (HG-08: the SDK seat's actor)
 var _last_decision_key := ""
 var _tick_elapsed := 0.0
 var _last_process_delta := 0.0
@@ -52,7 +53,21 @@ func setup(eng, seat_list: Array) -> void:
 			# these seats. They get the same driver as the AI seats so every
 			# auto-played seat follows one policy and its own character.
 			_spawn_driver(s.pid, "res://seats/drivers/ai_driver.gd")
-		# SDK needs no auto-driver: the adapter self-drives its force/result cycle.
+		elif d == "SDK":
+			# THE SDK SEAT LIVES HERE (HG-08). The comment used to say "SDK needs no
+			# auto-driver: the adapter self-drives its force/result cycle" — and nothing
+			# ever created the adapter, so an SDK seat was a seat with no actor at all and
+			# the match stalled on its first decision. setup() runs before add_child so
+			# _ready registers the action set with the engine already known.
+			var ad = load("res://sdk/sdk_adapter.gd").new()
+			ad.name = "SdkAdapter%d" % s.pid
+			ad.setup(engine, s.pid)
+			add_child(ad)
+			ad.events_emitted.connect(func(events: Array) -> void:
+				events_emitted.emit(events)
+				emit_spectator())
+			_sdk_adapters[s.pid] = ad
+		# SDK needs no auto-driver beyond the adapter above.
 
 func _spawn_driver(pid: int, path: String) -> void:
 	var Script = load(path)

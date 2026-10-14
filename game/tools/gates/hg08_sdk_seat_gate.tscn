@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tools/gates/hg08_sdk_seat_gate.gd" id="1_hg08"]
+
+[node name="Hg08SdkSeatGate" type="Node"]
+script = ExtResource("1_hg08")

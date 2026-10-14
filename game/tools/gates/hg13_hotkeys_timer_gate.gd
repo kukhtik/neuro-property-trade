@@ -294,7 +294,9 @@ func _engine_log_size() -> int:
 	if eng == null:
 		return 0
 	var lg = eng.get("log")
-	return int((lg as Array).size()) if lg is Array else 0
+	# `log` is an EventLog OBJECT (engine.gd: `log = load("res://core/event_log.gd").new()`),
+	# not an Array - the old `as Array` read 0 forever and made this check dead.
+	return int(lg.size()) if lg != null and lg.has_method("size") else 0
 
 
 func _report() -> void:

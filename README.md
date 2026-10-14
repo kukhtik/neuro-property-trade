@@ -76,14 +76,29 @@ copy of the game, or a browser — sends intents to it and the engine validates 
 host on a LAN with `--server-bind=0.0.0.0`, hand each friend the seat token it prints, and they
 join with `--seat=<token> --host=ws://<address>:<port>`.
 
+## The Neuro SDK seat
+
+A seat can be played by Neuro herself. Give a seat the `sdk:neuro` driver in the settings sheet
+and tell the process where the SDK lives (the vendored `game/addons/neuro-sdk` reads it at start):
+
+```bash
+NEURO_SDK_WS_URL=ws://127.0.0.1:8000 godot --path game
+```
+
+The seat's adapter (`game/sdk/sdk_adapter.gd`) registers the action set, renders the board for the
+model and forces its legal actions; the engine still validates every intent. One SDK connection per
+process: a second `sdk:` slot falls back to the internal AI so the match stays playable. Proven
+end-to-end by `tools/ci/gates/hg08_sdk_seat_gate.sh`, which plays against a mock websocket server.
+
 ## Status
 
 The engine, seats, network host, admin console, visual layer and the UI overhaul are implemented.
 Verified by two gates, both run in CI:
 
 ```bash
-tools/ci/run_tests.sh     # 406 headless tests (rules engine)
-tools/ci/run_probes.sh    # 16 behavioral probes (UI, i18n, skin, network, board)
+tools/ci/run_tests.sh     # 292 headless tests (rules engine + the projection contract)
+tools/ci/run_probes.sh    # 3 behavioral probes (i18n, skin, v3 layout)
+tools/ci/run_gates.sh     # 17 required gates: functionality (HG) + interface (SG), report in build/gates/
 ```
 
 Plus determinism (every recorded game replays to a byte-identical fingerprint), a regenerated
