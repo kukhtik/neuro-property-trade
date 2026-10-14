@@ -56,6 +56,10 @@ done
 # green; HG-06 SKIPS on an environment without playwright (a skip is reported, never a pass,
 # never a block). SG-01 (compact) was promoted when the rails+drawers landed in phase 2.
 GATES=(
+	# SG-10 runs FIRST: its clean-machine preflight must not see the tail of another gate's
+	# windowed Godot (SG-03 captures run last among required) - the first full sweep skipped
+	# the measurement on exactly that race.
+	"SG-10|sg|required|script|tools/ci/gates/sg10_fps_gate.sh"
 	"HG-01|hg|required|script|tools/ci/gates/hg01_oracle_gate.sh"
 	"HG-09|hg|required|scene|hg09_i18n_gate"
 	"HG-11|hg|required|script|tools/ci/gates/hg11_freshness_gate.sh"
@@ -75,8 +79,8 @@ GATES=(
 	"HG-08|hg|required|script|tools/ci/gates/hg08_sdk_seat_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	"SG-03|sg|required|script|tools/ci/gates/sg03_palette_gate.sh"
-	"SG-10|sg|quarantine|script|tools/ci/gates/sg10_fps_gate.sh"
 )
+
 
 # a working python for the report/JSON: `python` first (Windows local), then `python3` (CI).
 PY=""
