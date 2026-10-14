@@ -193,6 +193,21 @@ func _is_compact() -> bool:
 ## SG-08 — live locale: static labels come back via their `i18n_key` metadata (I18n.relabel
 ## walks this subtree), state-driven panels re-render from the last state they were given, and
 ## the compact rails/drawers get their titles re-derived. Nothing here needs a match rebuild.
+## HG-13: the B/N badges on the console buttons are promises - the keys press the REAL
+## buttons (buy / end turn), on this seat's turn only, exactly like a mouse click.
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not (event is InputEventKey):
+		return
+	var ke := event as InputEventKey
+	if not ke.pressed or ke.echo:
+		return
+	if ke.keycode != KEY_B and ke.keycode != KEY_N:
+		return
+	if _console == null or not bool(_console.get("_human_now")):
+		return
+	_console.call("press_action", "buy" if ke.keycode == KEY_B else "end_turn")
+
+
 func _on_locale_changed(_loc: String) -> void:
 	I18n.relabel(self)
 	if _top != null and _top.has_method("retranslate"):

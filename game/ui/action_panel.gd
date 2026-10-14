@@ -14,7 +14,10 @@ const BAR_ACTIONS := [
 	"roll", "buy", "pass", "bid", "pay", "use_card", "build_house", "sell_house",
 	"mortgage_property", "unmortgage_property", "propose_trade", "respond_trade", "end_turn",
 ]
-const HOTKEY := {"buy": "B", "end_turn": "N"}
+## `end_turn` is NOT here: engine.legal_actions never lists it - turns advance by
+## themselves (_end_turn_or_continue). The badge promised a button that never appears;
+## the handler still supports it if the engine ever grows the action (HG-13).
+const HOTKEY := {"buy": "B"}
 
 var _ticker: Label
 var _hint: Label
@@ -167,6 +170,7 @@ func _make_button(act: String, proj: Dictionary, pid: int, live: bool) -> Button
 	var b := _button_for(act, proj, pid)
 	if b == null:
 		return null
+	b.set_meta("act", act)   # hotkeys B/N press THIS button (HG-13)
 	var key: String = str(HOTKEY.get(act, ""))
 	if key != "":
 		b.text = "%s  %s" % [b.text, key]
@@ -242,6 +246,16 @@ func _tile_info(proj: Dictionary, idx: int) -> Dictionary:
 
 func _on_pressed(act: String) -> void:
 	action_requested.emit(act, {})
+
+
+## HG-13: press the REAL button for `act` (same path as a click). False when the action is
+## not offered right now - the badge is a promise only where it works.
+func press_action(act: String) -> bool:
+	for c in _btn_row.get_children():
+		if c is Button and str((c as Button).get_meta("act", "")) == act:
+			(c as Button).emit_signal("pressed")
+			return true
+	return false
 
 
 func retranslate() -> void:

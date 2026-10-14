@@ -22,6 +22,11 @@ var _steps: HBoxContainer
 var _round_chip: Label
 var _pot_chip: Label
 var _decision: Label
+## HG-13 timer ring state: what the projection last said + when it said it
+var _timer_window := 0.0
+var _timer_elapsed := 0.0
+var _timer_t0 := 0
+var _timer_on := false
 var _rolebadge: Label
 var _btn_settings: Button
 var _btn_restart: Button
@@ -169,9 +174,30 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		(_steps.get_child(i) as ColorRect).color = UiTheme.COL().accent if i <= step / 3 else UiTheme.COL().border
 	var pend: Dictionary = proj.get("pending", {})
 	_decision.text = ""
-	if str(pend.get("type", "")) == "purchase":
-		_decision.text = I18n.t("top.decision")
-	_decision.visible = _decision.text != ""
+	# HG-13: the decision zone carries the TIME while a seat waits - the projection has carried
+	# timer_window/elapsed/active all along (seat_manager.emit_spectator); nobody painted them.
+	_timer_on = bool(proj.get("timer_active", false)) and float(proj.get("timer_window", 0.0)) > 0.0
+	if _timer_on:
+		_timer_window = float(proj.get("timer_window", 0.0))
+		_timer_elapsed = float(proj.get("timer_elapsed", 0.0))
+		_timer_t0 = Time.get_ticks_msec()
+	else:
+		_timer_window = 0.0
+		if str(pend.get("type", "")) == "purchase":
+			_decision.text = I18n.t("top.decision")
+	_decision.visible = _timer_on or _decision.text != ""
+
+
+## HG-13: the remaining time ticks locally between projections - the projection says how long
+## the seat has ALREADY waited, this adds the time since it arrived. With turn_timer=0 the
+## projection says timer_active=false and this never runs (no widget for a disabled timer).
+func _process(_delta: float) -> void:
+	if not _timer_on or not is_visible_in_tree():
+		return
+	var rem := _timer_window - (_timer_elapsed + float(Time.get_ticks_msec() - _timer_t0) / 1000.0)
+	rem = maxf(rem, 0.0)
+	_decision.text = "%d:%02d" % [int(rem / 60.0), int(rem) % 60]
+	_decision.visible = true
 
 
 func retranslate() -> void:

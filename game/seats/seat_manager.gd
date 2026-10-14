@@ -85,8 +85,12 @@ func _process(delta: float) -> void:
 	_tick_elapsed += delta
 	if _tick_elapsed < POLL_INTERVAL:
 		return
+	# `delta * POLL_INTERVAL` accrued ~1/60 of the real wait (0.0067s per 0.4s tick): a 30s
+	# turn window would have needed 30 MINUTES to fire, so neither the human timeout nor the
+	# SDK mark-away ever happened (found by HG-13's expiry test). Timers sit outside
+	# determinism (replay/soak run turn_timer=0), so this is arithmetic, not rules.
+	_last_process_delta = _tick_elapsed
 	_tick_elapsed = 0.0
-	_last_process_delta = delta * POLL_INTERVAL
 	_tick()
 
 func _tick() -> void:
