@@ -131,11 +131,15 @@ only tracks the roadmap, not every sub-task.
 
 ## Up next (post-UI)
 
-1. ~~**In-browser WebGL playthrough smoke**~~ — DONE. `tools/ci/browser_seat_e2e.py`
-   drives a real headless Chrome against the WebGL export and a host seat; the
-   browser joins, receives projections and sends intents the host accepts
-   (`joined=True`, verdicts ok). `docs/browser_e2e.md` records the setup
-   (COOP/COEP headers, `index.html?seat=<token>&host=ws://...`).
+1. ~~**In-browser WebGL playthrough smoke**~~ — DONE, and no longer by assertion alone:
+   `tools/ci/gates/hg06_browser_join_gate.sh` (required in the gate program since
+   2026-10-14) exports the web build IN THE SAME RUN and drives a real browser against a
+   live host - `joined=True`, engine-accepted intents, stale builds impossible (the pck mtime
+   is checked against the run's start). During the interface swap this very claim was FALSE
+   while the old line sat here reading "DONE" (`joined=False` in all three audit tools); the
+   gate exists so the line cannot go stale silently again. `tools/ci/browser_seat_e2e.py`
+   stays the driver; `docs/browser_e2e.md` records the setup (COOP/COEP headers,
+   `index.html?seat=<token>&host=ws://...`).
 2. **Real `evil` over a second SDK connection** — still open. Requires
    re-vendoring the SDK singleton into per-connection instances; plan is in the
    dev skill, do not start without a live second SDK server.
