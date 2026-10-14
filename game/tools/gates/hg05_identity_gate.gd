@@ -123,7 +123,9 @@ func _check_no_buttons_for_ai() -> void:
 	gv.call("_sync_all")
 	var console = gv.find_child("act", true, false)
 	var human_now: bool = bool(console.get("_human_now"))
-	var buttons: int = (console.get("_btn_row") as HBoxContainer).get_child_count()
+	# the row is an HFlowContainer since SG-02 (it WRAPS); cast to Container, not HBoxContainer
+	var row0: Container = console.get("_btn_row")
+	var buttons: int = row0.get_child_count() if row0 != null else -1
 	if int(eng.turn_player) == 0:
 		print("HG-05 note: the roll did not hand the turn over (phase=%s); check (b) skipped" % str(eng.phase))
 	elif human_now or buttons > 0:
@@ -149,7 +151,7 @@ func _check_client_wire_path() -> void:
 		"legal": ["roll", "build_house"], "pending": {}, "players": [], "board": [],
 	})
 	var console = gv.find_child("act", true, false)
-	var row: HBoxContainer = console.get("_btn_row")
+	var row: Container = console.get("_btn_row")
 	var roll: Button = null
 	for c in row.get_children():
 		if c is Button and str((c as Button).text).begins_with("Бросок"):
