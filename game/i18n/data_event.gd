@@ -113,4 +113,40 @@ const D := {
 	"event_type.trdno":   {"ru": "сделка отклонена", "en": "trade refused"},
 	"event_type.bank":    {"ru": "банкротство", "en": "bankrupt"},
 	"event_type.over":    {"ru": "конец игры", "en": "game over"},
+
+	# --- SG-06 journal LINES: composed by ui/core/journal_lines.gd from the ADAPTER's rows
+	# --- (spans above) and the projection's tile NAMES. The journal never shows "клетка N" /
+	# --- "tile N" (gates.md SG-06): tiles are named in words, «...» on purpose.
+	"jrn.ev.start":    {"ru": "матч начался: мест — %d", "en": "match started: %d seats"},
+	"jrn.ev.roll":     {"ru": "бросает %d+%d", "en": "rolls %d+%d"},
+	"jrn.ev.go":       {"ru": "проходит ГО, +$%d", "en": "passes GO, +$%d"},
+	"jrn.ev.buy":      {"ru": "покупает «%s» за $%d", "en": "buys «%s» for $%d"},
+	"jrn.ev.rent":     {"ru": "платит аренду $%d — «%s»", "en": "pays rent $%d — «%s»"},
+	"jrn.ev.tax":      {"ru": "платит налог $%d", "en": "pays tax $%d"},
+	"jrn.ev.park":     {"ru": "забирает банк парковки $%d", "en": "takes the parking bank $%d"},
+	"jrn.ev.card":     {"ru": "тянет карту", "en": "draws a card"},
+	"jrn.ev.jail":     {"ru": "отправляется в тюрьму", "en": "goes to jail"},
+	"jrn.ev.aucstart": {"ru": "аукцион: «%s»", "en": "auction: «%s»"},
+	"jrn.ev.bid":      {"ru": "ставит $%d", "en": "bids $%d"},
+	"jrn.ev.pass":     {"ru": "отказывается от ставки", "en": "passes the bid"},
+	"jrn.ev.aucwin":   {"ru": "выигрывает «%s» за $%d", "en": "wins «%s» for $%d"},
+	"jrn.ev.aucnone":  {"ru": "аукцион без победителя: «%s»", "en": "auction unwon: «%s»"},
+	"jrn.ev.build":    {"ru": "строит дом на «%s»", "en": "builds a house on «%s»"},
+	"jrn.ev.sell":     {"ru": "продаёт дом на «%s»", "en": "sells a house on «%s»"},
+	"jrn.ev.mort":     {"ru": "закладывает «%s» за $%d", "en": "mortgages «%s» for $%d"},
+	"jrn.ev.unmort":   {"ru": "выкупает «%s» за $%d", "en": "unmortgages «%s» for $%d"},
+	"jrn.ev.trdoffer": {"ru": "предлагает сделку: %s", "en": "offers a trade: %s"},
+	"jrn.ev.trade":    {"ru": "сделка заключена", "en": "trade completed"},
+	"jrn.ev.trdno":    {"ru": "сделка отклонена", "en": "trade declined"},
+	"jrn.ev.bank":     {"ru": "банкрот", "en": "bankrupt"},
+	"jrn.ev.over":    {"ru": "победа!", "en": "wins!"},
+
+	# journal furniture (SG-06): counter, filters, export, empty states
+	"jrn.shown":       {"ru": "показано %d / %d", "en": "shown %d / %d"},
+	"jrn.empty":       {"ru": "Здесь появится лента партии: ходы, покупки, сделки.", "en": "The match log will appear here: rolls, buys, deals."},
+	"jrn.no_match":    {"ru": "Под фильтр ничего не подходит.", "en": "Nothing matches the filter."},
+	"jrn.filter_all":  {"ru": "все места", "en": "all seats"},
+	"jrn.filter_allcats": {"ru": "все типы", "en": "all kinds"},
+	"jrn.export":      {"ru": "экспорт", "en": "export"},
+	"jrn.export_tip":  {"ru": "Сохранить ленту в файл .jsonl", "en": "Save the log to a .jsonl file"},
 }

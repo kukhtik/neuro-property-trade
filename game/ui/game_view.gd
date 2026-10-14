@@ -17,6 +17,7 @@ const TopBar := preload("res://ui/top_bar.gd")
 const PlayersPanel := preload("res://ui/players_panel.gd")
 const ActionPanel := preload("res://ui/action_panel.gd")
 const JournalPanel := preload("res://ui/journal_panel.gd")
+const JournalLines := preload("res://ui/core/journal_lines.gd")
 const TileInspector := preload("res://ui/tile_inspector.gd")
 const ToastList := preload("res://ui/toast.gd")
 const ModalHost := preload("res://ui/modal_host.gd")
@@ -65,6 +66,8 @@ var _rail_right: Control
 var _rail_r_journal: Control
 var _rail_r_inspector: Control
 var _drawers: Dictionary = {}
+## SG-06: engine events -> readable journal lines (adapter spans + tile names).
+var _journal_lines = JournalLines.new()
 
 
 func _init() -> void:
@@ -329,6 +332,12 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_mgr = mgr
 	seats = seat_list
 	_cold = false
+	# a new match starts with an empty feed: the journal keeps raw events for its filters and
+	# re-formats them on locale change (SG-06/SG-08), so it must not carry the last match's
+	if _journal != null:
+		_journal.clear_rows()
+		if _journal.has_method("set_seats"):
+			_journal.set_seats(seats)
 	# WHO PLAYS HERE: the seat driven by a human (LOCAL/ADMIN), whoever that is. The old
 	# `_human_pid = 0` was right only by convention, and only on the host: any other ordering
 	# (or a client) got a screen whose buttons could never appear or played the wrong seat.
@@ -512,20 +521,19 @@ func _on_events(events: Array) -> void:
 			_toasts.show_event_toast(e)
 		var data: Dictionary = e.get("data", {})
 		if _journal != null:
-			var who := str(data.get("player", ""))
-			var who_col: Color = UiTheme.COL().text
-			for s in seats:
-				if str(s.name) == who:
-					who_col = s.color
-			var key := "event_type." + kind
-			var text: String = I18n.t(key) if I18n.has(key) else kind
-			if data.has("amount"):
-				text += "  $%d" % int(data.get("amount", 0))
-			_journal.append({"who": who, "who_color": who_col, "text": text, "tag": kind})
-			if _console != null and _is_compact():
-				# compact: the journal lives behind rail-right; the newest event shows as the
-				# console's one-line ticker (the registry's own wording for the compact toast)
-				_console.show_ticker(text if who == "" else "%s · %s" % [who, text], kind)
+			# SG-06: the line comes from the ADAPTER + the projection's tile names - never from
+			# the raw engine type ("free_parking") and never as "клетка N".
+			var ctx := _journal_ctx()
+			var line: Dictionary = _journal_lines.line_for(e, ctx)
+			if not line.is_empty():
+				_journal.append(e, ctx)
+				if _console != null and _is_compact():
+					# compact: the journal lives behind rail-right; the newest event shows as the
+					# console's one-line ticker (the registry's own wording for the compact toast)
+					var who_line := str(line.get("who", ""))
+					var text_line := str(line.get("text", ""))
+					_console.show_ticker(text_line if who_line == "" else "%s · %s" % [who_line, text_line],
+						str(line.get("cat", "info")))
 		if _board != null:
 			# board animations: rolls tumble the tray, moves hop the tokens
 			if kind == "roll":
@@ -540,6 +548,20 @@ func _pid_of(name: String) -> int:
 		if str(s.name) == name:
 			return int(s.pid)
 	return -1
+
+
+## SG-06 rendering context for one journal batch: seat names/colours and the projection's tile
+## NAMES. Rebuilt per batch - seats and the board change while the match runs.
+func _journal_ctx() -> Dictionary:
+	var names := {}
+	var colors := {}
+	for s in seats:
+		names[int(s.pid)] = str(s.name)
+		colors[int(s.pid)] = s.color
+	var tiles := {}
+	for t in (_proj.get("board", []) as Array):
+		tiles[int(t.get("index", -1))] = str(t.get("name", ""))
+	return {"names": names, "colors": colors, "tiles": tiles, "dim": UiTheme.COL().text_dim}
 
 
 ## A modal that shows LIVE state must follow that state: a bid re-raised by the next player

@@ -28,7 +28,7 @@ const MainScript := preload("res://main.gd")
 const SCAN_DIRS := ["res://ui", "res://visual"]
 const SCAN_FILES := ["res://main.gd"]
 ## Dynamic prefixes that MUST resolve (each has an enumeration rule below).
-const I18N_DYNAMIC := ["phase.", "event_type.", "event.", "settings.driver."]
+const I18N_DYNAMIC := ["phase.", "event_type.", "event.", "jrn.ev.", "settings.driver."]
 ## Dynamic prefixes that are DATA PATHS (SkinManager), not translations. Counted, not failed;
 ## a NEW one shows up in the log so the classification can be re-decided consciously.
 const DATA_DYNAMIC := ["tokens.", "size.", "shape.", "metrics.", "proportions.", "motion.",
@@ -183,6 +183,16 @@ func _scan_dynamic() -> void:
 			# ':' -> '_' (sdk:neuro -> sdk_neuro). Enumerate the DRIVERS list itself.
 			for d in _driver_ids():
 				_check_key("settings.driver." + d.to_lower().replace(":", "_"), where)
+		elif pre == "jrn.ev.":
+			seen_i18n[pre] = true
+			# SG-06 journal lines: ui/core/journal_lines.gd builds "jrn.ev." + span for every
+			# span the journal RENDERS (VISIBLE). Non-visible spans (move/cash/pay) never ask
+			# for a line key - enumerating the VISIBLE list keeps this from demanding dead keys.
+			var vis := _adapter_visible_spans()
+			if vis.size() < MIN_SPANS:
+				_fail("journal-line span enumeration lost: %d visible spans (expected >= %d)" % [vis.size(), MIN_SPANS])
+			for sp in vis:
+				_check_key("jrn.ev." + str(sp), where)
 		else:
 			# a data-path prefix may have several segments (`tokens.metrics.`, `colors.group.`) -
 			# classify by its ROOT, not by a full-string match.
@@ -241,6 +251,23 @@ func _adapter_spans() -> Array:
 	for m in rx.search_all(block):
 		spans[m.get_string(2)] = true
 	return spans.keys()
+
+
+## The spans the journal can RENDER: the adapter's VISIBLE list. `jrn.ev.` keys exist exactly
+## for these (move/cash/pay are adapted but never shown -> no line keys by design).
+func _adapter_visible_spans() -> Array:
+	var spans: Array = []
+	var txt := FileAccess.get_file_as_string("res://ui/core/event_adapter.gd")
+	var start := txt.find("const VISIBLE")
+	var endp := txt.find("]", start)
+	if start < 0 or endp < 0:
+		return spans
+	var block := txt.substr(start, endp - start)
+	var rx := RegEx.new()
+	rx.compile(BS + "\"([a-z_]+)\"")
+	for m in rx.search_all(block):
+		spans.append(m.get_string(1))
+	return spans
 
 
 func _text_key_callers() -> Array:
