@@ -129,8 +129,15 @@ func _rect_str(r: Rect2) -> String:
 	return "[%d,%d %dx%d]" % [int(r.position.x), int(r.position.y), int(r.size.x), int(r.size.y)]
 
 
+## A silent runtime abort leaves 0 checks and used to still say PASSED (SG-09 lesson):
+## the report refuses a run that did not actually check anything.
+const MIN_CHECKS := 8   # 4 profiles x 2 checks = 8
+
+
 func _report() -> void:
 	print("SG-05: %d checks" % _checks)
+	if _checks < MIN_CHECKS:
+		_fail("only %d check(s) ran - the gate aborted silently (want >= %d)" % [_checks, MIN_CHECKS])
 	if _fails.is_empty():
 		print("==> SG-05 PASSED (4 profiles: toasts stay in the right dock, compact folds to the console ticker)")
 		get_tree().quit(0)

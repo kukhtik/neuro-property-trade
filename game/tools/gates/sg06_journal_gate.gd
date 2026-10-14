@@ -299,8 +299,15 @@ func _labels_under(root: Node) -> Array:
 	return out
 
 
+## A silent runtime abort leaves 0 checks and used to still say PASSED (SG-09 lesson):
+## the report refuses a run that did not actually check anything.
+const MIN_CHECKS := 6   # >= 6 independent checks
+
+
 func _report() -> void:
 	print("SG-06: %d checks" % _checks)
+	if _checks < MIN_CHECKS:
+		_fail("only %d check(s) ran - the gate aborted silently (want >= %d)" % [_checks, MIN_CHECKS])
 	if _fails.is_empty():
 		print("==> SG-06 PASSED (%d intents, feed lines are human, counter/filters/export work)" % _intents)
 		get_tree().quit(0)

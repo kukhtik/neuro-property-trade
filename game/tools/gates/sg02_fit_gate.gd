@@ -251,8 +251,15 @@ func _dump_min(c: Control, depth: int) -> void:
 			_dump_min(ch, depth + 1)
 
 
+## A silent runtime abort leaves 0 checks and used to still say PASSED (SG-09 lesson):
+## the report refuses a run that did not actually check anything.
+const MIN_CHECKS := 20   # 4 profiles x 2 languages x >=9 regions
+
+
 func _report() -> void:
 	print("SG-02: %d controls audited, %d clipped text(s), %d off-screen" % [_checks, _clipped, _offscreen])
+	if _checks < MIN_CHECKS:
+		_fail("only %d check(s) ran - the gate aborted silently (want >= %d)" % [_checks, MIN_CHECKS])
 	if _fails.is_empty():
 		print("==> SG-02 PASSED (4 profiles x 2 languages, nothing leaves the viewport, no text squeezed out of its box)")
 		get_tree().quit(0)
