@@ -68,6 +68,7 @@ GATES=(
 	"SG-02|sg|required|scene|sg02_fit_gate"
 	"SG-06|sg|required|scene|sg06_journal_gate"
 	"SG-08|sg|required|scene|sg08_locale_gate"
+	"SG-04|sg|required|scene|sg04_text_roles_gate"
 )
 
 # a working python for the report/JSON: `python` first (Windows local), then `python3` (CI).

@@ -67,7 +67,9 @@ func _init() -> void:
 	fil.add_child(_pfilter)
 	_cfilter = OptionButton.new()
 	_cfilter.add_theme_font_size_override("font_size", 10)
-	_cfilter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# one grower per row (P-4): the seat filter takes the slack, the category filter sits at
+	# its content width
+	_cfilter.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_cfilter.item_selected.connect(_on_cfilter)
 	fil.add_child(_cfilter)
 	col.add_child(fil)

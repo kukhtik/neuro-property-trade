@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tools/gates/sg04_text_roles_gate.gd" id="1_sg04"]
+
+[node name="Sg04TextRolesGate" type="Node"]
+script = ExtResource("1_sg04")

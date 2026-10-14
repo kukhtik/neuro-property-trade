@@ -48,6 +48,7 @@ func _init() -> void:
 	track.add_theme_stylebox_override("panel", UiTheme.box(UiTheme.COL().bg, UiTheme.COL().border, 1, 0))
 	track.custom_minimum_size.y = 8
 	_own_track = UiTheme.hbox(0)
+	_own_track.name = "ownbar"
 	track.add_child(_own_track)
 	own.add_child(track)
 	_own_legend = UiTheme.hbox(0)
@@ -147,7 +148,9 @@ func _refresh_stats(proj: Dictionary, players: Array) -> void:
 	]
 	for cell in cells:
 		var p := PanelContainer.new()
-		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# the cells are VALUES: they sit at their content width, and the row's single stretch
+		# slot goes to the trailing spacer (P-4: exactly one grower per flex row)
+		p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		p.add_theme_stylebox_override("panel",
 			UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
 		var v := UiTheme.vbox(0)
@@ -161,6 +164,9 @@ func _refresh_stats(proj: Dictionary, players: Array) -> void:
 		v.add_child(key)
 		p.add_child(v)
 		_stats.add_child(p)
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_stats.add_child(sp)
 
 
 func _refresh_ownbar(players: Array, seats: Array) -> void:
