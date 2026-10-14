@@ -87,16 +87,20 @@ def stray_processes() -> list[str]:
         return []
     for line in (ps.stdout or "").splitlines():
         low = line.lower()
-        # A PROCESS THAT MENTIONS THIS SCRIPT IS THIS CHECK'S OWN FAMILY. Run
-        # `python tools/fps_clean.py` from a shell whose command line also quotes 'godot' or
-        # 'serve.py' (a compound command, a log message, a grep) and the preflight used to
-        # refuse the very run it was asked to protect — observed live. The wrapper carrying the
-        # script's own name is skipped.
-        if "fps_clean" in low:
+        # MATCH THE PROCESS, NOT THE SENTENCE. The old rule scanned the whole command line for the
+        # words `godot` / `serve.py` / `neuropropertytrade`, so ANY wrapper that merely MENTIONED
+        # one of them counted as a competing game: a monitoring command naming the gate script, a
+        # shell printing the word in a `-match` pattern, a grep. Observed live - SG-10 answered
+        # "another host was alive - the machine was competing with itself" in 1.09s and skipped a
+        # perfectly quiet machine. What actually competes is a running game or a web host, i.e.
+        # the EXECUTABLE: the shipped `NeuroPropertyTrade.exe`, a `Godot_*.exe` capture, or a
+        # python running this tool's own sibling `serve.py`.
+        if "fps_clean" in low:          # this check's own family (it is started from the same dir)
             continue
-        # `neuropropertytrade` without dashes: the repo folder is named neuro-property-trade and
-        # must NOT match its own path
-        if "neuropropertytrade" in low or "godot" in low or "serve.py" in low:
+        name = low.split("|")[0].strip() if "|" in low else ""
+        if name.endswith("neuropropertytrade.exe") or name.startswith("godot"):
+            hits.append(line.strip())
+        elif name.startswith("python") and "serve.py" in low:
             hits.append(line.strip())
     return hits
 
@@ -186,9 +190,13 @@ def main() -> int:
             if fps:
                 client_fps.extend(fps)
                 pg.evaluate("window.__fps=[]")
-        # whether the page believed it was visible: 1 fps + hidden is throttling, not the game
+        # WHAT THE PAGE BELIEVED ABOUT ITSELF: 1 fps + hidden is throttling, not the game. Focus
+        # is the sharper of the two - Chromium stops drawing for an OCCLUDED window while
+        # `visibilityState` still says "visible" (measured: median=1 with `visible`, max=58: the
+        # frame rate of a window nobody is looking at, published as a regression).
         vis = pg.evaluate("document.visibilityState")
-        print(f"  (страница считала себя: {vis})")
+        focused = bool(pg.evaluate("document.hasFocus()"))
+        print(f"  (страница считала себя: {vis}; в фокусе: {focused})")
         b.close()
 
     host.terminate(); site.terminate()
@@ -222,8 +230,33 @@ def main() -> int:
     if med >= 30:
         print(f"  ==> FPS OK (браузер median={med:.0f} >= 30, порог регрессии)")
         return 0
+    # A LOW NUMBER HAS TO EARN THE WORD "REGRESSION". A window nobody is looking at gets its
+    # frames throttled to ~1/s while the samples also contain real ~50 fps bursts (the compositor
+    # drew it while it was in front). A build that really regressed cannot produce 50 fps bursts
+    # at all: it is slow in every sample. So: unfocused OR bimodal => the number measures the
+    # desktop, not the build, and the gate SKIPs with that reason instead of reddening a healthy
+    # release. (The earlier guard used `visibilityState` alone, which stays "visible" for an
+    # occluded window - the very case it was written for.)
+    peak = max(cf)
+    # DID ANYTHING EVER DRAW? A window that never got composited reports a flat 1/s from the first
+    # sample on (measured with occlusion detection switched off: median=1, peak=5). No build is
+    # that slow - a real regression is slow, not absent - so this is a measurement about the
+    # desktop, not about the game, and it must not be published as a regression either.
+    opening = max(cf[:3]) if len(cf) >= 3 else peak
+    if opening < 5:
+        print(f"  ==> замер НЕДЕЙСТВИТЕЛЕН: median={med:.0f}, пик за первую секунду {opening} — "
+              f"окно браузера так и не было нарисовано (его перекрыли)")
+        return 2
+    if focused is False:
+        print(f"  ==> замер НЕДЕЙСТВИТЕЛЕН: median={med:.0f}, но окно браузера НЕ в фокусе — "
+              f"это троттлинг композитора, не дефект сборки")
+        return 2
+    if peak >= 40:
+        print(f"  ==> замер НЕДЕЙСТВИТЕЛЕН: median={med:.0f} при пике {peak} — окно рисовалось "
+              f"рывками (его перекрыли); регрессия так не выглядит")
+        return 2
     if vis == "visible":
-        print(f"  ==> FPS REGRESSION: браузер median={med:.0f} < 30")
+        print(f"  ==> FPS REGRESSION: браузер median={med:.0f} < 30 (пик {peak}, окно в фокусе и видимо)")
         return 1
     print(f"  ==> замер НЕДЕЙСТВИТЕЛЕН: median={med:.0f}, но страница считала себя «{vis}» — троттлинг, не дефект")
     return 2
