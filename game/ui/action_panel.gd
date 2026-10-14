@@ -19,7 +19,7 @@ const HOTKEY := {"buy": "B", "end_turn": "N"}
 var _ticker: Label
 var _hint: Label
 var _lastroll: Label
-var _btn_row: HBoxContainer
+var _btn_row: HFlowContainer
 var _status: Label
 var _cold := false
 var _observer := false
@@ -57,7 +57,13 @@ func _init() -> void:
 
 	var row2 := UiTheme.hbox(8)
 	row2.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_btn_row = UiTheme.hbox(8)
+	# THE CONTROL ROW WRAPS. DESIGN §6 (порядок ужимания): "ряды консоли переносятся" - on a
+	# 1280-wide window in RU the full management set needs ~630px and a rigid row pushed the
+	# whole dock layout 9px past the viewport (SG-02 found it: 1289 vs 1280 on a human turn).
+	# A wrapping row keeps every caption fully readable instead of clipping or overlapping.
+	_btn_row = HFlowContainer.new()
+	_btn_row.add_theme_constant_override("h_separation", 8)
+	_btn_row.add_theme_constant_override("v_separation", 6)
 	_btn_row.custom_minimum_size.y = 44
 	row2.add_child(_btn_row)
 	_status = UiTheme.label("", 12, UiTheme.COL().text_dim)
