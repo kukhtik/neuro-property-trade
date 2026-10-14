@@ -88,11 +88,11 @@ func set_invitation(address: String, seat_links: Array) -> void:
 		num.custom_minimum_size.x = 22
 		row.add_child(num)
 		# the link itself: selectable so it can be copied by hand when the button cannot reach
-		# the clipboard (a headless or remote session has no clipboard at all)
-		var lbl := UiTheme.label(link, 12, UiTheme.COL().text)
+		# the clipboard (a headless or remote session has no clipboard at all). SELECTABLE MEANS
+		# RichTextLabel — `selection_enabled` does not exist on Label, and setting it there threw
+		# a SCRIPT ERROR on every row while the text stayed unselectable (SG-07 caught it).
+		var lbl := UiTheme.selectable_text(link, 12, UiTheme.COL().text)
 		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-		lbl.selection_enabled = true
 		row.add_child(lbl)
 		var copy := UiTheme.button(I18n.t("invite.copy"))
 		copy.custom_minimum_size.x = 96

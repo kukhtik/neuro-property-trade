@@ -149,6 +149,27 @@ static func label_wrap(text: String, size: int = -1, color: Color = Color.TRANSP
 	return l
 
 
+## SELECTABLE text — the invite link a host copies by hand when the clipboard cannot be reached.
+##
+## A Label CANNOT do this: `selection_enabled` does not exist on Label (verified against the
+## engine's own property list), yet the restored invitation screen set it on every link row and
+## threw `Invalid assignment ... on a base object of type 'Label'` while the text stayed
+## unselectable. RichTextLabel is the widget that has the property; colours and size still come
+## from the same skin tokens, so this is the label role in a different shell.
+static func selectable_text(text: String, size: int = -1, color: Color = Color.TRANSPARENT) -> RichTextLabel:
+	var s := skin()
+	var rt := RichTextLabel.new()
+	rt.bbcode_enabled = false
+	rt.fit_content = true                        # height from the content, no inner scrollbar
+	rt.scroll_active = false
+	rt.selection_enabled = true
+	rt.mouse_filter = Control.MOUSE_FILTER_STOP   # a drag must reach the text to select it
+	rt.add_theme_font_size_override("normal_font_size", s.size("m", 14) if size < 0 else size)
+	rt.add_theme_color_override("default_color", s.color("text") if color.a <= 0.0 else color)
+	rt.text = text
+	return rt
+
+
 ## A muted (secondary) label — the VALUE role (see label()).
 static func label_muted(text: String, size: int = -1) -> Label:
 	return label(text, size, skin().color("muted"))
