@@ -43,6 +43,9 @@ func _init() -> void:
 		"res://tests/theme_test.gd",
 		# HG-10: the projection contract (pins outputs, scans UI reads, `pot` regression case)
 		"res://tests/ui_contract_test.gd",
+		# UI-core pure-function tests: EventAdapter, Money, IntentMap,
+		# LayoutProfile, UiProfile, UiStore, JournalLines
+		"res://tests/ui_core_test.gd",
 	]
 	_check_orphan_modules(modules)
 	for path in modules:

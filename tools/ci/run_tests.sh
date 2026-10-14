@@ -23,8 +23,14 @@ GODOT="$("$ROOT/tools/ci/godot_bin.sh")"
 # History: 400 (pre-swap) -> 270 (v3 interface swap, ~130 UI tests archived) -> 289 (+6 when
 # `theme_test` was found as an orphan and put back into `modules`; the runner now fails on any
 # orphan test module, so this number can only move UP together with real tests) -> 292
-# (+3: ui_contract_test = HG-10, the projection contract and its `pot` regression case).
-MIN_TESTS="${MIN_TESTS:-292}"
+# (+3: ui_contract_test = HG-10, the projection contract and its `pot` regression case) -> 356
+# (+64: ui_core_test = the UI core itself — the event adapter, the journal lines, money, the
+# intent mapping, the layout profiles, the launch roles and the view model. The swap archived
+# ~130 UI tests; this module pays the debt BACK alongside the rebuilt interface instead of
+# measuring a tree that no longer exists. Negative check: a threshold flipped in
+# `layout_profile.gd` fails exactly `test_desktop_at_1280` with a readable reason, and reverting
+# it restores the count.)
+MIN_TESTS="${MIN_TESTS:-356}"
 FAST="${1:-}"
 LOG="${TMPDIR:-/tmp}/npt-tests-$$.log"
 
