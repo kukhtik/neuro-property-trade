@@ -41,6 +41,8 @@ func _init() -> void:
 		# back in the set: the v3 swap left this module on disk but dropped it from `modules`,
 		# so its 6 palette tests never ran while the suite stayed green.
 		"res://tests/theme_test.gd",
+		# HG-10: the projection contract (pins outputs, scans UI reads, `pot` regression case)
+		"res://tests/ui_contract_test.gd",
 	]
 	_check_orphan_modules(modules)
 	for path in modules:

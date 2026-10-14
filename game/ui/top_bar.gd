@@ -154,7 +154,10 @@ func sync(proj: Dictionary, seats: Array) -> void:
 	# round chip (`top.round`) + parking pot (`top.pot`)
 	var round_n: int = int(proj.get("round", 1))
 	_round_chip.text = I18n.t("top.round") + " " + str(round_n)
-	var pot: int = int(proj.get("pot", 0))
+	# THE PROJECTION'S NAME IS `parking_pot`. The UI asked for `pot` ever since the swap, a
+	# missing key yields null, and the chip showed "$0" for every match while the pot filled
+	# up in the engine (found by the audit; pinned by ui_contract_test / HG-10).
+	var pot: int = int(proj.get("parking_pot", 0))
 	_pot_chip.text = I18n.t("top.pot") + " $%d" % pot
 	# the step ticks follow the turn player's position around the ring
 	var pos: int = 0

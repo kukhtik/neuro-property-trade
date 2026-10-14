@@ -22,8 +22,9 @@ GODOT="$("$ROOT/tools/ci/godot_bin.sh")"
 # adding or retiring a handful of tests does not require editing this line.
 # History: 400 (pre-swap) -> 270 (v3 interface swap, ~130 UI tests archived) -> 289 (+6 when
 # `theme_test` was found as an orphan and put back into `modules`; the runner now fails on any
-# orphan test module, so this number can only move UP together with real tests).
-MIN_TESTS="${MIN_TESTS:-289}"
+# orphan test module, so this number can only move UP together with real tests) -> 292
+# (+3: ui_contract_test = HG-10, the projection contract and its `pot` regression case).
+MIN_TESTS="${MIN_TESTS:-292}"
 FAST="${1:-}"
 LOG="${TMPDIR:-/tmp}/npt-tests-$$.log"
 

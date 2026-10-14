@@ -137,7 +137,8 @@ func _refresh_stats(proj: Dictionary, players: Array) -> void:
 	var cells := [
 		[str(proj.get("round", 1)), I18n.t("stat.round")],
 		[str(players.size()), I18n.t("ui.players")],
-		["$%d" % int(proj.get("pot", 0)), I18n.t("top.pot")],
+		# `parking_pot`, not `pot`: the projection has one name for the bank (HG-10)
+		["$%d" % int(proj.get("parking_pot", 0)), I18n.t("top.pot")],
 	]
 	for cell in cells:
 		var p := PanelContainer.new()
