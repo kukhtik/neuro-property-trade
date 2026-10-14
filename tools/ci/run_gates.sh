@@ -57,6 +57,8 @@ GATES=(
 	"HG-11|hg|required|script|tools/ci/gates/hg11_freshness_gate.sh"
 	"HG-02|hg|quarantine|scene|hg02_console_actions_gate"
 	"HG-12|hg|quarantine|scene|hg12_admin_smoke_gate"
+	"HG-06|hg|quarantine|script|tools/ci/gates/hg06_browser_join_gate.sh"
+	"HG-05|hg|quarantine|scene|hg05_identity_gate"
 	"SG-01|sg|quarantine|scene|sg01_compact_gate"
 )
 
@@ -124,6 +126,7 @@ run_gate() {
 	# caught the INFORMATIVE line "0 SCRIPT ERROR" from the oracle's own verdict, which failed
 	# a perfectly green HG-01.
 	errs="$(grep -acE "SCRIPT ERROR:" "$log" || true)"
+	skip_line="$(grep -a "==> $id SKIPPED" "$log" | tail -1 || true)"
 	if [ -n "$fail_line" ]; then
 		verdict="fail"
 		reason="$(printf '%s' "$fail_line" | sed "s/.*==> $id FAILED:[[:space:]]*//")"
@@ -133,6 +136,11 @@ run_gate() {
 	elif [ -n "$pass_line" ]; then
 		verdict="pass"
 		reason=""
+	elif [ -n "$skip_line" ]; then
+		# an environment that cannot run the gate says so out loud: counted and reported,
+		# never a pass (a gate that did not run has proven nothing) and never a block.
+		verdict="skip"
+		reason="$(printf '%s' "$skip_line" | sed "s/.*==> $id SKIPPED:[[:space:]]*//")"
 	else
 		verdict="fail"
 		reason="no verdict line (==> $id PASSED/FAILED) - the gate did not run; godot exit=$code"
@@ -165,6 +173,8 @@ PYEOF
 
 	if [ "$verdict" = "pass" ]; then
 		printf 'ok:   %-6s [%s] %s\n' "$id" "$status" "$(printf '%s' "$pass_line" | sed 's/^==> //')"
+	elif [ "$verdict" = "skip" ]; then
+		printf 'skip: %-6s [%s] %s\n' "$id" "$status" "$reason"
 	elif [ "$status" = "required" ]; then
 		printf 'FAIL: %-6s [required] %s\n' "$id" "$reason"
 	else

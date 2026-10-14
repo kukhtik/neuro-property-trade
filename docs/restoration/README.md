@@ -52,14 +52,15 @@
 | Факт | Значение |
 |---|---|
 | Оракул | `==> ORACLE PASSED (289 tests, 0 SCRIPT ERROR)`, `MIN_TESTS=289` (было 270 после свопа) |
-| Гейты | `tools/ci/run_gates.sh` в CI: HG-01/HG-09/HG-11 — required и зелёные; HG-02/HG-12/SG-01 — карантин (HG-12 зелёный, HG-02/SG-01 красные — это цель P0/фазы 2); отчёт `build/gates/report.html` |
+| Гейты | `tools/ci/run_gates.sh` в CI: HG-01/HG-09/HG-11 — required и зелёные; HG-02/HG-05/HG-06/HG-12 — карантинные и зелёные; SG-01 красный (компакт — фаза 2); отчёт `build/gates/report.html` |
 | Пробы | 3/3 (`i18n_probe`, `skin_probe`, `v3_probe`); было 19/19; `free_parking_probe` не подключена |
-| Браузерный джойн на свежей сборке | **мёртв** — все три инструмента: `browser_seat_e2e.py`, `smoke_all_roles.py`, ad-hoc проба: `joined=False`, 0 интентов |
-| Консольные кнопки СТРОЙКА/ТОРГ/СТАВКА/ОТВЕТ | неработоспособны (пустые параметры) — доказано гейтом HG-02 (6 отказов) |
-| Компакт-профиль (<1280px или ≤700px) | доки (`seats`, `rightcol`) скрываются без замены — журнал/инспектор/тосты недостижимы; доказано гейтом SG-01 (1000×650, 880×600) |
+| Браузерный джойн | **работает** (P0 починен): `join_lobby`/`host_invite` вернулись из архива, `has_seat` снова открывает экран джойна; гейт HG-06 сам экспортирует сборку — `joined=True`, 24/26 интентов принято; смоук трёх ролей PASSED (кадр сравнения — свежий admin.png этого прогона) |
+| Консольные кнопки | **исправлены** (P0): стройка/залог → инспектор с выбранной клеткой или подсказка «выберите тайл»; торг → модалка состава; ответ на сделку → модалка accept/decline; ставка → модалка аукциона с проверкой суммы; HG-02 зелёный (12 нажатий, 0 отказов, аукцион принят) |
+| Идентичность места | **исправлена** (P0): `_human_pid` вычисляется из мест (LOCAL/ADMIN), клиент получает pid на JOINED и шлёт интенты через `RemoteSession`; авто-ответ только под `--smoke-drive`/`smoke=1`; HG-05 зелёный (6 проверок) |
+| Компакт-профиль (<1280px или ≤700px) | доки (`seats`, `rightcol`) скрываются без замены — журнал/инспектор/тосты недостижимы; доказано гейтом SG-01 (1000×650, 880×600) — цель фазы 2 |
 | Живые `{ключи}` i18n | **0**: 5 мест (`over.title`, `over.winner`, `plr.jail`, `stat.round`, `top.decision`) починены и заперты гейтом HG-09 |
-| Банк парковки | UI читает `pot`, проекция отдаёт `parking_pot` → чип всегда `$0` |
-| Артефакты | `.exe` 15:22 и `build/web` 15:33 — **старше свопа (18:52)**; помечены «архив» в `tools/ci/freshness_allowlist.txt` (свежие сборки кладутся рядом) |
+| Банк парковки | UI читает `pot`, проекция отдаёт `parking_pot` → чип всегда `$0` (ждёт фазу 2) |
+| Артефакты | `.exe` 15:22 и `build/web` 15:33 — **старше свопа (18:52)**; помечены «архив» в `tools/ci/freshness_allowlist.txt` (свежие сборки кладутся рядом; HG-06 экспортирует свою) |
 | Сверка с макетом | мерила стейл-кадр `build/smoke/admin.png`; теперь кадр — параметр `--frame`/`NPT_FRAME` своего прогона (гейт HG-11) |
 | Ядро | здорово: soak `SOAK OK`, replay/corpus зелёные, движок свопом не тронут |
 | SDK-место | три разрыва: UI не создаёт, рантайм не спавнит `SdkAdapter`, аддон печатает `NEURO_SDK_WS_URL` ошибку всегда |
@@ -92,14 +93,15 @@ bash tools/ci/run_probes.sh                # поведенческие проб
 bash tools/ci/run_gates.sh --all           # программа гейтов (docs/restoration/gates.md)
 bash tools/ci/run_gates.sh --report-only   # пересобрать build/gates/report.html из JSON-ов
 
-# свежий веб-экспорт и три браузерных проверки (все три сейчас КРАСНЫЕ — это и есть P0):
+# свежий веб-экспорт и три браузерных проверки (P0 починен — все три ЗЕЛЁНЫЕ).
+# Гейт HG-06 делает это сам (экспорт + браузер) — это же руками:
 "$G" --headless --path game --export-release "Web" "$(cd build && pwd -W)/web_probe/index.html"
 NPT_WEB="$(pwd -W)/build/web_probe" py -3.12 tools/ci/browser_seat_e2e.py
 NPT_WEB="$(pwd -W)/build/web_probe" NPT_REPORT="$(pwd -W)/build/smoke_v3probe" \
   NPT_MOCKUP="$(pwd -W)/design/ui-prototype.html" py -3.12 tools/ci/smoke_all_roles.py
 
-# гейты, бывшие диагностическими пробами аудита (теперь живут в game/tools/gates/ и
-# регистрируются в tools/ci/run_gates.sh; SG-01 и HG-02 сейчас КРАСНЫЕ — это P0/фаза-2):
+# гейты, бывшие диагностическими пробами аудита (живут в game/tools/gates/ и регистрируются
+# в tools/ci/run_gates.sh; SG-01 сейчас КРАСНЫЙ — это цель фазы 2):
 "$G" --headless --path game res://tools/gates/sg01_compact_gate.tscn
 "$G" --headless --path game res://tools/gates/hg02_console_actions_gate.tscn
 "$G" --headless --path game res://tools/gates/hg12_admin_smoke_gate.tscn

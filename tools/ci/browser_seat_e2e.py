@@ -98,7 +98,7 @@ def main():
     threading.Thread(target=serve, daemon=True).start()
     time.sleep(1.0)
 
-    url = ("http://127.0.0.1:%d/index.html?seat=%s&host=ws://127.0.0.1:%d"
+    url = ("http://127.0.0.1:%d/index.html?seat=%s&host=ws://127.0.0.1:%d&smoke=1"
            % (HTTP_PORT, token, port))
     print("opening", url)
 

@@ -34,7 +34,16 @@ var seats: Array = []
 var _proj: Dictionary = {}
 var _cold := true
 var _observer := false
-var _human_pid := 0
+## WHO AM I ON THIS SCREEN. Was hardcoded to 0 (the audit: "на хосте работает случайно; у
+## удалённого клиента кнопки не покажутся никогда, а интенты ушли бы за место 0"). Two
+## sources: `setup()` derives it from the seat list (the LOCAL/ADMIN seat), and a client that
+## joined over the wire is TOLD its pid by the host (`set_human_pid` on JOINED). -1 = nobody
+## local plays here: the console offers no buttons, no intent can be sent for anyone.
+var _human_pid := -1
+## The wire, when this screen is a REMOTE client: buttons then submit through it instead of a
+## local manager (a client owns no engine - main._submit used to hit `if _mgr == null: return`
+## and the browser's presses went nowhere).
+var _remote = null
 
 var _top: Control
 var _seats_panel: Control
@@ -124,6 +133,11 @@ func _build() -> void:
 	_modals = ModalHost.new()
 	_modals.name = "modal"
 	add_child(_modals)
+	# the modals collect PARAMETERS the engine needs; the shell submits them like any button
+	_modals.trade_submitted.connect(_on_trade_submitted)
+	_modals.trade_answered.connect(_on_trade_answered)
+	_modals.auction_bid.connect(_on_auction_bid)
+	_modals.auction_pass.connect(_on_auction_pass)
 
 	_apply_profile()
 
@@ -165,7 +179,14 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 	_mgr = mgr
 	seats = seat_list
 	_cold = false
-	_human_pid = 0
+	# WHO PLAYS HERE: the seat driven by a human (LOCAL/ADMIN), whoever that is. The old
+	# `_human_pid = 0` was right only by convention, and only on the host: any other ordering
+	# (or a client) got a screen whose buttons could never appear or played the wrong seat.
+	_human_pid = -1
+	for s2 in seats:
+		if str(s2.input_driver) == "LOCAL" or str(s2.input_driver) == "ADMIN":
+			_human_pid = int(s2.pid)
+			break
 	if _mgr != null and _mgr.has_signal("events_emitted"):
 		if not _mgr.events_emitted.is_connected(Callable(self, "_on_events")):
 			_mgr.events_emitted.connect(Callable(self, "_on_events"))
@@ -195,6 +216,24 @@ func on_overlay_closed() -> void:
 	pass
 
 
+## A client learned which seat it owns (the host answered JOINED). Buttons may now appear
+## on this client's own turn.
+func set_human_pid(pid: int) -> void:
+	_human_pid = pid
+	_sync_all()
+
+
+## This screen is a REMOTE client: intents go over the wire (the host validates). Set on JOINED.
+func set_remote_session(sess) -> void:
+	_remote = sess
+
+
+## The host refused an intent from this client. Say why in the player's language.
+func show_rejection(reason: String) -> void:
+	if _modals != null:
+		_modals.show_message(I18n.t("gv.rejected_title"), I18n.t("gv.rejected_body", [reason]))
+
+
 ## Main pushes the spectator projection (local engine or the wire).
 func apply_projection(proj: Dictionary) -> void:
 	_proj = proj
@@ -210,6 +249,7 @@ func apply_projection(proj: Dictionary) -> void:
 func _sync_all() -> void:
 	if _proj.is_empty():
 		return
+	_sync_modals()
 	if _top != null:
 		_top.sync(_proj, seats)
 	if _seats_panel != null:
@@ -238,8 +278,57 @@ func _on_tile_clicked(idx: int) -> void:
 		_board.set_selected(idx)
 
 
+## Every console/board action funnels here. ACTIONS THAT NEED PARAMETERS OPEN A DIALOG —
+## the audit's defect was exactly this: `action_requested(act, {})` sent an empty dict for
+## all of them, and the engine refused six of thirteen buttons on every turn.
 func _on_action(action: String, params: Dictionary) -> void:
+	match action:
+		"bid":
+			_modals.show_auction(_proj, seats, _human_pid)
+			return
+		"propose_trade":
+			_modals.show_trade_composer(_proj, seats, _human_pid)
+			return
+		"respond_trade":
+			var pend: Dictionary = _proj.get("pending", {})
+			if str(pend.get("type", "")) != "trade":
+				return   # nothing to respond to (the button should not have been drawn)
+			_modals.show_trade_response(_proj, seats)
+			return
+		"build_house", "sell_house", "mortgage_property", "unmortgage_property":
+			# tile-addressed actions: the inspector's selection is the address. With no tile
+			# picked, say how to pick one instead of sending `{}` to be refused "tile required".
+			var tile := int(_inspector.selected) if _inspector != null else -1
+			var mine := false
+			for t in (_proj.get("board", []) as Array):
+				if int(t.get("index", -1)) == tile and int(t.get("owner", -1)) == _human_pid:
+					mine = true
+					break
+			if tile < 0 or not mine:
+				_modals.show_message(I18n.t("gv.select_tile"), I18n.t("gv.select_tile_body"))
+				return
+			_submit(_human_pid, action, {"tile": tile})
+			return
 	_submit(_human_pid, action, params)
+
+
+func _on_trade_submitted(to: int, give_tiles: Array, give_cash: int, want_tiles: Array, want_cash: int) -> void:
+	_submit(_human_pid, "propose_trade", {
+		"to": to, "give_tiles": give_tiles, "give_cash": give_cash,
+		"want_tiles": want_tiles, "want_cash": want_cash,
+	})
+
+
+func _on_trade_answered(accept: bool) -> void:
+	_submit(_human_pid, "respond_trade", {"accept": accept})
+
+
+func _on_auction_bid(amount: int) -> void:
+	_submit(_human_pid, "bid", {"amount": amount})
+
+
+func _on_auction_pass() -> void:
+	_submit(_human_pid, "pass", {})
 
 
 func _on_inspector_action(tile: int, op: String) -> void:
@@ -247,12 +336,21 @@ func _on_inspector_action(tile: int, op: String) -> void:
 
 
 func _submit(pid: int, action: String, params: Dictionary) -> void:
+	# A CLIENT SUBMITS OVER THE WIRE. It has no manager and no engine: `_mgr.push_intent` was
+	# the only path, so in the joined browser every press died here — the audit's "консольные
+	# кнопки" defect, one layer down. The host still validates everything; the verdict comes
+	# back on the same socket (main -> show_rejection on refusal).
+	if _remote != null and _remote.has_method("is_joined") and _remote.is_joined():
+		_remote.act(action, params)
+		return
 	if _mgr == null:
+		return
+	if pid < 0:
+		# nobody local plays on this screen (observer/no LOCAL seat): nothing may be sent
 		return
 	var res: Dictionary = _mgr.push_intent(pid, action, params)
 	if not res.get("ok", false):
-		if _modals != null:
-			_modals.show_message(I18n.t("gv.rejected_title"), I18n.t("gv.rejected_body", [str(res.get("reason", "?"))]))
+		show_rejection(str(res.get("reason", "?")))
 
 
 ## Engine/manager events → toasts, journal rows and board animations.
@@ -288,6 +386,27 @@ func _pid_of(name: String) -> int:
 		if str(s.name) == name:
 			return int(s.pid)
 	return -1
+
+
+## A modal that shows LIVE state must follow that state: a bid re-raised by the next player
+## refreshes the auction sheet (keeping what was half-typed), and a dialog whose subject is
+## gone (lot sold, trade resolved) closes itself instead of lying.
+func _sync_modals() -> void:
+	if _modals == null or not _modals.is_open():
+		return
+	var pend: Dictionary = _proj.get("pending", {})
+	var ptype := str(pend.get("type", ""))
+	if _modals.kind == "auction":
+		if ptype != "auction":
+			_modals.close()
+		elif int(pend.get("high", -1)) != int(_modals.get("_a_high")):
+			_modals.show_auction(_proj, seats, _human_pid)
+	elif _modals.kind == "trade_response":
+		if ptype != "trade":
+			_modals.close()
+	elif _modals.kind == "trade_composer":
+		if ptype == "trade":
+			_modals.close()   # a trade is already on the table: the composer is out of date
 
 
 func show_game_over(winner_name: String) -> void:

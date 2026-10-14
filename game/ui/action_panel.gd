@@ -127,6 +127,14 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 	for act in BAR_ACTIONS:
 		if not legal.has(act):
 			continue
+		if act == "respond_trade":
+			# THE ENGINE LISTS respond_trade FOR THE PROPOSER TOO, but only the RECIPIENT can
+			# answer: for anyone else pressing it is a guaranteed refusal ("you are not the
+			# trade recipient" / "no pending trade" - the audit measured both). Draw it only
+			# where it can work.
+			var pend: Dictionary = proj.get("pending", {})
+			if str(pend.get("type", "")) != "trade" or int(pend.get("recipient", -1)) != pid:
+				continue
 		var b := _make_button(act, proj, pid, true)
 		if b != null:
 			_btn_row.add_child(b)

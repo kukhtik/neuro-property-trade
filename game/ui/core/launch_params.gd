@@ -13,6 +13,9 @@ extends RefCounted
 const KEY_SEAT := "seat"
 const KEY_HOST := "host"
 const KEY_NAME := "name"
+## An automated browser e2e may ask the client to play its own seat (`smoke=1`). NEVER set on
+## a real invitation link: the whole point of a link is that its holder decides.
+const KEY_SMOKE := "smoke"
 
 
 ## One parameter by name: URL query in a browser, `--<name>=<value>` on desktop.
@@ -48,6 +51,11 @@ static func display_name() -> String:
 ## True when this instance was given a seat to claim.
 static func has_seat() -> bool:
 	return seat_token() != "" and host_url() != ""
+
+
+## True when a smoke fixture asked this client to play its own seat automatically.
+static func smoke_drive() -> bool:
+	return get_value(KEY_SMOKE) == "1"
 
 
 # --- sources ------------------------------------------------------------------

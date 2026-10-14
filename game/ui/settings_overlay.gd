@@ -6,6 +6,9 @@ extends Control
 
 signal started(settings, seats)
 signal apply_requested(settings, seats)
+## "Создать партию для друзей" (F-47): main turns the configured seats into REMOTE ones, opens
+## the server and shows the invitation links. The screen itself only says the user asked.
+signal host_invite_requested
 signal closed
 
 const UiTheme := preload("res://ui/theme.gd")
@@ -23,6 +26,7 @@ var _round_edit: LineEdit
 var _timer_edit: LineEdit
 var _title: Label
 var _primary: Button
+var _host_btn: Button
 var _count_lbl: Label
 
 
@@ -93,6 +97,11 @@ func _init() -> void:
 
 	# footer
 	var foot := UiTheme.hbox(8)
+	# F-47: hosting for friends. Pre-game only (a match in progress has its seats built).
+	_host_btn = UiTheme.button(I18n.t("settings.host_btn"), I18n.t("settings.host_tip"))
+	_host_btn.custom_minimum_size.y = 44
+	_host_btn.connect("pressed", Callable(self, "_host_pressed"))
+	foot.add_child(_host_btn)
 	var foot_sp := Control.new()
 	foot_sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	foot.add_child(foot_sp)
@@ -123,6 +132,8 @@ func set_mode(pre_game: bool) -> void:
 	_pre = pre_game
 	if _primary != null:
 		_primary.text = I18n.t("settings.start_btn") if pre_game else I18n.t("settings.apply_btn")
+	if _host_btn != null:
+		_host_btn.visible = pre_game
 
 
 func open() -> void:
@@ -167,7 +178,10 @@ func _int_of(e: LineEdit, fallback: int) -> int:
 	return int(s) if s.is_valid_int() else fallback
 
 
-func _emit() -> void:
+## The match settings as the user set them. Extracted so the HOST-INVITE flow can build a match
+## from the same fields the START button reads (it used to be inline in `_emit`, so a second
+## reader did not exist and the invite button could not collect anything).
+func _collect_settings():
 	var st = GameSettingsScript.new()
 	st.seat_count = _count
 	var assigns: Array = []
@@ -181,11 +195,20 @@ func _emit() -> void:
 	st.starting_cash = _int_of(_cash_edit, 1500)
 	st.round_limit = _int_of(_round_edit, 0)
 	st.turn_timer = _int_of(_timer_edit, 30)
+	return st
+
+
+func _emit() -> void:
+	var st = _collect_settings()
 	var seats: Array = SeatConfigScript.from_settings(st)
 	if _pre:
 		started.emit(st, seats)
 	else:
 		apply_requested.emit(st, seats)
+
+
+func _host_pressed() -> void:
+	host_invite_requested.emit()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:

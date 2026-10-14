@@ -245,6 +245,11 @@ const D := {
 	"modal.empty_offer":    {"ru": "Предложение недопустимо: выберите тайлы или укажите сумму", "en": "Offer is not valid: pick tiles or enter an amount"},
 	"modal.bid_lbl":        {"ru": "Ставка $", "en": "Bid $"},
 	"modal.bid_tip":        {"ru": "Ваша ставка. Должна быть выше текущей.", "en": "Your bid. Must be higher than the current one."},
+	# pre-checked before the engine is even asked: the same refusal, one round trip earlier
+	"modal.bid_too_low":    {"ru": "Ставка должна быть выше текущей ($%d)", "en": "The bid must exceed the current one ($%d)"},
+	"modal.bid_no_funds":   {"ru": "Недостаточно денег для такой ставки", "en": "Not enough cash for that bid"},
+	"modal.trade_no_funds": {"ru": "Недостаточно денег для этой сделки", "en": "Not enough cash for this trade"},
+	"modal.trade_bad_recipient": {"ru": "Сначала выберите, кому предлагаете", "en": "Pick who the offer goes to first"},
 	"modal.bid_btn":        {"ru": "СТАВКА", "en": "BID"},
 	"modal.bid_btn_tip":    {"ru": "Сделать ставку на эту клетку", "en": "Place a bid on this tile"},
 	"modal.pass_btn":       {"ru": "ПАСС", "en": "PASS"},

@@ -200,7 +200,10 @@ def main():
     threading.Thread(target=serve, daemon=True).start()
     time.sleep(1.0)
     print("[2] opening the WebGL build in a REAL browser (player role)")
-    url = f"http://127.0.0.1:{HTTP_PORT}/index.html?seat={token}&host=ws://127.0.0.1:{port}"
+    # `smoke=1`: this fixture asks the client to play its own seat (a live player gets no such
+    # flag from an invitation link - see main._on_remote_state / LaunchParams.smoke_drive).
+    url = (f"http://127.0.0.1:{HTTP_PORT}/index.html?seat={token}&host=ws://127.0.0.1:{port}"
+           "&smoke=1")
     console = []
     with sync_playwright() as pw:
         browser = pw.chromium.launch(args=[
