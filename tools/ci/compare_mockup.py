@@ -267,6 +267,9 @@ def main():
     print()
 
     out = PROJ / "build" / "smoke" / "comparison.json"
+    # the writer creates its own directory: a cleaned build/smoke/ used to turn this into a
+    # traceback instead of a report (caught by HG-11 (a1)) - the path is a contract, not a memory
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "theme": theme, "mockup_widths": m_widths, "frame": str(frame) if frame else "",
         "frame_panels": panels, "palette_matched": matched, "layout_note": layout_note,
