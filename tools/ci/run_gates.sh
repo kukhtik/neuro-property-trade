@@ -54,7 +54,7 @@ done
 # PROMOTIONS follow gates.md: quarantine -> required only after 2-3 consecutive green runs of
 # the same session. HG-02/05/07/12 were promoted together with the P0 commit that made them
 # green; HG-06 SKIPS on an environment without playwright (a skip is reported, never a pass,
-# never a block). SG-01 stays quarantined until the compact profile is rebuilt (phase 2).
+# never a block). SG-01 (compact) was promoted when the rails+drawers landed in phase 2.
 GATES=(
 	"HG-01|hg|required|script|tools/ci/gates/hg01_oracle_gate.sh"
 	"HG-09|hg|required|scene|hg09_i18n_gate"
@@ -64,7 +64,7 @@ GATES=(
 	"HG-06|hg|required|script|tools/ci/gates/hg06_browser_join_gate.sh"
 	"HG-05|hg|required|scene|hg05_identity_gate"
 	"HG-07|hg|required|scene|hg07_settings_gate"
-	"SG-01|sg|quarantine|scene|sg01_compact_gate"
+	"SG-01|sg|required|scene|sg01_compact_gate"
 )
 
 # a working python for the report/JSON: `python` first (Windows local), then `python3` (CI).

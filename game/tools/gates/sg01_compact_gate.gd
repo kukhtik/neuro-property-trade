@@ -117,6 +117,61 @@ func _check_profile(profile: Dictionary) -> void:
 		REGIONS.size(), (" (hidden w/o replacement: %s)" % str(unreachable)) if not unreachable.is_empty() else ""])
 	if label == "1440x900":
 		_check_metrics(gv)
+	else:
+		# rails exist only in the COMPACT profile (width < 1280 or height <= 700) - the same
+		# rule game_view._is_compact() applies; 1280x720 is a wide profile and must show docks.
+		var ps: Vector2i = profile["size"]
+		var is_compact: bool = ps.x < 1280 or ps.y <= 700
+		if is_compact:
+			_check_compact_behaviour(gv, label)
+		elif gv.find_child("seats", true, false) != null \
+				and (gv.find_child("seats", true, false) as Control).visible:
+			_checks += 1
+		else:
+			_fail("%s: a wide profile hides the seats dock (not compact by the rule)" % label)
+
+
+## REGION EXISTENCE IS NOT ENOUGH. The replacement must WORK: the rail is a strip, a click
+## opens its drawer, the dock's content really moves inside, and closing brings it back.
+## (An existence-only check would let a decorative 48px strip pass with the docks gone.)
+func _check_compact_behaviour(gv, label: String) -> void:
+	var rail = gv.find_child("rail-left", true, false)
+	if rail == null or not (rail as Control).visible:
+		_fail("%s: rail-left missing or invisible in compact" % label)
+	elif (rail as Control).size.x > 60.0:
+		_fail("%s: rail-left is %dpx wide - a rail must be a strip" % [label, int((rail as Control).size.x)])
+	else:
+		_checks += 1
+		(rail as RailPanel).toggled.emit(false)
+		var d = gv.find_child("drawer-seats", true, false)
+		if d == null or not (d as Control).visible:
+			_fail("%s: clicking rail-left did not open drawer-seats" % label)
+		else:
+			var seats = gv.find_child("seats", true, false)
+			if seats == null or not (d as Control).is_ancestor_of(seats):
+				_fail("%s: drawer-seats opened without the seats panel inside" % label)
+			else:
+				_checks += 1
+			(d as DrawerPanel).close()
+			if (d as Control).visible:
+				_fail("%s: drawer-seats stayed open after close()" % label)
+			else:
+				_checks += 1
+	var rj = gv.find_child("rail-right-journal", true, false)
+	if rj == null or not (rj as Control).visible:
+		_fail("%s: rail-right-journal missing or invisible in compact" % label)
+	else:
+		(rj as RailPanel).toggled.emit(false)
+		var dj = gv.find_child("drawer-journal", true, false)
+		if dj == null or not (dj as Control).visible:
+			_fail("%s: clicking the journal rail did not open drawer-journal" % label)
+		else:
+			var journal = gv.find_child("journal", true, false)
+			if journal == null or not (dj as Control).is_ancestor_of(journal):
+				_fail("%s: drawer-journal opened without the journal panel inside" % label)
+			else:
+				_checks += 1
+			(dj as DrawerPanel).close()
 
 
 ## The mockup's own metrics (design §3): header 56, docks 268/344, console 96+. This is the

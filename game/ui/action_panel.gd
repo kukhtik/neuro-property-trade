@@ -121,6 +121,8 @@ func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -
 		_hint.text = I18n.t("act.ai_status", [nm])
 		return
 	_status.text = I18n.t("act.human_status", [nm])
+	# the compact ticker (notification line) steps aside for the player's own prompt
+	_ticker.visible = false
 	# the console shows the control SET for what is being decided: the engine's legal
 	# actions, in the mockup's order. It used to render all thirteen at once — a 1320-px
 	# minimum that pushed the whole layout past the window.

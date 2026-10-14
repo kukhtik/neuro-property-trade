@@ -55,6 +55,16 @@ var _toasts: Control
 var _modals: Control
 var _seats_dock: Control
 var _rightcol: Control
+var _body_row: Control
+## compact profile (design/regions.json): the docks collapse into 48px RAILS; a rail click
+## opens the matching 320px DRAWER over the stage with the dock's content inside. The old
+## compact profile only HID the docks - the audit's defect - which made the journal, the
+## inspector and (through it) all tile management unreachable.
+var _rail_left: Control
+var _rail_right: Control
+var _rail_r_journal: Control
+var _rail_r_inspector: Control
+var _drawers: Dictionary = {}
 
 
 func _init() -> void:
@@ -89,6 +99,7 @@ func _build() -> void:
 	var body := UiTheme.hbox(8)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(body)
+	_body_row = body
 
 	_seats_panel = PlayersPanel.new()
 	_seats_panel.name = "seats"
@@ -130,6 +141,8 @@ func _build() -> void:
 	_inspector.action_requested.connect(Callable(self, "_on_inspector_action"))
 	_rightcol.add_child(_inspector)
 
+	_build_compact_shell(body)
+
 	_modals = ModalHost.new()
 	_modals.name = "modal"
 	add_child(_modals)
@@ -148,12 +161,149 @@ func set_profile(pr) -> void:
 
 
 func _apply_profile() -> void:
-	# compact: the docks collapse, the board keeps the room (proto data-profile="compact")
-	var compact := size.x > 0.0 and (size.x < 1280.0 or size.y <= 700.0)
+	# compact: the docks collapse into 48px rails whose content opens as 320px drawers over
+	# the stage (the mockup's `data-profile="compact"`). The old version only HID the docks,
+	# so the journal, the inspector and - through the inspector - every tile-management path
+	# vanished on a small window (the audit's compact defect).
+	var compact := _is_compact()
 	if _seats_panel != null:
 		_seats_panel.visible = not compact
 	if _rightcol != null:
 		_rightcol.visible = not compact
+	if _rail_left != null:
+		_rail_left.visible = compact
+	if _rail_right != null:
+		_rail_right.visible = compact
+	if not compact:
+		_close_all_drawers()
+	else:
+		_layout_drawers()
+
+
+func _is_compact() -> bool:
+	return size.x > 0.0 and (size.x < 1280.0 or size.y <= 700.0)
+
+
+## The compact shell: two 48px rails replace the docks; each rail click opens the matching
+## 320px drawer (DrawerPanel) that carries the dock's content over the stage. The rail itself
+## never expands in place - on an 1100px window a 268px dock eats a third of the board, which
+## is what the rails exist for.
+func _build_compact_shell(body: Control) -> void:
+	_rail_left = RailPanel.new()
+	_rail_left.name = "rail-left"
+	(_rail_left as RailPanel).setup(UiTheme.skin(), "ui.players", true)
+	(_rail_left as RailPanel).set_title(I18n.t("ui.players"))
+	(_rail_left as RailPanel).set_collapsed(true, false)
+	(_rail_left as RailPanel).toggled.connect(
+		func(_c: bool) -> void: _toggle_drawer("seats", _rail_left))
+	body.add_child(_rail_left)
+	body.move_child(_rail_left, 1)   # left of the stage
+
+	_rail_right = UiTheme.panel()
+	_rail_right.name = "rail-right"
+	_rail_right.custom_minimum_size.x = 48.0
+	var rail_col := UiTheme.vbox(4)
+	_rail_right.add_child(rail_col)
+	_rail_r_journal = RailPanel.new()
+	(_rail_r_journal as RailPanel).name = "rail-right-journal"
+	(_rail_r_journal as RailPanel).setup(UiTheme.skin(), "jrn.title", false)
+	(_rail_r_journal as RailPanel).set_title(I18n.t("jrn.title"))
+	(_rail_r_journal as RailPanel).set_collapsed(true, false)
+	(_rail_r_journal as RailPanel).toggled.connect(
+		func(_c: bool) -> void: _toggle_drawer("journal", _rail_r_journal))
+	rail_col.add_child(_rail_r_journal)
+	_rail_r_inspector = RailPanel.new()
+	(_rail_r_inspector as RailPanel).name = "rail-right-inspector"
+	(_rail_r_inspector as RailPanel).setup(UiTheme.skin(), "ins.title", false)
+	(_rail_r_inspector as RailPanel).set_title(I18n.t("ins.title"))
+	(_rail_r_inspector as RailPanel).set_collapsed(true, false)
+	(_rail_r_inspector as RailPanel).toggled.connect(
+		func(_c: bool) -> void: _toggle_drawer("inspector", _rail_r_inspector))
+	rail_col.add_child(_rail_r_inspector)
+	body.add_child(_rail_right)
+
+	_rail_left.visible = false
+	_rail_right.visible = false
+
+	for spec in [["seats", "ui.players"], ["journal", "jrn.title"], ["inspector", "ins.title"]]:
+		var d := DrawerPanel.new()
+		d.name = "drawer-%s" % str(spec[0])
+		d.set_title_key(str(spec[1]))
+		d.visible = false
+		d.closed.connect(func() -> void: _close_drawer(str(spec[0])))
+		add_child(d)
+		_drawers[str(spec[0])] = d
+
+
+func _toggle_drawer(which: String, rail: Control) -> void:
+	var d = _drawers.get(which)
+	if d == null:
+		return
+	if (d as Control).visible:
+		_close_drawer(which)
+	else:
+		_open_drawer(which)
+	# the rail snaps back to its 48px strip; the drawer carries the content
+	if rail is RailPanel:
+		(rail as RailPanel).set_collapsed(true, false)
+
+
+func _open_drawer(which: String) -> void:
+	_close_all_drawers()
+	var d = _drawers.get(which)
+	if d == null:
+		return
+	match which:
+		"seats":
+			(d as DrawerPanel).put(_seats_panel)
+		"journal":
+			(d as DrawerPanel).put(_journal)
+		"inspector":
+			(d as DrawerPanel).put(_inspector)
+	_layout_drawers()
+	(d as Control).visible = true
+
+
+## Return the content to its dock and hide the drawer. The dock's visibility follows the
+## profile (hidden in compact), so returning a panel here must not flash it on screen.
+func _close_drawer(which: String) -> void:
+	var d = _drawers.get(which)
+	if d == null or not (d as Control).visible:
+		return
+	var c := (d as DrawerPanel).take()
+	if c != null:
+		match which:
+			"seats":
+				_body_row.add_child(c)
+				_body_row.move_child(c, 0)
+				(c as Control).visible = not _is_compact()
+			"journal":
+				_rightcol.add_child(c)
+				_rightcol.move_child(c, 1)
+			"inspector":
+				_rightcol.add_child(c)
+				_rightcol.move_child(c, 2)
+	(d as Control).visible = false
+
+
+func _close_all_drawers() -> void:
+	for which in _drawers.keys():
+		_close_drawer(str(which))
+
+
+## The drawers float over the stage: the seats drawer beside rail-left, the journal/inspector
+## drawers beside rail-right.
+func _layout_drawers() -> void:
+	var w := 320.0
+	var h := maxf(180.0, size.y - 96.0 - 120.0)
+	for which in _drawers.keys():
+		var d: Control = _drawers[which]
+		d.custom_minimum_size = Vector2(w, h)
+		d.size = Vector2(w, h)
+		if str(which) == "seats":
+			d.position = Vector2(8.0 + 48.0 + 8.0, 72.0)
+		else:
+			d.position = Vector2(maxf(0.0, size.x - 8.0 - 48.0 - 8.0 - w), 72.0)
 
 
 func _notification(what: int) -> void:
@@ -372,6 +522,10 @@ func _on_events(events: Array) -> void:
 			if data.has("amount"):
 				text += "  $%d" % int(data.get("amount", 0))
 			_journal.append({"who": who, "who_color": who_col, "text": text, "tag": kind})
+			if _console != null and _is_compact():
+				# compact: the journal lives behind rail-right; the newest event shows as the
+				# console's one-line ticker (the registry's own wording for the compact toast)
+				_console.show_ticker(text if who == "" else "%s · %s" % [who, text], kind)
 		if _board != null:
 			# board animations: rolls tumble the tray, moves hop the tokens
 			if kind == "roll":
