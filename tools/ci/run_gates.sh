@@ -81,8 +81,10 @@ GATES=(
 	"SG-03|sg|required|script|tools/ci/gates/sg03_palette_gate.sh"
 	# SG-07 runs LAST: it spawns windowed Godot captures for every state x skin, and SG-10's
 	# clean-machine preflight must never see one of them alive (that is the race that once made
-	# SG-10 SKIP). It starts in quarantine: a report gate earns `required` after green runs.
-	"SG-07|sg|quarantine|script|tools/ci/gates/sg07_shots_gate.sh"
+	# SG-10 SKIP). Promoted quarantine -> required after two consecutive green runs in one
+	# session (28 frames each, exit 0) - a report gate still fails on a blank, duplicated, stale
+	# or missing frame, so there is nothing for it to "report only" about.
+	"SG-07|sg|required|script|tools/ci/gates/sg07_shots_gate.sh"
 )
 
 
