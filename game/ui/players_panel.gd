@@ -14,6 +14,9 @@ var _stats: HBoxContainer
 var _own_track: HBoxContainer
 var _own_legend: HBoxContainer
 var _skin: SkinManager
+## last sync() state - a locale switch re-renders the cards from it (SG-08)
+var _last_proj: Dictionary = {}
+var _last_seats: Array = []
 
 
 func _init() -> void:
@@ -54,6 +57,8 @@ func _init() -> void:
 
 ## Update from the projection. `seats` carries pid/name/colour/input_driver.
 func sync(proj: Dictionary, seats: Array) -> void:
+	_last_proj = proj
+	_last_seats = seats
 	var players: Array = proj.get("players", [])
 	_count.text = str(players.size())
 	var turn: int = int(proj.get("turn_player", proj.get("turn", -1)))
@@ -187,3 +192,7 @@ func _refresh_ownbar(players: Array, seats: Array) -> void:
 
 func retranslate() -> void:
 	_title.text = I18n.t("ui.players")
+	# the cards, stats and the ownership bar are state-driven: re-render from the last state
+	# so a locale switch mid-match relabels them without waiting for the next event
+	if not _last_proj.is_empty():
+		sync(_last_proj, _last_seats)

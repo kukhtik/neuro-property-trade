@@ -397,6 +397,15 @@ func _check_live_app() -> void:
 		for _i in 5:
 			await get_tree().process_frame
 		_walk_sentinels(gv, "live app [%s]" % loc)
+	# the inspector's body only exists with a tile selected - a blind spot that hid the
+	# `{ins.price}:` sentinel until SG-08 walked in: select a tile, repaint, scan again
+	var insp = gv.find_child("inspector", true, false)
+	if insp != null and insp.has_method("select"):
+		insp.call("select", 1)
+		gv.call("_sync_all")
+		for _i in 5:
+			await get_tree().process_frame
+		_walk_sentinels(gv, "live app [inspector selected]")
 	gv.call("show_game_over", "Tester")
 	for _i in 5:
 		await get_tree().process_frame
@@ -408,10 +417,12 @@ func _check_live_app() -> void:
 	print("HG-09 live pass: full tree + game-over modal scanned in RU/EN")
 
 
-## Any visible text or tooltip that is exactly `{key}` is a bug: the user is looking at a key.
+## Any visible text or tooltip carrying a `{key}` sentinel is a bug: the user is looking at a
+## key. The old pass demanded the WHOLE string be a sentinel, so `{ins.price}:` sailed through
+## for as long as `ins.price` was missing (SG-08 found it in the live walk).
 func _walk_sentinels(root: Node, where: String) -> void:
 	var rx := RegEx.new()
-	rx.compile("^" + BS + "{[A-Za-z0-9_.]+" + BS + "}$")
+	rx.compile(BS + "{[A-Za-z0-9_.]+" + BS + "}")
 	var found := 0
 	var stack: Array = [root]
 	while not stack.is_empty():

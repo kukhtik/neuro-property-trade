@@ -25,6 +25,8 @@ var _cold := false
 var _observer := false
 var _last_legal: Array = []
 var _human_now := false
+## last sync() arguments - a locale switch re-renders the console from them (SG-08)
+var _last_args: Array = []
 
 
 func _init() -> void:
@@ -112,6 +114,7 @@ func set_last_roll(d1: int, d2: int, doubles: bool) -> void:
 func sync(pid: int, legal: Array, human: bool, proj: Dictionary, seats: Array) -> void:
 	if _cold:
 		return
+	_last_args = [pid, legal, human, proj, seats]
 	_last_legal = legal
 	_human_now = human
 	var nm := "P%d" % pid
@@ -242,4 +245,11 @@ func _on_pressed(act: String) -> void:
 
 
 func retranslate() -> void:
-	_status.text = ""
+	# the console is state-driven: re-render from the last sync (a locale switch mid-match must
+	# not wait for the next event); cold shows the START button in the new language
+	if _cold:
+		set_cold(true)
+	elif _last_args.size() == 5:
+		sync(_last_args[0], _last_args[1], _last_args[2], _last_args[3], _last_args[4])
+	else:
+		_status.text = ""

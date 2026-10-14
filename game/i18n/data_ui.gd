@@ -174,6 +174,12 @@ const D := {
 	"ins.hotel":            {"ru": "HOTEL", "en": "HOTEL"},
 	"ins.mortgaged":        {"ru": " · ЗАЛОЖЕН", "en": " · MORTGAGED"},
 	"ins.body":             {"ru": "«%s»  %s%s\nцена $%d · аренда $%d · %s%s", "en": "«%s»  %s%s\nprice $%d · rent $%d · %s%s"},
+	# the inspector's price/rent row captions: `_fact_row(box, "ins.price")` asks for them by
+	# VARIABLE, so the static key scan cannot see them - and once they were removed as
+	# "duplicates", every selected tile showed the sentinel `{ins.price}:` (found by SG-08's
+	# live walk, 2026-10-14).
+	"ins.price":            {"ru": "цена", "en": "price"},
+	"ins.rent":             {"ru": "аренда", "en": "rent"},
 
 	# ---- journal ----
 	"jrn.title":            {"ru": "◆ ХОД СОБЫТИЙ", "en": "◆ EVENT LOG"},

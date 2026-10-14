@@ -176,5 +176,12 @@ func sync(proj: Dictionary, seats: Array) -> void:
 
 func retranslate() -> void:
 	_brand.text = "●  " + I18n.t("top.title")
+	# the ACTIVE locale is the source of truth: a switch from elsewhere (settings sheet, a
+	# gate) must not leave the toggle showing the wrong next-language
+	_locale = I18n.current
 	_btn_lang.text = "EN" if _locale == "ru" else "RU"
+	_btn_lang.tooltip_text = I18n.t("top.lang_tip")
+	_btn_settings.tooltip_text = I18n.t("top.settings_tip")
+	_btn_restart.tooltip_text = I18n.t("top.restart_tip")
+	_btn_skin.tooltip_text = I18n.t("top.skin_tip")
 	_rolebadge.text = I18n.t("mode.player")

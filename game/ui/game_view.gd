@@ -156,6 +156,9 @@ func _build() -> void:
 	_modals.auction_pass.connect(_on_auction_pass)
 
 	_apply_profile()
+	# SG-08: one switch retranslates everything in place - no rebuild, no stale language
+	if not I18n.inst().locale_changed.is_connected(Callable(self, "_on_locale_changed")):
+		I18n.inst().locale_changed.connect(Callable(self, "_on_locale_changed"))
 
 
 func set_profile(pr) -> void:
@@ -185,6 +188,29 @@ func _apply_profile() -> void:
 
 func _is_compact() -> bool:
 	return size.x > 0.0 and (size.x < 1280.0 or size.y <= 700.0)
+
+
+## SG-08 — live locale: static labels come back via their `i18n_key` metadata (I18n.relabel
+## walks this subtree), state-driven panels re-render from the last state they were given, and
+## the compact rails/drawers get their titles re-derived. Nothing here needs a match rebuild.
+func _on_locale_changed(_loc: String) -> void:
+	I18n.relabel(self)
+	if _top != null and _top.has_method("retranslate"):
+		_top.retranslate()
+	if _seats_panel != null and _seats_panel.has_method("retranslate"):
+		_seats_panel.retranslate()
+	if _console != null and _console.has_method("retranslate"):
+		_console.retranslate()
+	if _inspector != null and _inspector.has_method("retranslate"):
+		_inspector.retranslate()
+	if _journal != null and _journal.has_method("retranslate"):
+		_journal.retranslate()
+	if _rail_left != null:
+		(_rail_left as RailPanel).set_title(I18n.t("ui.players"))
+	if _rail_r_journal != null:
+		(_rail_r_journal as RailPanel).set_title(I18n.t("jrn.title"))
+	if _rail_r_inspector != null:
+		(_rail_r_inspector as RailPanel).set_title(I18n.t("ins.title"))
 
 
 ## The compact shell: two 48px rails replace the docks; each rail click opens the matching

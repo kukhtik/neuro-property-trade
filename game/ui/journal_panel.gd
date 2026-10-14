@@ -155,6 +155,10 @@ func retranslate() -> void:
 	_title.text = I18n.t("jrn.title")
 	_export_btn.text = I18n.t("jrn.export")
 	_export_btn.tooltip_text = I18n.t("jrn.export_tip")
+	# rows are re-COMPOSED, not merely re-rendered: the stored line was formatted in the OLD
+	# language, and a row must not keep the old tongue after the switch (SG-08)
+	for r in _rows:
+		r["line"] = _lines.line_for(r["ev"], r["ctx"])
 	_refill_filters()
 	_rebuild()
 
