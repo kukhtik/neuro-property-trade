@@ -73,6 +73,7 @@ GATES=(
 	"SG-09|sg|required|scene|sg09_skins_gate"
 	"HG-13|hg|required|scene|hg13_hotkeys_timer_gate"
 	"HG-08|hg|required|script|tools/ci/gates/hg08_sdk_seat_gate.sh"
+	"SG-11|sg|required|scene|sg11_usability_gate"
 )
 
 # a working python for the report/JSON: `python` first (Windows local), then `python3` (CI).

@@ -61,11 +61,13 @@ func _init() -> void:
 	# filters: seat · category
 	var fil := UiTheme.hbox(8)
 	_pfilter = OptionButton.new()
+	_pfilter.tooltip_text = I18n.t("jrn.filter_seat_tip")
 	_pfilter.add_theme_font_size_override("font_size", 10)
 	_pfilter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_pfilter.item_selected.connect(_on_pfilter)
 	fil.add_child(_pfilter)
 	_cfilter = OptionButton.new()
+	_cfilter.tooltip_text = I18n.t("jrn.filter_cat_tip")
 	_cfilter.add_theme_font_size_override("font_size", 10)
 	# one grower per row (P-4): the seat filter takes the slack, the category filter sits at
 	# its content width

@@ -77,7 +77,7 @@ static func COL() -> Dictionary:
 
 ## Build a flat StyleBox with a fill + border. Radius comes from the skin so a
 ## skin with rounded corners actually round.
-static func box(bg: Color, border_col: Color = Color.TRANSPARENT, w: int = 1, radius: int = -1) -> StyleBoxFlat:
+static func box(bg: Color, border_col: Color = Color.TRANSPARENT, w: int = 1, radius: int = -1, pad_x: float = 0.0) -> StyleBoxFlat:
 	var b := StyleBoxFlat.new()
 	b.bg_color = bg
 	if border_col.a <= 0.0:
@@ -89,6 +89,12 @@ static func box(bg: Color, border_col: Color = Color.TRANSPARENT, w: int = 1, ra
 	b.corner_radius_top_right = r
 	b.corner_radius_bottom_left = r
 	b.corner_radius_bottom_right = r
+	if pad_x > 0.0:
+		# THE way a Button gets side padding: content margins on its styleboxes. The swap-era
+		# code set `padding_left/right` theme CONSTANTS, which Button never reads - the control
+		# row silently lost its 20px and every caption sat one pixel from its border (SG-11).
+		b.content_margin_left = pad_x
+		b.content_margin_right = pad_x
 	return b
 
 
@@ -167,15 +173,13 @@ static func button(text: String, tooltip: String = "") -> Button:
 	# primary is 50px with 26px. These are the numbers that make the bar feel like a control
 	# panel rather than a stack of small form buttons.
 	b.custom_minimum_size.y = 46
-	b.add_theme_constant_override("padding_left", 20)
-	b.add_theme_constant_override("padding_right", 20)
 	b.add_theme_color_override("font_color", s.color("text"))
 	var r: int = int(s.shape("radius", 0.0))
 	var w: int = int(s.shape("line", 1.0))
-	b.add_theme_stylebox_override("normal", box(s.color("surface.2"), s.color("line"), w, r))
-	b.add_theme_stylebox_override("hover", box(s.color("surface.1"), s.color("accent"), w, r))
-	b.add_theme_stylebox_override("pressed", box(s.color("surface.1"), s.color("accent"), int(s.shape("line_active", 2.0)), r))
-	b.add_theme_stylebox_override("focus", box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0))
+	b.add_theme_stylebox_override("normal", box(s.color("surface.2"), s.color("line"), w, r, 20.0))
+	b.add_theme_stylebox_override("hover", box(s.color("surface.1"), s.color("accent"), w, r, 20.0))
+	b.add_theme_stylebox_override("pressed", box(s.color("surface.1"), s.color("accent"), int(s.shape("line_active", 2.0)), r, 20.0))
+	b.add_theme_stylebox_override("focus", box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0, 20.0))
 	return b
 
 
@@ -184,13 +188,12 @@ static func button_accent(text: String, tooltip: String = "") -> Button:
 	var s := skin()
 	var b := button(text, tooltip)
 	var r: int = int(s.shape("radius", 0.0))
-	b.add_theme_stylebox_override("normal", box(s.color("accent"), s.color("accent"), 1, r))
-	b.add_theme_stylebox_override("hover", box(s.color("accent2", s.color("accent")), s.color("accent"), int(s.shape("line_active", 2.0)), r))
-	b.add_theme_stylebox_override("pressed", box(s.color("accent"), s.color("accent"), int(s.shape("line_active", 2.0)), r))
+	b.add_theme_stylebox_override("normal", box(s.color("accent"), s.color("accent"), 1, r, 26.0))
+	b.add_theme_stylebox_override("hover", box(s.color("accent2", s.color("accent")), s.color("accent"), int(s.shape("line_active", 2.0)), r, 26.0))
+	b.add_theme_stylebox_override("pressed", box(s.color("accent"), s.color("accent"), int(s.shape("line_active", 2.0)), r, 26.0))
+	b.add_theme_stylebox_override("focus", box(Color.TRANSPARENT, Color.TRANSPARENT, 0, 0, 26.0))
 	b.add_theme_color_override("font_color", s.color("on_accent"))
 	b.custom_minimum_size.y = 50   # the mockup's primary: `#act button.pri`
-	b.add_theme_constant_override("padding_left", 26)
-	b.add_theme_constant_override("padding_right", 26)
 	return b
 
 

@@ -148,5 +148,7 @@ const D := {
 	"jrn.filter_all":  {"ru": "все места", "en": "all seats"},
 	"jrn.filter_allcats": {"ru": "все типы", "en": "all kinds"},
 	"jrn.export":      {"ru": "экспорт", "en": "export"},
+	"jrn.filter_seat_tip": {"ru": "Показать события одного места", "en": "Show one seat's events"},
+	"jrn.filter_cat_tip":  {"ru": "Показать события одного типа", "en": "Show one kind of event"},
 	"jrn.export_tip":  {"ru": "Сохранить ленту в файл .jsonl", "en": "Save the log to a .jsonl file"},
 }
