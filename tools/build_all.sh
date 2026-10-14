@@ -27,25 +27,28 @@ rm -rf "$dist"
 mkdir -p "$dist/site"
 
 # --- 1. desktop ---------------------------------------------------------------
+# Kit staging lives under build/kit/ — NOT in build/windows|build/web: those two paths used to
+# hold the pre-swap archive watched by HG-11; the archive was retired on 2026-10-15 (see
+# docs/restoration/README.md) and freshness now governs build/current only.
 echo "[1/4] экспорт .exe"
-mkdir -p "$repo/build/windows"
+mkdir -p "$repo/build/kit/windows"
 # Godot needs a NATIVE path for the output; MSYS-style "/c/..." is rejected.
-OUT="$(cd "$repo/build/windows" && (pwd -W 2>/dev/null || pwd))"
+OUT="$(cd "$repo/build/kit/windows" && (pwd -W 2>/dev/null || pwd))"
 "$godot" --headless --path game --import >/dev/null 2>&1
 "$godot" --headless --path game --export-release "Windows Desktop" "$OUT/NeuroPropertyTrade.exe" 2>&1 | tail -2
-if [ ! -f "$repo/build/windows/NeuroPropertyTrade.exe" ]; then
+if [ ! -f "$repo/build/kit/windows/NeuroPropertyTrade.exe" ]; then
 	echo "build_all: the .exe was not produced" >&2
 	exit 1
 fi
-cp "$repo/build/windows/NeuroPropertyTrade.exe" "$dist/Neuro Property Trade.exe"
+cp "$repo/build/kit/windows/NeuroPropertyTrade.exe" "$dist/Neuro Property Trade.exe"
 
 # --- 2. web -------------------------------------------------------------------
 echo "[2/4] экспорт web"
-mkdir -p "$repo/build/web"
-OUTW="$(cd "$repo/build/web" && (pwd -W 2>/dev/null || pwd))"
+mkdir -p "$repo/build/kit/web"
+OUTW="$(cd "$repo/build/kit/web" && (pwd -W 2>/dev/null || pwd))"
 "$godot" --headless --path game --export-release "Web" "$OUTW/index.html" 2>&1 | tail -2
-bash tools/ci/verify_web_build.sh build/web || { echo "build_all: the web bundle is not bootable" >&2; exit 1; }
-cp -r "$repo/build/web/." "$dist/site/"
+bash tools/ci/verify_web_build.sh build/kit/web || { echo "build_all: the web bundle is not bootable" >&2; exit 1; }
+cp -r "$repo/build/kit/web/." "$dist/site/"
 
 # --- 3. launchers -------------------------------------------------------------
 echo "[3/4] ярлыки"

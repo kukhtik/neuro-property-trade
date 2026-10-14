@@ -128,15 +128,17 @@ python tools/ci/compare_mockup.py neuro --frame build/smoke/admin.png   # диз
 bash tools/ci/check_freshness.sh           # артефакты не старше shipping-кода (или в allowlist)
 ```
 
-**Не трогать** `build/web/` (15:33) и `build/windows/*.exe` (15:22): это единственные
-артефакты с работающими экранами старого UI; они нужны как эталон «как выглядит рабочий
-джойн», пока не пересобран новый. Свежие экспорты кладём рядом (`build/web_probe/` и т.п.).
+**Архив своп-эпохи снят** (2026-10-15): `build/web/` (15:33) и `build/windows/*.exe` (15:22)
+удалены. Их роль — «эталон рабочего джойна, пока не пересобран новый» — закрыта: сборки
+пересобраны, HG-06 гоняет сквозной браузерный джойн в каждом прогоне гейтов, восстановление
+закрыто (`state-2026-10-14.md`). `tools/ci/freshness_allowlist.txt` пуст.
 
 **Свежие сборки из текущего кода** (P0 item 5): `build/current/web/` и
 `build/current/windows/NeuroPropertyTrade.exe` — пересобираются после каждого коммита,
-который трогает `game/`; их свежесть проверяет `tools/ci/check_freshness.sh` (и гейт HG-11).
-Старые (`build/web`, `build/windows/*.exe`) помечены «архив» в
-`tools/ci/freshness_allowlist.txt` и не считаются доказательством.
+который трогает `game/` (`tools/ci/build_current.sh`); их свежесть проверяет
+`tools/ci/check_freshness.sh` (и гейт HG-11) — это единственный набор, за которым следит
+контракт. Кит «играть с друзьями» собирается `tools/build_all.sh` в `dist/` (стейджинг —
+`build/kit/`).
 
 ## Инструменты, добавленные аудитом → теперь гейты (`game/tools/gates/`)
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verify a Godot Web export directory is a bootable bundle.
 #
-#   tools/ci/verify_web_build.sh build/web
+#   tools/ci/verify_web_build.sh build/kit/web
 #
 # Checks the artifact contract (index.html + .wasm + .pck + the JS loader) and
 # that the wasm really is a WebAssembly module. This is a BUILD gate, not a

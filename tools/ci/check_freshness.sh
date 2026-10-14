@@ -4,7 +4,9 @@
 # THE RULE (docs/restoration/README.md, hard rule 5): an artifact and a frame are rebuilt in the
 # same run that reports on them. The audit's proof that this did not hold: `build/windows/
 # *.exe` (15:22) and `build/web/` (15:33) were OLDER than the interface swap commit (18:52)
-# and still carried the archived UI - while reports kept pointing at them.
+# and still carried the archived UI - while reports kept pointing at them. That pre-swap pair
+# was retired on 2026-10-15 (restoration closed; HG-06 covers the join in every sweep) and the
+# canonical set is `build/current` only.
 #
 # Freshness window: the last commit that touched SHIPPING code. `game/tools` (probe tooling)
 # and `game/tests` (the suite) do not ship inside the export, so they do not age an artifact.
@@ -32,11 +34,11 @@ checked=0
 fresh=0
 archived=0
 shopt -s nullglob
-# canonical artifacts: the two ARCHIVED pre-swap builds (owner's reference; allowlisted) and
-# the FRESH builds that must stay newer than the shipping code (plan.md Phase 1 item 5:
-# "держать рядом свежие").
-paths=("$repo"/build/windows/*.exe "$repo"/build/web/index.html \
-	"$repo"/build/current/web/index.html "$repo"/build/current/windows/*.exe)
+# canonical artifacts: the FRESH builds that must stay newer than the shipping code (plan.md
+# Phase 1 item 5: "держать рядом свежие"). The pre-swap archive that used to sit in
+# build/web|build/windows is gone (retired 2026-10-15); the kit builder stages under
+# build/kit/ and is deliberately NOT watched here.
+paths=("$repo"/build/current/web/index.html "$repo"/build/current/windows/*.exe)
 for f in "${paths[@]}"; do
 	[ -f "$f" ] || continue
 	checked=$((checked + 1))
