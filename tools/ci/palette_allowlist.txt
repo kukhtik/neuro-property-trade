@@ -1,0 +1,7 @@
+# SG-03 palette allowlist - colours that are explained (antialiasing, shadows, art)
+# and therefore allowed beyond the skin tokens. One hex per line; `#` starts a comment.
+# Reviewed 2026-10-14 (stage-1 calibration, all six auto-hits reduced to four entries):
+#c6cace   # dice art: a 60px line in the board centre, identical on every skin (150 px)
+#2a2039   # 1px panel-border antialiasing (StyleBoxFlat border AA), neuro (124 px)
+#2c1c21   # 1px panel-border antialiasing, evil (124 px)
+#2f3541   # 1px panel-border antialiasing, classic (124 px)
