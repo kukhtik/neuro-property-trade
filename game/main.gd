@@ -129,12 +129,42 @@ func _ready() -> void:
 	# e2e measured joined=False.)
 	if LaunchParams.has_seat():
 		call_deferred("_open_join_lobby")
-	# --perf: the perf overlay went to the archive with the old interface (its replacement
-	# comes with the v3 pass).
+	# --perf: the OVERLAY went to the archive with the old interface; the MEASUREMENT came
+	# back - a host run with --perf appends `PERF fps=<n>` to <log-dir>/perf.log once a second,
+	# which is exactly what tools/fps_clean.py reads for the desktop half of its report. The
+	# file is truncated here so a stale run cannot be published as this run's number.
+	if _has_cli_flag("--perf"):
+		_start_perf_sampler()
 	# --server-port=<n>: bind the game server on a FIXED port (0 = ephemeral)
 	var port := _cli_value("--server-port=")
 	if port != "":
 		_force_port = int(port)
+
+
+## The host half of the perf report: truncate <log-dir>/perf.log and append `PERF fps=<n>`
+## every second while the process lives. A Timer, not _process: this node has no frame callback.
+func _start_perf_sampler() -> void:
+	var path := _log_dir().path_join("perf.log")
+	var c := FileAccess.open(path, FileAccess.WRITE)
+	if c != null:
+		c.close()
+	var t := Timer.new()
+	t.name = "PerfSampler"
+	t.wait_time = 1.0
+	t.one_shot = false
+	t.timeout.connect(_on_perf_sample)
+	add_child(t)
+	t.start()
+	_mirror_log("perf sampler on -> %s" % path)
+
+
+func _on_perf_sample() -> void:
+	var f := FileAccess.open(_log_dir().path_join("perf.log"), FileAccess.READ_WRITE)
+	if f == null:
+		return
+	f.seek_end()
+	f.store_line("PERF fps=%d" % int(Engine.get_frames_per_second()))
+	f.close()
 
 
 ## The directory this process's logs go to: --log-dir=<dir>, else user://. The role log and

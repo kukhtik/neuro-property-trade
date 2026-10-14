@@ -28,7 +28,20 @@ from statistics import mean, median
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-EXE = os.path.join(REPO, "build", "windows", "NeuroPropertyTrade.exe")
+## Which build to measure: after the restoration the FRESH exports live in build/current/
+## (build/{web,windows} keep the pre-swap archive as the "working join" reference). Measure the
+## fresh one when it exists - a perf number taken on yesterday's exe is not this session's number.
+def _pick(*cands: str) -> str:
+    for c in cands:
+        if os.path.exists(c):
+            return c
+    return cands[0]
+
+
+EXE = _pick(os.path.join(REPO, "build", "current", "windows", "NeuroPropertyTrade.exe"),
+            os.path.join(REPO, "build", "windows", "NeuroPropertyTrade.exe"))
+WEB_ROOT = _pick(os.path.join(REPO, "build", "current", "web"),
+                 os.path.join(REPO, "build", "web"))
 ## The host writes its PERF samples to `<log-dir>/perf.log` — they must not ride in the run log
 ## (146 of 160 lines there were samples). The game truncates the file when a session starts.
 LOGDIR = os.path.join(REPO, "build", "fps_run")
@@ -99,8 +112,8 @@ def main() -> int:
     if not os.path.exists(EXE):
         print(f"нет {EXE} — сначала соберите билд (tools/build_all.sh)")
         return 1
-    if not os.path.isdir(os.path.join(REPO, "build", "web")):
-        print("нет build/web — сначала соберите web-экспорт")
+    if not os.path.isdir(WEB_ROOT):
+        print("нет build/current/web (или build/web) — сначала соберите web-экспорт")
         return 1
 
     # a stale perf.log from a previous run would be read as this run's numbers — remove it
@@ -113,7 +126,7 @@ def main() -> int:
     web_port, host_port = free_port(8160), free_port(9760)
     site = subprocess.Popen(
         [sys.executable, os.path.join(HERE, "serve.py"), str(web_port),
-         "--root", os.path.join(REPO, "build", "web")],
+         "--root", WEB_ROOT],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     time.sleep(2.0)
