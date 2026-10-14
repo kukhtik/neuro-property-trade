@@ -292,6 +292,9 @@ func _pid_of(name: String) -> int:
 
 func show_game_over(winner_name: String) -> void:
 	if _modals != null:
-		_modals.show_message(I18n.t("over.title"), I18n.t("over.winner", [winner_name]))
+		# `modal.game_over` / `modal.winner` are the keys the v3 sheet declares for exactly this
+		# message (they sat unused while the shell asked for `over.title`/`over.winner`, two keys
+		# nobody had ever written - the game-over modal showed `{over.title}` to the player).
+		_modals.show_message(I18n.t("modal.game_over"), I18n.t("modal.winner", [winner_name]))
 	if _toasts != null:
 		_toasts.show_event_toast({"type": "winner", "data": {"player": winner_name}})

@@ -1,0 +1,7 @@
+# Freshness allowlist — artifacts that are INTENTIONALLY older than the code beside them.
+# Every entry needs a reason; an entry whose file has become fresh is just noise, so delete it.
+# Emptied/kept deliberately per plan.md Phase 1 item 5: old builds are the only copies of the
+# WORKING pre-swap join screens and belong to the owner (README.md: "не трогать ... эталон").
+# path (glob, repo-relative) | reason
+build/web/index.html|archive: pre-swap web build kept as the working-join reference (docs/restoration/README.md); fresh exports land in their own directories
+build/windows/*.exe|archive: pre-swap desktop build kept as "how a working join looked"; the fresh desktop build ships beside it

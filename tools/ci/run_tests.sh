@@ -20,8 +20,10 @@ GODOT="$("$ROOT/tools/ci/godot_bin.sh")"
 # The count is a tripwire, not a target: if a module stops compiling the runner reports success
 # for the work it skipped, and only the total betrays it. Kept a little under the real number so
 # adding or retiring a handful of tests does not require editing this line.
-# v3 interface swap: the ~130 tests of the old UI went to archive/ui-legacy-2026-10 with it.
-MIN_TESTS="${MIN_TESTS:-270}"
+# History: 400 (pre-swap) -> 270 (v3 interface swap, ~130 UI tests archived) -> 289 (+6 when
+# `theme_test` was found as an orphan and put back into `modules`; the runner now fails on any
+# orphan test module, so this number can only move UP together with real tests).
+MIN_TESTS="${MIN_TESTS:-289}"
 FAST="${1:-}"
 LOG="${TMPDIR:-/tmp}/npt-tests-$$.log"
 

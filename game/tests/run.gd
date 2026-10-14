@@ -38,11 +38,42 @@ func _init() -> void:
 		"res://tests/remote_driver_test.gd",
 		"res://tests/launch_params_test.gd",
 		"res://tests/network_handover_test.gd",
+		# back in the set: the v3 swap left this module on disk but dropped it from `modules`,
+		# so its 6 palette tests never ran while the suite stayed green.
+		"res://tests/theme_test.gd",
 	]
+	_check_orphan_modules(modules)
 	for path in modules:
 		_run_module(path)
 	_summary()
 	quit(0 if _failures.size() == 0 else 1)
+
+func _check_orphan_modules(modules: Array[String]) -> void:
+	# EVERY TEST MODULE ON DISK MUST BE IN THE RUN. `theme_test.gd` (6 palette tests) sat in
+	# game/tests/ while `modules` never named it — `ran N tests, 0 failed` stayed green and the
+	# file was never executed. The listing is the one source that cannot be forgotten by hand:
+	# compare it against the list the same way `test_list()` is compared against the methods.
+	# A scan that loses its own coverage silently proves nothing, so the count is asserted too.
+	var dir := DirAccess.open("res://tests")
+	if dir == null:
+		_failures.append("orphan check: cannot open res://tests")
+		push_error("orphan check: cannot open res://tests")
+		return
+	var found := 0
+	for f in dir.get_files():
+		if not str(f).ends_with("_test.gd"):
+			continue
+		found += 1
+		var p := "res://tests/" + str(f)
+		if not modules.has(p):
+			var msg := "orphan test module: %s exists but is not in modules[]" % p
+			_failures.append(msg)
+			push_error(msg)
+	if found < 10:
+		var msg2 := "orphan check: only %d test modules found on disk — the scan lost its coverage" % found
+		_failures.append(msg2)
+		push_error(msg2)
+
 
 func _run_module(path: String) -> void:
 	var mod: GDScript = load(path)

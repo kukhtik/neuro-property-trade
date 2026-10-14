@@ -18,6 +18,7 @@ What this deliberately does NOT do: pixel-compare the two images. Different rend
 different fonts, different scales — a pixel diff would flag everything and say nothing.
 """
 import json
+import os
 import pathlib
 import re
 import sys
@@ -122,14 +123,43 @@ def measure_panels(frame, line_rgb):
 
 
 def main():
-    theme = sys.argv[1] if len(sys.argv) > 1 else "neuro"
-    frame = PROJ / "build" / "smoke" / "admin.png"
-    layout_ok = frame.exists()
+    # THE FRAME IS AN INPUT, NOT A MEMORY. This script used to read `build/smoke/admin.png`
+    # unconditionally - a file from an old run, which the smoke of 2026-10-13 compared while
+    # its OWN frame (build/smoke_v3probe/admin.png) went unmeasured. A checker that reads a
+    # fixed path cannot notice that path going stale, so now the frame comes from
+    # `--frame <png>` or `NPT_FRAME`, and a frame that was ASKED FOR but is missing is a hard
+    # failure. No frame at all = the layout step is skipped with a printed reason (palette and
+    # structure are still checked); "no frame" must be visible, never silent.
+    theme = "neuro"
+    frame = None
+    argv = sys.argv[1:]
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--frame":
+            i += 1
+            frame = pathlib.Path(argv[i]) if i < len(argv) else pathlib.Path("")
+        elif a.startswith("--frame="):
+            frame = pathlib.Path(a.split("=", 1)[1])
+        elif not a.startswith("--"):
+            theme = a
+        i += 1
+    if frame is None and os.environ.get("NPT_FRAME"):
+        frame = pathlib.Path(os.environ["NPT_FRAME"])
+    if frame is not None and not frame.exists():
+        print("FAIL: the requested frame %s does not exist - a comparison cannot measure a "
+              "frame that is not there (HG-11: frames are per-run, never remembered)" % frame)
+        return 1
+    layout_ok = frame is not None
+    layout_note = ""
     if layout_ok:
         try:
             import PIL  # noqa: F401 — the layout check is the only part that needs it
         except ImportError:
             layout_ok = False
+            layout_note = "layout skipped: Pillow is not installed"
+    else:
+        layout_note = "layout skipped: no frame given - pass --frame <png> or NPT_FRAME"
     if not MOCKUP.exists():
         print("FAIL: no mockup at %s" % MOCKUP)
         return 1
@@ -146,7 +176,10 @@ def main():
 
     print("=== %s: mockup vs result ===" % theme)
     print("mockup  %s" % MOCKUP.name)
-    print("frame   %s (%d bytes)" % (frame.name, frame.stat().st_size))
+    if frame is not None:
+        print("frame   %s (%d bytes)" % (frame.name, frame.stat().st_size))
+    else:
+        print("frame   (none given - %s)" % layout_note)
     print()
 
     fails = []
@@ -190,8 +223,7 @@ def main():
     print("    mockup: --L=%spx --R=%spx" % (m_widths.get("L", "?"), m_widths.get("R", "?")))
     panels = None
     if not layout_ok:
-        print("    no frame (build/smoke/admin.png) or no Pillow — layout check skipped;")
-        print("    run smoke_all_roles.py to add it")
+        print("    %s" % layout_note)
     else:
         line_rgb = parse_hex(a_toks.get("line", "")) or (57, 64, 77)
         panels, W, edges = measure_panels(frame, line_rgb)
@@ -236,8 +268,9 @@ def main():
 
     out = PROJ / "build" / "smoke" / "comparison.json"
     out.write_text(json.dumps({
-        "theme": theme, "mockup_widths": m_widths, "frame_panels": panels,
-        "palette_matched": matched, "failures": fails,
+        "theme": theme, "mockup_widths": m_widths, "frame": str(frame) if frame else "",
+        "frame_panels": panels, "palette_matched": matched, "layout_note": layout_note,
+        "failures": fails,
     }, indent=2, ensure_ascii=False), encoding="utf-8")
     print("wrote %s" % out)
     if fails:
@@ -245,10 +278,12 @@ def main():
         for f in fails:
             print("  DIFF " + f)
         print("")
-        print("==> COMPARISON: %d differences" % len(fails))
+        print("==> COMPARISON FAILED: %d differences" % len(fails))
         return 1
     print("")
-    print("==> COMPARISON PASSED — the result implements the mockup's own declarations")
+    print("==> COMPARISON PASSED%s"
+          % ((" (%s)" % layout_note) if not layout_ok else
+             " — the result implements the mockup's own declarations"))
     return 0
 
 

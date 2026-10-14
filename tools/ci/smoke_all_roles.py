@@ -278,7 +278,15 @@ def main():
     comp_ok = False
     try:
         import subprocess as _sp
-        cc = _sp.run([sys.executable, str(PROJ / "tools" / "ci" / "compare_mockup.py")],
+        # HG-11: THE FRAME OF THIS RUN. The smoke previously invoked the comparison with no
+        # frame, so it measured `build/smoke/admin.png` from an OLD run while the frame it had
+        # just captured (in NPT_REPORT) sat unread. Point the comparison at this run's own
+        # frame; if this run captured none, the comparison says so out loud instead.
+        frame_arg = []
+        if (OUT / "admin.png").exists():
+            frame_arg = ["--frame", str(OUT / "admin.png")]
+        cc = _sp.run([sys.executable, str(PROJ / "tools" / "ci" / "compare_mockup.py"),
+                      "neuro"] + frame_arg,
                      capture_output=True, text=True, timeout=120)
         for line in cc.stdout.splitlines():
             if line.strip().startswith(("--", "mockup:", "frame ", "matched:", "right/left",

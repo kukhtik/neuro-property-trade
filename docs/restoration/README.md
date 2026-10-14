@@ -51,15 +51,16 @@
 
 | Факт | Значение |
 |---|---|
-| Оракул | `==> ORACLE PASSED (283 tests, 0 SCRIPT ERROR)`, `MIN_TESTS=270` (было 400) |
+| Оракул | `==> ORACLE PASSED (289 tests, 0 SCRIPT ERROR)`, `MIN_TESTS=289` (было 270 после свопа) |
+| Гейты | `tools/ci/run_gates.sh` в CI: HG-01/HG-09/HG-11 — required и зелёные; HG-02/HG-12/SG-01 — карантин (HG-12 зелёный, HG-02/SG-01 красные — это цель P0/фазы 2); отчёт `build/gates/report.html` |
 | Пробы | 3/3 (`i18n_probe`, `skin_probe`, `v3_probe`); было 19/19; `free_parking_probe` не подключена |
 | Браузерный джойн на свежей сборке | **мёртв** — все три инструмента: `browser_seat_e2e.py`, `smoke_all_roles.py`, ad-hoc проба: `joined=False`, 0 интентов |
-| Консольные кнопки СТРОЙКА/ТОРГ/СТАВКА/ОТВЕТ | неработоспособны (пустые параметры) — доказано нажатиями |
-| Компакт-профиль (<1280px или ≤700px) | доки (`seats`, `rightcol`) скрываются без замены — журнал/инспектор/тосты недостижимы |
-| Живые `{ключи}` i18n | 5 мест: `over.title`, `over.winner`, `plr.jail`, `stat.round`, `top.decision` |
+| Консольные кнопки СТРОЙКА/ТОРГ/СТАВКА/ОТВЕТ | неработоспособны (пустые параметры) — доказано гейтом HG-02 (6 отказов) |
+| Компакт-профиль (<1280px или ≤700px) | доки (`seats`, `rightcol`) скрываются без замены — журнал/инспектор/тосты недостижимы; доказано гейтом SG-01 (1000×650, 880×600) |
+| Живые `{ключи}` i18n | **0**: 5 мест (`over.title`, `over.winner`, `plr.jail`, `stat.round`, `top.decision`) починены и заперты гейтом HG-09 |
 | Банк парковки | UI читает `pot`, проекция отдаёт `parking_pot` → чип всегда `$0` |
-| Артефакты | `.exe` 15:22 и `build/web` 15:33 — **старше свопа (18:52)** и содержат архивный UI |
-| Сверка с макетом | мерила стейл-кадр `build/smoke/admin.png` (15:34) и печатала PASSED внутри FAIL-смоука |
+| Артефакты | `.exe` 15:22 и `build/web` 15:33 — **старше свопа (18:52)**; помечены «архив» в `tools/ci/freshness_allowlist.txt` (свежие сборки кладутся рядом) |
+| Сверка с макетом | мерила стейл-кадр `build/smoke/admin.png`; теперь кадр — параметр `--frame`/`NPT_FRAME` своего прогона (гейт HG-11) |
 | Ядро | здорово: soak `SOAK OK`, replay/corpus зелёные, движок свопом не тронут |
 | SDK-место | три разрыва: UI не создаёт, рантайм не спавнит `SdkAdapter`, аддон печатает `NEURO_SDK_WS_URL` ошибку всегда |
 
@@ -87,7 +88,9 @@
 G="$(tools/ci/godot_bin.sh)"
 
 bash tools/ci/run_tests.sh                 # оракул (импорт-проход обязателен)
-bash tools/ci/run_probes.sh                # поведенческие пробы (сейчас 3)
+bash tools/ci/run_probes.sh                # поведенческие пробы
+bash tools/ci/run_gates.sh --all           # программа гейтов (docs/restoration/gates.md)
+bash tools/ci/run_gates.sh --report-only   # пересобрать build/gates/report.html из JSON-ов
 
 # свежий веб-экспорт и три браузерных проверки (все три сейчас КРАСНЫЕ — это и есть P0):
 "$G" --headless --path game --export-release "Web" "$(cd build && pwd -W)/web_probe/index.html"
@@ -95,26 +98,30 @@ NPT_WEB="$(pwd -W)/build/web_probe" py -3.12 tools/ci/browser_seat_e2e.py
 NPT_WEB="$(pwd -W)/build/web_probe" NPT_REPORT="$(pwd -W)/build/smoke_v3probe" \
   NPT_MOCKUP="$(pwd -W)/design/ui-prototype.html" py -3.12 tools/ci/smoke_all_roles.py
 
-# диагностика аудита (сиды будущих гейтов):
-"$G" --headless --path game res://tools/compact_probe.tscn          # профили/достижимость
-"$G" --headless --path game res://tools/console_actions_probe.tscn  # кнопки консоли vs движок
-"$G" --headless --path game res://tools/admin_smoke_probe.tscn       # админ-панель собирается
+# гейты, бывшие диагностическими пробами аудита (теперь живут в game/tools/gates/ и
+# регистрируются в tools/ci/run_gates.sh; SG-01 и HG-02 сейчас КРАСНЫЕ — это P0/фаза-2):
+"$G" --headless --path game res://tools/gates/sg01_compact_gate.tscn
+"$G" --headless --path game res://tools/gates/hg02_console_actions_gate.tscn
+"$G" --headless --path game res://tools/gates/hg12_admin_smoke_gate.tscn
 
 # ядро:
 "$G" --headless --path game --script res://tools/soak_cli.gd -- --sweep 6 --seed 7777 --turns 250 --players 4
 python tools/fps_clean.py                  # FPS (только на чистой машине)
-python tools/ci/compare_mockup.py neuro    # дизайн-гейт (см. оговорки в gates.md)
+python tools/ci/compare_mockup.py neuro --frame build/smoke/admin.png   # дизайн-гейт: кадр ТОЛЬКО своего прогона
+bash tools/ci/check_freshness.sh           # артефакты не старше shipping-кода (или в allowlist)
 ```
 
 **Не трогать** `build/web/` (15:33) и `build/windows/*.exe` (15:22): это единственные
 артефакты с работающими экранами старого UI; они нужны как эталон «как выглядит рабочий
 джойн», пока не пересобран новый. Свежие экспорты кладём рядом (`build/web_probe/` и т.п.).
 
-## Инструменты, добавленные аудитом (seeds гейтов, лежат в `game/tools/`)
+## Инструменты, добавленные аудитом → теперь гейты (`game/tools/gates/`)
 
-- `compact_probe.gd/.tscn` — видимость/достижимость регионов на 1000×650 (seed для **SG-01**).
-- `console_actions_probe.gd/.tscn` — реальные нажатия кнопок консоли против движка (seed для **HG-02**).
-- `admin_smoke_probe.gd/.tscn` — сборка админ-панели, анатомия (seed для **HG-12**).
+- `sg01_compact_gate.gd/.tscn` — видимость/достижимость регионов на 4 профилях (бывший `compact_probe`; **красный**: 1000×650 и 880×600 без замены доков).
+- `hg02_console_actions_gate.gd/.tscn` — реальные нажатия кнопок консоли против движка (бывший `console_actions_probe`; **красный**: 6 отказов из-за пустых параметров).
+- `hg12_admin_smoke_gate.gd/.tscn` — админ-панель, F12, токен-гейт, изоляция роли stream (бывший `admin_smoke_probe`; зелёный).
+- `hg09_i18n_gate.gd/.tscn` — контракт i18n: статический скан + динамические префиксы + живые виджеты + живое дерево (зелёный).
 
-Они диагностические (печатают, не вердиктят). Превращать в гейты — по `gates.md`
-(механизм «карантин → CI»).
+Раннер: `tools/ci/run_gates.sh` (`--hg|--sg|--all|--report-only`; отчёт `build/gates/report.html`,
+логи и JSON рядом). Диагностические пробы аудита удалены: их содержание целиком переехало в
+гейты (карантин → required по мере закрытия P0/фазы 2).

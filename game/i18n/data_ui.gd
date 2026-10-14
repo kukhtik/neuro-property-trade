@@ -33,7 +33,16 @@ const D := {
 	"stat.hotels":      {"ru": "Отель", "en": "Hotel"},
 	"stat.mortgaged":   {"ru": "В залоге", "en": "Mortgaged"},
 	# ---- design v3 (design/coverage.md §4): proposed keys, now shipping ----
-	"plr.owned":        {"ru": "В собственности", "en": "Owned"},
+	# NOTE: three keys below were REFERENCED by the v3 shell from the swap on and never written,
+	# so the player read `{plr.jail}` / `{stat.round}` / `{top.decision}` (found by the HG-09
+	# gate; the audit listed the same three plus the two over.* keys, which are now satisfied by
+	# the already-present modal.game_over/modal.winner).
+	"plr.jail":         {"ru": "ТЮРЬМА", "en": "JAIL"},
+	"stat.round":       {"ru": "РАУНД", "en": "ROUND"},
+	"top.decision":     {"ru": "РЕШЕНИЕ", "en": "DECISION"},
+	# `plr.owned` is used as a chip WITH the tile count; it was a bare label, so every repaint
+	# raised "not all arguments converted" and the count never appeared.
+	"plr.owned":        {"ru": "В собственности: %d", "en": "Owned: %d"},
 	"plr.owned_tip":    {"ru": "Доля клеток доски, находящихся в собственности игроков.", "en": "Share of board tiles owned by players."},
 	"plr.jail_tip":     {"ru": "Попытки выйти из тюрьмы.", "en": "Attempts to leave jail."},
 	"act.timer_tip":    {"ru": "Осталось времени на решение.", "en": "Time left for the decision."},

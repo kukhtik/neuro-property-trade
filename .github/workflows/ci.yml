@@ -75,6 +75,14 @@ jobs:
       - name: Behavioral probes - every probe in game/tools
         run: tools/ci/run_probes.sh
 
+      - name: Gates - functionality + structure (quarantine-aware, docs/restoration/gates.md)
+        env:
+          # the oracle above ran WITH the import pass; the gate re-runs it cheaply. Required
+          # gates block; quarantine gates are reported in build/gates/report.html without
+          # failing the build (the report is uploaded below).
+          NPT_GATES_FAST: "1"
+        run: tools/ci/run_gates.sh --all
+
       - name: Design - the mockup vs the game (palette, dock widths, regions)
         run: |
           # The mockup is design/ui-prototype.html, GENERATED from the game, so this gate
@@ -92,4 +100,15 @@ jobs:
         with:
           name: test-log
           path: /tmp/npt-tests-*.log
+          if-no-files-found: ignore
+
+      - name: Upload gate report (verdicts, reasons, logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-report
+          path: |
+            build/gates/report.html
+            build/gates/*.json
+            build/gates/*.log
           if-no-files-found: ignore
