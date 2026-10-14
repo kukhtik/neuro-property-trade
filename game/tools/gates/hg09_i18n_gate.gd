@@ -28,7 +28,7 @@ const MainScript := preload("res://main.gd")
 const SCAN_DIRS := ["res://ui", "res://visual"]
 const SCAN_FILES := ["res://main.gd"]
 ## Dynamic prefixes that MUST resolve (each has an enumeration rule below).
-const I18N_DYNAMIC := ["phase.", "event_type.", "event."]
+const I18N_DYNAMIC := ["phase.", "event_type.", "event.", "settings.driver."]
 ## Dynamic prefixes that are DATA PATHS (SkinManager), not translations. Counted, not failed;
 ## a NEW one shows up in the log so the classification can be re-decided consciously.
 const DATA_DYNAMIC := ["tokens.", "size.", "shape.", "metrics.", "proportions.", "motion.",
@@ -132,7 +132,10 @@ func _scan_dynamic() -> void:
 	for path in files:
 		var txt := FileAccess.get_file_as_string(path)
 		var rx := RegEx.new()
-		rx.compile("\"([a-z_]+" + BS + ".[a-z_]*)\"" + BS + "s*" + BS + "+")
+		# one or more dot-separated segments inside the quotes: `"phase."`, `"event_type."`,
+		# and the two-dot `"settings.driver."` (the first version only allowed a single dot
+		# and silently missed the settings prefix).
+		rx.compile("\"([a-z_]+[a-z_.]*)\"" + BS + "s*" + BS + "+")
 		for m in rx.search_all(txt):
 			var pre := m.get_string(1)
 			if not prefixes.has(pre):
@@ -174,9 +177,21 @@ func _scan_dynamic() -> void:
 			else:
 				for sp in spans:
 					_check_key("event." + sp, callers[0])
+		elif pre == "settings.driver.":
+			seen_i18n[pre] = true
+			# the settings sheet builds driver labels as "settings.driver." + id.lower() with
+			# ':' -> '_' (sdk:neuro -> sdk_neuro). Enumerate the DRIVERS list itself.
+			for d in _driver_ids():
+				_check_key("settings.driver." + d.to_lower().replace(":", "_"), where)
 		else:
-			var kind := "data-path" if DATA_DYNAMIC.has(pre) else "UNCLASSIFIED"
-			if kind == "UNCLASSIFIED":
+			# a data-path prefix may have several segments (`tokens.metrics.`, `colors.group.`) -
+			# classify by its ROOT, not by a full-string match.
+			var is_data := false
+			for root in DATA_DYNAMIC:
+				if pre.begins_with(str(root)):
+					is_data = true
+					break
+			if not is_data:
 				print("HG-09 warn: dynamic prefix `%s` (%s) is not classified as i18n or data-path" % [pre, where])
 	for pre in I18N_DYNAMIC:
 		if not seen_i18n.has(pre):
@@ -235,6 +250,23 @@ func _text_key_callers() -> Array:
 		if txt.contains("text_key(") and not path.ends_with("event_adapter.gd"):
 			out.append(path)
 	return out
+
+
+## The driver ids the settings sheet offers, straight from its DRIVERS const - the source the
+## "settings.driver.<id>" keys are built from.
+func _driver_ids() -> Array:
+	var ids: Array = []
+	var txt := FileAccess.get_file_as_string("res://ui/settings_overlay.gd")
+	var start := txt.find("const DRIVERS")
+	var endp := txt.find("]", start)
+	if start < 0 or endp < 0:
+		return []
+	var block := txt.substr(start, endp - start)
+	var rx := RegEx.new()
+	rx.compile(BS + "\"([a-zA-Z:]+)" + BS + "\"")
+	for m in rx.search_all(block):
+		ids.append(m.get_string(1))
+	return ids
 
 
 ## A seat stand-in for the crafted projections (the panels read pid/name/color/driver).

@@ -32,7 +32,11 @@ checked=0
 fresh=0
 archived=0
 shopt -s nullglob
-paths=("$repo"/build/windows/*.exe "$repo"/build/web/index.html)
+# canonical artifacts: the two ARCHIVED pre-swap builds (owner's reference; allowlisted) and
+# the FRESH builds that must stay newer than the shipping code (plan.md Phase 1 item 5:
+# "держать рядом свежие").
+paths=("$repo"/build/windows/*.exe "$repo"/build/web/index.html \
+	"$repo"/build/current/web/index.html "$repo"/build/current/windows/*.exe)
 for f in "${paths[@]}"; do
 	[ -f "$f" ] || continue
 	checked=$((checked + 1))

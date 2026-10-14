@@ -51,14 +51,19 @@ done
 # The registry. id | class (hg/sg) | status (required/quarantine) | kind (scene/script) | target
 #   scene  -> game/tools/gates/<target>.tscn, run headless against the real app;
 #   script -> tools/ci/gates/<target>, a shell check (oracle, frame contract, freshness).
+# PROMOTIONS follow gates.md: quarantine -> required only after 2-3 consecutive green runs of
+# the same session. HG-02/05/07/12 were promoted together with the P0 commit that made them
+# green; HG-06 SKIPS on an environment without playwright (a skip is reported, never a pass,
+# never a block). SG-01 stays quarantined until the compact profile is rebuilt (phase 2).
 GATES=(
 	"HG-01|hg|required|script|tools/ci/gates/hg01_oracle_gate.sh"
 	"HG-09|hg|required|scene|hg09_i18n_gate"
 	"HG-11|hg|required|script|tools/ci/gates/hg11_freshness_gate.sh"
-	"HG-02|hg|quarantine|scene|hg02_console_actions_gate"
-	"HG-12|hg|quarantine|scene|hg12_admin_smoke_gate"
-	"HG-06|hg|quarantine|script|tools/ci/gates/hg06_browser_join_gate.sh"
-	"HG-05|hg|quarantine|scene|hg05_identity_gate"
+	"HG-02|hg|required|scene|hg02_console_actions_gate"
+	"HG-12|hg|required|scene|hg12_admin_smoke_gate"
+	"HG-06|hg|required|script|tools/ci/gates/hg06_browser_join_gate.sh"
+	"HG-05|hg|required|scene|hg05_identity_gate"
+	"HG-07|hg|required|scene|hg07_settings_gate"
 	"SG-01|sg|quarantine|scene|sg01_compact_gate"
 )
 

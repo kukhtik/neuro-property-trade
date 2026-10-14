@@ -52,9 +52,9 @@ func _check_live_tree() -> void:
 		_fail("no GameView")
 		return
 	var overlay = launcher.get("_overlay")
-	# v3 swap: the overlay's start entry point is `_emit` now (the old `_start_pressed`
-	# went to the archive with the old interface).
-	overlay.call("_emit")
+	# the settings sheet came back from the archive (F-47/HG-07 restore): its start entry point
+	# is `_start_pressed` again (`_emit` was the v3 shell's short-lived name for it).
+	overlay.call("_start_pressed")
 	for _i in 15:
 		await get_tree().process_frame
 	if gv.get("_engine") == null:
