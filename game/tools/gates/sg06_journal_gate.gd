@@ -70,8 +70,10 @@ func _process(_dt: float) -> void:
 			_wait = 4
 			_drive_frames += 1
 			_drive_human()
-			var total := _journal_total()
-			if total >= MIN_LINES or _drive_frames > 900:
+			# wait for BOTH: enough lines AND at least one tile named in words. A feed of
+			# rolls alone is a legitimate early-round state; judging the naming contract on it
+			# is a false red (the first version of this gate did exactly that once).
+			if (_journal_total() >= MIN_LINES and _named_rows() > 0) or _drive_frames > 1300:
 				_state = "settle"
 				_wait = 12
 		"settle":
@@ -268,6 +270,19 @@ func _journal():
 	if gv == null:
 		return null
 	return gv.find_child("journal", true, false)
+
+
+## Journal rows that name a tile in words (the «...» form).
+func _named_rows() -> int:
+	var jrn = _journal()
+	if jrn == null:
+		return 0
+	var named := 0
+	for lbl in _labels_under(jrn):
+		var s := str((lbl as Label).text)
+		if s.contains("«") and s.contains("»"):
+			named += 1
+	return named
 
 
 func _journal_total() -> int:
