@@ -93,12 +93,12 @@ end-to-end by `tools/ci/gates/hg08_sdk_seat_gate.sh`, which plays against a mock
 ## Status
 
 The engine, seats, network host, admin console, visual layer and the UI overhaul are implemented.
-Verified by two gates, both run in CI:
+Verified by the oracle, the probes and the gate program — all run in CI:
 
 ```bash
-tools/ci/run_tests.sh     # 292 headless tests (rules engine + the projection contract)
+tools/ci/run_tests.sh     # 356 headless tests (rules engine + the projection contract + UI core)
 tools/ci/run_probes.sh    # 3 behavioral probes (i18n, skin, v3 layout)
-tools/ci/run_gates.sh     # 17 required gates: functionality (HG) + interface (SG), report in build/gates/
+tools/ci/run_gates.sh     # 21 required gates: functionality (HG) + interface (SG), report in build/gates/
 ```
 
 Plus determinism (every recorded game replays to a byte-identical fingerprint), a regenerated
