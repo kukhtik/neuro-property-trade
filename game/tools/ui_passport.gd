@@ -179,6 +179,12 @@ func _seq_match() -> void:
 ## --- the dump ----------------------------------------------------------------------------------
 
 func _dump(state: String) -> void:
+	# A dump taken mid-reflow LIES. On this project `turn-human` was once photographed while the
+	# board was still re-laying out after the console appeared (stage 796x450 instead of 716,
+	# 40px cells, the name hidden by design's own step 3) - and a blind reviewer read it as
+	# "the board carries no names". Wait until the layout stops moving before the walk.
+	if not await _wait_layout_stable(4.0):
+		_note("layout did not settle before the %s dump" % state)
 	await _frames(SETTLE)
 	var root := get_tree().root
 	var nodes: Array = []
@@ -214,6 +220,45 @@ func _dump(state: String) -> void:
 	print("UI-PASSPORT STATE %s nodes=%d text=%d offscreen=%d clipped=%d small=%d min_font=%d"
 		% [state, nodes.size(), int(facts["text"]), int(facts["offscreen"]),
 		   int(facts["clipped"]), int(facts["small"]), int(facts["min_font"])])
+
+
+## The layout signature: the rects of every named region. Identical for three frames in a row
+## means the reflow has finished and a dump will describe the screen the user is looking at.
+func _wait_layout_stable(budget_s: float) -> bool:
+	var prev := ""
+	var stable := 0
+	var deadline := Time.get_ticks_msec() + int(budget_s * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var sig := _layout_sig()
+		if sig != "" and sig == prev:
+			stable += 1
+			if stable >= 3:
+				return true
+		else:
+			stable = 0
+			prev = sig
+		await _frames(1)
+	return false
+
+
+func _layout_sig() -> String:
+	var parts: Array = []
+	_collect_regions(get_tree().root, parts, 0)
+	parts.sort()
+	return "|".join(parts)
+
+
+func _collect_regions(node: Node, out: Array, depth: int) -> void:
+	if depth > 12 or out.size() > 60:
+		return
+	for c in node.get_children():
+		if c is Control:
+			var nm := str(c.name)
+			if REGION_IDS.has(nm) and (c as Control).is_visible_in_tree():
+				var r := (c as Control).get_global_rect()
+				out.append("%s:%d,%d,%d,%d" % [nm, int(r.position.x), int(r.position.y),
+					int(r.size.x), int(r.size.y)])
+		_collect_regions(c, out, depth + 1)
 
 
 ## Every visible Control under the root, with the geometry and the text a reader would see.
