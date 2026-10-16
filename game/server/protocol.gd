@@ -8,7 +8,10 @@ extends RefCounted
 ## sent on every delta and a match can emit hundreds.
 
 ## Message types, both directions. Kept here so client and server cannot drift.
-const C2S := ["hello", "intent", "ping"]
+##   "chat" - a viewer's VOTE for a CHAT seat (produced by tools/ci/twitch_bridge.py). It is a
+##   client->server frame like any other, but it carries NO verdict: it lands in the seat's vote
+##   box, and the seat's own intent is what the engine answers.
+const C2S := ["hello", "intent", "ping", "chat"]
 const S2C := ["hello_ok", "projection", "event", "verdict", "reject", "pong"]
 
 

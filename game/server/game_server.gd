@@ -152,6 +152,22 @@ func _handle_packet(entry: Dictionary, raw: String) -> void:
 			_on_intent(entry, msg)
 		"ping":
 			_send(entry, {"t": "pong"})
+		"chat":
+			_on_chat(entry, msg)
+
+
+## A viewer's VOTE, sent by tools/ci/twitch_bridge.py on behalf of the chat seat. It is not an
+## intent: the chat driver collects votes, decides by majority and submits ONE intent, which the
+## engine validates like any other. Only a SEATED client may vote (its token is the identity);
+## an empty token is the spectator channel and changes nothing - silently, because a stream may
+## carry thousands of viewers and an answer per vote would be the game's whole bandwidth.
+func _on_chat(entry: Dictionary, msg: Dictionary) -> void:
+	var tok: String = str(entry.get("token", ""))
+	var pid: int = int(_tokens.get(tok, -1))
+	if pid < 0 or manager == null:
+		return
+	var params: Dictionary = msg.get("params", {})
+	manager.push_chat(pid, str(msg.get("action", "")), params)
 
 
 ## A client identifies itself. With a valid token it is bound to that seat's
