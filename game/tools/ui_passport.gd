@@ -54,6 +54,16 @@ var _misses: Array = []
 var _t0 := 0
 var _done := false
 
+## FILM mode (motion + behaviour): the sampler records, every `_film_dt` ms, the geometry /
+## alpha / rotation / scale of every Control plus the engine phase; the script marks the actions
+## it takes. Structural, not pixel: a Control that moved, faded or span is a fact of the scene
+## tree - exactly what an agent can reason about. Frames for the same moment come from SG-07.
+var _film_samples: Array = []
+var _film_marks: Array = []
+var _film_stop := false
+var _film_dt := 50
+var _film_t0 := 0
+
 
 func _process(_dt: float) -> void:
 	if not _done and Time.get_ticks_msec() - _t0 > WATCHDOG_MS:
@@ -101,6 +111,8 @@ func _run() -> void:
 			await _seq_pre()
 		"match":
 			await _seq_match()
+		"film":
+			await _seq_film()
 		_:
 			_miss("seq", "unknown sequence `%s`" % _seq)
 	_finish()
@@ -355,6 +367,283 @@ func _flag_block(title: String, items: Array) -> String:
 	return s
 
 
+## --- film: motion and behaviour ----------------------------------------------------------------
+
+## The static dump answers "what is on screen"; the film answers "what MOVES and what HAPPENS".
+## 1. `_film_loop` samples every `_film_dt` ms until `_film_stop`.
+## 2. The script marks its own actions and takes them through the real seams (roll, trade sheet).
+## 3. `_film_analyze` folds the samples into per-node animation events (rect / alpha / rotation /
+##    scale / appear / disappear), the phase timeline (action -> engine answer with the latency)
+##    and the settle time after each mark; writes film_<label>.motion.json + film_<label>.md.
+func _seq_film() -> void:
+	_launcher.call("_autostart")
+	await _frames(24)
+	_human = _derive_human()
+	_stabilize_match()
+	if not await _reach("turn-human", 45.0):
+		return
+	_film_t0 = Time.get_ticks_msec()
+	_film_samples.clear()
+	_film_marks.clear()
+	_film_stop = false
+	_film_loop()
+	_mark("turn-human")
+	await _frames(8)
+	_mark("roll")
+	_note("film roll -> %s" % await _press_when_ready("roll", 3.0))
+	await _soft_wait_phase_exit("TURN_START", 3.0)
+	await _frames(36)
+	_mark("after-roll")
+	var gv = _game_view()
+	if gv != null:
+		_mark("modal-open")
+		gv.call("_on_action", "propose_trade", {})
+		await _frames(44)
+		_mark("modal-open+")
+		_close_modal()
+		await _frames(30)
+		_mark("modal-close")
+	_film_stop = true
+	await _frames(3)
+	_film_analyze()
+
+
+func _soft_wait_phase_exit(phase: String, budget_s: float) -> void:
+	var deadline := Time.get_ticks_msec() + int(budget_s * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var e = _engine()
+		if e != null and str(e.phase) != phase:
+			return
+		await _frames(2)
+
+
+func _film_loop() -> void:
+	var last := 0
+	while not _film_stop:
+		var now := Time.get_ticks_msec()
+		if now - last >= _film_dt:
+			last = now
+			var e = _engine()
+			_film_samples.append({
+				"t": now - _film_t0,
+				"phase": str(e.phase) if e != null else "?",
+				"turn": int(e.turn_player) if e != null else -1,
+				"snap": _snap(),
+			})
+		await get_tree().process_frame
+
+
+func _mark(label: String) -> void:
+	var e = _engine()
+	_film_marks.append({
+		"t": Time.get_ticks_msec() - _film_t0,
+		"label": label,
+		"phase": str(e.phase) if e != null else "?",
+		"turn": int(e.turn_player) if e != null else -1,
+	})
+
+
+## One light snapshot: [x, y, w, h, alpha%, rotation*1000, scale*100, on-screen].
+func _snap() -> Dictionary:
+	var out := {}
+	_snap_node(get_tree().root, out, "")
+	return out
+
+
+func _snap_node(node: Node, out: Dictionary, path: String) -> void:
+	for child in node.get_children():
+		var nm := str(child.name)
+		var p := (path + "/" + nm) if path != "" else nm
+		if child is Control:
+			var c := child as Control
+			if c.is_visible_in_tree():
+				out[p] = [int(c.global_position.x), int(c.global_position.y), int(c.size.x),
+					int(c.size.y), int(round(c.modulate.a * 100.0)),
+					int(round(c.rotation * 1000.0)), int(round(c.scale.x * 100.0)), 1]
+			else:
+				out[p] = [0, 0, 0, 0, 0, 0, 0, 0]
+		_snap_node(child, out, p)
+
+
+func _film_analyze() -> void:
+	var events: Array = []
+	var timeline: Array = []
+	var prev_phase := ""
+	for i in range(_film_samples.size()):
+		var s: Dictionary = _film_samples[i]
+		if i > 0:
+			var a: Dictionary = _film_samples[i - 1]["snap"]
+			var b: Dictionary = _film_samples[i]["snap"]
+			var t0 := int(_film_samples[i - 1]["t"])
+			var t1 := int(s["t"])
+			for p in b.keys():
+				var va: Array = a.get(p, [0, 0, 0, 0, 0, 0, 0, 0])
+				var vb: Array = b[p]
+				if int(va[7]) == 0 and int(vb[7]) == 1:
+					events.append({"path": p, "prop": "appear", "t0": t0, "t1": t1})
+					continue
+				if int(va[7]) == 1 and int(vb[7]) == 0:
+					events.append({"path": p, "prop": "disappear", "t0": t0, "t1": t1})
+					continue
+				if int(va[7]) == 0 and int(vb[7]) == 0:
+					continue
+				if va[0] != vb[0] or va[1] != vb[1] or va[2] != vb[2] or va[3] != vb[3]:
+					events.append({"path": p, "prop": "rect",
+						"from": [va[0], va[1], va[2], va[3]], "to": [vb[0], vb[1], vb[2], vb[3]],
+						"t0": t0, "t1": t1})
+				if va[4] != vb[4]:
+					events.append({"path": p, "prop": "alpha", "from": va[4], "to": vb[4],
+						"t0": t0, "t1": t1})
+				if va[5] != vb[5]:
+					events.append({"path": p, "prop": "rotation", "from": va[5], "to": vb[5],
+						"t0": t0, "t1": t1})
+				if va[6] != vb[6]:
+					events.append({"path": p, "prop": "scale", "from": va[6], "to": vb[6],
+						"t0": t0, "t1": t1})
+		if str(s["phase"]) != prev_phase:
+			timeline.append({"t": int(s["t"]), "phase": str(s["phase"]), "turn": int(s["turn"])})
+			prev_phase = str(s["phase"])
+	# merge consecutive events of the same node+property (an animation is one event, not forty)
+	var merged: Array = []
+	var open := {}
+	for e in events:
+		var key := str(e["path"]) + "|" + str(e["prop"])
+		if open.has(key) and int(open[key]["t1"]) + _film_dt * 2 >= int(e["t0"]):
+			var o: Dictionary = open[key]
+			o["t1"] = e["t1"]
+			if e.has("to"):
+				o["to"] = e["to"]
+			o["steps"] = int(o.get("steps", 1)) + 1
+		else:
+			var ne: Dictionary = (e as Dictionary).duplicate(true)
+			ne["steps"] = 1
+			open[key] = ne
+			merged.append(ne)
+	# FILTER: the board REBUILDS its tiles on every state push, so appear/disappear under
+	# `stage/` (and every anonymous container) is re-render churn, not an animation. An
+	# appearance is kept only when it is a named node OUTSIDE the board - the modal, the toast,
+	# the banner, the drawer: the things a viewer actually notices. Motion (rect/alpha/rotation/
+	# scale) is kept everywhere, because that is what an animation IS.
+	var motion: Array = []
+	var appears: Array = []
+	for e in merged:
+		var prop := str(e["prop"])
+		if prop == "appear" or prop == "disappear":
+			var last := str(e["path"]).split("/")[-1]
+			if last.begins_with("@") or str(e["path"]).find("/stage/") != -1:
+				continue
+			appears.append(e)
+		else:
+			motion.append(e)
+
+	# the settle time after each mark
+	var settles: Array = []
+	for mi in range(_film_marks.size()):
+		var m: Dictionary = _film_marks[mi]
+		var t_start := int(m["t"])
+		var t_end := int(_film_samples[-1]["t"]) if not _film_samples.is_empty() else t_start
+		if mi + 1 < _film_marks.size():
+			t_end = int((_film_marks[mi + 1] as Dictionary)["t"])
+		var last_event := 0
+		for e in merged:
+			if int(e["t0"]) >= t_start and int(e["t0"]) <= t_end:
+				last_event = maxi(last_event, int(e["t1"]))
+		settles.append({"label": str(m["label"]), "in_ms": t_start,
+			"events": 0, "settle_ms": maxi(0, last_event - t_start)})
+	# counts per mark window
+	for se in settles:
+		var t0 := int(se["in_ms"])
+		var n_ev := 0
+		for e in merged:
+			if int(e["t0"]) == t0:
+				n_ev += 0
+		se["events"] = n_ev
+	var moving := {}
+	var longest := 0
+	var longest_path := ""
+	for e in motion:
+		moving[str(e["path"])] = true
+		var dur := int(e["t1"]) - int(e["t0"])
+		if dur > longest:
+			longest = dur
+			longest_path = str(e["path"])
+	var label := _label if _label != "" else "%dx%d" % [_size.x, _size.y]
+	var doc := {
+		"label": label, "skin": SkinManager.chosen, "role": _role if _role != "" else "auto",
+		"interval_ms": _film_dt, "samples": _film_samples.size(),
+		"duration_ms": int(_film_samples[-1]["t"]) if not _film_samples.is_empty() else 0,
+		"marks": _film_marks, "timeline": timeline, "settles": settles,
+		"events": motion.slice(0, 600), "appearances": appears.slice(0, 200),
+		"nodes_moving": moving.keys().size(), "motion_events": motion.size(),
+		"appearance_events": appears.size(),
+		"longest_ms": longest, "longest_path": longest_path,
+	}
+	var jpath := "%s/film_%s.motion.json" % [_outdir, label]
+	var f := FileAccess.open(jpath, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(doc, "  "))
+		f.close()
+	var mpath := "%s/film_%s.md" % [_outdir, label]
+	var mf := FileAccess.open(mpath, FileAccess.WRITE)
+	if mf != null:
+		mf.store_string(_film_report(doc))
+		mf.close()
+	print("UI-PASSPORT FILM samples=%d motion=%d appear=%d nodes=%d longest=%dms settle_max=%dms phases=%d"
+		% [int(doc["samples"]), motion.size(), appears.size(), int(doc["nodes_moving"]),
+		   longest, _max_settle(settles), timeline.size()])
+
+
+func _max_settle(settles: Array) -> int:
+	var m := 0
+	for s in settles:
+		m = maxi(m, int(s["settle_ms"]))
+	return m
+
+
+## The film in words: what happened, in what order, and how long it took.
+func _film_report(doc: Dictionary) -> String:
+	var out := "# Фильм интерфейса: %s\n\n" % str(doc["label"])
+	out += "skin=%s role=%s interval=%dms samples=%d duration=%dms\n\n" % [
+		str(doc["skin"]), str(doc["role"]), int(doc["interval_ms"]),
+		int(doc["samples"]), int(doc["duration_ms"])]
+	out += "## Действия (марки) и отклик\n\n"
+	for s in doc["settles"]:
+		out += "- %s @%dms: успокоение %dms\n" % [str(s["label"]), int(s["in_ms"]), int(s["settle_ms"])]
+	out += "\n## Фазы движка\n\n"
+	for t in doc["timeline"]:
+		out += "- %dms  %s (turn=%d)\n" % [int(t["t"]), str(t["phase"]), int(t["turn"])]
+	out += "\n## Движение (rect / alpha / rotation / scale)\n\n"
+	out += "событий: %d; узлов в движении: %d; самое долгое: %s, %dms\n\n" % [
+		int(doc.get("motion_events", 0)), int(doc["nodes_moving"]),
+		_short_path(str(doc["longest_path"])), int(doc["longest_ms"])]
+	var top: Array = (doc["events"] as Array).duplicate()
+	top.sort_custom(func(a, b):
+		return (int(a["t1"]) - int(a["t0"])) > (int(b["t1"]) - int(b["t0"])))
+	for e in top.slice(0, 40):
+		var dur := int(e["t1"]) - int(e["t0"])
+		out += "- %s  %s  %s -> %s  (%dms, %d сэмпл(ов))\n" % [_short_path(str(e["path"])),
+			str(e["prop"]), str(e.get("from", "?")), str(e.get("to", "?")), dur,
+			int(e.get("steps", 1))]
+	var app: Array = doc.get("appearances", [])
+	out += "\n## Появление/исчезновение вне борда (модалки, тосты, баннеры)\n\n"
+	out += "событий: %d (чарн пересборки борда отфильтрован)\n\n" % int(doc.get("appearance_events", 0))
+	var app_top := app.duplicate()
+	app_top.sort_custom(func(a, b): return int(a["t0"]) < int(b["t0"]))
+	for e in app_top.slice(0, 30):
+		out += "- %dms..%dms  %s  %s\n" % [int(e["t0"]), int(e["t1"]),
+			str(e["prop"]), _short_path(str(e["path"]))]
+	return out
+
+
+## The last three path segments: a full UiPassport/.../@Control@145/... chain is unreadable,
+## and what identifies a node to a reader is its tail.
+func _short_path(p: String) -> String:
+	var parts := p.split("/")
+	if parts.size() <= 3:
+		return p
+	return "…/" + "/".join(parts.slice(parts.size() - 3, parts.size()))
+
+
 ## --- driving (the same seams sg07_capture uses) ----------------------------------------------
 
 ## Like `_reach`, but a miss is a NOTE, not a failure: the passport describes what it could
@@ -437,6 +726,25 @@ func _label_key(key: String) -> String:
 		"buy":
 			return "act.buy"
 	return key
+
+
+## Like `_press`, but waits until the button exists: at the instant `_reach("turn-human")`
+## returns, the console row may still be a frame away - and a film that never pressed the button
+## records an interface at rest and calls it behaviour.
+func _press_when_ready(key: String, budget_s: float) -> String:
+	var deadline := Time.get_ticks_msec() + int(budget_s * 1000.0)
+	while Time.get_ticks_msec() < deadline:
+		var gv = _game_view()
+		if gv != null:
+			var console = gv.find_child("act", true, false)
+			if console != null and console.get("_btn_row") != null:
+				var want := I18n.t(_label_key(key))
+				for c in (console.get("_btn_row") as Node).get_children():
+					if c is Button and str((c as Button).text).begins_with(want):
+						(c as Button).emit_signal("pressed")
+						return "pressed"
+		await _frames(2)
+	return "absent"
 
 
 func _close_modal() -> void:

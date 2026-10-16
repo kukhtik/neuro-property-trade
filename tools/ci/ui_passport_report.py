@@ -27,6 +27,52 @@ REGION_IDS = ("top", "topbar", "seats", "stage", "rightcol", "act", "console", "
 BOX_CAP = 900
 
 
+def synth_text_md(doc):
+    """The screen as text, derived from the tree - for producers that write no .text.md."""
+    f = doc.get("facts", {})
+    floor = int(f.get("min_font_floor", 9))
+    out = ["# UI паспорт: %s" % doc.get("state", "?"), "",
+           "producer=%s profile=%s size=%dx%d" % (doc.get("producer", "godot"),
+                                                  doc.get("label", "?"),
+                                                  int(doc.get("w", 0)), int(doc.get("h", 0))), "",
+           "facts: nodes=%s text=%s offscreen=%s clipped=%s small=%s min_font=%s"
+           % (f.get("nodes", "?"), f.get("text", "?"), f.get("offscreen", "?"),
+              f.get("clipped", "?"), f.get("small", "?"), f.get("min_font", "?")), ""]
+    regions = {}
+    for e in doc.get("nodes", []):
+        if not e.get("txt"):
+            continue
+        regions.setdefault(str(e.get("region", "other")), []).append(e)
+    out.append("## Регионы\n")
+    for reg, ents in sorted(regions.items(),
+                            key=lambda kv: min(int(e.get("y", 0)) for e in kv[1])):
+        ents.sort(key=lambda e: (int(e.get("y", 0)), int(e.get("x", 0))))
+        out.append("### %s (y≈%d, %d строк)\n" % (reg, int(ents[0].get("y", 0)), len(ents)))
+        for e in ents:
+            flags = ""
+            if e.get("clipped"):
+                flags += " [обрезан]"
+            fs = int(e.get("fs", 0))
+            if fs and fs < floor and len(str(e["txt"])) > 1:
+                flags += " [мелко]"
+            if e.get("tip"):
+                flags += " [tip]"
+            out.append("- (%d,%d) f%d «%s»%s"
+                       % (int(e.get("x", 0)), int(e.get("y", 0)), fs, e["txt"], flags))
+        out.append("")
+    out.append("## Красные флаги\n")
+    for title, items in (("вне экрана", f.get("offscreen_list", [])),
+                         ("обрезанный текст", f.get("clipped_list", [])),
+                         ("ниже пола читаемости", f.get("small_list", []))):
+        if items:
+            out.append("- %s: %d" % (title, len(items)))
+            for it in items:
+                out.append("  - %s" % it)
+        else:
+            out.append("- %s: нет" % title)
+    return "\n".join(out) + "\n"
+
+
 def annotate(frame_path, out_path, doc, Image, ImageDraw):
     """Draw the region frames and every text rect from the SAME tree that produced the dump.
     Returns True when the frame was annotated, False when it does not match the dump (a frame
@@ -65,6 +111,9 @@ def main():
     argv = [a for a in sys.argv[1:] if not a.startswith("--")]
     repo = os.path.abspath(argv[0]) if argv else os.getcwd()
     d = os.path.join(repo, "build", "ui-passport")
+    for a_ in sys.argv[1:]:
+        if a_.startswith("--dir="):
+            d = os.path.abspath(a_.split("=", 1)[1])
     files = sorted(glob.glob(os.path.join(d, "*.tree.json")))
     if not files:
         print("==> UI PASSPORT REPORT FAILED: no *.tree.json in %s" % d)
@@ -97,16 +146,25 @@ def main():
     for doc in docs:
         state = str(doc.get("state"))
         label = str(doc.get("label"))
-        skin = str(doc.get("skin"))
-        w, h = int(doc.get("w", 0)), int(doc.get("h", 0))
+        skin = str(doc.get("skin") or doc.get("producer", "?"))
         facts = doc.get("facts", {})
+        w = int(doc.get("w", 0) or facts.get("w", 0))
+        h = int(doc.get("h", 0) or facts.get("h", 0))
         md_name = "%s_%s.text.md" % (state, label)
         body = ""
         md_path = os.path.join(d, md_name)
         if os.path.isfile(md_path):
             with open(md_path, encoding="utf-8") as fh:
                 body = fh.read()
+        if not body:
+            # ANY producer may write only the tree + the frame: the text map is derived here,
+            # which is what keeps the report universal across the Godot and the web producers.
+            body = synth_text_md(doc)
+        # The frame for a state: the SG-07 series (build/renders/<state>_<skin>.png) for the game,
+        # or a capture sitting NEXT TO the dump (the web passport writes its own screenshot there).
         frame = os.path.join(frames_dir, "%s_%s.png" % (state, skin))
+        if not os.path.isfile(frame):
+            frame = os.path.join(d, "%s_%s.png" % (state, label))
         has_frame = os.path.isfile(frame)
         # A frame of another SIZE is not this state's frame: pairing a 1440x900 capture with a
         # 1280x720 dump would put every box (and every claim) in the wrong place. Match or skip.
@@ -143,7 +201,7 @@ def main():
             % (html.escape(state), html.escape(label), html.escape(skin), w, h,
                html.escape(skin), img_html, html.escape(body)))
 
-    head = ["# Паспорт интерфейса NPT - досье для агента", "",
+    head = ["# Паспорт интерфейса - досье для агента", "",
             "Как читать:",
             "- `for-agent.md` (этот файл) - весь экран словами: состояния, регионы, тексты,",
             "  кегли, флаги;",
@@ -152,7 +210,7 @@ def main():
             "- `annotated_*.png` - кадр с рамками регионов (жёлтые) и текста (голубые; красные ="
             " мелко/обрезано);",
             "- кадры берутся из серии SG-07 (`build/renders/<state>_<skin>.png`), если она"
-            " снята.", ""]
+            " снята; у веб-производителя кадр лежит рядом с дампом.", ""]
     table = ["| состояние | профиль | размер | узлов | текстов | вне экрана | обрезано |"
              " мелко | min кегль | кадр | разметка |",
              "|---|---|---|---|---|---|---|---|---|---|---|"]

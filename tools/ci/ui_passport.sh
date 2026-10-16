@@ -31,11 +31,17 @@ rm -f "$repo/build/ui-passport"/*.tree.json "$repo/build/ui-passport"/*.text.md 
 
 skin=""
 with_stream=0
+with_film=0
+save_baseline=0
+diff_mode=0
 for a in "$@"; do
 	case "$a" in
 		--skin=*) skin="${a#--skin=}" ;;
 		--with-stream) with_stream=1 ;;
-		*) echo "usage: ui_passport.sh [--skin=<id>] [--with-stream]" >&2; exit 2 ;;
+		--film) with_film=1 ;;
+		--save-baseline) save_baseline=1 ;;
+		--diff) diff_mode=1 ;;
+		*) echo "usage: ui_passport.sh [--skin=<id>] [--with-stream] [--film] [--save-baseline] [--diff]" >&2; exit 2 ;;
 	esac
 done
 
@@ -72,6 +78,8 @@ else
 	run_seq match
 	[ "$with_stream" = 1 ] && run_seq match "--role=stream" "--size=1280x720" "--label=stream"
 fi
+# film = motion + behaviour; it drives the real app and never judges
+[ "$with_film" = 1 ] && run_seq film ${skin:+--skin=$skin}
 
 # The dossier. Pillow is only needed for the annotated frames; the text map needs none.
 py=""
@@ -81,7 +89,17 @@ done
 if [ -n "$py" ]; then
 	# NATIVE path for the report script too: python is a native binary and cannot open `/c/...`.
 	# `native` takes a DIRECTORY (it cds into it) - convert the repo, then append the script path.
-	$py "$(native "$repo")/tools/ci/ui_passport_report.py" "$(native "$repo")" || fail=1
+	natrepo="$(native "$repo")"
+	$py "$natrepo/tools/ci/ui_passport_report.py" "$natrepo" || fail=1
+	if [ "$save_baseline" = 1 ] && [ "$fail" = 0 ]; then
+		mkdir -p "$repo/build/ui-passport/baseline"
+		cp "$repo/build/ui-passport"/*.tree.json "$repo/build/ui-passport"/baseline/ 2>/dev/null
+		cp "$repo/build/ui-passport"/*.text.md "$repo/build/ui-passport"/baseline/ 2>/dev/null
+		echo "baseline saved: $(ls "$repo/build/ui-passport"/baseline/*.tree.json 2>/dev/null | wc -l) dumps"
+	fi
+	if [ "$diff_mode" = 1 ]; then
+		$py "$natrepo/tools/ci/ui_passport_diff.py" "$natrepo" || fail=1
+	fi
 else
 	echo "FAIL: no python found for the report stage"
 	fail=1
