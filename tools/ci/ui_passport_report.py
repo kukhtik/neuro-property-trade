@@ -23,7 +23,9 @@ import sys
 
 REGION_IDS = ("top", "topbar", "seats", "stage", "rightcol", "act", "console", "modal",
               "rail-left", "rail-right", "drawer", "journal", "inspector", "players",
-              "stat", "ownbar", "board", "center")
+              "stat", "ownbar", "board", "center",
+              # the web producer's landmarks: HTML tags and roles land as region ids too
+              "header", "nav", "main", "aside", "footer", "section", "article", "form", "dialog")
 BOX_CAP = 900
 
 
