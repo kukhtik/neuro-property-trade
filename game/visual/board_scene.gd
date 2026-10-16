@@ -376,6 +376,18 @@ func _token_screen_pos(idx: int, pid: int, count: int) -> Vector2:
 	return base + Vector2((pid % 3 - 1) * fan, ((pid / 3) % 2 - 0.5) * fan) - Vector2(8, 8) * 0.5
 
 
+## ZOOM-01: where a seat's token sits, in the board's own coordinate space. The camera centres on
+## this. Returns null when the seat is unknown (a seat that left, or a cold frame), so the camera
+## says "no target" instead of jumping to the origin.
+func token_board_pos(pid: int) -> Variant:
+	if not _tokens.has(pid):
+		return null
+	var tok: Control = _tokens[pid]
+	if not tok.visible:
+		return null
+	return tok.position + tok.size * 0.5
+
+
 ## Select a tile: re-apply the state layer only.
 func set_selected(idx: int) -> void:
 	_selected = idx
