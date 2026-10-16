@@ -51,9 +51,15 @@ func _fit_row_min() -> void:
 	var frame_w: float = vp.get_visible_rect().size.x
 	if frame_w <= 1.0:
 		return          # not laid out yet: leave the default, do not guess
-	# the dock room the row may claim: the frame minus the two side docks and the strip's own chrome
-	var room: float = frame_w - 268.0 - 344.0 - 60.0
-	_btn_row.custom_minimum_size.x = 0.0
+	# the room the row may claim: the frame, minus both side docks and the gaps/margins around them,
+	# minus the strip's own chrome. The chrome is MEASURED, not invented: with the button row freed
+	# the console still asked for 869px before the prompt/last-roll/status labels were allowed to
+	# shrink (a previous revision of this line guessed "160" and the strip pushed the frame to
+	# 1593px in a 1440px window). Now that those labels may clip, the console's own chrome is small
+	# and this number is the docks' share only.
+	var chrome: float = 268.0 + 344.0 + 8.0 + 8.0 + 16.0 + 12.0 + 60.0
+	var room: float = frame_w - chrome
+	_btn_row.custom_minimum_size.x = clampf(room, 0.0, ROW_WANTS)
 
 
 func _notification(what: int) -> void:
@@ -119,9 +125,19 @@ func _init() -> void:
 	row1.add_child(_hint)
 	_lastroll = UiTheme.label("", 12, UiTheme.COL().money)
 	_lastroll.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_lastroll.custom_minimum_size.x = 0.0
+	_lastroll.clip_text = true
 	row1.add_child(_lastroll)
+	# THE STATUS LABEL MAY NOT HOLD THE STRIP OPEN. It carries the same sentence as the prompt (the
+	# live tree showed `_status` min=231 with the prompt's own text repeated in it), and its minimum
+	# width plus the 652px button row made the console's chrome 869px - wider than the 784px the
+	# frame can give it at 1440. It is now free to clip to nothing: the controls keep their room and
+	# the message is still on the prompt beside it (and in full in the journal).
 	_status = UiTheme.label("", 12, UiTheme.COL().text_dim)
 	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_status.clip_text = true
+	_status.custom_minimum_size.x = 0.0
+	_status.size_flags_horizontal = Control.SIZE_SHRINK_END
 	row1.add_child(_status)
 	col.add_child(row1)
 

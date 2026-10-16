@@ -104,8 +104,15 @@ func _check_profile(profile: Dictionary) -> void:
 		_fail("%s: no toast was raised for a full event batch" % label)
 		return
 	var game: Array = []
-	for nm in ["stage", "act"]:
+	# ZOOM-01: the board now lives under a CAMERA that scales and moves it, so the board's own
+	# `get_global_rect()` is a pre-transform rect - measuring it compares the toast against a place
+	# the board is not (this went red the moment the console freed height and the camera grew). The
+	# thing that occupies the space on screen is the CAMERA; measure that, and keep "stage" as a
+	# fallback for a tree without one.
+	for nm in ["stage-camera", "act"]:
 		var node = gv.find_child(nm, true, false)
+		if node == null and nm == "stage-camera":
+			node = gv.find_child("stage", true, false)
 		if node != null:
 			game.append([nm, (node as Control).get_global_rect()])
 	for toast in (host as Control).get_children():
