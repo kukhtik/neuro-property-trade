@@ -21,10 +21,19 @@ const LayoutProfileScript := preload("res://ui/core/layout_profile.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
 const UiStoreScript := preload("res://ui/core/ui_store.gd")
 const JournalLinesScript := preload("res://ui/core/journal_lines.gd")
+const KeyboardNavScript := preload("res://ui/core/keyboard_nav.gd")
 
 
 static func test_list() -> Array[String]:
 	return [
+		# KeyboardNav — the keyboard model (PART 3)
+		"test_kbnav_owns_only_its_keys",
+		"test_kbnav_tab_cycles_and_wraps",
+		"test_kbnav_spatial_picks_the_direction",
+		"test_kbnav_spatial_no_move_returns_minus_one",
+		"test_kbnav_no_current_starts_at_first",
+		"test_kbnav_empty_list_is_no_move",
+		"test_kbnav_hint_names_every_hotkey",
 		# EventAdapter — adapt()
 		"test_adapt_roll", "test_adapt_purchase", "test_adapt_rent",
 		"test_adapt_unknown_type_returns_empty",
@@ -907,3 +916,75 @@ static func _build_minimal_store(s: UiStore) -> void:
 		}],
 		"pending": {}, "legal": []
 	})
+
+
+# --- KeyboardNav (PART 3): the pure keyboard model --------------------------------------------
+
+static func test_kbnav_owns_only_its_keys() -> String:
+	if not KeyboardNavScript.owns(KEY_TAB):
+		return "Tab must belong to the navigator"
+	if not KeyboardNavScript.owns(KEY_ENTER):
+		return "Enter must belong to the navigator"
+	if KeyboardNavScript.owns(KEY_B):
+		return "B is the console's hotkey, not the navigator's - one owner per key"
+	if KeyboardNavScript.owns(KEY_H):
+		return "H is the panels toggle, not the navigator's"
+	return ""
+
+
+static func test_kbnav_tab_cycles_and_wraps() -> String:
+	var rects := [Rect2(0, 0, 10, 10), Rect2(20, 0, 10, 10), Rect2(40, 0, 10, 10)]
+	if KeyboardNavScript.next_index(KEY_TAB, 0, rects) != 1:
+		return "Tab from 0 must go to 1"
+	if KeyboardNavScript.next_index(KEY_TAB, 2, rects) != 0:
+		return "Tab from the last must wrap to the first"
+	return ""
+
+
+static func test_kbnav_spatial_picks_the_direction() -> String:
+	# THE FIXTURE MUST BE ABLE TO TELL THE TWO RULES APART. A first version put the "beside" button
+	# at x=60 and the diagonal at x=200, so raw distance ALSO preferred "beside" and deleting the
+	# off-axis penalty changed nothing - the test passed on a broken model. Here the diagonal is
+	# CLOSER on the axis (x=50) than the aligned one (x=70) but sits far below, so only the penalty
+	# makes "beside" win. Negative check: drop `across * 3.0` and this test fails.
+	var rects := [Rect2(0, 0, 40, 20), Rect2(70, 0, 40, 20), Rect2(50, 400, 40, 20)]
+	if KeyboardNavScript.next_index(KEY_RIGHT, 0, rects) != 1:
+		return "RIGHT must prefer the button beside it (70,0) over the nearer-but-diagonal (50,400)"
+	if KeyboardNavScript.next_index(KEY_DOWN, 0, rects) != 2:
+		return "DOWN must reach the only control below"
+	if KeyboardNavScript.next_index(KEY_LEFT, 1, rects) != 0:
+		return "LEFT must reach the button to its left"
+	return ""
+
+
+static func test_kbnav_spatial_no_move_returns_minus_one() -> String:
+	# nothing is above the top row: UP must not jump somewhere unrelated
+	var rects := [Rect2(0, 0, 40, 20), Rect2(60, 0, 40, 20)]
+	if KeyboardNavScript.next_index(KEY_UP, 0, rects) != -1:
+		return "UP with nothing above must be no move (-1), not a jump"
+	if KeyboardNavScript.next_index(KEY_DOWN, 0, rects) != -1:
+		return "DOWN with nothing below must be no move (-1)"
+	return ""
+
+
+static func test_kbnav_no_current_starts_at_first() -> String:
+	var rects := [Rect2(0, 0, 10, 10), Rect2(20, 0, 10, 10)]
+	if KeyboardNavScript.next_index(KEY_TAB, -1, rects) != 0:
+		return "with no focus, the first control takes it"
+	if KeyboardNavScript.next_index(KEY_DOWN, -1, rects) != 0:
+		return "with no focus, an arrow starts at the first control"
+	return ""
+
+
+static func test_kbnav_empty_list_is_no_move() -> String:
+	if KeyboardNavScript.next_index(KEY_TAB, 0, []) != -1:
+		return "an empty list is no move, never a crash or a guess"
+	return ""
+
+
+static func test_kbnav_hint_names_every_hotkey() -> String:
+	var hint: String = KeyboardNavScript.hotkey_hint()
+	for h in KeyboardNavScript.HOTKEYS:
+		if not hint.contains(str(h["label"])):
+			return "the hint must name every hotkey; '%s' is missing from '%s'" % [str(h["label"]), hint]
+	return ""

@@ -18,10 +18,12 @@ const PlayersPanel := preload("res://ui/players_panel.gd")
 const ActionPanel := preload("res://ui/action_panel.gd")
 const JournalPanel := preload("res://ui/journal_panel.gd")
 const JournalLines := preload("res://ui/core/journal_lines.gd")
+const KeyboardNav := preload("res://ui/core/keyboard_nav.gd")
 const TileInspector := preload("res://ui/tile_inspector.gd")
 const ToastList := preload("res://ui/toast.gd")
 const ModalHost := preload("res://ui/modal_host.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
+const BoardCamera := preload("res://ui/components/board_camera.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 
 ## E-2 (master-fix-plan §2, D10): the event kinds that must leave a mark ON THE BOARD. The plan
@@ -58,6 +60,13 @@ var _remote = null
 var _top: Control
 var _seats_panel: Control
 var _board: Control
+var _camera: Control
+## ZOOM-01: the turn the camera last followed, so a NEW turn re-follows and the same turn does not
+## fight a viewer who panned away.
+var _camera_turn := -1
+## PART 2: the user hid the side panels (the H key / the header button). Remembered across a
+## profile change, and applied by _apply_panels_visibility.
+var _panels_hidden := false
 var _console: Control
 var _journal: Control
 var _inspector: Control
@@ -105,6 +114,8 @@ func _build() -> void:
 	_top.settings_requested.connect(func() -> void: settings_requested.emit())
 	_top.restart_requested.connect(func() -> void: restart_requested.emit())
 	_top.skin_requested.connect(func(id: String) -> void: skin_requested.emit(id))
+	# PART 2: the header's panels button and the H key do the same thing.
+	_top.panels_requested.connect(Callable(self, "toggle_panels"))
 	col.add_child(_top)
 
 	var body := UiTheme.hbox(8)
@@ -118,16 +129,25 @@ func _build() -> void:
 	_seats_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(_seats_panel)
 
-	# centre column: the stage (board) with the console under it
+	# centre column: the STAGE (the board under a camera) with the console under it
 	var centre := UiTheme.vbox(8)
 	centre.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(centre)
+	# ZOOM-01: the board lives under a camera that can pan and zoom it. The board keeps its own
+	# layout (a square that fills this container); the camera transforms the whole thing.
+	_camera = BoardCamera.new()
+	_camera.name = "stage-camera"
+	_camera.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_camera.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	centre.add_child(_camera)
 	_board = BoardScene.new()
 	_board.name = "stage"
 	_board.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_board.tile_clicked.connect(Callable(self, "_on_tile_clicked"))
-	centre.add_child(_board)
+	_camera.add_child(_board)
+	_camera.setup(_board)
+	_camera.token_pos_of = Callable(self, "_token_board_pos")
 	_console = ActionPanel.new()
 	_console.name = "act"
 	_console.action_requested.connect(Callable(self, "_on_action"))
@@ -198,14 +218,7 @@ func _apply_profile() -> void:
 	# so the journal, the inspector and - through the inspector - every tile-management path
 	# vanished on a small window (the audit's compact defect).
 	var compact := _is_compact()
-	if _seats_panel != null:
-		_seats_panel.visible = not compact
-	if _rightcol != null:
-		_rightcol.visible = not compact
-	if _rail_left != null:
-		_rail_left.visible = compact
-	if _rail_right != null:
-		_rail_right.visible = compact
+	_apply_panels_visibility()
 	if not compact:
 		_close_all_drawers()
 	else:
@@ -216,16 +229,79 @@ func _is_compact() -> bool:
 	return size.x > 0.0 and (size.x < 1280.0 or size.y <= 700.0)
 
 
+## PART 2 (the owner's order): hide the side panels with one button/key.
+##
+## WHY: on a wide window the two docks take 268+344 = 612px of the stage's width, and the owner's
+## report is that the space is used illogically - the board is the thing being watched, and side
+## panels are reference. One toggle gives the whole width to the board and back.
+##
+## It hides BOTH sides at once and works in either profile (the docks on a wide window, the 48px
+## rails on a compact one), because what the user means by "hide the panels" does not depend on the
+## profile the window happens to be in. The choice is REMEMBERED across a profile change: a resize
+## re-applies it rather than silently showing the panels again.
+signal panels_toggled(hidden: bool)
+
+
+func toggle_panels() -> void:
+	set_panels_hidden(not _panels_hidden)
+
+
+func panels_hidden() -> bool:
+	return _panels_hidden
+
+
+func set_panels_hidden(hidden: bool) -> void:
+	if hidden == _panels_hidden:
+		return
+	_panels_hidden = hidden
+	_apply_profile()
+	panels_toggled.emit(hidden)
+
+
+## The user's panel choice applied on top of the profile layout: the profile decides WHICH control
+## represents the side panels (dock or rail); this decides whether it is shown at all.
+func _apply_panels_visibility() -> void:
+	var compact := _is_compact()
+	if _seats_panel != null:
+		_seats_panel.visible = (not compact) and not _panels_hidden
+	if _rightcol != null:
+		_rightcol.visible = (not compact) and not _panels_hidden
+	if _rail_left != null:
+		_rail_left.visible = compact and not _panels_hidden
+	if _rail_right != null:
+		_rail_right.visible = compact and not _panels_hidden
+
+
 ## SG-08 — live locale: static labels come back via their `i18n_key` metadata (I18n.relabel
 ## walks this subtree), state-driven panels re-render from the last state they were given, and
 ## the compact rails/drawers get their titles re-derived. Nothing here needs a match rebuild.
 ## HG-13: the B/N badges on the console buttons are promises - the keys press the REAL
 ## buttons (buy / end turn), on this seat's turn only, exactly like a mouse click.
+##
+## ZOOM-01 adds the camera keys (arrows/+-/0/F) here rather than in a second handler: ONE place
+## decides who owns a key, so a key can never mean two things at once. The camera is consulted
+## FIRST and only for the keys it claims; an unknown key falls through to the console keys.
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not (event is InputEventKey):
 		return
 	var ke := event as InputEventKey
 	if not ke.pressed or ke.echo:
+		return
+	# PART 3: the keyboard model owns Tab/arrows/Enter/Space. It is consulted before everything else
+	# so a focused button's own Enter handling cannot race the navigator.
+	if KeyboardNav.owns(ke.keycode):
+		if _handle_nav_key(ke.keycode):
+			get_viewport().set_input_as_handled()
+			return
+	# ZOOM-01: the board camera (arrows pan, +/- zoom, 0 home, F follow). In the observer role the
+	# camera is the ONLY thing the keyboard drives, because the stream has no input at all.
+	if _camera != null and _camera.has_method("handle_key") and bool(_camera.call("handle_key", ke.keycode)):
+		get_viewport().set_input_as_handled()
+		return
+	# Part 2: H toggles the side panels (the drawer/rails on wide and compact alike).
+	if ke.keycode == KEY_H:
+		toggle_panels()
+		get_viewport().set_input_as_handled()
 		return
 	if ke.keycode != KEY_B and ke.keycode != KEY_N:
 		return
@@ -495,10 +571,91 @@ func _sync_all() -> void:
 		legal = _proj.get("legal", [])
 	if _board != null:
 		_board.sync(_proj, seats, _human_pid)
+	_sync_camera()
 	if _console != null:
 		_console.sync(holder, legal, holder == _human_pid and not _observer, _proj, seats)
 	if _inspector != null:
 		_inspector.sync(_proj, seats, legal, _human_pid)
+
+
+## ZOOM-01: the camera follows the turn (the owner asked for the board to zoom on a move) and HOLDS
+## while an auction runs - a viewer watching a bid must not be dragged away from the lot.
+##
+## One place decides, from the projection alone, so the shell does not scatter camera policy across
+## the panels. A viewer who took the camera themselves (`_camera.following() < 0`) is not overridden
+## by the next turn: only a NEW turn re-follows, and a pan stops follow until the turn changes again.
+func _sync_camera() -> void:
+	if _camera == null:
+		return
+	var phase := str(_proj.get("phase", ""))
+	_camera.set_hold(phase == "AUCTION")
+	var turn := int(_proj.get("turn_player", _proj.get("turn", -1)))
+	_camera.turn_pid = turn
+	if turn >= 0 and turn != _camera_turn:
+		_camera_turn = turn
+		# a new turn: take the camera back to the moving token, unless an auction holds it
+		if phase != "AUCTION":
+			_camera.follow(turn)
+
+
+## The board-space point of a seat's token, for the camera to centre on. Returns null when the seat
+## is unknown, so the camera can say "no target" instead of jumping to (0,0).
+func _token_board_pos(pid: int) -> Variant:
+	if _board == null or not _board.has_method("token_board_pos"):
+		return null
+	return _board.token_board_pos(pid)
+
+
+## PART 3: the keyboard navigator. Returns true when it CONSUMED the key.
+##
+## ARROWS ARE SHARED WITH THE CAMERA, so the precedence is written down instead of left to whoever
+## asks first: an arrow moves the FOCUS when there is a control to move to (the player is working the
+## buttons), and pans the BOARD when there is not (the player is looking at the ring). A key that
+## does nothing must not swallow the event, or the camera would never see an arrow.
+func _handle_nav_key(keycode: int) -> bool:
+	if _observer:
+		return false                    # the stream has no input; the camera gets the arrows
+	var controls := _focusable_controls()
+	if controls.is_empty():
+		return false
+	if keycode == KEY_ENTER or keycode == KEY_KP_ENTER or keycode == KEY_SPACE:
+		var f := get_viewport().gui_get_focus_owner()
+		if f is Button:
+			(f as Button).emit_signal("pressed")
+			return true
+		return false
+	var rects: Array = []
+	var cur := -1
+	var owner := get_viewport().gui_get_focus_owner()
+	for i in controls.size():
+		rects.append((controls[i] as Control).get_global_rect())
+		if controls[i] == owner:
+			cur = i
+	var nxt: int = KeyboardNav.next_index(keycode, cur, rects)
+	if nxt < 0 or nxt >= controls.size():
+		return false
+	(controls[nxt] as Control).grab_focus()
+	return true
+
+
+## The controls the keyboard can reach: every visible, enabled Button in the interactive panels, in
+## a stable reading order. The panels rebuild their buttons each turn, so this is read fresh.
+func _focusable_controls() -> Array:
+	var out: Array = []
+	for panel in [_console, _inspector, _top, _modals]:
+		if panel == null or not (panel as Control).is_visible_in_tree():
+			continue
+		_collect_buttons(panel, out)
+	return out
+
+
+func _collect_buttons(node: Node, out: Array) -> void:
+	for c in node.get_children():
+		if c is Button:
+			var b := c as Button
+			if b.visible and not b.disabled and b.focus_mode != Control.FOCUS_NONE:
+				out.append(b)
+		_collect_buttons(c, out)
 
 
 func _on_tile_clicked(idx: int) -> void:

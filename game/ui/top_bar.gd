@@ -8,10 +8,13 @@ extends PanelContainer
 signal settings_requested
 signal restart_requested
 signal skin_requested(skin_id: String)
+## PART 2: the header's panels button - the same toggle as the H key.
+signal panels_requested
 
 const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
+const KeyboardNav := preload("res://ui/core/keyboard_nav.gd")
 
 var _brand: Label
 var _turn_av: Control
@@ -29,6 +32,8 @@ var _timer_t0 := 0
 var _timer_on := false
 var _rolebadge: Label
 var _btn_settings: Button
+## PART 2: the header button that hides/shows the side panels.
+var _btn_panels: Button
 var _btn_restart: Button
 var _btn_lang: Button
 var _btn_skin: Button
@@ -105,6 +110,11 @@ func _init() -> void:
 	_btn_settings = _icon_btn("⚙", I18n.t("top.settings_tip"))
 	_btn_settings.connect("pressed", func() -> void: settings_requested.emit())
 	row.add_child(_btn_settings)
+	# PART 2: hide/show the side panels. A header button and the H key do the same thing, so the
+	# order's "a button on the panel OR a hotkey" is both, and the badge names the key.
+	_btn_panels = _icon_btn("▤", I18n.t("top.panels_tip"))
+	_btn_panels.connect("pressed", func() -> void: panels_requested.emit())
+	row.add_child(_btn_panels)
 	_btn_restart = _icon_btn("⟳", I18n.t("top.restart_tip"))
 	_btn_restart.connect("pressed", func() -> void: restart_requested.emit())
 	row.add_child(_btn_restart)
@@ -117,6 +127,33 @@ func _init() -> void:
 	_btn_skin = _icon_btn("◐", I18n.t("top.skin_tip"))
 	_btn_skin.connect("pressed", Callable(self, "_cycle_skin"))
 	row.add_child(_btn_skin)
+
+	_apply_header_fit()
+
+
+## THE HEADER SHEDS ITS DECORATION BEFORE IT OVERFLOWS.
+##
+## At the minimum supported width (880) the row already carried every chip and control; one more
+## button pushed it to 885px inside an 880px window (SG-02 caught it: "leaves the viewport"). The
+## brand is a watermark - the board's centre states the name in full - so it is the first thing to
+## go, exactly as the compact profile trims content instead of shrinking type.
+##
+## One place computes it, so the button's arrival cannot re-introduce the overflow.
+func _apply_header_fit() -> void:
+	if _brand == null:
+		return
+	var frame_w := 0.0
+	var vp := get_viewport()
+	if vp != null:
+		frame_w = vp.get_visible_rect().size.x
+	if frame_w <= 1.0:
+		return          # not laid out yet (a headless probe): keep the default, do not guess
+	_brand.visible = frame_w >= 1000.0
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and _brand != null:
+		_apply_header_fit()
 
 
 func _chip(text: String) -> Label:
@@ -217,6 +254,10 @@ func retranslate() -> void:
 	_btn_lang.text = "EN" if _locale == "ru" else "RU"
 	_btn_lang.tooltip_text = I18n.t("top.lang_tip")
 	_btn_settings.tooltip_text = I18n.t("top.settings_tip")
+	# PART 2/3: the panels button's tooltip carries its key AND the keyboard model's hotkey list, so
+	# the player reads the whole keyboard from the one control that is about the interface. The list
+	# is BUILT FROM KeyboardNav.HOTKEYS - a rebinding cannot leave this text lying.
+	_btn_panels.tooltip_text = "%s\n%s" % [I18n.t("top.panels_tip"), KeyboardNav.hotkey_hint()]
 	_btn_restart.tooltip_text = I18n.t("top.restart_tip")
 	_btn_skin.tooltip_text = I18n.t("top.skin_tip")
 	_rolebadge.text = I18n.t("mode.player")

@@ -30,7 +30,7 @@ GODOT="$("$ROOT/tools/ci/godot_bin.sh")"
 # measuring a tree that no longer exists. Negative check: a threshold flipped in
 # `layout_profile.gd` fails exactly `test_desktop_at_1280` with a readable reason, and reverting
 # it restores the count.)
-MIN_TESTS="${MIN_TESTS:-388}"
+MIN_TESTS="${MIN_TESTS:-395}"
 FAST="${1:-}"
 LOG="${TMPDIR:-/tmp}/npt-tests-$$.log"
 

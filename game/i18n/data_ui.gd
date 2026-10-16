@@ -93,6 +93,7 @@ const D := {
 	"top.skin_tip":         {"ru": "Тема оформления", "en": "Interface theme"},
 	"top.lang_tip":         {"ru": "Язык интерфейса", "en": "Interface language"},
 	"top.restart_tip":      {"ru": "Пересобрать партию с новым сидом (рестарт)", "en": "Rebuild the match with a new seed (restart)"},
+	"top.panels_tip":       {"ru": "Скрыть или показать боковые панели (клавиша H)", "en": "Hide or show the side panels (key H)"},
 	"top.eye_tip":          {"ru": "Режим наблюдателя: вернуться к настройкам матча (места без LOCAL играют сами)", "en": "Observer mode: return to match settings (seats without LOCAL play themselves)"},
 	"top.admin_hint":       {"ru": "F12 — админ", "en": "F12 — admin"},
 
