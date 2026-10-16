@@ -46,6 +46,8 @@ func _init() -> void:
 		# UI-core pure-function tests: EventAdapter, Money, IntentMap,
 		# LayoutProfile, UiProfile, UiStore, JournalLines
 		"res://tests/ui_core_test.gd",
+		# READ-1: the board cell is READABLE (font floors, `short`, label_step, house counter)
+		"res://tests/tile_view_test.gd",
 	]
 	_check_orphan_modules(modules)
 	for path in modules:
