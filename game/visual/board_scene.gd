@@ -244,7 +244,12 @@ func sync(proj: Dictionary, seats: Array, human_pid: int) -> void:
 		if int(p.get("index", -1)) == turn:
 			turn_pos = int(p.get("position", -1))
 	for i in _board.size():
-		var e: Dictionary = by_index.get(i, {})
+		# `.duplicate()` IS REQUIRED, not defensive noise: `Dictionary.get(key, default)` returns the
+		# DEFAULT ITSELF (read-only) when the key is absent, and the lines below assign into `e`. A
+		# projection that carries only the tiles it knows about - which the auction test's does, and
+		# which any partial push from the server legitimately can - made every missing index throw
+		# "Invalid assignment on read-only value". The board itself was fine; the copy was not made.
+		var e: Dictionary = (by_index.get(i, {}) as Dictionary).duplicate()
 		var owner: int = int(e.get("owner", -1))
 		if owner >= 0:
 			var nm := str(e.get("owner_name", ""))
@@ -286,7 +291,30 @@ func _sync_centre(proj: Dictionary, seats: Array) -> void:
 	_banner.visible = nm != "" and phase != ""
 	var pend: Dictionary = proj.get("pending", {})
 	var is_card: bool = str(pend.get("type", "")) in ["purchase", "auction"] or phase == "AUCTION"
-	_card.visible = is_card
+	# E-4/D12: while an AUCTION runs, the CENTRE of the board says so - the lot, the standing bid and
+	# who leads it - and every new bid updates it. Until now an auction was visible only to whoever
+	# had the sheet open: a spectator watching the board saw the same turn label as during any other
+	# phase, so the most dramatic moment in the game was invisible from the ring.
+	if phase == "AUCTION":
+		var at_name: String = ""
+		var at_tile: int = int(pend.get("tile", -1))
+		for e in (proj.get("board", []) as Array):
+			if int(e.get("index", -1)) == at_tile:
+				at_name = str(e.get("name", ""))
+		var at_high: int = int(pend.get("high", -1))
+		var at_lead: String = _seat_name_of(proj, seats, int(pend.get("high_player", -1)))
+		var line := I18n.t("board.auction_plate", [at_name])
+		if at_high > 0:
+			line = I18n.t("board.auction_plate_bid", [at_name, at_high, at_lead])
+		# the plate is a live message like an event: same queue, so a bid overwrites the previous bid
+		_banner.text = line
+		_banner.add_theme_color_override("font_color", UiTheme.COL().money if at_high > 0 else col)
+		_banner.visible = at_name != ""
+		_card.visible = is_card
+		if is_card:
+			_card_name.text = at_name
+			_card_price.text = "$%d" % int(pend.get("cost", 0)) if pend.has("cost") else "$%d" % at_high
+		return
 	if is_card:
 		var tile_idx: int = int(pend.get("tile", -1))
 		var t: Dictionary = {}
@@ -295,6 +323,14 @@ func _sync_centre(proj: Dictionary, seats: Array) -> void:
 				t = e
 		_card_name.text = str(t.get("name", ""))
 		_card_price.text = "$%d" % int(t.get("cost", 0))
+
+
+## E-4: a seat's display name by pid (the auction plate names the leading bidder).
+func _seat_name_of(_proj: Dictionary, seats: Array, pid: int) -> String:
+	for s in seats:
+		if int(s.pid) == pid:
+			return str(s.name)
+	return ""
 
 
 func _sync_tokens(proj: Dictionary, seats: Array) -> void:

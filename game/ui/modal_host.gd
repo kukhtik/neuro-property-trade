@@ -384,6 +384,33 @@ func show_auction(proj: Dictionary, seats: Array, human_pid: int) -> void:
 	_title.text = I18n.t("modal.auction_title")
 	_clear_body()
 	_body.add_child(UiTheme.label(I18n.t("modal.lot_name", [tile_name]), 13, UiTheme.COL().text))
+	# E-4/D12: the auction had no clock. A bidder was told the current price but not how long they
+	# had to beat it, which is the only other thing an auction is about. The data was ALREADY in the
+	# projection - seat_manager fills timer_window/timer_elapsed/timer_active for whatever seat holds
+	# the decision, and for an auction that is the auction_timer - so this is a render, not new
+	# plumbing. The remaining time is derived, never the raw elapsed: a view that shows "12s left"
+	# and "2s left" must not print the same number.
+	var tw: float = float(proj.get("timer_window", 0.0))
+	var active: bool = bool(proj.get("timer_active", false)) and tw > 0.0
+	if active:
+		var elapsed: float = float(proj.get("timer_elapsed", 0.0))
+		var left: int = int(ceil(maxf(0.0, tw - elapsed)))
+		var ring := UiTheme.hbox(6)
+		ring.name = "auction-timer"
+		var bar := ProgressBar.new()
+		bar.name = "auction-timer-bar"
+		bar.custom_minimum_size = Vector2(140, 8)
+		bar.max_value = tw
+		bar.value = clampf(tw - elapsed, 0.0, tw)
+		bar.show_percentage = false
+		ring.add_child(bar)
+		var lbl := UiTheme.label(I18n.t("modal.auction_timer", [left]), 12,
+			UiTheme.COL().danger if left <= 5 else UiTheme.COL().text_dim)
+		lbl.name = "auction-timer-left"
+		ring.add_child(lbl)
+		_body.add_child(ring)
+	else:
+		_body.add_child(UiTheme.label(I18n.t("modal.auction_no_timer"), 11, UiTheme.COL().text_dim))
 	if _a_high > 0:
 		_body.add_child(UiTheme.label(I18n.t("modal.auction_high", [_a_high]), 12, UiTheme.COL().money))
 		var lead := _seat_name(seats, int(pend.get("high_player", -1)))

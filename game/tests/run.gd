@@ -46,6 +46,8 @@ func _init() -> void:
 		# UI-core pure-function tests: EventAdapter, Money, IntentMap,
 		# LayoutProfile, UiProfile, UiStore, JournalLines
 		"res://tests/ui_core_test.gd",
+		# E-4: an auction is visible on the sheet AND on the board (clock + central plate)
+		"res://tests/auction_ui_test.gd",
 		# E-3: the rent a tile charges NOW is visible (projection rent_now == the engine's own rule)
 		"res://tests/projection_rent_test.gd",
 		# E-2: an event is visible ON THE BOARD (banner queue + cell flash)
