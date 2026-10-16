@@ -85,6 +85,12 @@ GATES=(
 	# session (28 frames each, exit 0) - a report gate still fails on a blank, duplicated, stale
 	# or missing frame, so there is nothing for it to "report only" about.
 	"SG-07|sg|required|script|tools/ci/gates/sg07_shots_gate.sh"
+	# READ-01/02/03 (master-fix-plan §1) run LAST, for the same reason SG-07 does: the gate opens
+	# a real window at three profiles and SG-10's clean-machine preflight must not see it alive.
+	# QUARANTINE until it has 2-3 consecutive green full sweeps; its negative check has already
+	# been run (restoring the 8px/7px clamp turns READ-01 red with 40/40 silent cells and READ-03
+	# red with 68 labels below their floor).
+	"READ-01|sg|quarantine|script|tools/ci/gates/read_gate.sh"
 )
 
 
