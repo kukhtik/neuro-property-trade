@@ -21,6 +21,12 @@ const MIN_WIDTH := 880
 const WIDE_MIN := 1600
 const DESKTOP_MIN := 1280
 const COMPACT_HEIGHT := 700
+## Below this the two side DOCKS give way to 48px RAILS (owner's relayout, 16.10 evening).
+##
+## Not a taste: the board is height-limited at every profile but the narrowest, so the 612px the two
+## docks take is mostly width the board could not use - while at 1000x650 the docks starve it to a
+## 328px square (30px cells) where rails leave 490px (45px cells). Measured before choosing.
+const RAILS_BELOW := 1500
 
 ## Auto-collapse rails: the v3 mockup rails BOTH docks on the compact profile.
 const RAIL_WIDTH := 48

@@ -14,6 +14,7 @@ extends Node
 ## Run: godot --headless --path game res://tools/gates/sg05_toast_gate.tscn
 
 const MainScript := preload("res://main.gd")
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 
 const PROFILES := [
 	{"label": "1440x900", "size": Vector2i(1440, 900)},
@@ -82,7 +83,9 @@ func _check_profile(profile: Dictionary) -> void:
 	# the REAL path: events go through the shell exactly as the match feeds them
 	gv.call("_on_events", EVENTS)
 	var ps: Vector2i = profile["size"]
-	var compact: bool = ps.x < 1280 or ps.y <= 700
+	# READ THE PRODUCT'S RULE, never re-type it: the dock profiles show the toast host, the rail
+	# profiles fold it into the console ticker (the registry's own wording for the compact toast).
+	var compact: bool = ps.x < LayoutProfile.RAILS_BELOW or ps.y <= LayoutProfile.COMPACT_HEIGHT
 	if compact:
 		# the dock folds away and the ticker inside the console carries the text
 		if (host as Control).is_visible_in_tree():

@@ -12,6 +12,7 @@ extends Node
 ## Run: godot --headless --path game res://tools/gates/sg01_compact_gate.tscn
 
 const MainScript := preload("res://main.gd")
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 
 const PROFILES := [
 	{"label": "1440x900", "size": Vector2i(1440, 900)},
@@ -118,17 +119,19 @@ func _check_profile(profile: Dictionary) -> void:
 	if label == "1440x900":
 		_check_metrics(gv)
 	else:
-		# rails exist only in the COMPACT profile (width < 1280 or height <= 700) - the same
-		# rule game_view._is_compact() applies; 1280x720 is a wide profile and must show docks.
+		# WHICH PROFILES SHOW RAILS IS THE PRODUCT'S DECISION, NOT THIS GATE'S. It used to re-type
+		# the rule with the old literal ("width < 1280 or height <= 700") - a second home for one
+		# truth, and it went red the moment the owner changed the design (rails are now the default;
+		# the docks open only on a window wide enough to spare the width). Read the one home.
 		var ps: Vector2i = profile["size"]
-		var is_compact: bool = ps.x < 1280 or ps.y <= 700
+		var is_compact: bool = ps.x < LayoutProfile.RAILS_BELOW or ps.y <= LayoutProfile.COMPACT_HEIGHT
 		if is_compact:
 			_check_compact_behaviour(gv, label)
 		elif gv.find_child("seats", true, false) != null \
 				and (gv.find_child("seats", true, false) as Control).visible:
 			_checks += 1
 		else:
-			_fail("%s: a wide profile hides the seats dock (not compact by the rule)" % label)
+			_fail("%s: a dock profile hides the seats dock (not compact by LayoutProfile.RAILS_BELOW=%d)" % [label, LayoutProfile.RAILS_BELOW])
 
 
 ## REGION EXISTENCE IS NOT ENOUGH. The replacement must WORK: the rail is a strip, a click

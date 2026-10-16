@@ -213,10 +213,16 @@ func _apply_dock_width() -> void:
 
 
 func _apply_profile() -> void:
-	# compact: the docks collapse into 48px rails whose content opens as 320px drawers over
-	# the stage (the mockup's `data-profile="compact"`). The old version only HID the docks,
-	# so the journal, the inspector and - through the inspector - every tile-management path
-	# vanished on a small window (the audit's compact defect).
+	# THE RAILS ARE THE DEFAULT (owner's relayout, 16.10 evening): "панели — УЗКИЕ рейлы по краям,
+	# доска главная на весь центр". Measured before choosing: the board is HEIGHT-limited at every
+	# profile but the narrowest, so the 612px the two docks take is mostly spent on width the board
+	# could not use anyway - while at 1000x650 the docks starve it to a 328px square (30px cells)
+	# where rails leave 490px (45px cells), half again as much board.
+	#
+	# So the docks are the EXCEPTION, and the exception is stated as a measurement rather than a
+	# taste: they open only when the window is wide enough to give the board its full height AND
+	# still spare the room. That keeps a big desktop looking like the mockup while every cramped
+	# window gets the board instead of two panels with a couple of lines in them.
 	var compact := _is_compact()
 	_apply_panels_visibility()
 	if not compact:
@@ -225,8 +231,18 @@ func _apply_profile() -> void:
 		_layout_drawers()
 
 
+## Compact/rails from the BOARD's point of view: would the docks cost the board its own size?
+##
+## The threshold lives in LayoutProfile (`RAILS_BELOW`) so the shell, the gate and the tests read ONE
+## home - this is only the name the shell uses for it.
+const WIDE_DOCKS_MIN := LayoutProfile.RAILS_BELOW
+
+
 func _is_compact() -> bool:
-	return size.x > 0.0 and (size.x < 1280.0 or size.y <= 700.0)
+	# RAILS BY DEFAULT (owner's relayout, 16.10): the docks now open only on a window wide enough to
+	# spare the width - see WIDE_DOCKS_MIN. The old rule (< 1280 or <= 700 tall) kept two 268/344
+	# docks on a 1280-wide window where they cost the board the width it needed.
+	return size.x > 0.0 and (size.x < WIDE_DOCKS_MIN or size.y <= 700.0)
 
 
 ## PART 2 (the owner's order): hide the side panels with one button/key.
