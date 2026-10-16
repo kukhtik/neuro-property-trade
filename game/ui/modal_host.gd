@@ -137,6 +137,35 @@ func _seat_name(seats: Array, pid: int) -> String:
 	return "P%d" % pid
 
 
+## E-1/D8: ONE side of a deal in words - the tile NAMES (from the projection's board, the same
+## source the board draws from) plus the cash. A side with neither reads "ничего", not "$0 + 0".
+##
+## The names are wrapped, not clipped: a long deal must grow the sheet, not truncate the property
+## list, because a truncated list is exactly the "unanswerable offer" this replaces.
+func _terms_block(cash: int, tiles: Array, proj: Dictionary) -> Label:
+	var names: Array = []
+	for t in tiles:
+		names.append(_tile_name(proj, int(t)))
+	var parts: Array = []
+	if not names.is_empty():
+		parts.append(", ".join(names))
+	if cash > 0:
+		parts.append("$%d" % cash)
+	var text: String = " + ".join(parts) if not parts.is_empty() else I18n.t("trade.nothing")
+	var l := UiTheme.label_wrap(text, 13, UiTheme.COL().text)
+	l.name = "trade-terms"
+	return l
+
+
+## A tile name from the projection board; an index the board does not carry degrades to the index
+## itself rather than to a blank, so the reader always sees SOMETHING to identify the tile by.
+func _tile_name(proj: Dictionary, idx: int) -> String:
+	for t in (proj.get("board", []) as Array):
+		if int(t.get("index", -1)) == idx:
+			return str(t.get("short", t.get("name", "#%d" % idx)))
+	return "#%d" % idx
+
+
 ## A checkbox row for one tile, inside a scrollable list capped in height (a 28-tile offer
 ## must not stretch the sheet past the window).
 func _tile_check_row(box: VBoxContainer, t: Dictionary) -> CheckBox:
@@ -306,9 +335,15 @@ func show_trade_response(proj: Dictionary, seats: Array) -> void:
 		UiTheme.COL().text))
 	var give_tiles: Array = pend.get("give_tiles", [])
 	var want_tiles: Array = pend.get("want_tiles", [])
-	_body.add_child(UiTheme.label_wrap(I18n.t("modal.trade_terms", [
-		int(pend.get("give_cash", 0)), give_tiles.size(),
-		int(pend.get("want_cash", 0)), want_tiles.size()]), 12, UiTheme.COL().text_dim))
+	# E-1/D8: the composition was rendered as a COUNT of tiles - "Даёт: $200 + 2 тайл(а)" - so the
+	# player was asked to accept or decline a deal without being told which properties changed
+	# hands. That is unanswerable: tiles are not interchangeable, and "2 tiles" is the same sentence
+	# for a brown and a dark-blue. The names come from the projection's board, the same source the
+	# board itself draws from.
+	_body.add_child(UiTheme.label(I18n.t("modal.trade_gives"), 12, UiTheme.COL().text_dim))
+	_body.add_child(_terms_block(int(pend.get("give_cash", 0)), give_tiles, proj))
+	_body.add_child(UiTheme.label(I18n.t("modal.trade_asks"), 12, UiTheme.COL().text_dim))
+	_body.add_child(_terms_block(int(pend.get("want_cash", 0)), want_tiles, proj))
 	var foot := UiTheme.hbox(8)
 	var decline := UiTheme.button(I18n.t("modal.decline"), I18n.t("modal.decline_tip"))
 	decline.connect("pressed", func() -> void:

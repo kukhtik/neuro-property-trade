@@ -236,7 +236,11 @@ const D := {
 	"modal.cancel_tip":     {"ru": "Закрыть окно без отправки", "en": "Close without sending"},
 	"modal.trade_response": {"ru": "ВХОДЯЩАЯ СДЕЛКА", "en": "INCOMING TRADE"},
 	"modal.trade_offers":   {"ru": "%s предлагает %s:", "en": "%s offers %s:"},
-	"modal.trade_terms":    {"ru": "Даёт: $%d + %d тайл(а)   ·   Просит: $%d + %d тайл(а)", "en": "Gives: $%d + %d tiles   ·   Asks: $%d + %d tiles"},
+	# E-1/D8: the old key counted tiles ("$%d + %d тайл(а)") and was the reason a player was asked
+	# to decide a deal they could not read. Replaced by the two block headers below, each followed
+	# by the actual NAMES from the projection board.
+	"modal.trade_gives":    {"ru": "Отдаёт:", "en": "Gives:"},
+	"modal.trade_asks":     {"ru": "Просит:", "en": "Asks:"},
 	"modal.accept":         {"ru": "ПРИНЯТЬ", "en": "ACCEPT"},
 	"modal.accept_tip":     {"ru": "Принять предложение — обмен выполнится", "en": "Accept the offer — the trade will execute"},
 	"modal.decline":        {"ru": "ОТКЛОНИТЬ", "en": "DECLINE"},

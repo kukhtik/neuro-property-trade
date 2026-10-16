@@ -230,6 +230,15 @@ func _fill(etype: String, k: String, data: Dictionary, out: Dictionary) -> void:
 		"trade_proposed", "trade":
 			out["p"] = int(data.get("proposer", -1))
 			out["q"] = int(data.get("to", data.get("recipient", -1)))
+			# E-1/D9: the COMPOSITION travels with the event. The journal used to say only
+			# "предлагает сделку: имя" - the reader could not tell what was being offered, which is
+			# the one thing a trade line exists to answer. The engine already logs both tile lists
+			# and both cash amounts on `trade_proposed` AND on `trade` (engine.gd:574/616), so the
+			# UI was throwing away data it had. `giv`/`wnt` are tile INDEX arrays; `gvc`/`wnc` cash.
+			out["giv"] = _int_array(data.get("give_tiles", []))
+			out["wnt"] = _int_array(data.get("want_tiles", []))
+			out["gvc"] = int(data.get("give_cash", 0))
+			out["wnc"] = int(data.get("want_cash", 0))
 		"trade_declined":
 			out["p"] = int(data.get("proposer", -1))
 			out["q"] = int(data.get("recipient", -1))
@@ -239,6 +248,16 @@ func _fill(etype: String, k: String, data: Dictionary, out: Dictionary) -> void:
 			out["a"] = int(data.get("cash", 0))
 		"winner":
 			out["p"] = int(data.get("player", -1))
+
+
+## A tile-index list as a plain int array. The engine logs them as JSON arrays of numbers, but a
+## malformed or absent list must yield [] rather than a Variant that later code has to guard.
+func _int_array(v: Variant) -> Array:
+	var out: Array = []
+	if v is Array:
+		for x in (v as Array):
+			out.append(int(x))
+	return out
 
 
 ## A stable card id for i18n lookup: card.<deck>.<id>. The engine logs a

@@ -46,6 +46,8 @@ func _init() -> void:
 		# UI-core pure-function tests: EventAdapter, Money, IntentMap,
 		# LayoutProfile, UiProfile, UiStore, JournalLines
 		"res://tests/ui_core_test.gd",
+		# E-1: a trade tells the reader WHAT is traded (composition in tile names)
+		"res://tests/modal_trade_test.gd",
 		# READ-1: the board cell is READABLE (font floors, `short`, label_step, house counter)
 		"res://tests/tile_view_test.gd",
 	]

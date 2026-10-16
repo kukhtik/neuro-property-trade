@@ -585,7 +585,9 @@ func _on_events(events: Array) -> void:
 		var e: Dictionary = ev
 		var kind: String = str(e.get("type", ""))
 		if _toasts != null:
-			_toasts.show_event_toast(e)
+			# E-1/D9: the toast gets the same context the journal line gets (tile names, seats), so a
+			# trade notification can name the properties instead of showing a bare proposer name.
+			_toasts.show_event_toast(e, _journal_ctx())
 		var data: Dictionary = e.get("data", {})
 		if _journal != null:
 			# SG-06: the line comes from the ADAPTER + the projection's tile names - never from

@@ -90,9 +90,16 @@ func _text_for(k: String, row: Dictionary, ctx: Dictionary) -> String:
 		"unmort":
 			return I18n.t("jrn.ev.unmort", [tile, a])
 		"trdoffer":
-			return I18n.t("jrn.ev.trdoffer", [_name_of(int(row.get("q", -1)), ctx)])
+			# E-1/D9: a trade line must answer "what is being offered". It used to name only the
+			# partner, so the reader saw "offers a trade: Neuro" and learned nothing about the
+			# deal. The composition now renders in TILE NAMES (never indices).
+			return I18n.t("jrn.ev.trdoffer", [_name_of(int(row.get("q", -1)), ctx),
+				terms(row, ctx)])
 		"trade":
-			return I18n.t("jrn.ev.trade")
+			# the executed deal: both sides, in names. When the engine could not carry a side's
+			# composition (an older log), _terms says so rather than printing a bare "trade".
+			return I18n.t("jrn.ev.trade", [_name_of(int(row.get("p", -1)), ctx),
+				_name_of(int(row.get("q", -1)), ctx), terms(row, ctx)])
 		"trdno":
 			return I18n.t("jrn.ev.trdno")
 		"bank":
@@ -100,6 +107,34 @@ func _text_for(k: String, row: Dictionary, ctx: Dictionary) -> String:
 		"over":
 			return I18n.t("jrn.ev.over")
 	return ""
+
+
+## E-1: the composition of a trade, in words - "Harbor Stn, Palm Row + $200 ⇄ $150 + Chest".
+##
+## ONE renderer for three surfaces (the journal line, the incoming-trade modal and the toast), so
+## the reader cannot be told three different things about one deal. The arrow points from what the
+## proposer GIVES to what they ASK; empty sides collapse to "nothing" rather than to an empty gap,
+## because "$0 + 0 тайл(а)" is arithmetic where a sentence belongs.
+func terms(row: Dictionary, ctx: Dictionary) -> String:
+	var give := _side(int(row.get("gvc", 0)), row.get("giv", []), ctx)
+	var want := _side(int(row.get("wnc", 0)), row.get("wnt", []), ctx)
+	return I18n.t("trade.terms", [give, want])
+
+
+## One side of a deal: tile names first (the thing a player recognises), then the cash.
+func _side(cash: int, tiles: Variant, ctx: Dictionary) -> String:
+	var names: Array = []
+	if tiles is Array:
+		for t in (tiles as Array):
+			names.append(_tile_name(int(t), ctx))
+	var parts: Array = []
+	if not names.is_empty():
+		parts.append(", ".join(names))
+	if cash > 0:
+		parts.append("$%d" % cash)
+	if parts.is_empty():
+		return I18n.t("trade.nothing")
+	return " + ".join(parts)
 
 
 ## A tile the projection knows by name; when the adapter could not carry the index (rare

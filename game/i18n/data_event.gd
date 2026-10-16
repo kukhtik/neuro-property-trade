@@ -135,8 +135,14 @@ const D := {
 	"jrn.ev.sell":     {"ru": "продаёт дом на «%s»", "en": "sells a house on «%s»"},
 	"jrn.ev.mort":     {"ru": "закладывает «%s» за $%d", "en": "mortgages «%s» for $%d"},
 	"jrn.ev.unmort":   {"ru": "выкупает «%s» за $%d", "en": "unmortgages «%s» for $%d"},
-	"jrn.ev.trdoffer": {"ru": "предлагает сделку: %s", "en": "offers a trade: %s"},
-	"jrn.ev.trade":    {"ru": "сделка заключена", "en": "trade completed"},
+	# E-1/D9: the trade line used to name only the partner ("предлагает сделку: Neuro") - the one
+	# question a trade line exists to answer, "what is being offered", went unanswered. Both lines
+	# now carry the composition in tile NAMES; `trade.terms` is the ONE renderer all three surfaces
+	# (journal, modal, toast) share, so a reader cannot be told three things about one deal.
+	"jrn.ev.trdoffer": {"ru": "предлагает сделку %s: %s", "en": "offers a trade to %s: %s"},
+	"jrn.ev.trade":    {"ru": "%s ⇄ %s: %s", "en": "%s ⇄ %s: %s"},
+	"trade.terms":     {"ru": "%s ⇄ %s", "en": "%s ⇄ %s"},
+	"trade.nothing":   {"ru": "ничего", "en": "nothing"},
 	"jrn.ev.trdno":    {"ru": "сделка отклонена", "en": "trade declined"},
 	"jrn.ev.bank":     {"ru": "банкрот", "en": "bankrupt"},
 	"jrn.ev.over":    {"ru": "победа!", "en": "wins!"},
