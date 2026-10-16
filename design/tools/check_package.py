@@ -93,6 +93,41 @@ def main() -> int:
                 fail(f"{sid}: --p{i} mockup={got} skin={want}", fails)
         print(f"    {sid}: {checked} mapped tokens + {len(players)} player colours checked")
 
+    # 1b. SIZES ------------------------------------------------------------------
+    # WHY THIS EXISTS: the check above compares COLOURS only, so the mockup's `--fs-*` scale (the
+    # type ramp the whole prototype is laid out with) could drift from the game's `tokens.size`
+    # with nothing to notice - the prototype would keep drawing 13px body text while the game
+    # rendered 14. A harness that hardcodes a value from the thing it inspects cannot report that
+    # value changing; these five numbers are read from BOTH sides and compared.
+    print("[1b] sizes: mockup --fs-* vs game skins' tokens.size")
+    fs_block = re.search(r":root\s*\{([^}]*)\}", html)
+    if not fs_block:
+        fail("no :root { } block to read the --fs-* scale from", fails)
+    else:
+        sizes_css = dict(re.findall(r"(--fs-[a-z0-9]+)\s*:\s*(\d+)px", fs_block.group(1)))
+        # the sizes are declared once at :root (they are not per-theme), so compare against the
+        # skins that declare them; a skin that inherits must resolve to the same numbers.
+        for sid in SKIN_ORDER:
+            chain = []
+            cur = sid
+            while cur:
+                chain.append(cur)
+                cur = json.loads((GAME / "assets" / "skins" / cur / "skin.json").read_text(encoding="utf-8")).get("extends")
+            sz = {}
+            for c in reversed(chain):
+                sz.update(json.loads((GAME / "assets" / "skins" / c / "skin.json").read_text(encoding="utf-8"))
+                          .get("tokens", {}).get("size", {}))
+            n = 0
+            for token, var in (("xs", "--fs-xs"), ("s", "--fs-s"), ("m", "--fs-m"), ("l", "--fs-l"), ("xl", "--fs-xl")):
+                if token not in sz:
+                    continue
+                got = sizes_css.get(var)
+                want = str(sz[token])
+                n += 1
+                if got != want:
+                    fail(f"{sid}: {var} mockup={got}px skin={want}px", fails)
+            print(f"    {sid}: {n} size tokens checked")
+
     # 2. i18n -----------------------------------------------------------------
     print("[2] i18n: every static key used by the prototype resolves")
     used = set(re.findall(r'data-i18n(?:-tip)?="([^"]+)"', html_static))

@@ -48,7 +48,13 @@ const FALLBACK_COLORS := {
 	"mortgage.dim": "#999999",
 	"hatch": "#0000004d", "ring_bg": "#333f5999",
 }
-const FALLBACK_SIZES := {"xs": 10, "s": 12, "m": 14, "l": 18, "xl": 28}
+## The sizes a skin FALLS BACK to when it declares none. R-3 (master-fix-plan §1) raised the three
+## body sizes: the map measured x-height 6-9px in the docks and console, which is texture, not
+## text. `l`/`xl` are headings and were already large enough.
+## NOTE WHERE THIS LIVES: the plan says "all 4 skin.json", but the game reads `tokens.size` from
+## each skin file AND this constant, and a skin that declares nothing (evil inherits neuro) reads
+## these numbers. Changing only the skin files would leave that path at the old sizes.
+const FALLBACK_SIZES := {"xs": 11, "s": 13, "m": 14, "l": 18, "xl": 28}
 const FALLBACK_SPACE := [4, 8, 12, 16, 24]
 const FALLBACK_SHAPE := {"radius": 0, "chamfer": 9, "line": 1, "line_active": 2}
 const FALLBACK_METRICS := {

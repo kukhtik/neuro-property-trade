@@ -83,14 +83,17 @@ func bottom_height(stream: bool = false) -> int:
 	return 96
 
 
-## Text scale trim for compact (one step down).
-func text_scale() -> float:
-	return 0.92 if is_compact() else 1.0
-
-
 ## Below the minimum supported width the layout is not guaranteed.
 func is_supported() -> bool:
 	return screen.x >= MIN_WIDTH
+
+
+## REMOVED (R-3, master-fix-plan §1): `text_scale() == 0.92 in compact` lived here with ZERO
+## consumers - the same dead-ladder shape as `label_step` before R-1 (tested in ui_core_test,
+## consumed by nobody). It is not re-wired: the owner's rule is "крупно, но не слишком", which
+## forbids shrinking text on a small window; the compact profile trims CONTENT (steps hidden,
+## brand hidden, ticker instead of the dock toast), never the type size. The stream profile's
+## 1.15 growth lives in UiProfile.text_scale, which is the one that has a consumer.
 
 
 ## Tile-label degradation step: 0 = full, 3 = name hidden (tile inspector

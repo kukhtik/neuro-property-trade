@@ -157,7 +157,7 @@
       },
       "ring_bg": "#39404d99"
     },
-    "size": { "xs": 10, "s": 12, "m": 14, "l": 18, "xl": 28 },
+    "size": { "xs": 11, "s": 13, "m": 14, "l": 18, "xl": 28 },
     "space": [4, 8, 12, 16, 24],
     "shape": { "radius": 0, "chamfer": 9, "line": 1, "line_active": 2 },
     "font": { "ui": "", "mono": "", "display": "" }

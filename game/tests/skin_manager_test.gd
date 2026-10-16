@@ -22,7 +22,8 @@ static func test_list() -> Array[String]:
 		"test_chamfer_polygon_shapes", "test_unknown_skin_uses_defaults",
 		"test_dotted_slot_id_resolves", "test_dotted_color_tokens_come_from_the_skin",
 		"test_metric_not_shadowed_by_fallback", "test_token_path_follows_the_skin",
-		"test_motion_not_shadowed_by_fallback", "test_identity_palette_follows_skin"]
+		"test_motion_not_shadowed_by_fallback", "test_identity_palette_follows_skin",
+		"test_r3_body_sizes_clear_the_readability_floor"]
 
 static func test_default_skin_loads() -> String:
 	var s = SM.new()
@@ -54,9 +55,12 @@ static func test_evil_inherits_from_neuro() -> String:
 static func test_extends_chain_resolves() -> String:
 	var s = SM.new()
 	s.load_skin("evil")
-	# neuro defines size.m=13; default has 14. evil inherits from neuro.
-	if s.size("m") != 13:
-		return "evil should inherit size.m=13 from neuro, got %d" % s.size("m")
+	# R-3 unified the body sizes across skins: neuro no longer overrides m=13 down from default's
+	# 14, so the whole chain resolves to the raised floors. evil inherits from neuro.
+	if s.size("m") != 14:
+		return "evil should inherit size.m=14 through neuro, got %d" % s.size("m")
+	if s.size("s") != 13 or s.size("xs") != 11:
+		return "evil should inherit the R-3 floors (s=13, xs=11), got s=%d xs=%d" % [s.size("s"), s.size("xs")]
 	return ""
 
 static func test_token_fallback_when_absent() -> String:
@@ -123,11 +127,38 @@ static func test_tile_color_group_vs_type() -> String:
 		return "tax tile must not reuse the property colour"
 	return ""
 
+## R-3 (master-fix-plan §1, D7): the BODY sizes are the readability floor of the whole UI.
+## The defect: the map measured x-height 6-9px in the docks and the console - the base body size
+## was 12px, and 10px tokens sat under it. A test that only reads ONE skin would have passed
+## before this change on `default` (m=14) while `neuro` rendered 13 - and `neuro` is the skin the
+## stream uses, so the check has to walk EVERY skin and every body token.
+static func test_r3_body_sizes_clear_the_readability_floor() -> String:
+	# the floors the plan names, applied to every skin that ships
+	for skin_id in ["default", "neuro", "evil", "classic"]:
+		var s = SM.new()
+		if not s.load_skin(skin_id):
+			return "skin %s failed to load" % skin_id
+		if s.size("m") < 14:
+			return "skin %s: size.m is %dpx, the R-3 floor is 14" % [skin_id, s.size("m")]
+		if s.size("s") < 13:
+			return "skin %s: size.s is %dpx, the R-3 floor is 13" % [skin_id, s.size("s")]
+		if s.size("xs") < 11:
+			return "skin %s: size.xs is %dpx, the R-3 floor is 11" % [skin_id, s.size("xs")]
+		# and a skin that declares NOTHING must still resolve to the floors (the built-in path -
+		# this is the branch that changing only the skin files would have left behind)
+		var miss = SM.new()
+		miss.load_skin("does-not-exist")
+		if miss.size("xs", -1) < 11 or miss.size("s", -1) < 13 or miss.size("m", -1) < 14:
+			return ("the built-in fallback sizes are still small: xs=%d s=%d m=%d"
+				% [miss.size("xs", -1), miss.size("s", -1), miss.size("m", -1)])
+	return ""
+
+
 static func test_size_and_space_tokens() -> String:
 	var s = SM.new()
 	s.load_skin("neuro")
-	if s.size("m") != 13:
-		return "size.m should be 13, got %d" % s.size("m")
+	if s.size("m") != 14:
+		return "size.m should be 14 after R-3, got %d" % s.size("m")
 	if s.size("nope", 42) != 42:
 		return "unknown size should return the fallback"
 	if s.space(1) != 4 or s.space(5) != 24:
@@ -190,8 +221,8 @@ static func test_theme_builds_from_skin() -> String:
 	var col = th.get_color("font_color", "ButtonPrimary")
 	if col != Color("2a0618"):
 		return "ButtonPrimary font should be on_accent (#2a0618), got %s" % col
-	if th.default_font_size != 13:
-		return "theme default font size should follow size.m (13), got %d" % th.default_font_size
+	if th.default_font_size != 14:
+		return "theme default font size should follow size.m (14), got %d" % th.default_font_size
 	var sb = th.get_stylebox("normal", "ButtonPrimary")
 	if not (sb is StyleBoxFlat):
 		return "ButtonPrimary normal stylebox should be a StyleBoxFlat"
