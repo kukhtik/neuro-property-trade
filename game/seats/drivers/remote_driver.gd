@@ -36,7 +36,9 @@ var idle_ms := 0
 signal projection_received(pid: int, proj: Dictionary)
 
 
-func setup(eng, s) -> void:
+## `mgr` is accepted for a uniform driver signature (seat_manager hands every driver its manager);
+## a REMOTE driver never submits to a local engine - the host owns it - so it is ignored here.
+func setup(eng, s, _mgr = null) -> void:
 	engine = eng
 	seat = s
 

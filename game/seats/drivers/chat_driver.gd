@@ -12,12 +12,25 @@ const EMPTY_ROUNDS_BEFORE_PASS := 3
 
 var engine
 var seat
+## See ai_driver.manager: a chat-driven seat must submit THROUGH the manager for its events to
+## reach the journal - the same defect that left an AI match's feed empty.
+var manager = null
 var _queue: Array = []   # of {action, params}
 var _empty := 0          # consecutive decision points with nothing usable in the box
 
-func setup(eng, s) -> void:
+func setup(eng, s, mgr = null) -> void:
 	engine = eng
 	seat = s
+	manager = mgr
+
+
+## Submit through the manager when we have one, so the events it returns are published.
+func submit(action: String, params: Dictionary) -> Dictionary:
+	if seat == null:
+		return {}
+	if manager != null and manager.has_method("push_intent"):
+		return manager.push_intent(seat.pid, action, params)
+	return engine.submit_intent(seat.pid, action, params)
 
 func enqueue(action: String, params: Dictionary) -> void:
 	_queue.append({"action": action, "params": params})
@@ -42,7 +55,7 @@ func act() -> void:
 		_empty += 1
 		if _empty >= EMPTY_ROUNDS_BEFORE_PASS and legal.has("pass"):
 			_empty = 0
-			engine.submit_intent(seat.pid, "pass", {})
+			submit("pass", {})
 		return
 	_empty = 0
 	# best = action with the most votes; ties -> first enqueued of the leaders
@@ -61,4 +74,4 @@ func act() -> void:
 			chosen = cmd
 			break
 	_queue.clear()
-	engine.submit_intent(seat.pid, best, chosen.get("params", {}))
+	submit(best, chosen.get("params", {}))

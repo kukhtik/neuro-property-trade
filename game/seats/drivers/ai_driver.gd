@@ -15,6 +15,13 @@ const TradeNegotiator := preload("res://seats/trade_negotiator.gd")
 
 var engine
 var seat
+## The manager this driver belongs to. Submitting THROUGH it is what makes an auto-played match
+## visible: `engine.submit_intent` returns the events it produced, and only the manager forwards
+## them to the journal, the toasts and the board (`events_emitted`). A driver that called the
+## engine directly discarded them, so an all-AI/stream match had a permanently empty feed - found
+## by the STREAM-READ gate, which could not find a single journal line to measure.
+## Optional: a driver built without a manager (a unit test) still works, it simply emits nothing.
+var manager = null
 
 ## Look for a trade every Nth decision point.
 ##
@@ -26,9 +33,20 @@ var seat
 const TRADE_LOOK_EVERY := 8
 var _turns := 0
 
-func setup(eng, s) -> void:
+func setup(eng, s, mgr = null) -> void:
 	engine = eng
 	seat = s
+	manager = mgr
+
+
+## Submit an intent and let the MANAGER publish the events (journal/toasts/board). Falls back to
+## the engine when no manager was handed in (headless unit tests), never to a silent drop.
+func submit(action: String, params: Dictionary) -> Dictionary:
+	if seat == null:
+		return {}
+	if manager != null and manager.has_method("push_intent"):
+		return manager.push_intent(seat.pid, action, params)
+	return engine.submit_intent(seat.pid, action, params)
 
 
 ## This seat's character. Falls back to the rotating default when a match never
@@ -56,12 +74,12 @@ func act() -> void:
 	if legal.has("build_house"):
 		var bt := _build_tile(pid)
 		if bt >= 0:
-			engine.submit_intent(pid, "build_house", {"tile": bt})
+			submit("build_house", {"tile": bt})
 			return
 	if legal.has("propose_trade"):
 		var offer := _offer(pid)
 		if not offer.is_empty():
-			engine.submit_intent(pid, "propose_trade", offer)
+			submit("propose_trade", offer)
 			return
 	match action:
 		"bid":
@@ -96,7 +114,7 @@ func act() -> void:
 			params["accept"] = TradeEvaluator.accept_with(engine, pid, engine._pending_trade)
 		"roll":
 			_turns += 1
-	engine.submit_intent(pid, action, params)
+	submit(action, params)
 
 
 ## What this seat bids, and whether it bids at all.

@@ -74,7 +74,10 @@ func _spawn_driver(pid: int, path: String) -> void:
 	var node = Script.new()
 	node.name = "Driver%d" % pid
 	add_child(node)
-	node.setup(engine, _seat(pid))
+	# the manager, so a driver submits THROUGH it and its events reach the journal, the toasts and
+	# the board - see ai_driver.submit (the defect this closes: a driver calling engine.submit_intent
+	# directly threw the returned events away, so an all-AI match had a permanently empty feed).
+	node.setup(engine, _seat(pid), self)
 	_drivers[pid] = node
 
 ## Let the host play its own LOCAL seats (automated runs). REMOTE seats are
