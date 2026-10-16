@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://capstate"]
-
-[ext_resource type="Script" path="res://tools/cap_state.gd" id="1_cs"]
-
-[node name="CapState" type="Node"]
-script = ExtResource("1_cs")
