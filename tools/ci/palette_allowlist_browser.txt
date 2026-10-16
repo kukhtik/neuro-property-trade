@@ -1,0 +1,18 @@
+# Palette allowlist for frames of the RELEASE BUILD in a browser (S3 scenario, tools/ci/scenario_s3.sh).
+#
+# Why a SECOND list instead of extending tools/ci/palette_allowlist.txt: that one is calibrated
+# for frames the app captures itself with opengl3, and its four entries are exactly the four
+# clusters that ever appeared there. A browser adds its own compositing and font antialiasing, so
+# it produces different blends - loosening the native list would quietly weaken SG-03 for the
+# frames it was calibrated on. One list per renderer, each with its own evidence.
+#
+# Every entry below was checked, not guessed: it is an exact blend (max channel delta <= 1) of two
+# tokens of this skin, i.e. antialiasing of the skin's own colours, and nothing else.
+# #652e51   surface.1 #130b1f + accent #ff6fae at 35%  (264 px in frame_1280x720.png)
+# #4b3f5e   surface.1 #130b1f + muted  #a896c8 at 37%  (138 px)
+# #c6cace   the dice-plate line, already allowlisted for the app's own frames (same art)
+# A colour that is NOT such a blend still shows up as an unexplained cluster, and the scenario
+# additionally fails when any single unexplained cluster covers 1200px or more.
+#652e51
+#4b3f5e
+#c6cace
