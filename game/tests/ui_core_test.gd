@@ -601,6 +601,11 @@ static func test_label_step_thresholds() -> String:
 		return "45px must return step 2"
 	if LayoutProfileScript.label_step(30.0) != 3:
 		return "30px must return step 3"
+	# STEP 3 NO LONGER MEANS "SILENT" (owner's rule, 16.10 evening): the ladder's last rung sheds the
+	# price, never the NAME. The tiles read this same step, so the contract lives here as well as in
+	# tile_view_test - a board small enough to reach step 3 must still show a name in every cell.
+	if LayoutProfileScript.CELL_NAME_ALWAYS_MIN > 44.0:
+		return "the always-name floor (%.0f) must sit under any board the layout can produce" % LayoutProfileScript.CELL_NAME_ALWAYS_MIN
 	return ""
 
 

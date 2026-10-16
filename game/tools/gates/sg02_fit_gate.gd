@@ -27,9 +27,14 @@ const PROFILES := [
 ]
 const LOCALES := ["ru", "en"]
 ## The design's allowed ellipsis sites (gates.md SG-02: "компакт-имена, рейлы"): a name that has
-## to fit a dock/strip, the tile title in the inspector, the toast title, the rail titles.
+## genuinely run out of room may ellipsize rather than be clipped silently.
+##
+## A RING CELL'S NAME IS ONE OF THEM (owner's rule, 16.10 evening): the name is now shown at EVERY
+## cell size, so on the tightest ring it must be allowed to ellipsize - "Sunset Bl…" is a cell a
+## player can still name, and an empty square is not. Before this the name was simply HIDDEN at that
+## size, which is the defect the owner reported.
 const ELLIPSIS_ANCESTORS := ["seats", "drawer-seats", "toast", "inspector", "drawer-inspector",
-	"rail-left", "rail-right"]
+	"rail-left", "rail-right", "stage", "stage-camera", "act"]
 ## Controls that manage their own content size (scroll/rich text): skip the text-fit rule.
 const TEXT_FIT_SKIP := ["RichTextLabel", "TextEdit", "LineEdit", "ItemList", "Tree", "TabBar",
 	"ScrollBar", "VScrollBar", "HSlider", "ProgressBar"]

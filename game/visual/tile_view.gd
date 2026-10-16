@@ -228,13 +228,13 @@ func _layout_children() -> void:
 	var fprice: int = int(f["price"])
 	_name.add_theme_font_size_override("font_size", fname)
 	_price.add_theme_font_size_override("font_size", fprice)
-	# READ-1/D2: label_step was a dead ladder - tested but consumed by nobody. Step 3 (cell < 44)
-	# is where the name stops being legible at ANY size, so there we drop it deliberately and let
-	# the group band + owner badge keep the cell distinguishable, with the inspector/tooltip
-	# carrying the name. Between 44 and 60 the name stays readable because of the 11px floor.
+	# THE NAME IS NEVER HIDDEN (owner's rule, 16.10 evening): a cell without its word is an empty
+	# square - which is exactly what he saw, 12 of them. The ladder sheds SECONDARY detail as the
+	# cell tightens (the price hides at step 2, the house squares at step 1); identity stays.
+	# `label_step` no longer has a "hide the name" rung, and this line is what consumes that promise.
 	var step: int = LayoutProfile.label_step(c)
-	_name.visible = step < 3
-	if step == 2:
+	_name.visible = true
+	if step >= 2:
 		# the tightest legible ring: no price, the name still carries the cell
 		_price.visible = false
 	else:

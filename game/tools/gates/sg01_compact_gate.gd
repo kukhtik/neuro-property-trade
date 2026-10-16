@@ -187,8 +187,18 @@ func _check_metrics(gv) -> void:
 		_fail("1440x900: left dock %s != 268" % str((seats as Control).size.x))
 	elif rightcol != null and absf((rightcol as Control).size.x - 344.0) > 2.0:
 		_fail("1440x900: right dock %s != 344" % str((rightcol as Control).size.x))
-	elif act != null and (act as Control).size.y < 90.0:
-		_fail("1440x900: console height %s < 90" % str((act as Control).size.y))
+	# THE CONSOLE IS A STRIP, NOT A PANEL (owner's relayout, 16.10 evening). This check used to
+	# require size.y >= 90 - a literal from the design the owner has just replaced ("панели абсурдно
+	# огромные"). It then went red on the CORRECT new layout (`console height 44.0 < 90`), which is
+	# the "check nailed to a design literal" antipattern: the fix is to update the check, not to
+	# undo the design.
+	#
+	# What matters about the console now is the opposite of its old size: it must be TALL ENOUGH to
+	# read a line and SHORT ENOUGH not to steal the board's height. Both bounds are stated here.
+	elif act != null and (act as Control).size.y < 40.0:
+		_fail("1440x900: console height %s < 40 - its own buttons would be clipped" % str((act as Control).size.y))
+	elif act != null and (act as Control).size.y > 120.0:
+		_fail("1440x900: console height %s > 120 - the strip is a panel again and is eating the board" % str((act as Control).size.y))
 	else:
 		_checks += 1
 

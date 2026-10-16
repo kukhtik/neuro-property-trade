@@ -30,53 +30,100 @@ var _last_legal: Array = []
 var _human_now := false
 ## last sync() arguments - a locale switch re-renders the console from them (SG-08)
 var _last_args: Array = []
+## The width the full management row needs on one line (measured in RU, the longer language). Above
+## this the strip reserves it; below it the row wraps by itself rather than widening the window.
+const ROW_WANTS := 660.0
+
+
+## Keep the strip one line WHEN THERE IS ROOM, and let it wrap when there is not - without ever
+## pushing the window wider.
+##
+## WHY THE WINDOW AND NOT `size.x`: this panel's own width is already inflated by the minimum it is
+## about to set - measuring it is circular, and it reported 949 and granted a 660px row that then
+## forced the whole frame to 1577 (SG-02). The FRAME is the one honest number here: it is what the
+## user actually has.
+func _fit_row_min() -> void:
+	if _btn_row == null:
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var frame_w: float = vp.get_visible_rect().size.x
+	if frame_w <= 1.0:
+		return          # not laid out yet: leave the default, do not guess
+	# the dock room the row may claim: the frame minus the two side docks and the strip's own chrome
+	var room: float = frame_w - 268.0 - 344.0 - 60.0
+	_btn_row.custom_minimum_size.x = 0.0
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_fit_row_min()
 
 
 func _init() -> void:
-	custom_minimum_size.y = 96   # `--cons-h`
+	# THE CONSOLE IS A FLOATING STRIP, NOT A PANEL (owner's relayout, 16.10 evening).
+	#
+	# It used to be a 96px `--cons-h` box that GREW to 362px, because its prompt is a wrapping
+	# paragraph with EXPAND_FILL - and that 362px came straight out of the board's height. Measured
+	# on the live tree: header 56 + console 362 = 418px of 900, leaving the board 796x449 (not even
+	# square), every cell 41px, names dropped, 12 cells blank. The owner's report ("панели абсурдно
+	# огромные", "клетки пустые") is that arithmetic.
+	#
+	# Now it is one line: the prompt does not wrap and does not take vertical slack, so the strip is
+	# as tall as its own text. The board gets the height back.
+	custom_minimum_size.y = 44
 	add_theme_stylebox_override("panel",
 		UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var m := MarginContainer.new()
 	m.add_theme_constant_override("margin_left", 12)
 	m.add_theme_constant_override("margin_right", 12)
-	m.add_theme_constant_override("margin_top", 8)
-	m.add_theme_constant_override("margin_bottom", 12)
+	m.add_theme_constant_override("margin_top", 6)
+	m.add_theme_constant_override("margin_bottom", 6)
 	add_child(m)
-	var col := UiTheme.vbox(8)
+	var col := UiTheme.vbox(0)
 	m.add_child(col)
 
 	var row1 := UiTheme.hbox(10)
-	row1.custom_minimum_size.y = 22
 	_ticker = UiTheme.label("", 12, UiTheme.COL().accent)
 	_ticker.visible = false
 	row1.add_child(_ticker)
-	_hint = UiTheme.label_wrap("", 13, UiTheme.COL().text)
+	# THE CONTROLS COME FIRST, THE PROMPT TAKES WHAT IS LEFT. The first version of this strip put the
+	# EXPAND_FILL prompt first, so it ate the whole row and squeezed the button container to 132px -
+	# the buttons then WRAPPED VERTICALLY and the "one-line strip" stood 300px tall, exactly the
+	# waste this relayout is meant to remove. Order in an HBox is a decision, not cosmetics.
+	_btn_row = HFlowContainer.new()
+	_btn_row.add_theme_constant_override("h_separation", 8)
+	_btn_row.add_theme_constant_override("v_separation", 4)
+	# THE BUTTONS KEEP THEIR ROOM *WITHOUT* PUSHING THE WINDOW. A fixed
+	# `custom_minimum_size.x = 660` propagates all the way up: the console's minimum made the centre
+	# column the widest child, and the whole frame grew to 1577px in a 1440px window (SG-02). The
+	# strip must give way instead - the row wraps, the strip gets taller, the WINDOW does not change.
+	#
+	# So NO minimum is set here: one would be in force before the first resize, which is the very
+	# moment it does the damage. `_fit_row_min()` grants the room once the strip knows its own
+	# width - one line when there is room, honest wrapping when there is not.
+	_btn_row.custom_minimum_size.x = 0.0
+	row1.add_child(_btn_row)
+	# ONE LINE, NO WRAP, AND IT MUST BE ABLE TO VANISH. `label` (not `label_wrap`) is the value role -
+	# it sizes to its content and cannot inflate the panel height. But a Label's minimum WIDTH is its
+	# text, and beside a 660px control row that made the whole strip 1593px in a 1440px window
+	# (SG-02). `clip_text` plus a zero minimum lets it be the LAST thing to yield: the controls stay
+	# whole, and the prompt takes whatever is left (its full text is in the tooltip and the journal).
+	_hint = UiTheme.label("", 13, UiTheme.COL().text)
 	_hint.name = "Prompt"
 	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_hint.clip_text = true
+	_hint.custom_minimum_size.x = 0.0
 	row1.add_child(_hint)
 	_lastroll = UiTheme.label("", 12, UiTheme.COL().money)
 	_lastroll.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row1.add_child(_lastroll)
-	col.add_child(row1)
-
-	var row2 := UiTheme.hbox(8)
-	row2.alignment = BoxContainer.ALIGNMENT_BEGIN
-	# THE CONTROL ROW WRAPS. DESIGN §6 (порядок ужимания): "ряды консоли переносятся" - on a
-	# 1280-wide window in RU the full management set needs ~630px and a rigid row pushed the
-	# whole dock layout 9px past the viewport (SG-02 found it: 1289 vs 1280 on a human turn).
-	# A wrapping row keeps every caption fully readable instead of clipping or overlapping.
-	_btn_row = HFlowContainer.new()
-	_btn_row.add_theme_constant_override("h_separation", 8)
-	_btn_row.add_theme_constant_override("v_separation", 6)
-	_btn_row.custom_minimum_size.y = 44
-	row2.add_child(_btn_row)
 	_status = UiTheme.label("", 12, UiTheme.COL().text_dim)
-	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row2.add_child(_status)
-	col.add_child(row2)
+	row1.add_child(_status)
+	col.add_child(row1)
 
 
 func set_cold(v: bool) -> void:

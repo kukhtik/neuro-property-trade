@@ -96,16 +96,33 @@ func is_supported() -> bool:
 ## 1.15 growth lives in UiProfile.text_scale, which is the one that has a consumer.
 
 
-## Tile-label degradation step: 0 = full, 3 = name hidden (tile inspector
-## carries it instead). Thresholds are px of cell width.
+## Tile-label degradation step. Thresholds are px of cell width.
+##
+## THE OWNER'S RULE (16.10, evening): A CELL IS NEVER BLANK. He reported "клетки почему-то пустые
+## вообще" and the live tree agreed - at 1440x900 the board was 796x449 (NOT square: the console ate
+## 362px), so every cell was 41px, every cell fell past the old step 3, the NAME was hidden by design
+## and the 12 non-property cells (Start, Jail, Chest, Fortune, Tax) additionally have no price - they
+## rendered as 40x40 EMPTY squares. The board's own data was fine; the layout starved it.
+##
+## So the ladder no longer has a "hide the name" rung. The steps still shed SECONDARY detail (the
+## price, the house squares) as a cell tightens, because a name is the cell's identity and a price is
+## an attribute of it - but the name stays to the last step, and step 3 now means "smallest type",
+## not "silent". The floor is deliberately BELOW any board the layout can produce (the smallest
+## supported profile gives ~53px cells after the relayout), so it is a guard against a future
+## regression, not a rung anyone reaches today.
 static func label_step(cell_width: float) -> int:
 	if cell_width >= 78.0:
 		return 0
 	if cell_width >= 60.0:
-		return 1   # price hidden
+		return 1   # house squares give way to the textual counter
 	if cell_width >= 44.0:
-		return 2   # smaller font
-	return 3       # corner labels and name hidden
+		return 2   # price hidden, the name still carries the cell
+	return 3       # smallest type: name KEPT (never hidden), price hidden
+
+
+## A cell must never render with nothing on it. One place states it, so the tiles, the gate and the
+## tests agree: at this size and above, a ring cell always shows a name.
+const CELL_NAME_ALWAYS_MIN := 24.0
 
 
 ## THE GLANCE FLOOR (docs/program.md P1.1, owner correction of 16.10).

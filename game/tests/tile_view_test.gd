@@ -29,7 +29,8 @@ static func test_list() -> Array[String]:
 		"test_fonts_never_shrink_below_floors_on_any_profile",
 		"test_name_renders_short_not_long",
 		"test_name_uses_ellipsis_not_clip",
-		"test_step3_hides_name_but_keeps_band_and_badge",
+		"test_smallest_step_keeps_the_name_band_and_badge",
+		"test_no_cell_is_ever_blank_across_sizes",
 		"test_house_counter_matches_houses",
 		"test_live_label_carries_the_computed_font_size",
 	]
@@ -130,9 +131,15 @@ static func test_name_uses_ellipsis_not_clip() -> String:
 	return ""
 
 
-static func test_step3_hides_name_but_keeps_band_and_badge() -> String:
-	# label_step(40) == 3 (see ui_core_test) and the plan requires: name hidden, but the group
-	# band and the owner badge stay so the cell is still distinguishable from its neighbours.
+static func test_smallest_step_keeps_the_name_band_and_badge() -> String:
+	# THE OLD CONTRACT WAS THE DEFECT. This test used to require the name to be HIDDEN at step 3,
+	# because `label_step` had a "hide the name" rung and the plan trusted the group band to identify
+	# the cell. The owner's report ("клетки почему-то пустые вообще") is exactly what that produced on
+	# a real board: at 1440x900 the console starved the board to 796x449, every cell fell to 41px =
+	# step 3, and the 12 non-property cells (no price either) rendered as EMPTY squares.
+	#
+	# The contract now: a cell is NEVER blank. At the smallest step the name must still be VISIBLE,
+	# and the band and the owner badge stay as well - identity does not give way to size.
 	var data := {"index": 3, "name": "Sunset Blvd", "short": "Sunset Blvd", "type": "property", "group": "brown", "cost": 60}
 	var tv := _tile(CELL_TINY, data)
 	if LayoutProfile.label_step(CELL_TINY) != 3:
@@ -140,9 +147,11 @@ static func test_step3_hides_name_but_keeps_band_and_badge() -> String:
 	var l := _find(tv, "first")
 	if l == null:
 		return "the built tile carries no named label"
-	if l.visible:
-		return "at cell %.0f (step 3) the name must be hidden - the ladder is still dead" % CELL_TINY
-	# the band must still be painted (it is the cell's remaining identity)
+	if not l.visible:
+		return "at cell %.0f (step 3) the name is HIDDEN - a nameless square is the owner's 'empty cell' defect" % CELL_TINY
+	if l.text.strip_edges() == "":
+		return "at cell %.0f the name label is visible but empty" % CELL_TINY
+	# the band must still be painted (the group colour)
 	var band: ColorRect = null
 	for c in tv.get_children():
 		if c is ColorRect and (c as ColorRect).size.x > 0.0:
@@ -156,7 +165,19 @@ static func test_step3_hides_name_but_keeps_band_and_badge() -> String:
 		if c is Label and (c as Label).text == "N" and (c as Label).visible:
 			badge_visible = true
 	if not badge_visible:
-		return "step 3 dropped the owner badge: the cell has neither name nor owner"
+		return "step 3 dropped the owner badge"
+	return ""
+
+
+static func test_no_cell_is_ever_blank_across_sizes() -> String:
+	# The regression this guards is the one the owner hit: a board small enough that EVERY cell lost
+	# its name. Walk the sizes a real window can produce and require a visible name on each.
+	for cell in [24.0, 32.0, 41.0, 53.0, 70.0, 86.0]:
+		var data := {"index": 0, "name": "Start", "short": "Start", "type": "go"}
+		var tv := _tile(cell, data)
+		var l := _find(tv, "first")
+		if l == null or not l.visible or (l as Label).text.strip_edges() == "":
+			return "a %.0fpx cell renders with no visible name - a blank square (the owner's defect)" % cell
 	return ""
 
 
