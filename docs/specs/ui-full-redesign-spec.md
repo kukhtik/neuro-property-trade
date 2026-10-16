@@ -467,7 +467,7 @@ _(заполняет дизайн-агент: «вопрос — почему о
 | Слой | Файлы |
 |---|---|
 | Экран и панели | `game/ui/{game_view,top_bar,players_panel,action_panel,journal_panel,tile_inspector,modal_host,toast,dice_stage,timer_ring,settings_overlay,host_invite,join_lobby,remote_session}.gd` |
-| Доска и визуал | `game/visual/{board_scene,board_view,tile_view,tile_layout,tile_hatch,token_panel,building_strip,board_center,effect_layer,spectacle,event_overlay,event_messages,skin_manager,skin_paint,sfx}.gd` |
+| Доска и визуал | `game/visual/{board_scene,board_view,tile_view,tile_layout,tile_hatch,token_panel,building_strip,board_center,effect_layer,spectacle,event_overlay,event_messages,skin_manager,sfx}.gd` |
 | Швы (профиль, раскладка, интенты, события) | `game/ui/core/{ui_profile,layout_profile,launch_params,intent_map,event_adapter,event_presenter,ui_store,money}.gd` |
 | Локализация | `game/i18n/i18n.gd` + `data_*.gd` |
 | Админ | `game/admin/{admin_panel,admin_controller,admin_gate}.gd` |

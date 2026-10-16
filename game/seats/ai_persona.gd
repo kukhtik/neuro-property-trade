@@ -129,14 +129,6 @@ static func trades_eagerly(persona_id: String) -> bool:
 	return bool(spec(persona_id).get("trades_eagerly", false))
 
 
-## Cash this seat will put into a trade to make it acceptable.
-static func trade_cash_limit(persona_id: String, money: int) -> int:
-	if not trades_eagerly(persona_id):
-		return 0
-	var f: float = float(spec(persona_id).get("trade_cash_frac", 0.1))
-	return int(round(float(maxi(money, 0)) * f))
-
-
 ## May this seat build, given its cash and the cost of a house?
 static func will_build(persona_id: String, money: int, house_cost: int) -> bool:
 	if house_cost <= 0:

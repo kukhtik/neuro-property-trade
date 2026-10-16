@@ -84,11 +84,6 @@ static func has(key: String) -> bool:
 	_ensure()
 	return _data.has(key)
 
-## Total count of collected keys (probe sanity).
-static func key_count() -> int:
-	_ensure()
-	return _data.size()
-
 ## All collected keys (probe sanity / coverage iteration).
 static func keys() -> Array:
 	_ensure()

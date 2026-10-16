@@ -63,7 +63,6 @@ var _journal: Control
 var _inspector: Control
 var _toasts: Control
 var _modals: Control
-var _seats_dock: Control
 var _rightcol: Control
 var _body_row: Control
 ## compact profile (design/regions.json): the docks collapse into 48px RAILS; a rail click

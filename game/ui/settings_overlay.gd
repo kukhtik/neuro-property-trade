@@ -759,8 +759,7 @@ func _validation_error() -> String:
 		if colors.has(col):
 			return I18n.t("settings.err_dup_color")
 		colors[col] = true
-		var tok: String = str(r["token"].get_item_text(r["token"].selected))
-		var _pers: String = _persona_of_row(r)
+		var tok: String = str(r["token"].get_item_text(r["token"]).selected)
 		if tokens.has(tok):
 			return I18n.t("settings.err_dup_token")
 		tokens[tok] = true

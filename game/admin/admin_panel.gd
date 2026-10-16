@@ -22,9 +22,6 @@ const EventMessages := preload("res://visual/event_messages.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
 const TAB_QUICK := 0
-const TAB_STATE := 1
-const TAB_EVENTS := 2
-const TAB_EDITS := 3
 
 const SNAPSHOT_PATH := "user://admin_snapshot.json"
 
@@ -543,7 +540,7 @@ func _save_snapshot() -> void:
 	if _controller == null:
 		return
 	var engine = _controller.engine
-	var ok: bool = Snapshot.save("user://admin_snapshot.json", engine)
+	var ok: bool = Snapshot.save(SNAPSHOT_PATH, engine)
 	_log_admin(I18n.t("admin.log_save_snap"), {"ok": ok, "reason": "" if ok else I18n.t("admin.reason_write_fail")})
 	_refresh_all()
 
@@ -551,7 +548,7 @@ func _load_snapshot() -> void:
 	var ok: bool = await _confirm_dialog(I18n.t("admin.confirm_snap"))
 	if not ok:
 		return
-	var eng = Snapshot.load("user://admin_snapshot.json")
+	var eng = Snapshot.load(SNAPSHOT_PATH)
 	if eng == null:
 		_log_admin(I18n.t("admin.log_export"), {"ok": false, "reason": I18n.t("admin.reason_load_fail")})
 		_refresh_all()

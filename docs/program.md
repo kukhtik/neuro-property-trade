@@ -60,15 +60,62 @@
 **Приёмка:** `git status` чист; оракул `388/0` без `SCRIPT ERROR:`; grep удалённых путей —
 0 живых ссылок.
 
-### P0.2 — отчёт «символы без потребителей»
+### P0.2 — отчёт «символы без потребителей» · СДЕЛАНО (16.10)
 
-Один скрипт, одна команда, печатает символы без не-тестовых потребителей. Известные на
-16.10: `UiProfile.text_scale` (комментарий «has a consumer» — ложь), `settings.spectacle`,
-`seat_manager.push_chat`, `chat_driver`, `event_presenter`, потребитель `speaking_changed`,
-`phone_fit_probe` (untracked-файлы). По каждому — решение: удалить / пометить `# WIP(<трек>)`
-и завести строкой в этом плане.
+Один скрипт, одна команда: `python tools/ci/unused_symbols.py` (без Godot, 1,6 с). Печатает
+`scanned: N product file(s), M check file(s), K declaration(s)`, затем ORPHAN / UNHEARD /
+UNLISTENED / UNAPPLIED. **Инструмент признаёт слепоту сам:** если список каталогов продукта
+перестал совпадать, он падает `FAIL: product glob(s) matched NOTHING: …` (сработало на первом
+же прогоне: `data/**/*.gd` не совпадал ни с чем — в `game/data` лежит только JSON).
 
-**Приёмка:** список пуст, либо каждая строка имеет решение здесь же.
+Три правила счёта — каждое исправленный дефект самого инструмента, найденный на живом прогоне:
+
+1. **комментарий — не потребитель.** Ложь «has a consumer» про `UiProfile.text_scale` жила
+   именно комментарием, и первая редакция его засчитывала.
+2. **вызов из `game/addons` — потребитель.** SDK зовёт `EngineAction._get_name/_execute_action`;
+   первая редакция объявила мёртвыми все пять методов интерфейса — их удаление сломало бы
+   SDK-место outright.
+3. **`class_name` достигается по пути файла** (`preload("res://core/player_identity.gd")` не
+   пишет `PlayerIdentity`), а виртуалы `Control` (`_get_minimum_size`) — не «без вызовов»,
+   их зовёт движок (allowlist).
+
+**Прогон 16.10:** 67 файлов продукта, 88 файлов проверок, 2583 декларации → **82 ORPHAN**,
+8 сигналов SDK без слушателя, 6 настроек без применения. Удалено этим коммитом: модуль
+`game/visual/skin_paint.gd` (314 строк, 11 находок, ноль ссылок где-либо с рождения — 629e976),
+`admin_panel.{TAB_STATE,TAB_EVENTS,TAB_EDITS}` (а `SNAPSHOT_PATH` наоборот сделан живым: литерал
+`user://admin_snapshot.json` был продублирован в save/load), `i18n.key_count`,
+`ai_persona.trade_cash_limit`, `game_view._seats_dock` и мёртвый локальный `_pers` в валидаторе
+настроек. Оракул после удаления: `ran 388 tests, 0 failed` → `==> ORACLE PASSED (388 tests,
+0 SCRIPT ERROR)`. Строка `skin_paint` убрана из спеки (список файлов слоя визуала).
+
+Остаток — решения (каждая находка имеет ровно одну строку):
+
+| Символы | Решение |
+|---|---|
+| `layout_profile.{for_screen,rail_left,rail_right,left_width,right_width,top_height,bottom_height,is_supported,RAIL_WIDTH}` | KEEP → **P2.2**: план сам делает `layout_profile` единственным домом метрик; сегодня его знают только тесты |
+| `theme.{label_muted,label_money,button_primary_chamfer,use_skin}` | KEEP → **P2.1**: Theme-ресурс либо вбирает эти фабрики, либо они удаляются |
+| `event_presenter.{EventPresenter,push,set_sink,set_resync,is_busy,skip_all,set_projection_source}` | WIP(**SG-06**): журнал уже строит `journal_lines.gd`+adapter — презентеру нужен живой потребитель или удаление вместе с `event_presenter_test` (тогда MIN_TESTS вниз тем же коммитом) |
+| `event_messages.bind_engine` + статик `_engine` | WIP(**SG-06/E-2**): привязку не зовёт никто → тексты событий живут на фолбэке по тегу места. Либо звать из `board_scene`, либо снести оба |
+| `seat_manager.{push_chat,push_admin_intent}` | WIP(**S2/P1.2**): `push_chat` — точка входа чата Твича (обещание S2); `push_admin_intent` решить там же (админка ходит другим путём) |
+| `chat_driver` (спавнится `seat_manager`, производителя нет) | WIP(**S2/P1.2**): заглушка без источника голосов — ровно то, что закрывает P1.2 |
+| SDK-сигналы `voice_chat.{voice_ready,voice_unavailable,speaking_changed,speech_cancelled,audio_received}` | WIP(**VOICE-01/P1.4**): «кто говорит» висит на `speaking_changed`, а он не подключён нигде |
+| SDK-сигналы `websocket.{connection_failed,disconnected,character_changed}` | WIP(**HG-06/P1.3**): слушаем только `connected` — экран джойна не умеет «не удалось подключиться» |
+| `remote_driver.{connect_to_host,request_state,configure,idle_ms,is_connected_to_host,disconnect_from_host}`, `game_server.{peer_count,seated_count,close_all}`, `protocol.{S2C,is_valid_client_msg,channel_for}`, `main.{_join_as_remote,server_port}` | WIP(**remote-native**): весь нативный remote-путь без потребителя — своп v3 унёс сцену, которая им пользовалась. Решить в сессии джойна: сценарий или удаление |
+| `intent_map.{IntentMap,to_engine,tile_action_hint}` | WIP(**P2.3**): UI либо ходит через карту интентов, либо карта уходит |
+| `ui_store.{set_follow,mark_over}` | WIP(**ZOOM-01/P1.4**: камера и зум) |
+| `ui_profile.{text_scale,shows_journal,shows_role_badge}` | WIP(**HG-12**): профиль роли обязан влиять на раскладку — иначе поле удаляется (правило владельца: нельзя держать поле, которое ничего не делает) |
+| `rail_panel.{set_expanded_width,set_content,set_count,is_collapsed,is_manual}`, `drawer_panel.W` | WIP(**P2.3**): рейлы/ящики переезжают в `.tscn`; тогда API рейла либо используется, либо исчезает |
+| `skin_manager.int_proportion` | WIP(**P2.1**) — вместе с темой |
+| `game_settings.{deck_pairs,deck_shuffle}`, `engine.{PHASE_RENT_SETTLE,PHASE_END_TURN,lander}`, `event_log.entries_of_type` | WIP(**owner**): ядро и настройки не трогаю без слова владельца (сериализуются в снапшот/реплей) |
+| `engine.{_teleport,_force_draw_card}`, `board_scene.{event_banner_text,cell_flashing}`, `event_adapter.{adapt_all,text_key}`, `money.{signed,name_of}`, `toast.{toast_count,dismiss_all}`, `action_panel.set_last_roll`, `skin_manager.{motion_profile,token_path,player_color,tile_color,has_slot}`, `chamfer_panel._get_minimum_size` | KEEP: потребитель — гейт/проба, то есть проверяемая поверхность плана (двигать её вместе с гейтом) |
+| **UNAPPLIED:** `game_settings.{spectacle,event_overlay,animations}` | WIP(**V-1**): экран настроек их сохраняет, игра не читает — галочка-декорация. Либо применить, либо убрать из оффера |
+| **UNAPPLIED:** `game_settings.{jail_rule,ai_aggression}` | WIP(**HG-07**): настройки правил обязаны доходить до движка — иначе убрать из оффера |
+| **UNAPPLIED:** `game_settings.language` | WIP(**SG-08**): язык живёт в `I18n`; поле в настройках никем не читается — проверить, не дубль ли |
+| `phone_fit_probe.{gd,tscn}` (untracked) | в git вместе со сценарием S3 — **P1.1** |
+
+**Приёмка:** выполнена — каждая из 96 находок (82 ORPHAN + 8 UNLISTENED + 6 UNAPPLIED) имеет
+строку выше; «пусто» в фазе 0 недостижимо без переноса экранов (P2.3), поэтому остаток закрыт
+треками, а не удалением. Повторить: `python tools/ci/unused_symbols.py`.
 
 ### P0.3 — доки к правде
 
