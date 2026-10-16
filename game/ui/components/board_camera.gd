@@ -120,11 +120,16 @@ func zoom_at(factor: float, at: Vector2) -> void:
 	var z := clampf(_zoom * factor, ZOOM_MIN, ZOOM_MAX)
 	if is_equal_approx(z, before):
 		return
-	# the board point under `at` before the zoom, and the position that keeps it there after
+	# THE BOARD POINT UNDER `at` BEFORE THE ZOOM must stay under it after. Work out that point - the
+	# same arithmetic `_apply` uses, so the two cannot disagree - then set the focus to it and let
+	# `_apply` produce the transform. (The first version wrote `board.position` HERE instead, which
+	# meant `_apply` was never called and the board's SCALE never followed the zoom: the camera's
+	# number changed and the screen did not. The integration probe caught it; the unit probe could
+	# not, because it only ever read the camera's own fields.)
 	var board_pt := (at - board.position) / before
 	_zoom = z
-	board.position = at - board_pt * _zoom
-	_focus = (size * 0.5 - board.position) / _zoom
+	_focus = board_pt + (size * 0.5 - at) / _zoom
+	_apply()
 	# a manual zoom takes the camera off follow: the viewer is looking where THEY put it
 	_release_follow()
 	zoom_changed.emit(_zoom)

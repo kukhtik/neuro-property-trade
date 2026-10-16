@@ -26,7 +26,7 @@ fi
 # interface; the v3 probe suite is rebuilt from scratch (skin + i18n survive — they test
 # the skin system and the string tables, not the widgets).
 PROBES=(
-	i18n_probe skin_probe v3_probe zoom_probe
+	i18n_probe skin_probe v3_probe zoom_probe zoom_integration_probe
 )
 
 failed=0
