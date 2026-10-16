@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # HG-11(b) - are the canonical artifacts newer than the code they claim to contain?
 #
-# THE RULE (docs/restoration/README.md, hard rule 5): an artifact and a frame are rebuilt in the
+# THE RULE (docs/program.md §1, rule 7): an artifact and a frame are rebuilt in the
 # same run that reports on them. The audit's proof that this did not hold: `build/windows/
 # *.exe` (15:22) and `build/web/` (15:33) were OLDER than the interface swap commit (18:52)
 # and still carried the archived UI - while reports kept pointing at them. That pre-swap pair

@@ -29,7 +29,7 @@ mkdir -p "$dist/site"
 # --- 1. desktop ---------------------------------------------------------------
 # Kit staging lives under build/kit/ — NOT in build/windows|build/web: those two paths used to
 # hold the pre-swap archive watched by HG-11; the archive was retired on 2026-10-15 (see
-# docs/restoration/README.md) and freshness now governs build/current only.
+# docs/program.md) and freshness now governs build/current only.
 echo "[1/4] экспорт .exe"
 mkdir -p "$repo/build/kit/windows"
 # Godot needs a NATIVE path for the output; MSYS-style "/c/..." is rejected.

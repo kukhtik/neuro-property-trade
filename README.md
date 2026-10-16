@@ -35,7 +35,7 @@ game/            Godot 4 project: core rules engine, sdk adapter, seats, UI
   tests/         headless test modules (run via res://tests/run.gd)
 tools/ci/        pinned toolchain fetch + the oracle + web-build verify
 corpus/games/    recorded decision corpus (replayable JSONL logs)
-docs/            Licensing, plan, infra, decision records
+docs/            program.md (the plan), licensing, infra, specs, how-to-play
 ```
 
 ## Build & test
@@ -96,15 +96,18 @@ The engine, seats, network host, admin console, visual layer and the UI overhaul
 Verified by the oracle, the probes and the gate program — all run in CI:
 
 ```bash
-tools/ci/run_tests.sh     # 356 headless tests (rules engine + the projection contract + UI core)
+tools/ci/run_tests.sh     # 388 headless tests (rules engine + the projection contract + UI core)
 tools/ci/run_probes.sh    # 3 behavioral probes (i18n, skin, v3 layout)
 tools/ci/run_gates.sh     # 21 required gates: functionality (HG) + interface (SG), report in build/gates/
 ```
 
 Plus determinism (every recorded game replays to a byte-identical fingerprint), a regenerated
 decision corpus and seeded soaks, and a WebGL export that a real browser was driven through.
+`python tools/ci/unused_symbols.py` reports product code with no consumer (orphan symbols,
+unlistened signals, settings nobody applies).
 
-Roadmap and known gaps: `docs/plan.md`.
+Roadmap and known gaps: `docs/program.md` (the single plan) + the current snapshot in
+`docs/restoration/`.
 
 ## License
 
