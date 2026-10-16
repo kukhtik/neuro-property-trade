@@ -180,6 +180,14 @@ const D := {
 	# live walk, 2026-10-14).
 	"ins.price":            {"ru": "цена", "en": "price"},
 	"ins.rent":             {"ru": "аренда", "en": "rent"},
+	# E-3/D11: the rent row says "сейчас" when the LIVE rent differs from the card's base value - the
+	# game charges for houses and for a monopoly, and a player comparing plots needs to know which
+	# number they are looking at. Plus the tile tooltip's own fragments.
+	"ins.rent_now":         {"ru": "аренда сейчас", "en": "rent now"},
+	"tip.cost":             {"ru": "цена $%d", "en": "price $%d"},
+	"tip.rent":             {"ru": "аренда $%d", "en": "rent $%d"},
+	"tip.rent_houses":      {"ru": "аренда $%d (%d дом.)", "en": "rent $%d (%d houses)"},
+	"tip.rent_hotel":       {"ru": "аренда $%d (отель)", "en": "rent $%d (hotel)"},
 
 	# ---- journal ----
 	"jrn.title":            {"ru": "◆ ХОД СОБЫТИЙ", "en": "◆ EVENT LOG"},

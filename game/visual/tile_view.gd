@@ -133,6 +133,33 @@ func _build(data: Dictionary) -> void:
 	add_child(_state)
 
 
+## E-3: the hover tooltip - name, group, price and the rent the tile charges RIGHT NOW.
+##
+## Only the parts that exist are shown, so a corner cell ("Start") does not advertise a rent of $0,
+## and an unowned plot still tells a viewer what it would cost them to land on it later.
+func _tip_update(entry: Dictionary) -> void:
+	var parts: Array = []
+	if _group != "":
+		# The group as the repo already renders it elsewhere (the inspector shows the raw token).
+		# Introducing a `group.*` key family here would be a half-built translation: the keys do not
+		# exist, and I18n.t would print the sentinel `{group.brown}` - the exact defect HG-09 exists to
+		# catch. If groups get localised, they get localised everywhere, in one change.
+		parts.append(_group)
+	var cost: int = int(entry.get("cost", 0))
+	if cost > 0:
+		parts.append(I18n.t("tip.cost", [cost]))
+	var rent_now: int = int(entry.get("rent_now", 0))
+	if rent_now > 0:
+		var houses: int = int(entry.get("houses", 0))
+		parts.append(I18n.t("tip.rent_hotel", [rent_now]) if houses >= 5
+			else I18n.t("tip.rent_houses", [rent_now, houses]) if houses > 0
+			else I18n.t("tip.rent", [rent_now]))
+	if bool(entry.get("mortgaged", false)):
+		parts.append(I18n.t("ins.mortgaged"))
+	var head: String = _name.tooltip_text if _name.tooltip_text != "" else str(entry.get("name", ""))
+	tooltip_text = head if parts.is_empty() else "%s\n%s" % [head, " · ".join(parts)]
+
+
 func _band_colour() -> Color:
 	if _type == "property" and _group != "":
 		return UiTheme.skin().group_color(_group)
@@ -261,6 +288,11 @@ func apply(entry: Dictionary) -> void:
 	var mortgaged: bool = bool(entry.get("mortgaged", false))
 	_mortgaged.visible = mortgaged
 	_face.modulate = Color(1, 1, 1, 0.45) if mortgaged else Color.WHITE
+	# E-3/D11: the cell's TOOLTIP carries what the cell is worth right now. Rent lived nowhere but
+	# the inspector, and the tooltip - the one surface a viewer hovers without a click - said only
+	# the name. Now it names the group, the price and the CURRENT rent (with houses and monopoly
+	# applied), which is the number a bid in an auction is actually about.
+	_tip_update(entry)
 	# the state frame: target tint · active ring (glow) · selected marker · owner border
 	var ac: Color = UiTheme.COL().accent
 	var sb := StyleBoxFlat.new()

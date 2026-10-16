@@ -20,6 +20,18 @@ func for_player(engine, pid: int) -> Dictionary:
 	out["round"] = engine.round_no
 	return out
 
+## E-3: what the engine would charge a lander on `i` right now. Delegated to the engine's own
+## `_property_rent`, so the projection never re-implements a game rule (and cannot silently
+## disagree with what a player is actually charged).
+func _rent_now(engine, i: int) -> int:
+	var owner: int = engine._owner_of(i)
+	if owner < 0:
+		# unowned: the engine's function returns a meaningless 0 for "no owner"; report the base
+		# card rent instead, which is the honest answer to "what would this cost" before a sale.
+		return int(engine.board.tile_at(i).get("rent", 0))
+	return int(engine._property_rent(i, owner))
+
+
 func _board_view(engine) -> Array:
 	var tiles: Array = []
 	for i in engine.board.tile_count():
@@ -34,6 +46,16 @@ func _board_view(engine) -> Array:
 			"amount": int(t.get("amount", 0)),
 			"rent": int(t.get("rent", 0)),
 			"rent_set": int(t.get("rent_set", 0)),
+			# E-3/D11: the rent that would be charged RIGHT NOW - with this tile's houses and with
+			# the monopoly doubling the settings allow. The base `rent` is what the tile costs when
+			# nobody has built; a viewer looking at a 3-house hotel plot and reading "$2" is being
+			# told the wrong number, because that is what the card says, not what the game charges.
+			#
+			# IT IS THE ENGINE'S OWN FUNCTION, called with the owner, so there is exactly ONE rent
+			# formula in the project. Re-deriving it here would be a second source of truth that
+			# drifts the first time a house rule changes - and this repo has been bitten by exactly
+			# that (the `pot` vs `parking_pot` rename that left a chip reading $0 forever).
+			"rent_now": _rent_now(engine, i),
 			"owner": engine._owner_of(i),
 			"owner_name": _owner_name(engine, engine._owner_of(i)),
 			"houses": engine._houses_on(i),

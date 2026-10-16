@@ -18,6 +18,8 @@ var _type_lbl: Label
 var _rows_box: VBoxContainer
 var _price_val: Label
 var _rent_val: Label
+## E-3: the rent row's CAPTION, so it can say "сейчас" when the live rent differs from the card's
+var _rent_caption: Label
 var _owner_val: Label
 var _flags: HBoxContainer
 var _acts: GridContainer
@@ -82,6 +84,10 @@ func _init() -> void:
 	_rows_box = UiTheme.vbox(3)
 	_price_val = _fact_row(_rows_box, "ins.price")
 	_rent_val = _fact_row(_rows_box, "ins.rent")
+	# E-3: `_fact_row` builds the caption from a key ASKED BY VARIABLE, which a static scan cannot
+	# see (that is how `{ins.price}:` once reached the screen). The caption is kept so the rent row
+	# can relabel itself to "сейчас"/"now", and so HG-09's live pass has something to scan.
+	_rent_caption = _last_caption
 	_owner_val = _fact_row(_rows_box, "ins.owner")
 	_body.add_child(_rows_box)
 
@@ -99,11 +105,17 @@ func _init() -> void:
 	_body.add_child(_acts)
 
 
+## The caption of the row built by the last `_fact_row` call - so a caller can relabel its own row
+## later (E-3 needs exactly that for the rent).
+var _last_caption: Label = null
+
+
 func _fact_row(box: VBoxContainer, key: String) -> Label:
 	var row := UiTheme.hbox(6)
 	var k := UiTheme.label(I18n.t(key) + ":", 11, UiTheme.COL().text_dim)
 	k.custom_minimum_size.x = 84
 	row.add_child(k)
+	_last_caption = k
 	var val := UiTheme.label("", 12)
 	row.add_child(val)
 	box.add_child(row)
@@ -160,9 +172,16 @@ func sync(proj: Dictionary, seats: Array, legal: Array = [], human_pid: int = -1
 		_band.color = UiTheme.skin().group_color(group)
 	_type_lbl.text = group if group != "" else str(t.get("type", ""))
 	var cost: int = int(t.get("cost", 0))
-	var rent: int = int(t.get("rent_set", t.get("rent", 0)))
+	# E-3/D11: show what the tile charges RIGHT NOW (houses + monopoly applied), and keep the base
+	# card rent visible when it differs - the player needs both numbers to make a decision: what the
+	# card says, and what the game will actually take. Showing only "rent_set" told a bare-plot
+	# owner that a rival's 3-house row was worth the un-improved value.
+	var rent_base: int = int(t.get("rent_set", t.get("rent", 0)))
+	var rent_now: int = int(t.get("rent_now", rent_base))
 	_price_val.text = MoneyFmt.make("$").amount(cost)
-	_rent_val.text = MoneyFmt.make("$").amount(rent)
+	_rent_val.text = MoneyFmt.make("$").amount(rent_now)
+	# the "now" marker: only when the two differ, so the common case stays a single clean number
+	_rent_caption.text = I18n.t("ins.rent_now") if rent_now != rent_base else I18n.t("ins.rent")
 	var owner: int = int(t.get("owner", -1))
 	if owner < 0:
 		_owner_val.text = I18n.t("ins.free")
