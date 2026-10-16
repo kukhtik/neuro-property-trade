@@ -38,8 +38,8 @@ All base systems are DONE and merged to `main`:
 - **Phase 5** code-built visual layer (board, tokens, spectacle, event
   overlay, procedural SFX; 161→190 tests).
 
-Ground truth for what's shipped: `docs/plan.md` here + the design docs under
-`docs/superpowers/{specs,plans}/2026-09-06-*`. Test ladder is green headless;
+Ground truth for what's shipped: `docs/program.md` (the single plan) plus the
+status snapshot under `docs/restoration/`. Test ladder is green headless;
 WebGL export builds and boots in a browser (frame-capture under SwiftShader is
 a proven environment limitation, not a build bug).
 
@@ -83,9 +83,9 @@ All three are covered by regression tests in `tests/engine_test.gd` /
 
 ## Current phase — UI/UX overhaul (branch `ui/overhaul`)
 
-The UI is being reworked per the **v2 redesign concept**
-`docs/superpowers/specs/2026-09-07-ui-ux-redesign-concept-v2.md`
-(single source of truth; supersedes the 2026-09-06 concept).
+The UI was reworked per the **v3 design package** (`design/DESIGN.md`, target
+`docs/specs/ui-full-redesign-spec.md`); the v2 concept doc that drove it has been
+deleted with the rest of the superseded design history.
 
 Key decisions already locked (do NOT re-litigate):
 - **One screen.** No separate lobby scene; `GameView` is always the root. The
@@ -117,8 +117,8 @@ Key decisions already locked (do NOT re-litigate):
 | P1 | PlayerIdentity + token/halo/fan layout + walking token animation + player cards | DONE (2026-09-07) — `tools/p1_probe.tscn` (4 checks) |
 | P2 | Tile rework (SVG, short names, owner frame, compact mode, highlight frame) | DONE (2026-09-07) — `tools/p2_probe.tscn` (8 checks) |
 | P3 | Toast stack + banners + timer ring + BG3 dice + inspector pin (auto-hide) + tooltip autotest | DONE (2026-09-07) — `tools/p3_probe.tscn` (7 checks) |
-| P4 | Observer mode (host = not LOCAL), richer journal with filters/export, admin panel tabs + inline results | DONE (2026-09-07) — `tools/p4_probe.tscn` (5 check-groups, 10 PASS; full detail in `docs/superpowers/references/p4-modes.md`) |
-| P5 | Full RU/EN i18n (dict-based), 5-breakpoint adaptivity (rails/drawers), SFX for dice/toasts/timer | DONE (2026-09-08) — `tools/p5_probe.tscn` (9 PASS, 0 masked errors); 204 headless tests green; plan in `docs/superpowers/plans/2026-09-08-p5-i18n-adaptivity-sfx.md` |
+| P4 | Observer mode (host = not LOCAL), richer journal with filters/export, admin panel tabs + inline results | DONE (2026-09-07) — `tools/p4_probe.tscn` (5 check-groups, 10 PASS) |
+| P5 | Full RU/EN i18n (dict-based), 5-breakpoint adaptivity (rails/drawers), SFX for dice/toasts/timer | DONE (2026-09-08) — `tools/p5_probe.tscn` (9 PASS, 0 masked errors) |
 
 **Validation per phase:** `godot --headless --path game --script res://tests/run.gd`
 (`SCRIPT ERROR` grep mandatory), `tools/tony.tscn`, plus phase-specific probes
