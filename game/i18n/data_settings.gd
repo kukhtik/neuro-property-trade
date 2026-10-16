@@ -136,6 +136,7 @@ Without a limit a match can be unbounded: with no colour group nothing is built,
 
 	# data tab
 	"settings.tab_data":       {"ru": "Данные", "en": "Data"},
+	"settings.tab_controls":   {"ru": "Управление", "en": "Controls"},
 	# ---- design v3: per-field "when it applies" tags (F-48; design/coverage.md §4) ----
 	"settings.tag_live":       {"ru": "применится живьём", "en": "applies live"},
 	"settings.tag_restart":    {"ru": "нужен рестарт", "en": "needs restart"},

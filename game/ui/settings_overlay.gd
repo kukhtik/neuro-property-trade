@@ -21,6 +21,7 @@ const Settings := preload("res://core/game_settings.gd")
 const SeatConfig := preload("res://seats/seat_config.gd")
 const PI := preload("res://core/player_identity.gd")
 const I18n := preload("res://i18n/i18n.gd")
+const Bindings := preload("res://ui/core/bindings.gd")
 
 # REMOTE is the seat another MACHINE plays (a browser or a second copy of the game). It was
 # missing from this list, so a networked match could only be assembled from a CLI flag made
@@ -79,6 +80,14 @@ var _timeout_action: OptionButton
 var _animations: CheckButton
 var _event_overlay: CheckButton
 var _spectacle: CheckButton
+## PART 4 — the controls tab: which action is waiting for a key, and the button showing it.
+var _capture_act := ""
+var _capture_btn: Button = null
+## act -> the key button in the controls tab (to re-label after a rebind or a reset).
+var _bind_rows: Dictionary = {}
+## The shell (main.gd) that owns the bindings table. Set by main when the overlay is created; a test
+## can leave it null and the controls tab then shows the SHIPPED keys without being able to save.
+var _host: Node = null
 var _language: OptionButton
 var _sound: CheckButton
 
@@ -114,7 +123,8 @@ func _retranslate() -> void:
 	# only called in _build_*_tab, so re-apply here).
 	if _tabs != null:
 		var tab_keys := ["settings.tab_players", "settings.tab_rules",
-			"settings.tab_tempo", "settings.tab_interface", "settings.tab_data"]
+			"settings.tab_tempo", "settings.tab_interface", "settings.tab_controls",
+			"settings.tab_data"]
 		for i in mini(_tabs.get_tab_count(), tab_keys.size()):
 			_tabs.set_tab_title(i, I18n.t(tab_keys[i]))
 	# CR-2: driver items are localized — rebuild them in the current locale,
@@ -265,6 +275,7 @@ func _build() -> void:
 	_build_rules_tab()
 	_build_tempo_tab()
 	_build_interface_tab()
+	_build_controls_tab()
 	_build_data_tab()
 
 	# status + action row
@@ -483,6 +494,159 @@ func _build_interface_tab() -> void:
 ## P5: language selected → switch locale (retranslate via _on_locale_changed).
 func _on_language(idx: int) -> void:
 	I18n.set_locale("en" if idx == 1 else "ru")
+
+## PART 4 — the CONTROLS tab (owner's order): rebind every key from the settings screen.
+##
+## WHY IT READS `Bindings` AND NOT ITS OWN TABLE: the screen used to be impossible to build honestly,
+## because the keys lived in three places (the shell's handler, the hint table and the gate). Showing
+## any one of them would have shown a key that did nothing. `Bindings` is now the single home, the
+## shell dispatches from it, so a row here cannot lie about what a key does.
+##
+## The rows are built from `Bindings.ACTIONS` - a new action appears here automatically, and a test
+## refuses to let one ship without its label in both languages.
+func _build_controls_tab() -> void:
+	var tab := UiTheme.vbox(8)
+	_tabs.add_child(tab)
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, I18n.t("settings.tab_controls"))
+	var hint := UiTheme.label_wrap(I18n.t("bind.hint"), 11, UiTheme.COL().text_dim)
+	tab.add_child(hint)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tab.add_child(scroll)
+	var col := UiTheme.vbox(4)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(col)
+
+	var group := ""
+	for a in Bindings.ACTIONS:
+		var act: String = str(a["act"])
+		var g: String = str(a["group"])
+		if g != group:
+			group = g
+			var head := UiTheme.label(I18n.t("bind.group." + g), 12, UiTheme.COL().accent)
+			col.add_child(head)
+		col.add_child(_bind_row(act))
+	var reset := UiTheme.button(I18n.t("bind.reset_all"), I18n.t("bind.reset_all_tip"))
+	reset.pressed.connect(Callable(self, "_reset_all_bindings"))
+	col.add_child(reset)
+
+
+## One row: the action's name, its current key, and a per-row reset. The key button IS the rebind
+## control - press it, then press the key you want (the overlay captures the next keystroke).
+func _bind_row(act: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var name_lbl := UiTheme.label(I18n.t(Bindings.label_key(act)), 12, UiTheme.COL().text)
+	name_lbl.custom_minimum_size.x = 200
+	row.add_child(name_lbl)
+	var key_btn := UiTheme.button(_key_text(act), I18n.t("bind.row_tip"))
+	key_btn.name = "key_" + act
+	key_btn.custom_minimum_size.x = 120
+	key_btn.pressed.connect(func() -> void: _begin_capture(act, key_btn))
+	row.add_child(key_btn)
+	var rst := UiTheme.button(I18n.t("bind.reset"), I18n.t("bind.reset_tip"))
+	rst.name = "reset_" + act
+	rst.pressed.connect(func() -> void:
+			_reset_binding(act)
+			key_btn.text = _key_text(act))
+	row.add_child(rst)
+	_bind_rows[act] = key_btn
+	return row
+
+
+## What the row shows for a key - from the LIVE table, so a rebind is reflected at once.
+func _key_text(act: String) -> String:
+	var k: int = _get_binding(act)
+	if k <= 0:
+		return "—"
+	return OS.get_keycode_string(k)
+
+
+func _get_binding(act: String) -> int:
+	var host := _binding_host()
+	if host == null:
+		return int(Bindings.defaults().get(act, 0))
+	return int((host.call("bindings") as Dictionary).get(act, 0))
+
+
+## Start capturing: the next key the player presses becomes this action's key. While capturing, the
+## overlay swallows the keystroke so the game does not also act on it.
+func _begin_capture(act: String, btn: Button) -> void:
+	_capture_act = act
+	_capture_btn = btn
+	btn.text = I18n.t("bind.press")
+	_set_shell_capture(true)
+
+
+## Tell the shell to stop acting on keys while this screen is collecting one.
+func _set_shell_capture(on: bool) -> void:
+	var gv := _binding_host()
+	if gv != null:
+		gv.set("_key_capture", on)
+
+
+## Handle a keystroke while capturing. Returns true when it was consumed.
+func capture_key(keycode: int) -> bool:
+	if _capture_act == "":
+		return false
+	if keycode == KEY_ESCAPE:
+		_capture_btn.text = _key_text(_capture_act)
+		_capture_act = ""
+		_capture_btn = null
+		_set_shell_capture(false)
+		return true
+	var host := _binding_host()
+	if host != null:
+		var holder: String = Bindings.holder_of(host.call("bindings"), keycode, _capture_act)
+		if holder != "":
+			_flash_status(I18n.t("bind.taken", [I18n.t(Bindings.label_key(holder))]))
+			# the swap is allowed and is what rebind() does - report it, do not refuse it
+			host.call("set_binding", _capture_act, keycode)
+			_refresh_bind_rows()
+			_capture_act = ""
+			_capture_btn = null
+			_set_shell_capture(false)
+			return true
+		host.call("set_binding", _capture_act, keycode)
+	_refresh_bind_rows()
+	_capture_act = ""
+	_capture_btn = null
+	_set_shell_capture(false)
+	return true
+
+
+func _reset_binding(act: String) -> void:
+	var host := _binding_host()
+	if host != null:
+		host.call("reset_binding", act)
+
+
+func _reset_all_bindings() -> void:
+	var host := _binding_host()
+	if host != null:
+		host.call("reset_all_bindings")
+	_refresh_bind_rows()
+
+
+func _refresh_bind_rows() -> void:
+	for act in _bind_rows.keys():
+		var b = _bind_rows[act]
+		if b != null and is_instance_valid(b):
+			(b as Button).text = _key_text(str(act)) if act != _capture_act else I18n.t("bind.press")
+
+
+## The object that owns the bindings table: the GAME VIEW, reached through the shell main handed in.
+## The table lives there because that is what dispatches on it; main only owns the overlay. Returns
+## null in a test with no shell, and the tab then shows the shipped keys.
+func _binding_host() -> Node:
+	if _host == null:
+		return null
+	var gv = _host.get("_game_view")
+	if gv != null and gv.has_method("bindings"):
+		return gv
+	return null
+
 
 func _build_data_tab() -> void:
 	var tab := UiTheme.vbox(8)
@@ -775,6 +939,33 @@ func _refresh_buttons() -> void:
 	_start_btn.visible = _pre_game
 	_host_btn.visible = _pre_game
 	_apply_btn.visible = not _pre_game
+
+
+## Say something in the screen's own status line without touching the form's validation state.
+## Used by the controls tab: "that key belongs to <action>" - the swap IS performed, so the player is
+## told what happened rather than being silently refused.
+func _flash_status(msg: String) -> void:
+	if _status_lbl != null:
+		_status_lbl.text = msg
+
+
+## PART 4 — while a row is waiting for a key, THIS screen owns the keyboard: the next keypress is the
+## new binding, not a game action. Returning true marks the event handled so the shell never sees it
+## (the player pressing "B" to bind must not also buy a property).
+func _unhandled_key_input(event: InputEvent) -> void:
+	if _capture_act == "" or not visible:
+		return
+	if not (event is InputEventKey) or not (event as InputEventKey).pressed:
+		return
+	if (event as InputEventKey).echo:
+		return
+	capture_key((event as InputEventKey).keycode)
+	get_viewport().set_input_as_handled()
+
+
+## True while a key is being captured - the shell asks before acting on its own bindings.
+func is_capturing() -> bool:
+	return _capture_act != ""
 
 ## Host a networked match: the seats are taken as configured, the server opens wide enough to be
 ## reached, and main shows the invitation link. A seat with no explicit driver becomes a friend.

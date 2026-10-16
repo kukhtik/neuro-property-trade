@@ -19,6 +19,7 @@ const ActionPanel := preload("res://ui/action_panel.gd")
 const JournalPanel := preload("res://ui/journal_panel.gd")
 const JournalLines := preload("res://ui/core/journal_lines.gd")
 const KeyboardNav := preload("res://ui/core/keyboard_nav.gd")
+const Bindings := preload("res://ui/core/bindings.gd")
 const TileInspector := preload("res://ui/tile_inspector.gd")
 const ToastList := preload("res://ui/toast.gd")
 const ModalHost := preload("res://ui/modal_host.gd")
@@ -67,6 +68,12 @@ var _camera_turn := -1
 ## PART 2: the user hid the side panels (the H key / the header button). Remembered across a
 ## profile change, and applied by _apply_panels_visibility.
 var _panels_hidden := false
+## PART 4 (bindings): the resolved {act: keycode} table this screen dispatches on. Seeded from the
+## saved overrides at _ready, rewritten by the settings screen.
+var _bindings: Dictionary = Bindings.defaults()
+## True while the settings screen is waiting for a keypress to bind. The shell then leaves the
+## keyboard alone: a key pressed to REBIND must not also act on the match behind the overlay.
+var _key_capture := false
 var _console: Control
 var _journal: Control
 var _inspector: Control
@@ -101,6 +108,9 @@ func _init() -> void:
 
 
 func _build() -> void:
+	# PART 4: the keys come from disk before anything reads them, so the very first keystroke uses the
+	# player's own bindings rather than the shipped ones.
+	_bindings = Bindings.resolved(Bindings.load_saved())
 	var outer := MarginContainer.new()
 	for edge in ["margin_left", "margin_right", "margin_top", "margin_bottom"]:
 		outer.add_theme_constant_override(edge, 8)   # `--gap`
@@ -303,27 +313,132 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	var ke := event as InputEventKey
 	if not ke.pressed or ke.echo:
 		return
+	# PART 4: the settings screen is capturing a key for a rebinding - it owns the keyboard until it
+	# has one. Without this, pressing "B" to bind would ALSO buy a property behind the overlay.
+	if _key_capture:
+		return
 	# PART 3: the keyboard model owns Tab/arrows/Enter/Space. It is consulted before everything else
 	# so a focused button's own Enter handling cannot race the navigator.
 	if KeyboardNav.owns(ke.keycode):
 		if _handle_nav_key(ke.keycode):
 			get_viewport().set_input_as_handled()
 			return
-	# ZOOM-01: the board camera (arrows pan, +/- zoom, 0 home, F follow). In the observer role the
-	# camera is the ONLY thing the keyboard drives, because the stream has no input at all.
-	if _camera != null and _camera.has_method("handle_key") and bool(_camera.call("handle_key", ke.keycode)):
+	# EVERY OTHER KEY IS ONE TABLE LOOKUP (bindings.gd). Before this the keys were hard-coded here AND
+	# in `keyboard-nav.hotkeys` AND asserted in the HG-13 gate - three homes, so a settings screen over
+	# any one of them would have shown a key that did nothing. Now the screen, the hint and this
+	# handler all read the same table, and a rebind takes effect on the next keystroke.
+	var act := Bindings.action_for(_bindings, ke.keycode)
+	if act == "":
+		return
+	if _dispatch_bound(act):
 		get_viewport().set_input_as_handled()
-		return
-	# Part 2: H toggles the side panels (the drawer/rails on wide and compact alike).
-	if ke.keycode == KEY_H:
-		toggle_panels()
-		get_viewport().set_input_as_handled()
-		return
-	if ke.keycode != KEY_B and ke.keycode != KEY_N:
-		return
-	if _observer or _console == null or not bool(_console.get("_human_now")):
-		return
-	_console.call("press_action", "buy" if ke.keycode == KEY_B else "end_turn")
+
+
+## Run one bound action. Returns true when it consumed the key.
+##
+## A GAME action is only accepted when a human is actually deciding here - the same guard the B/N
+## badges always had, so a rebind cannot let an observer mutate the match (HG-12).
+func _dispatch_bound(act: String) -> bool:
+	match act:
+		Bindings.ACT_BUY:
+			if not _human_can_act():
+				return false
+			_console.call("press_action", "buy")
+		Bindings.ACT_END_TURN:
+			if not _human_can_act():
+				return false
+			_console.call("press_action", "end_turn")
+		Bindings.ACT_ROLL:
+			if not _human_can_act():
+				return false
+			_console.call("press_action", "roll")
+		Bindings.ACT_TRADE:
+			if not _human_can_act():
+				return false
+			_console.call("press_action", "propose_trade")
+		Bindings.ACT_BUILD:
+			if _inspector != null:
+				_inspector.call("press_action", "build_house")
+			return true
+		Bindings.ACT_MORTGAGE:
+			if _inspector != null:
+				_inspector.call("press_action", "mortgage_property")
+			return true
+		Bindings.ACT_PANELS:
+			toggle_panels()
+		Bindings.ACT_SETTINGS:
+			settings_requested.emit()
+		Bindings.ACT_FOLLOW:
+			if _camera != null:
+				_camera.call("handle_key", Bindings.KEY_FOR_FOLLOW)
+		Bindings.ACT_CAM_LEFT, Bindings.ACT_CAM_RIGHT, Bindings.ACT_CAM_UP, Bindings.ACT_CAM_DOWN:
+			if _camera == null:
+				return false
+			_camera.call("pan_by", _camera_delta(act))
+		Bindings.ACT_ZOOM_IN:
+			if _camera != null:
+				_camera.call("zoom_at", 1.12, (_camera as Control).size * 0.5)
+		Bindings.ACT_ZOOM_OUT:
+			if _camera != null:
+				_camera.call("zoom_at", 1.0 / 1.12, (_camera as Control).size * 0.5)
+		_:
+			return false
+	return true
+
+
+## The stage-space direction a bound camera key moves the board in.
+func _camera_delta(act: String) -> Vector2:
+	var step := 48.0
+	match act:
+		Bindings.ACT_CAM_LEFT:
+			return Vector2(step, 0)
+		Bindings.ACT_CAM_RIGHT:
+			return Vector2(-step, 0)
+		Bindings.ACT_CAM_UP:
+			return Vector2(0, step)
+		Bindings.ACT_CAM_DOWN:
+			return Vector2(0, -step)
+	return Vector2.ZERO
+
+
+## May a game action be taken right now: a human is seated here, is not an observer, and it is their
+## turn (the console's own `_human_now`). The ONE guard every game hotkey shares.
+func _human_can_act() -> bool:
+	if _observer or _console == null:
+		return false
+	return bool(_console.get("_human_now"))
+
+
+## --- PART 4: the bindings API the settings screen calls ------------------------------------------
+
+## The resolved table, for the screen to render.
+func bindings() -> Dictionary:
+	return _bindings
+
+
+## Rebind one action and persist. The screen calls this; the shell applies it on the next keystroke
+## (the handler looks the table up live, so there is nothing to re-register).
+func set_binding(act: String, keycode: int) -> void:
+	_bindings = Bindings.rebind(_bindings, act, keycode)
+	Bindings.save_saved(_bindings)
+
+
+## Return one action to its shipped key.
+func reset_binding(act: String) -> void:
+	_bindings = Bindings.reset_one(_bindings, act)
+	Bindings.save_saved(_bindings)
+
+
+## Return every action to its shipped key.
+func reset_all_bindings() -> void:
+	_bindings = Bindings.defaults()
+	Bindings.save_saved(_bindings)
+
+
+## The keyboard hint, built from the LIVE table so a rebind is reflected wherever it is shown.
+func bindings_hint() -> String:
+	return KeyboardNav.hotkey_hint(_bindings)
+
 
 
 func _on_locale_changed(_loc: String) -> void:

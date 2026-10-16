@@ -22,6 +22,8 @@ const UiProfileScript := preload("res://ui/core/ui_profile.gd")
 const UiStoreScript := preload("res://ui/core/ui_store.gd")
 const JournalLinesScript := preload("res://ui/core/journal_lines.gd")
 const KeyboardNavScript := preload("res://ui/core/keyboard_nav.gd")
+const BindingsScript := preload("res://ui/core/bindings.gd")
+const I18nScript := preload("res://i18n/i18n.gd")
 
 
 static func test_list() -> Array[String]:
@@ -34,6 +36,16 @@ static func test_list() -> Array[String]:
 		"test_kbnav_no_current_starts_at_first",
 		"test_kbnav_empty_list_is_no_move",
 		"test_kbnav_hint_names_every_hotkey",
+		# Bindings (PART 4) — the one home for every rebindable key
+		"test_bindings_defaults_cover_every_action",
+		"test_bindings_resolved_applies_saved_overrides",
+		"test_bindings_resolved_ignores_nonsense",
+		"test_bindings_action_for_finds_the_bound_action",
+		"test_bindings_rebind_swaps_the_holder",
+		"test_bindings_rebind_refuses_nothing_key",
+		"test_bindings_reset_one_returns_the_default",
+		"test_bindings_labels_exist_in_both_languages",
+		"test_bindings_no_two_actions_share_a_default_key",
 		# EventAdapter — adapt()
 		"test_adapt_roll", "test_adapt_purchase", "test_adapt_rent",
 		"test_adapt_unknown_type_returns_empty",
@@ -988,8 +1000,129 @@ static func test_kbnav_empty_list_is_no_move() -> String:
 
 
 static func test_kbnav_hint_names_every_hotkey() -> String:
+	# THE HINT IS BUILT FROM THE BINDING TABLE (bindings.gd), not from a table of its own - so this
+	# walks the ACTIONS the screen offers and requires every one of them to appear, in the player's
+	# language. A rebind changes the key the hint prints; the set of actions cannot go missing.
 	var hint: String = KeyboardNavScript.hotkey_hint()
-	for h in KeyboardNavScript.HOTKEYS:
-		if not hint.contains(str(h["label"])):
-			return "the hint must name every hotkey; '%s' is missing from '%s'" % [str(h["label"]), hint]
+	for a in BindingsScript.ACTIONS:
+		var act: String = str(a["act"])
+		if str(a["group"]) == "camera":
+			continue      # camera keys live on the board, not in this list
+		var label: String = I18nScript.t(BindingsScript.label_key(act))
+		if not hint.contains(label):
+			return "the hint must name '%s' (%s); it says '%s'" % [label, act, hint]
+	return ""
+
+
+# --- Bindings (PART 4): the one home for every rebindable key ---------------------------------
+
+static func test_bindings_defaults_cover_every_action() -> String:
+	var d: Dictionary = BindingsScript.defaults()
+	if d.size() != BindingsScript.ACTIONS.size():
+		return "defaults() has %d entries for %d actions" % [d.size(), BindingsScript.ACTIONS.size()]
+	for a in BindingsScript.ACTIONS:
+		if not d.has(str(a["act"])):
+			return "action '%s' has no default key" % str(a["act"])
+		if int(d[str(a["act"])]) <= 0:
+			return "action '%s' ships with keycode %d" % [str(a["act"]), int(d[str(a["act"])])]
+	return ""
+
+
+static func test_bindings_resolved_applies_saved_overrides() -> String:
+	var saved := {"buy": KEY_Q}
+	var r: Dictionary = BindingsScript.resolved(saved)
+	if int(r["buy"]) != KEY_Q:
+		return "a saved override for buy was not applied (got %d)" % int(r["buy"])
+	if int(r["end_turn"]) != int(BindingsScript.defaults()["end_turn"]):
+		return "an action with no saved override lost its default"
+	return ""
+
+
+static func test_bindings_resolved_ignores_nonsense() -> String:
+	# a corrupt file must not make the game unplayable: an unknown action and a zero keycode are
+	# both dropped, and the defaults stand.
+	var r: Dictionary = BindingsScript.resolved({"no_such_action": KEY_Z, "buy": 0})
+	if r.has("no_such_action"):
+		return "an unknown action from the save file was trusted"
+	if int(r["buy"]) != int(BindingsScript.defaults()["buy"]):
+		return "a zero keycode from the save file was trusted (buy became %d)" % int(r["buy"])
+	return ""
+
+
+static func test_bindings_action_for_finds_the_bound_action() -> String:
+	var d: Dictionary = BindingsScript.defaults()
+	var a: String = BindingsScript.action_for(d, int(d["buy"]))
+	if a != "buy":
+		return "action_for(the buy key) returned '%s'" % a
+	if BindingsScript.action_for(d, KEY_F24) != "":
+		return "an unbound key must return no action"
+	return ""
+
+
+static func test_bindings_rebind_swaps_the_holder() -> String:
+	# TWO ACTIONS MAY NEVER SHARE ONE KEY. Rebinding buy onto end_turn's key must give end_turn the
+	# key buy is vacating - a swap, so no action is left without a key and none is doubled.
+	var d: Dictionary = BindingsScript.defaults()
+	var old_buy: int = int(d["buy"])
+	var old_end: int = int(d["end_turn"])
+	var r: Dictionary = BindingsScript.rebind(d, "buy", old_end)
+	if int(r["buy"]) != old_end:
+		return "a rebind did not take"
+	if int(r["end_turn"]) != old_buy:
+		return "the displaced action did not take the vacated key (end_turn=%d, wanted %d)" % [int(r["end_turn"]), old_buy]
+	# the invariant that matters: no two actions sit on one key after the swap. (An earlier version
+	# of this test asked holder_of(..., "buy"), which EXCLUDES buy by definition and so always
+	# returned "" - the assertion, not the code, was wrong.)
+	var seen := {}
+	for act in r.keys():
+		var k: int = int(r[act])
+		if seen.has(k):
+			return "after the swap '%s' and '%s' share %s" % [str(seen[k]), str(act), OS.get_keycode_string(k)]
+		seen[k] = str(act)
+	return ""
+
+
+static func test_bindings_rebind_refuses_nothing_key() -> String:
+	var d: Dictionary = BindingsScript.defaults()
+	var before: int = int(d["buy"])
+	var r: Dictionary = BindingsScript.rebind(d, "buy", 0)
+	if int(r["buy"]) != before:
+		return "a zero keycode must be refused, not assigned"
+	return ""
+
+
+static func test_bindings_reset_one_returns_the_default() -> String:
+	var d: Dictionary = BindingsScript.defaults()
+	var changed: Dictionary = BindingsScript.rebind(d, "buy", KEY_Q)
+	var back: Dictionary = BindingsScript.reset_one(changed, "buy")
+	if int(back["buy"]) != int(d["buy"]):
+		return "reset_one did not restore buy (got %d)" % int(back["buy"])
+	return ""
+
+
+static func test_bindings_labels_exist_in_both_languages() -> String:
+	# THE SCREEN MUST NOT SHOW A KEY. Its rows read `bind.<action>`; if an action ships without its
+	# strings the row would print the key itself. Require both languages for every action.
+	var prev: String = I18nScript.current
+	for loc in ["ru", "en"]:
+		I18nScript.set_locale(loc)
+		for a in BindingsScript.ACTIONS:
+			var k: String = BindingsScript.label_key(str(a["act"]))
+			var t: String = I18nScript.t(k)
+			if t == k or t.begins_with("{"):
+				I18nScript.set_locale(prev)
+				return "action '%s' has no %s label (key '%s' unresolved)" % [str(a["act"]), loc, k]
+	I18nScript.set_locale(prev)
+	return ""
+
+
+static func test_bindings_no_two_actions_share_a_default_key() -> String:
+	# Two actions on one key means one of them never fires - the screen would show a key that does
+	# nothing. Check the SHIPPED table, which is what a fresh install runs.
+	var seen := {}
+	for a in BindingsScript.ACTIONS:
+		var k: int = int(a["key"])
+		if seen.has(k):
+			return "'%s' and '%s' both ship on %s" % [str(seen[k]), str(a["act"]), OS.get_keycode_string(k)]
+		seen[k] = str(a["act"])
 	return ""

@@ -95,6 +95,9 @@ func _ready() -> void:
 	_overlay_layer.layer = 50
 	add_child(_overlay_layer)
 	_overlay = SettingsOverlay.new()
+	# PART 4: the controls tab binds against the SHELL's table (main owns `_bindings` through the game
+	# view). Handed over before the tree is entered so the first build of the tab reads it.
+	_overlay.set("_host", self)
 	_overlay_layer.add_child(_overlay)
 	_overlay.set_mode(true)
 	_overlay.started.connect(_on_started)

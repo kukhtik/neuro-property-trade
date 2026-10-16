@@ -1,6 +1,9 @@
 extends RefCounted
 ## PART 3 (the owner's order): play the whole game from the keyboard.
 ##
+## The KEYS themselves live in `bindings.gd` (the one home the settings screen reads); this file is
+## the policy - which key reaches which control, and in what order.
+##
 ## WHY NOT JUST `grab_focus()` ON EVERYTHING: Godot's own focus navigation needs every button to be
 ## focusable, in a sensible ORDER, and the panels rebuild their buttons on every state change - so
 ## focus is lost on each turn. This is the small policy that solves both: it knows the KEYS, and it
@@ -16,17 +19,28 @@ extends RefCounted
 ##   * a letter hotkey presses a named action directly, wherever the focus is;
 ##   * Escape leaves the focus.
 
-## The keys the model owns. Anything else is somebody else's (the shell's) key: one owner per key.
+const Bindings := preload("res://ui/core/bindings.gd")
+const I18n := preload("res://i18n/i18n.gd")
+
+## The keys the model owns for NAVIGATION. Anything else belongs to the binding table (`Bindings`),
+## which the shell looks up itself - one owner per key, and the arrows are shared with the camera
+## under the precedence documented in `game_view._handle_nav_key`.
 const NAV_KEYS := [
 	KEY_TAB, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_KP_ENTER, KEY_SPACE,
 ]
 
-## The order hotkeys are offered in the help line, so the hint and the handler cannot drift.
-const HOTKEYS := [
-	{"key": KEY_B, "act": "buy", "label": "buy"},
-	{"key": KEY_N, "act": "end_turn", "label": "end turn"},
-	{"key": KEY_H, "act": "__panels", "label": "panels"},
-]
+## The hint is BUILT from the binding table, so a rebind cannot leave the text lying. The label and
+## the key both come from the one home; this file only formats them.
+static func hotkey_hint(bindings: Dictionary = {}) -> String:
+	var b: Dictionary = bindings if not bindings.is_empty() else Bindings.defaults()
+	var parts: Array = []
+	for a in Bindings.ACTIONS:
+		var act: String = str(a["act"])
+		if str(a["group"]) == "camera":
+			continue          # the camera keys are on the board, not on this list
+		var key: int = int(b.get(act, int(a["key"])))
+		parts.append("%s - %s" % [OS.get_keycode_string(key), I18n.t(Bindings.label_key(act))])
+	return ", ".join(parts)
 
 
 ## Is this key one the navigator handles? (The shell asks before its own keys.)
@@ -93,10 +107,3 @@ static func _spatial(keycode: int, current: int, rects: Array) -> int:
 	return best
 
 
-## The hotkey table as one human line, for the help text and the settings sheet. Built from HOTKEYS
-## so a rebinding cannot leave the hint lying.
-static func hotkey_hint() -> String:
-	var parts: Array = []
-	for h in HOTKEYS:
-		parts.append("%s - %s" % [OS.get_keycode_string(int(h["key"])), str(h["label"])])
-	return ", ".join(parts)
