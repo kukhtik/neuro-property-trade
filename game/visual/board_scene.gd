@@ -26,6 +26,15 @@ var _dice: Array = []
 var _sum: Label
 var _doubles: Label
 var _banner: Label
+## E-2/D10: the central banner becomes an EVENT surface, not just a turn label. It carries a queue
+## of messages with auto-hide, because a purchase, a build, a jail or a bankruptcy left no trace on
+## the BOARD at all - only a 3s toast in a side dock, which a viewer following the ring never sees.
+var _ev_queue: Array = []          # [{text, color, tile}]
+var _ev_shown: int = 0             # index into _ev_queue of the message on screen
+var _ev_timer: float = 0.0         # seconds the current message has been up
+const EV_HOLD := 3.0               # "автоскрытие (3с)" - master-fix-plan §2 E-2
+var _flash: Dictionary = {}        # tile index -> seconds left (the state-frame pulse)
+const FLASH_HOLD := 1.0
 var _card: PanelContainer
 var _card_name: Label
 var _card_price: Label
@@ -361,7 +370,84 @@ func set_dice(a: int, b: int) -> void:
 	_doubles.visible = a > 0 and a == b
 
 
+## E-2 (master-fix-plan §2, D10): put ONE engine event on the BOARD.
+##
+## WHY: purchase, build, jail, bankruptcy, tax, winner and trade left no visual trace on the board
+## at all - the only feedback was a 3-second toast in a side dock, which a viewer following the ring
+## (or watching the stream's board) never sees. The centre already had a `_banner`; it showed the
+## current turn and nothing else. Now it speaks the event, and the participating CELL pulses its
+## frame for a second, so the eye is taken to the place the event happened.
+##
+## `text` is pre-rendered by the caller (the same JournalLines renderer the feed uses), so the
+## board, the journal and the toast cannot disagree about what happened.
+func show_event(text: String, color: Color = Color.TRANSPARENT, tile: int = -1) -> void:
+	if text.strip_edges() == "":
+		return
+	var col: Color = UiTheme.COL().accent if color.a <= 0.0 else color
+	_ev_queue.append({"text": text, "color": col, "tile": tile})
+	if tile >= 0:
+		_flash[tile] = FLASH_HOLD
+	set_process(true)   # a message must animate even if the dice are still
+
+
+## Advance the banner queue and the flash timers. Split out so `show_event` and the tests can drive
+## it without a live frame loop.
+func _tick_events(delta: float) -> void:
+	# the flash: expire tiles whose pulse is over, then repaint the state frames
+	if not _flash.is_empty():
+		var done: Array = []
+		for k in _flash.keys():
+			_flash[k] = float(_flash[k]) - delta
+			if float(_flash[k]) <= 0.0:
+				done.append(k)
+		for k in done:
+			_flash.erase(k)
+		_repaint_entries()
+	# the banner: show the newest message for EV_HOLD, then fall back to the turn label
+	if _ev_shown < _ev_queue.size():
+		_ev_timer += delta
+		var msg: Dictionary = _ev_queue[_ev_shown]
+		_banner.text = str(msg["text"])
+		_banner.add_theme_color_override("font_color", msg["color"])
+		_banner.visible = true
+		if _ev_timer >= EV_HOLD:
+			_ev_timer = 0.0
+			_ev_shown += 1
+			if _ev_shown >= _ev_queue.size():
+				# queue drained: hand the banner back to the turn label
+				_ev_queue.clear()
+				_ev_shown = 0
+				_repaint_entries()
+
+
+## Is an event message on the banner right now (as opposed to the turn label)?
+func event_banner_active() -> bool:
+	return _ev_shown < _ev_queue.size()
+
+
+## The message currently on the banner, for a test to read back.
+func event_banner_text() -> String:
+	return _banner.text if event_banner_active() else ""
+
+
+## Is the given cell pulsing?
+func cell_flashing(idx: int) -> bool:
+	return _flash.has(idx)
+
+
+func _repaint_entries() -> void:
+	for i in _tiles.size():
+		var e: Dictionary = _entries.get(i, {})
+		if _flash.has(i):
+			e["flash"] = true
+		_tiles[i].apply(e)
+
+
 func _process(delta: float) -> void:
+	# E-2: the event banner and the cell flash tick on the SAME clock as the dice, so this node
+	# always processes. It used to `return` early when not rolling, which would have frozen the
+	# queue the moment the dice settled.
+	_tick_events(delta)
 	if not _rolling:
 		return
 	var dur := 0.85
@@ -380,7 +466,9 @@ func _process(delta: float) -> void:
 		d.scale = Vector2(1.0, 1.0 - 0.25 * sin(p * PI))
 	if _roll_t >= dur:
 		_rolling = false
-		set_process(false)
+		# NOTE: process stays ON. It used to be switched off here, which was fine while the dice
+		# were the only animation - but the event banner (E-2) and the cell flash live on this same
+		# tick, and turning it off when the dice settled would have frozen them mid-message.
 		for d in _dice:
 			(d as Control).rotation = 0.0
 			(d as Control).scale = Vector2.ONE

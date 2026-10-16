@@ -267,6 +267,16 @@ func apply(entry: Dictionary) -> void:
 	sb.bg_color = Color(0, 0, 0, 0)
 	sb.draw_center = false
 	var show := false
+	# E-2: the event flash. A transient ring in the event's own colour draws the eye to WHERE
+	# something happened (a purchase here, a bankruptcy there) while the banner in the centre says
+	# WHAT happened. It outranks the owner border but not the active-turn ring: the turn ring is
+	# the state a player acts on, the flash is news.
+	if bool(entry.get("flash", false)):
+		sb.set_border_width_all(3)
+		sb.border_color = UiTheme.COL().warn
+		sb.shadow_color = sb.border_color
+		sb.shadow_size = 10
+		show = true
 	if bool(entry.get("target", false)):
 		sb.bg_color = Color(ac.r, ac.g, ac.b, 0.12)
 		sb.draw_center = true

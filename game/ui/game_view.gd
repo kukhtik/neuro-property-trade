@@ -23,6 +23,15 @@ const ToastList := preload("res://ui/toast.gd")
 const ModalHost := preload("res://ui/modal_host.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
+
+## E-2 (master-fix-plan §2, D10): the event kinds that must leave a mark ON THE BOARD. The plan
+## lists them: purchase, auction start/win, build, bankruptcy, jail, winner, tax, go bonus, trade.
+## These are the moments a viewer following the ring has to be told about; everything else is
+## accounting (cash moves, positions) and is carried by the token animation instead.
+const BOARD_EVENT_TYPES := [
+	"buy", "aucstart", "aucwin", "build", "sell", "bank", "jail", "over", "tax", "go",
+	"trade", "trdoffer", "trdno",
+]
 const SkinManager := preload("res://visual/skin_manager.gd")
 
 const DOCK_L := 268.0
@@ -589,11 +598,14 @@ func _on_events(events: Array) -> void:
 			# trade notification can name the properties instead of showing a bare proposer name.
 			_toasts.show_event_toast(e, _journal_ctx())
 		var data: Dictionary = e.get("data", {})
+		# E-1/E-2: ONE line per event, computed once. The journal, the toast and the board banner
+		# all read this same `line`, so the three surfaces cannot disagree about what happened.
+		var line: Dictionary = {}
 		if _journal != null:
 			# SG-06: the line comes from the ADAPTER + the projection's tile names - never from
 			# the raw engine type ("free_parking") and never as "клетка N".
 			var ctx := _journal_ctx()
-			var line: Dictionary = _journal_lines.line_for(e, ctx)
+			line = _journal_lines.line_for(e, ctx)
 			if not line.is_empty():
 				_journal.append(e, ctx)
 				if _console != null and _is_compact():
@@ -610,12 +622,49 @@ func _on_events(events: Array) -> void:
 			elif kind in ["move", "teleport"]:
 				var pid := _pid_of(str(data.get("player", "")))
 				_board.play_event({"k": "move", "p": pid, "ti": int(data.get("to", data.get("tile", -1)))})
+			# E-2/D10: the EVENTS that matter to a viewer go onto the BOARD as well as the feed.
+			# The list is the plan's: purchase, auction start/win, build, bankruptcy, jail, winner,
+			# tax, go bonus, trade. The text is the journal line's own text, so the banner and the
+			# feed say the same sentence; the cell comes from the event's tile so the eye lands on
+			# the place it happened.
+			if kind in BOARD_EVENT_TYPES and not line.is_empty():
+				_board.show_event(str(line.get("text", "")), _event_color(kind),
+					int(line.get("_tile", _event_tile(e))))
 
+			
 
 func _pid_of(name: String) -> int:
 	for s in seats:
 		if str(s.name) == name:
 			return int(s.pid)
+	return -1
+
+
+## E-2: the colour of a board event. It mirrors the toast's own colour rule (toast.gd), because a
+## viewer reading the board and a player reading the dock are looking at the same news and should
+## not have to learn two colour codes.
+func _event_color(kind: String) -> Color:
+	match kind:
+		"buy", "aucwin":
+			return UiTheme.COL().success
+		"tax", "rent":
+			return UiTheme.COL().money
+		"bank", "jail":
+			return UiTheme.COL().danger
+		"build", "sell":
+			return UiTheme.COL().accent
+	return UiTheme.COL().accent
+
+
+## E-2: which cell the event happened on, so the board can pulse it. Engine event shapes are not
+## uniform (buy carries `tile`, jail carries `player`, auction carries `tile`), so every spelling the
+## adapter knows is tried and -1 means "no cell to point at" rather than "cell 0", which would point
+## the viewer at GO on every unmatched event.
+func _event_tile(e: Dictionary) -> int:
+	var d: Dictionary = e.get("data", {})
+	for key in ["tile", "ti", "to", "index"]:
+		if d.has(key):
+			return int(d[key])
 	return -1
 
 
