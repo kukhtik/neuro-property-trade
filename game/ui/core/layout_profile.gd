@@ -106,3 +106,46 @@ static func label_step(cell_width: float) -> int:
 	if cell_width >= 44.0:
 		return 2   # smaller font
 	return 3       # corner labels and name hidden
+
+
+## THE GLANCE FLOOR (docs/program.md P1.1, owner correction of 16.10).
+##
+## The stream promise is a picture drawn at a native large resolution that a viewer watches on a
+## phone. What the viewer must grasp from ONE glance - whose turn it is, what is happening, the
+## money, the journal heading - is therefore judged by its EFFECTIVE size after the frame is scaled
+## down to a phone:
+##
+##     effective_px = frame_px * (PHONE_CSS_WIDTH / frame_width)
+##
+## With a 390px phone and a 1920px frame the factor is 390/1920 = 0.203, so 12 legible px on the
+## phone need ~59px in the frame. That is a LAYOUT value (it depends only on the frame size), which
+## is why it lives here and not in a role profile: the owner's rule is that scale is a property of
+## the resolution, identical for the player, the broadcast and the web.
+##
+## HOWEVER - measured 2026-10-16, and this is why these helpers have NO consumer yet: applying the
+## floor to the shell at ANY normal window breaks it. Scaling the header and journal text to ~60px
+## at 1440x900 turned SG-01 red (`header height 166.0 != 56`) and SG-02 red (`needs 2028px in a
+## 1440px frame`, 670 findings). And the promise itself is self-defeating at large frames: a 13px
+## label reads 3.5px on a phone from a 1440 frame, 2.6px from 1920, 1.3px from 3840 - because the
+## frame is scaled down by exactly the factor the text would have to grow by. So "readable from a
+## phone" and "native large resolution" pull against each other, and no uniform text scale settles
+## it. The measurement (STREAM-READ, quarantine) reports the number honestly; what to DO about the
+## promise is a product decision, deliberately NOT taken by guessing here.
+##
+## Kept (not deleted) because the arithmetic and the phone width are the single home of the rule:
+## the gate and the product must agree on what 12px-on-a-phone means. Do not wire this into a
+## component until the product decision is made.
+const PHONE_CSS_WIDTH := 390.0
+const GLANCE_MIN_PHONE_PX := 12.0     # what must survive the shrink (the gate's floor, one home)
+const GLANCE_FRAME_WIDTH := 1920.0    # the frame the floor was derived at (docs/program.md P1.1)
+
+
+## The in-frame px a glance label would need so that it is >= GLANCE_MIN_PHONE_PX on a phone, for the
+## frame width given. Scales with the frame: a 2560 frame would need proportionally more. NOT wired
+## into the shell - see the note above. The consumer TODAY is the STREAM-READ gate, which judges its
+## measurement against GLANCE_MIN_PHONE_PX and reports this floor, so the gate and the product cannot
+## drift about what "legible on a phone" means.
+static func glance_floor_px(frame_width: float = GLANCE_FRAME_WIDTH) -> float:
+	if frame_width <= 0.0:
+		frame_width = GLANCE_FRAME_WIDTH
+	return GLANCE_MIN_PHONE_PX * frame_width / PHONE_CSS_WIDTH

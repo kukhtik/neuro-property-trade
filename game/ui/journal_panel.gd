@@ -48,6 +48,9 @@ func _init() -> void:
 	# header: title · counter · export
 	var head := UiTheme.hbox(8)
 	_title = UiTheme.label(I18n.t("jrn.title"), 12, UiTheme.COL().text)
+	# the journal heading is on the "must be understood from one glance" list (docs/program.md,
+	# owner correction 16.10): the stream-readability gate asks for it BY NAME, never by guess.
+	_title.name = "jrn-title"
 	head.add_child(_title)
 	_count = UiTheme.label("", 10, UiTheme.COL().text_dim)
 	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -201,9 +204,11 @@ func _render_row(line: Dictionary) -> void:
 	m.add_child(ln)
 	var who := UiTheme.label(str(line.get("who", "")), 11, line.get("who_color", UiTheme.COL().text))
 	who.custom_minimum_size.x = 60
+	who.name = "jrn-who"
 	ln.add_child(who)
 	var txt := UiTheme.label_wrap(str(line.get("text", "")), 12, UiTheme.COL().text)
 	txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	txt.name = "jrn-text"
 	ln.add_child(txt)
 	var tag := UiTheme.label(str(line.get("tag", "")), 9, UiTheme.COL().text_dim)
 	ln.add_child(tag)

@@ -65,7 +65,14 @@ func _init() -> void:
 	row.add_child(_turn_av)
 	var meta := UiTheme.vbox(0)
 	_turn_name = UiTheme.label("—", 13, UiTheme.COL().text)
+	# NAMED BY ROLE, exactly as the ring cells name their own labels (tile-name/tile-price):
+	# a gate that identifies a label by its text or its font is guessing, and a guess that
+	# matches nothing says nothing. These two carry what a viewer must grasp at a glance -
+	# whose turn it is and what is happening - so the stream-readability measurement has to be
+	# able to find them. See game/tools/gates/stream_read_gate.gd.
+	_turn_name.name = "turn-name"
 	_turn_phase = UiTheme.label("", 10, UiTheme.COL().text_dim)
+	_turn_phase.name = "turn-phase"
 	meta.add_child(_turn_name)
 	meta.add_child(_turn_phase)
 	row.add_child(meta)
@@ -83,8 +90,10 @@ func _init() -> void:
 	row.add_child(spacer)
 
 	_round_chip = _chip("РАУНД 1")
+	_round_chip.name = "top-round"
 	row.add_child(_round_chip)
 	_pot_chip = _chip("БАНК $0")
+	_pot_chip.name = "top-pot"
 	row.add_child(_pot_chip)
 
 	_decision = UiTheme.label("", 12, UiTheme.COL().accent)

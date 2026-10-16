@@ -91,6 +91,14 @@ GATES=(
 	# been run (restoring the 8px/7px clamp turns READ-01 red with 40/40 silent cells and READ-03
 	# red with 68 labels below their floor).
 	"READ-01|sg|quarantine|script|tools/ci/gates/read_gate.sh"
+	# STREAM-READ (docs/program.md P1.1, the owner's phone correction of 16.10): the promise is a
+	# picture drawn at a native large resolution that a viewer watches SMALL, so the measure is the
+	# effective font size after scaling - frame_px * (390 / frame_width). It runs last and windowed
+	# for the same reason READ-01 does. QUARANTINE, and it is RED BY DESIGN today: at 1920x1080 the
+	# glance labels sit at 10-13px, which is 2.0-2.6px on a phone against a 12px floor. That red is
+	# the real state of the S3 promise, not a gate defect - its both-direction check has been run
+	# (floor 1.5 -> PASSED, floor 12 -> FAILED naming turn-phase). Promote with the font work.
+	"STREAM-READ|sg|quarantine|script|tools/ci/gates/stream_read_gate.sh"
 )
 
 
