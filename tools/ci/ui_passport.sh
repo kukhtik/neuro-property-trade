@@ -34,6 +34,7 @@ with_stream=0
 with_film=0
 save_baseline=0
 diff_mode=0
+seed=4242
 for a in "$@"; do
 	case "$a" in
 		--skin=*) skin="${a#--skin=}" ;;
@@ -41,9 +42,16 @@ for a in "$@"; do
 		--film) with_film=1 ;;
 		--save-baseline) save_baseline=1 ;;
 		--diff) diff_mode=1 ;;
-		*) echo "usage: ui_passport.sh [--skin=<id>] [--with-stream] [--film] [--save-baseline] [--diff]" >&2; exit 2 ;;
+		--seed=*) seed="${a#--seed=}" ;;
+		*) echo "usage: ui_passport.sh [--skin=<id>] [--with-stream] [--film] [--save-baseline] [--diff] [--seed=N]" >&2; exit 2 ;;
 	esac
 done
+# THE SEED. An unseeded match re-rolls the dice and re-deals the seats between runs, so a diff
+# against a baseline turns into noise (+15/-2/~29 changed on the VERY SAME code - observed).
+# The product's own CLI takes `--smoke-seed=` (main.gd); 0 means "leave the match random",
+# which is the honest way to LOOK at variance instead of pretending it is a regression.
+seed_arg=""
+[ "$seed" != "0" ] && seed_arg="--smoke-seed=$seed"
 
 fail=0
 states=0
@@ -70,16 +78,16 @@ run_seq() { # <seq> [extra godot args...]
 }
 
 if [ -n "$skin" ]; then
-	run_seq pre "--skin=$skin"
-	run_seq match "--skin=$skin"
-	[ "$with_stream" = 1 ] && run_seq match "--skin=$skin" "--role=stream" "--size=1280x720" "--label=stream"
+	run_seq pre "--skin=$skin" $seed_arg
+	run_seq match "--skin=$skin" $seed_arg
+	[ "$with_stream" = 1 ] && run_seq match "--skin=$skin" "--role=stream" "--size=1280x720" "--label=stream" $seed_arg
 else
-	run_seq pre
-	run_seq match
-	[ "$with_stream" = 1 ] && run_seq match "--role=stream" "--size=1280x720" "--label=stream"
+	run_seq pre $seed_arg
+	run_seq match $seed_arg
+	[ "$with_stream" = 1 ] && run_seq match "--role=stream" "--size=1280x720" "--label=stream" $seed_arg
 fi
 # film = motion + behaviour; it drives the real app and never judges
-[ "$with_film" = 1 ] && run_seq film ${skin:+--skin=$skin}
+[ "$with_film" = 1 ] && run_seq film ${skin:+--skin=$skin} $seed_arg
 
 # The dossier. Pillow is only needed for the annotated frames; the text map needs none.
 py=""
