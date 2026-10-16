@@ -28,10 +28,14 @@ fi
 mkdir -p "$repo/build/gates"
 log="$repo/build/gates/READ.log"
 skin="${1:-neuro}"
+## The FIXED seed reaches main.gd through the product's own CLI (`--smoke-seed=`), so every run
+## measures the same match. Without it the ring reported 40/40 on one run and 28/40 on the next -
+## the bots had simply bought different cells.
+seed="${READ_SEED:-4242}"
 rc=0
 timeout 300 "$godot" --path "$(native "$repo/game")" --rendering-driver opengl3 \
 	--position 40,40 res://tools/gates/read_gate.tscn -- \
-	"--skin=$skin" "--outdir=$(native "$repo/build/gates")" >"$log" 2>&1 || rc=$?
+	"--skin=$skin" "--outdir=$(native "$repo/build/gates")" "--smoke-seed=$seed" >"$log" 2>&1 || rc=$?
 
 if ! grep -aq "READ DONE" "$log"; then
 	# frames/rows produced and then a death is a hang; the display demonstrably worked.

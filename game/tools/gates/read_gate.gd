@@ -41,6 +41,10 @@ const FONT_ALLOWLIST_NAMES := ["tile-badge", "tile-mortgaged", "badge", "mortgag
 ## A dock is "empty" when this fraction of its height carries no content. The map measured 60%
 ## dead zone in the left dock and ~530px in the right one.
 const DEAD_ZONE_MAX := 0.25
+## In the compact profile the docks are REPLACED by 48px rails (SG-01's design: a rail is an icon
+## strip, and an icon strip that stretched its icons over 600px would be the defect). READ-02
+## therefore judges DOCK profiles only; a rail profile is measured and reported as context.
+const JUDGE_DOCKS_WHEN_WIDE := 1280
 
 ## READ-01 is specified at 1440x900 ("кадр 1440x900 живого матча", master-fix-plan §1 R-1); the other
 ## profiles are MEASURED AND REPORTED as context, not judged. Why that split is honest rather than
@@ -55,6 +59,14 @@ const PROFILES := [
 	{"label": "1280x720", "size": Vector2i(1280, 720)},
 	{"label": "880x600", "size": Vector2i(880, 600)},
 ]
+
+## One fixed seed for every run: a gate whose numbers move between runs is not a gate. The first
+## revision measured a LIVE match, so the ring reported 40/40 identifiable on one run and 28/40 on
+## the next - not because the board changed, but because the bots had bought different cells.
+## The value is passed by the shell wrapper as `--smoke-seed=` (the product's own CLI, which
+## `main._cli_value` reads); this constant is the wrapper's default written down in one place so
+## the two cannot drift silently, and `_finish` prints the seed it was actually given.
+const FIXED_SEED := 4242
 
 var _outdir := "user://read"
 var _skin := ""
@@ -122,13 +134,19 @@ func _spawn() -> void:
 	_wait = 30
 
 
-## Boot the real match, then stop the clock so the human's turn stays on screen while the gate
-## walks the tree (a capture may not race a decision timer - SG-07 learned this the hard way).
+## Boot the real match under a FIXED seed and a FROZEN clock, then stop at a named, reachable state
+## so every profile measures the same board.
 func _settle() -> void:
+	# THE SEED COMES FROM THE COMMAND LINE, set by the shell wrapper as `--smoke-seed=<FIXED_SEED>`:
+	# `main._cli_value` reads OS.get_cmdline_user_args(), and a gate that invented its own
+	# environment variable would set a value nothing reads (the fake-fix shape this project keeps
+	# finding: a knob that looks connected and is not).
 	if _launcher != null and _launcher.has_method("_autostart"):
 		_launcher.call("_autostart")
 	var e = _launcher.get("_engine")
 	if e != null and e.settings != null:
+		# a capture may not race a decision clock: the first revision photographed whatever the
+		# timer had already done to the turn (SG-07 learned this the hard way).
 		e.settings.turn_timer = 0
 		e.settings.auction_timer = 0
 	# a tile selected, so the inspector's body is BUILT (an unbuilt panel is not measured)
@@ -273,6 +291,8 @@ func _read_board(board: Control, label: String) -> Dictionary:
 			silent.append(idx)
 	var row := {
 		"label": label,
+		"width": int(PROFILES[_profile_idx].size.x),
+		"is_dock_profile": int(PROFILES[_profile_idx].size.x) >= JUDGE_DOCKS_WHEN_WIDE,
 		"cells_total": cells_total,
 		"cells_ok": cells_ok,
 		"silent": silent,
@@ -282,14 +302,19 @@ func _read_board(board: Control, label: String) -> Dictionary:
 		"board_size": "%dx%d" % [int(board.size.x), int(board.size.y)],
 		"left_dead": _dead_zone(gv_dock("seats")),
 		"right_dead": _dead_zone(gv_dock("journal")),
+		"left_found": gv_dock("seats") != null,
+		"right_found": gv_dock("journal") != null,
+		"left_children": _visible_children(gv_dock("seats")),
+		"right_children": _visible_children(gv_dock("journal")),
 	}
 	# WHY THIS PRINTS THE BOARD'S OWN SIZE: the first revision reported "0/40 identifiable" at
 	# 1280x720 with every dock gap at 0.00 - the shape of a board that was never re-laid-out after
 	# the window shrank, not the shape of an unreadable board. A gate that cannot tell those two
 	# apart reports the wrong defect, so the row carries the geometry it measured.
-	print("READ-01 ROW %s cells=%d/%d silent=%d min_font=%d small_allow=%d board=%dx%d left_dead=%.2f right_dead=%.2f"
-		% [label, cells_ok, cells_total, silent.size(), min_font, small_allow, int(board.size.x), int(board.size.y),
-			float(row["left_dead"]), float(row["right_dead"])])
+	print("READ-01 ROW %s cells=%d/%d silent=%d min_font=%d board=%dx%d left=(found=%s kids=%d dead=%.2f) right=(found=%s kids=%d dead=%.2f)"
+		% [label, cells_ok, cells_total, silent.size(), min_font, int(board.size.x), int(board.size.y),
+			str(row["left_found"]), int(row["left_children"]), float(row["left_dead"]),
+			str(row["right_found"]), int(row["right_children"]), float(row["right_dead"])])
 	return row
 
 
@@ -301,6 +326,16 @@ func _price_ok(tv) -> bool:
 			var l := c as Label
 			return l.visible and l.text.strip_edges() != "" and l.get_theme_font_size("font_size") >= PRICE_MIN
 	return false
+
+
+func _visible_children(n: Control) -> int:
+	if n == null:
+		return -1
+	var c := 0
+	for ch in n.get_children():
+		if ch is Control and (ch as Control).visible:
+			c += 1
+	return c
 
 
 func gv_dock(id: String) -> Control:
@@ -320,33 +355,63 @@ func gv_dock(id: String) -> Control:
 	return direct as Control if direct is Control else null
 
 
-## Fraction of a dock's height that carries no content: the largest vertical gap between the
-## bottom of one visible child's rect and the top of the next (plus the gap below the last child
-## and above the first). This is what "555px of emptiness" means, measured rather than eyeballed.
+## Fraction of a dock's height that carries no content.
+##
+## WHY IT DESCENDS: the dock is a PanelContainer whose single child is a MarginContainer holding
+## the column - so a walker reading only direct children sees ONE full-height box and reports 0%
+## emptiness for a dock that is 60% empty. That is the "check that never looks at the tree" defect
+## in miniature, and this gate's first revision had it: every dock reported 0.00 at every profile.
+## The measurement that means something is over the LEAF rows a viewer actually sees: the row
+## containers inside the column, not the wrapper that spans them.
 func _dead_zone(dock: Control) -> float:
 	if dock == null or dock.size.y <= 1.0:
-		return 0.0
-	var spans: Array = []
-	for c in dock.get_children():
-		if not (c is Control) or not (c as Control).visible:
-			continue
-		var r: Rect2 = (c as Control).get_global_rect()
-		if r.size.y <= 0.0:
-			continue
-		spans.append(Vector2(r.position.y, r.position.y + r.size.y))
+		return -1.0   # not measurable: distinguishes "no voids" from "never looked"
+	var spans: Array = _leaf_spans(dock)
 	if spans.is_empty():
 		return 1.0
 	spans.sort_custom(func(a, b): return a.x < b.x)
 	var top: float = dock.get_global_rect().position.y
 	var bottom: float = top + dock.size.y
-	var gap := 0.0
-	gap = maxf(gap, float(spans[0].x) - top)
+	var gap: float = maxf(0.0, float(spans[0].x) - top)
 	var cursor: float = float(spans[0].y)
 	for i in range(1, spans.size()):
 		gap = maxf(gap, float(spans[i].x) - cursor)
 		cursor = maxf(cursor, float(spans[i].y))
 	gap = maxf(gap, bottom - cursor)
 	return gap / dock.size.y
+
+
+## The visible rows that carry content: descend through layout-only wrappers (MarginContainer,
+## PanelContainer with one child) until reaching a node whose children are the actual rows, and
+## treat each such row as a span. A single-child chain is a wrapper; two or more children of the
+## same kind are the content.
+func _leaf_spans(n: Control) -> Array:
+	var out: Array = []
+	var kids: Array = []
+	for c in n.get_children():
+		if c is Control and (c as Control).visible and (c as Control).size.y > 0.0:
+			kids.append(c as Control)
+	if kids.size() == 1:
+		# a wrapper: go inside, unless it is a leaf with real content of its own
+		var only: Control = kids[0]
+		var grand: Array = []
+		for g in only.get_children():
+			if g is Control and (g as Control).visible and (g as Control).size.y > 0.0:
+				grand.append(g)
+		if grand.size() >= 1:
+			return _leaf_spans(only)
+		var r: Rect2 = only.get_global_rect()
+		out.append(Vector2(r.position.y, r.position.y + r.size.y))
+		return out
+	return _spans_of(kids)
+
+
+func _spans_of(nodes: Array) -> Array:
+	var out: Array = []
+	for c in nodes:
+		var r: Rect2 = (c as Control).get_global_rect()
+		out.append(Vector2(r.position.y, r.position.y + r.size.y))
+	return out
 
 
 ## --- verdicts --------------------------------------------------------------------------------
@@ -382,15 +447,44 @@ func _finish() -> void:
 	# READ-02 — every measured profile
 	var bad02: Array = []
 	for row in _results:
-		if float(row["left_dead"]) > DEAD_ZONE_MAX:
-			bad02.append("%s: the left dock is %.0f%% empty (max %.0f%%)" % [row["label"], float(row["left_dead"]) * 100.0, DEAD_ZONE_MAX * 100.0])
-		if float(row["right_dead"]) > DEAD_ZONE_MAX:
-			bad02.append("%s: the right dock is %.0f%% empty (max %.0f%%)" % [row["label"], float(row["right_dead"]) * 100.0, DEAD_ZONE_MAX * 100.0])
+		# a rail profile (compact) has no docks to be full: SG-01 replaces them by design, and an
+		# icon strip stretched over 600px would itself be the defect
+		if not bool(row["is_dock_profile"]):
+			continue
+		if not bool(row["left_found"]) or not bool(row["right_found"]):
+			bad02.append("%s: a dock was not found in the tree (left=%s right=%s) - nothing was measured" % [row["label"], str(row["left_found"]), str(row["right_found"])])
+			continue
+		if int(row["left_children"]) <= 0 or int(row["right_children"]) <= 0:
+			bad02.append("%s: a dock carries no visible content at all (left=%d right=%d children)" % [row["label"], int(row["left_children"]), int(row["right_children"])])
+			continue
+		var ld := float(row["left_dead"])
+		var rd := float(row["right_dead"])
+		if ld < 0.0 or rd < 0.0:
+			bad02.append("%s: a dock could not be measured (left=%.2f right=%.2f) - a dock with no size proves nothing" % [row["label"], ld, rd])
+			continue
+		if ld > DEAD_ZONE_MAX:
+			bad02.append("%s: the left dock is %.0f%% empty (max %.0f%%)" % [row["label"], ld * 100.0, DEAD_ZONE_MAX * 100.0])
+		if rd > DEAD_ZONE_MAX:
+			bad02.append("%s: the right dock is %.0f%% empty (max %.0f%%)" % [row["label"], rd * 100.0, DEAD_ZONE_MAX * 100.0])
 	if not bad02.is_empty():
 		echo_fail("READ-02", "; ".join(bad02))
 		rc = 1
 	else:
-		print("==> READ-02 PASSED (no dock leaves more than %.0f%% of its height empty on any measured profile)" % (DEAD_ZONE_MAX * 100.0))
+		var worst_l := 0.0
+		var worst_r := 0.0
+		var n_dock := 0
+		for row in _results:
+			if not bool(row["is_dock_profile"]):
+				continue
+			n_dock += 1
+			worst_l = maxf(worst_l, float(row["left_dead"]))
+			worst_r = maxf(worst_r, float(row["right_dead"]))
+		if n_dock == 0:
+			echo_fail("READ-02", "no DOCK profile was measured (every profile collapsed to rails) - the gate would pass on nothing")
+			rc = 1
+		else:
+			print("==> READ-02 PASSED (measured on %d dock profile(s) of %d: the emptiest left dock is %.0f%% and the emptiest right dock is %.0f%%, max allowed %.0f%%; rail profiles reported as context)"
+				% [n_dock, _results.size(), worst_l * 100.0, worst_r * 100.0, DEAD_ZONE_MAX * 100.0])
 
 	# READ-03 — every PROSE label clears its role's floor in the judged profile. The count is the
 	# verdict, not a global minimum: a 9px price is correct by design while a 9px name is the bug.
@@ -410,8 +504,18 @@ func _finish() -> void:
 		print("READ-03 ALLOWED-SMALL %s" % ",".join(_small_named.slice(0, 8)))
 	for f in _fails:
 		print("READ NOTE %s" % f)
-	print("READ DONE profiles=%d skin=%s rc=%d in %dms" % [_results.size(), SkinManager.chosen, rc, Time.get_ticks_msec() - _t0])
+	print("READ DONE profiles=%d skin=%s seed=%s rc=%d in %dms"
+		% [_results.size(), SkinManager.chosen, _given_seed(), rc, Time.get_ticks_msec() - _t0])
 	get_tree().quit(0)
+
+
+## What seed the run was actually launched with - not what the gate hoped for.
+func _given_seed() -> String:
+	for a in OS.get_cmdline_user_args():
+		var s := str(a)
+		if s.begins_with("--smoke-seed="):
+			return s.substr(13)
+	return "none(!)"
 
 
 func echo_fail(id: String, reason: String) -> void:

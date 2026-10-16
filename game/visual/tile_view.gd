@@ -81,6 +81,7 @@ func _build(data: Dictionary) -> void:
 	# OVERRUN_TRIM_ELLIPSIS rather than clip_text: a clipped label silently loses its last
 	# letters (the reader sees "Harbor S"), an ellipsis says "there is more" and the tooltip
 	# below carries the whole name.
+	_name.name = "tile-name"
 	_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var full_name := str(data.get("name", ""))
@@ -90,6 +91,7 @@ func _build(data: Dictionary) -> void:
 
 	var cost: int = int(data.get("cost", 0))
 	_price = UiTheme.label(MoneyFmt.make("$").amount(cost) if cost > 0 else "", 8, UiTheme.COL().money)
+	_price.name = "tile-price"
 	_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_price.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_price)
@@ -103,12 +105,14 @@ func _build(data: Dictionary) -> void:
 	# textual "xN" rides next to them and is the signal the gate reads; the squares stay as the
 	# at-a-glance duplicate.
 	_houses_lbl = UiTheme.label("", HOUSES_MIN, UiTheme.COL().success)
+	_houses_lbl.name = "tile-houses"
 	_houses_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_houses_lbl.visible = false
 	_houses_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_houses_lbl)
 
 	_badge = UiTheme.label("", 9, UiTheme.COL().text)
+	_badge.name = "tile-badge"
 	_badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_badge.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_badge.clip_text = true
@@ -117,6 +121,7 @@ func _build(data: Dictionary) -> void:
 	add_child(_badge)
 
 	_mortgaged = UiTheme.label("M", 9, UiTheme.COL().danger)
+	_mortgaged.name = "tile-mortgaged"
 	_mortgaged.visible = false
 	_mortgaged.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_mortgaged)

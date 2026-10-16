@@ -39,7 +39,6 @@ func _init() -> void:
 	_list = UiTheme.vbox(4)
 	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(_list)
-
 	_stats = UiTheme.hbox(4)
 	col.add_child(_stats)
 
@@ -88,6 +87,12 @@ func _card(p: Dictionary, seats: Array, turn: int, names: Dictionary) -> Control
 			driver = str(s.input_driver)
 	var card := PanelContainer.new()
 	var active: bool = pid == turn
+	# R-2 / D5: the cards DISTRIBUTE over the dock's height instead of stacking at the top and
+	# leaving ~555px of dead space under them. With four seats and a 716px column, three cards'
+	# worth of emptiness sat between the last card and the stats strip; a viewer read that as
+	# "the panel is broken". EXPAND_FILL makes the seat list share the free height evenly, so the
+	# panel is as tall as it is because its content needs it, not because a spacer filled it.
+	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel",
 		UiTheme.box(UiTheme.COL().panel_dark if active else UiTheme.COL().panel,
 			col if active else UiTheme.COL().border, 2 if active else 1, 0))
