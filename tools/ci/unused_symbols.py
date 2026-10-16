@@ -78,6 +78,11 @@ def under_globs(base: pathlib.Path, globs):
 
 
 TOKEN_RE = re.compile(r"[A-Za-z_]\w*")
+# An ASSIGNMENT is not a consumer. `p.text_scale = 1.15` made UiProfile.text_scale look
+# alive while nobody ever read it - the very defect this scanner exists for (the stream
+# role "scaled the type" for months with no reader). A token followed by ` = `, `+=` … is
+# written, not used; `==`, `!=` and `:=` are not assignments.
+ASSIGN_AFTER = re.compile(r"\s*[+\-*/%]?=(?!=)")
 
 
 def split_code_comments(text: str):
@@ -112,10 +117,14 @@ def split_code_comments(text: str):
 
 
 def histogram(text: str):
-    """identifier -> occurrences, in one pass. Whole-file tokenising, not per-symbol
-    rescans: the naive version was O(declarations x files) and ran for minutes."""
+    """identifier -> READ occurrences, in one pass. Whole-file tokenising, not per-symbol
+    rescans: the naive version was O(declarations x files) and ran for minutes.
+    Assignments are excluded (see ASSIGN_AFTER): a field nobody reads has no consumer."""
     c = {}
-    for t in TOKEN_RE.findall(text):
+    for m in TOKEN_RE.finditer(text):
+        if ASSIGN_AFTER.match(text, m.end()):
+            continue
+        t = m.group(0)
         c[t] = c.get(t, 0) + 1
     return c
 
