@@ -10,6 +10,7 @@ extends Node
 ## Run: godot --path game res://tools/v3_probe.tscn (needs a window: reads real layout)
 
 const MainScript := preload("res://main.gd")
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 
 var _had_fail := false
 var _checks := 0
@@ -57,14 +58,28 @@ func _run_checks() -> void:
 		_fail("header height %s != 56" % str(top.size.y))
 		return
 	_check("header = 56")
-	if absf(seats.size.x - 268.0) > 2.0 or absf(rightcol.size.x - 344.0) > 2.0:
-		_fail("docks %s/%s != 268/344" % [str(seats.size.x), str(rightcol.size.x)])
+	# THE RAILS ARE THE DEFAULT NOW (owner's relayout, 16.10): at 1440x900 the two docks have given
+	# way to 48px rails, so asserting "docks = 268/344" here asserts a design that no longer exists
+	# - the same "check nailed to a design literal" shape that SG-01 and SG-05 each carried a copy
+	# of. What must hold instead is that the side panels are PRESENT in one form or the other, and
+	# that the choice follows the product's own rule.
+	var rails_below: int = LayoutProfile.RAILS_BELOW
+	var want_rails: bool = 1440 < rails_below
+	var seats_visible: bool = seats.visible
+	var rail_left = gv.find_child("rail-left", true, false)
+	if want_rails and (seats_visible or rail_left == null):
+		_fail("1440x900 is a rail profile (RAILS_BELOW=%d) but the docks are still shown" % rails_below)
 		return
-	_check("docks = 268 / 344")
-	if act.size.y < 90.0:
-		_fail("console height %s < 90" % str(act.size.y))
+	_check("side panels follow LayoutProfile.RAILS_BELOW=%d" % rails_below)
+	# the console is a one-line STRIP now: tall enough for its own controls, short enough not to eat
+	# the board. Both bounds, because "too tall" is the defect this relayout removes.
+	if act.size.y < 40.0:
+		_fail("console height %s < 40 - its buttons would be clipped" % str(act.size.y))
 		return
-	_check("console height >= 90")
+	if act.size.y > 120.0:
+		_fail("console height %s > 120 - the strip is a panel again and is eating the board" % str(act.size.y))
+		return
+	_check("console strip height in 40..120 (%s)" % str(act.size.y))
 	if rightcol.global_position.x + rightcol.size.x > 1441.0:
 		_fail("right dock overflows the frame: %s + %s" % [str(rightcol.global_position.x), str(rightcol.size.x)])
 		return
