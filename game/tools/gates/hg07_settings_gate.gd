@@ -44,8 +44,8 @@ func _check_sheet() -> void:
 	add_child(ov)
 	await get_tree().process_frame
 	var tabs = ov.get("_tabs")
-	if tabs == null or tabs.get_tab_count() != 5:
-		_fail("the settings sheet has %s tabs, expected 5 (Игроки/Правила/Темп/Интерфейс/Данные)"
+	if tabs == null or tabs.get_tab_count() != 6:
+		_fail("the settings sheet has %s tabs, expected 6 (Игроки/Правила/Темп/Интерфейс/Управление/Данные)"
 			% str(tabs.get_tab_count() if tabs != null else "no"))
 	var rows: Array = ov.get("_rows")
 	if rows.size() != 4:

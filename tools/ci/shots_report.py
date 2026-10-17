@@ -25,10 +25,22 @@ from __future__ import annotations
 import argparse
 import os
 import pathlib
+import re
 import sys
 import time
 
 MISSING = object()
+
+## THE LAUNCH WINDOW SIZE, read from its ONE home (`game/ui/core/layout_profile.gd`). The shell asks
+## for this at launch and the capture writes frames at it; restating the number here is how SG-07
+## came to fail with "1600x1200, the profile promises 1440x900".
+def _main_size() -> tuple:
+    src = pathlib.Path(__file__).resolve().parent.parent.parent / "game" / "ui" / "core" / "layout_profile.gd"
+    text = src.read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"screen\s*:=\s*Vector2i\(\s*(\d+)\s*,\s*(\d+)\s*\)", text)
+    if not m:
+        raise SystemExit(f"cannot read LayoutProfile.screen from {src}")
+    return (int(m.group(1)), int(m.group(2)))
 
 
 def _load(frames: dict, path: pathlib.Path):
@@ -100,7 +112,11 @@ def main() -> int:
                 fails.append(f"{state}_{skin}: unreadable PNG")
                 rows.append({"skin": skin, "state": state, "path": path, "note": "unreadable"})
                 continue
-            want = (880, 600) if state == "compact" else (1440, 900)
+            # THE MAIN SIZE IS READ FROM ITS ONE HOME, not restated here. When the shell's window
+            # grew to 1600x1200 this line still said 1440x900 and SG-07 failed with "1600x1200, the
+            # profile promises 1440x900" - the gate was right and the copy was wrong. compact stays
+            # a literal: a deliberate SMALL-window case, not the launch size.
+            want = (880, 600) if state == "compact" else _main_size()
             if tuple(im.size) != want:
                 fails.append(f"{state}_{skin}: {im.size[0]}x{im.size[1]}, the profile promises "
                              f"{want[0]}x{want[1]}")

@@ -8,6 +8,8 @@ extends Node
 const EngineScript := preload("res://core/engine.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
+# the ONE home for the launch window size - see the note in `_ready`
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 const LaunchParams := preload("res://ui/core/launch_params.gd")
 const RemoteSession := preload("res://ui/remote_session.gd")
 const GameServer := preload("res://server/game_server.gd")
@@ -59,11 +61,27 @@ var _remote_session
 var _awaited_logged := false
 
 func _ready() -> void:
-	# set window size for the playable shell (1440x900 gives the board room to
-	# render larger, more readable tiles; the layout adapts to any size)
-	var vp = get_viewport()
-	if vp != null:
-		DisplayServer.window_set_size(Vector2i(1440, 900))
+	# THE WINDOW SIZE IS A LEGIBILITY DECISION, NOT A PREFERENCE - and it has ONE HOME:
+	# `LayoutProfile.screen`. The shell used to hard-code 1440x900 here while `layout_profile.gd` and
+	# the gate profiles each kept their own copy; raising only this one turned SG-07 red
+	# ("1600x1200, the profile promises 1440x900"). Asking for what the profile declares is what keeps
+	# the window the app opens and the window the gates measure from drifting apart.
+	#
+	# `screen` is an INSTANCE field (the profile is built for a screen), so it is read from an
+	# instance - `LayoutProfile.screen` on the script does not exist.
+	#
+	# Why it matters: the board is a SQUARE ring in a wide stage, so its size is capped by the stage's
+	# HEIGHT. At 900 tall the ring is 748px, the cells 68px and the names 11px - which measures as
+	# blank. At 1200 tall the ring is 1048px and the names 14px. The layout adapts downward to any
+	# smaller window; this is only the size we ASK for.
+	var want: Vector2i = LayoutProfile.new().screen
+	DisplayServer.window_set_size(want)
+	# A WINDOW MAY REFUSE THE REQUEST (the display can be smaller). Read back what we actually got
+	# rather than assuming: the phone-fit probe taught this with a root viewport stuck at 64x64, and
+	# every measurement taken afterwards described a window nobody had.
+	var got := DisplayServer.window_get_size()
+	if got.y < want.y:
+		push_warning("window refused %s, got %s - the board will be smaller than its text wants" % [str(want), str(got)])
 
 	# The execution role is chosen at LAUNCH, never toggled in the UI
 	# (docs/ui_migration_notes §9). UiProfile is the single source of that.

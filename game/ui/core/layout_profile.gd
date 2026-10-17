@@ -26,7 +26,14 @@ const COMPACT_HEIGHT := 700
 ## Not a taste: the board is height-limited at every profile but the narrowest, so the 612px the two
 ## docks take is mostly width the board could not use - while at 1000x650 the docks starve it to a
 ## 328px square (30px cells) where rails leave 490px (45px cells). Measured before choosing.
-const RAILS_BELOW := 1500
+## Panels auto-collapse to a rail; a manual collapse is also allowed (the owner's H/P key).
+##
+## RAISE THIS, NOT THE OTHER ONE, IF THE BOARD EVER LOOKS SQUEEZED AGAIN. The board is a SQUARE ring:
+## its size is `min(column_width, column_height)`, so a wide-but-short column wastes its width and a
+## narrow column steals from the ring directly. Measured at 1600x1200: panels open leave a 972px
+## column and a 972px ring; rails leave 1488px and the ring reaches its full 1048px (95px cells, 16px
+## names instead of 88/15). At 1500 the panels stayed open on the very window the shell opens.
+const RAILS_BELOW := 2000
 
 ## Auto-collapse rails: the v3 mockup rails BOTH docks on the compact profile.
 const RAIL_WIDTH := 48
@@ -36,8 +43,17 @@ const RAIL_WIDTH := 48
 const LEFT_W := {WIDE: 280, DESKTOP: 268, COMPACT: 240}
 const RIGHT_W := {WIDE: 380, DESKTOP: 344, COMPACT: 300}
 
+## THE SIZE THE SHELL ASKS FOR AT LAUNCH — the ONE home for it. `main._ready` requests this and SG-07's
+## profile list is built from it, so the window the app opens and the window the gates measure cannot
+## disagree. They DID: the shell hard-coded 1440x900 while this said 1440x900 and the gates promised
+## it, and raising only the shell made SG-07 red with "1600x1200, the profile promises 1440x900".
+##
+## WHY 1600x1200 AND NOT 1440x900: the board is a SQUARE ring in a wide stage, so its size is capped
+## by the stage's HEIGHT. At 1440x900 the ring is 748px, the cells 68px and the names 11px - which
+## measures as blank. At 1600x1200 the ring is 1048px, the cells 86px and the names 14px. The layout
+## still adapts downward; this is only what we ask for.
 var id := DESKTOP
-var screen := Vector2i(1440, 900)
+var screen := Vector2i(1600, 1200)
 
 
 static func for_screen(size: Vector2i) -> LayoutProfile:
@@ -57,15 +73,26 @@ func is_compact() -> bool:
 
 
 ## Should the left players panel auto-collapse to a rail?
-## v3 mockup: the compact profile (x < 1280 or h <= 700) turns BOTH docks into rails;
-## wider windows keep both docks open.
+##
+## THE PANELS COLLAPSE WHENEVER THEY WOULD COST THE BOARD ITS SIZE. The previous rule was
+## `is_compact()`, which meant the panels stayed OPEN exactly on the big windows where the board has
+## the most room to gain - and the numbers came out backwards:
+##
+##     1600x1200 (WIDE)     rails off -> board 940px
+##     1280x720  (DESKTOP)  rails off -> board 620px    <- worse than the 880px window!
+##      880x600  (COMPACT)  rails on  -> board 736px
+##
+## `RAILS_BELOW` was declared for this and never read by anything. The board is a SQUARE ring, so
+## what it wants is HEIGHT; handing 612px of a 1584px row to two panels that show a name and a price
+## is what the owner saw as "абсурдно огромные панели с парой строк". Rails below the threshold, and
+## the board takes the row.
 func rail_left() -> bool:
-	return is_compact()
+	return screen.x < RAILS_BELOW or is_compact()
 
 
 ## Should the right journal panel auto-collapse to a rail?
 func rail_right() -> bool:
-	return is_compact()
+	return screen.x < RAILS_BELOW or is_compact()
 
 
 func left_width() -> int:

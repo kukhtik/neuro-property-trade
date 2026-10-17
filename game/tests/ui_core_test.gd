@@ -560,9 +560,22 @@ static func test_rail_both_on_compact() -> String:
 
 
 static func test_rail_both_open_on_desktop() -> String:
-	var p = LayoutProfileScript.for_screen(Vector2i(1440, 900))
-	if p.rail_left() != false or p.rail_right() != false:
-		return "desktop profile must have both rails open"
+	# THE RULE THIS USED TO PIN WAS HARMLESS AT ITS OWN SIZE AND WRONG ABOVE IT.
+	#
+	# It asserted that a 1440x900 desktop keeps both rails OPEN. At 1440x900 that changes nothing: the
+	# ring is height-capped at 764px whether the panels take 612px or 96px. But the rule generalised
+	# the OTHER way too - a 1600x1200 window is also "desktop", so the panels stayed open there and
+	# the ring was cut to 972px by the COLUMN, where rails would have let it reach its full 1048px.
+	#
+	# So the rule is now "the panels never cost the ring its size", and that is what is asserted - at
+	# the size where it was hidden (1600x1200) as well as at the size where it never showed.
+	var p = LayoutProfileScript.for_screen(Vector2i(1600, 1200))
+	if not (p.rail_left() and p.rail_right()):
+		return "at 1600x1200 the panels must rail: open, they cut the ring to the column width (972px) where rails give it its full 1048px - the board is a square, so the column is what binds"
+	# the compact profile rails for its own reason (there is no room for docks at all)
+	var c = LayoutProfileScript.for_screen(Vector2i(880, 600))
+	if not (c.rail_left() and c.rail_right()):
+		return "the compact profile must rail both docks"
 	return ""
 
 

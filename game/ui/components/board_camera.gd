@@ -76,23 +76,38 @@ func _on_board_resized() -> void:
 
 ## Put `board` under the camera. One place computes the transform, so pan, zoom, follow and reset
 ## cannot drift apart.
+##
+## THE BOARD CENTRES ITSELF. `board_scene._layout()` already places the square ring at
+## `ox = (size.x - side) * 0.5` inside its own rect, so the camera must treat THAT as the resting
+## position and move it from there. The first version computed the offset from zero and added a
+## second centring on top of the board's own: at 1310x748 the ring was pushed 280px right, its right
+## edge fell past `clip_contents`, and every cell on that side rendered as an empty square - the
+## owner's "клетки почему-то пустые" surviving the name fix, because the cells were off-screen.
 func _apply() -> void:
 	if board == null:
 		return
 	var stage := size
 	if stage.x <= 1.0 or stage.y <= 1.0:
 		return
-	# what the board looks like at zoom 1 (it is square, centred by its own layout)
+	# what the board looks like at zoom 1 (a square ring, centred in its own rect by its layout)
 	var board_side: float = minf(board.size.x, board.size.y)
 	if board_side <= 1.0:
 		return
 	board.pivot_offset = Vector2.ZERO
 	board.scale = Vector2(_zoom, _zoom)
-	# The focus point (board coords) must land at the stage centre. The board's own top-left in
-	# stage coords is (board.position), which does not move; only our scale does.
-	var centre := stage * 0.5
-	var want := centre - _focus * _zoom
-	board.position = want
+	# THE BOARD CENTRES ITSELF - THE CAMERA MUST NOT.
+	#
+	# `_layout()` places the ring at `ox = (size.x - side)/2` INSIDE the node, so a node position of
+	# ZERO already puts the ring in the middle of its own rect. The camera's whole job is the player's
+	# pan/zoom ON TOP of that. Adding a centring term too stacks the two: measured, the ring's tiles
+	# started at x=626 in a camera spanning 64..1374 - 562px of dead space on the left, the ring
+	# jammed against the right edge, and every cell there drawn as an empty square because it fell
+	# outside `clip_contents`. That is the owner's "клетки почему-то пустые" surviving the name fix.
+	#
+	# `_focus` is the ring point that belongs under the stage centre; at rest it IS the ring centre,
+	# so the home transform is exactly zero.
+	var ring_mid := Vector2(board_side, board_side) * 0.5
+	board.position = -( _focus - ring_mid ) * _zoom
 
 
 ## The board point currently under the stage centre.
@@ -128,7 +143,12 @@ func zoom_at(factor: float, at: Vector2) -> void:
 	# not, because it only ever read the camera's own fields.)
 	var board_pt := (at - board.position) / before
 	_zoom = z
-	_focus = board_pt + (size * 0.5 - at) / _zoom
+	# KEEP THE POINT UNDER THE CURSOR. With `_apply`'s convention (`position = -(focus - ring_mid) *
+	# zoom`) the focus that holds `board_pt` under `at` is `ring_mid + board_pt - at/zoom`. The earlier
+	# `board_pt + (size * 0.5 - at) / _zoom` belonged to the old convention where the camera ALSO
+	# centred the ring; kept as-is it would have anchored the zoom on a point 400px away.
+	var ring_mid := Vector2(minf(board.size.x, board.size.y), minf(board.size.x, board.size.y)) * 0.5
+	_focus = ring_mid + board_pt - at / _zoom
 	_apply()
 	# a manual zoom takes the camera off follow: the viewer is looking where THEY put it
 	_release_follow()
@@ -153,7 +173,10 @@ func pan_by(delta: Vector2) -> void:
 	if board == null:
 		return
 	board.position += delta
-	_focus = (size * 0.5 - board.position) / _zoom
+	# invert `_apply`'s convention: position = -(focus - ring_mid) * zoom
+	var side: float = minf(board.size.x, board.size.y)
+	var ring_mid := Vector2(side, side) * 0.5
+	_focus = ring_mid - board.position / _zoom
 	_release_follow()
 
 

@@ -31,11 +31,16 @@ func _ready() -> void:
 
 
 func _check() -> void:
-	# --- 1. the home view shows the whole board, centred
+	# --- 1. the home view shows the whole board, at rest
+	#
+	# CONVENTION: the RING centres ITSELF (`board_scene._layout()` puts it at `(size - side)/2` inside
+	# the node), so the camera's home transform is ZERO and the node must not be moved. An earlier
+	# version centred here too; the two stacked and pushed the ring 562px right, past
+	# `clip_contents`, where cells rendered as empty squares. The board stub below is a plain
+	# Control, so what we assert is the CAMERA's contribution: nothing at rest.
 	_cam.reset_view()
 	_eq("home zoom is 1.0", _cam.zoom(), 1.0)
-	var want_pos := Vector2((900.0 - 800.0) * 0.5, (800.0 - 800.0) * 0.5)
-	_close("home centres the board", _board.position, want_pos)
+	_close("home leaves the board where its own layout put it", _board.position, Vector2.ZERO)
 
 	# --- 2. zoom about a point keeps that point under the cursor
 	var at := Vector2(200.0, 150.0)
@@ -57,7 +62,7 @@ func _check() -> void:
 	_cam.reset_view()
 	var f0: Vector2 = _cam.focus_point()
 	_cam.pan_by(Vector2(40, 0))
-	_close("pan moves the board by the delta", _board.position, want_pos + Vector2(40, 0))
+	_close("pan moves the board by the delta", _board.position, Vector2(40, 0))
 	_near_neq("pan moved the focus point", _cam.focus_point(), f0)
 
 	# --- 5. a manual action releases follow; a new turn re-follows

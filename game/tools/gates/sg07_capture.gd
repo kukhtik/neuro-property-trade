@@ -1,4 +1,5 @@
 extends Node
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 ## SG-07 capture — the app's own SCREENSHOT SERIES (docs/restoration/gates.md SG-07).
 ##
 ## WHY IT EXISTS: the mockup's renders (`design/renders/<skin>/*.png`) are GENERATED from the
@@ -56,8 +57,13 @@ func _process(_dt: float) -> void:
 
 
 func _ready() -> void:
-	DisplayServer.window_set_size(Vector2i(1440, 900))
-	get_tree().root.size = Vector2i(1440, 900)
+	# READ THE PROFILE, do not restate it: this gate promises a window size and the shell opens one,
+	# and when the shell's copy moved to 1600x1200 the gate failed with "1600x1200, the profile
+	# promises 1440x900". One home (LayoutProfile.screen) is what keeps the promise and the window
+	# the same number.
+	var main_size: Vector2i = LayoutProfile.new().screen
+	DisplayServer.window_set_size(main_size)
+	get_tree().root.size = main_size
 	for a in OS.get_cmdline_user_args():
 		var s := str(a)
 		if s.begins_with("--seq="):

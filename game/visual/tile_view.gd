@@ -18,10 +18,18 @@ const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 ## so on a 1280x720 board the cell name died in its own background and 32 of 40 cells carried
 ## no readable text at all (measured on turn-human_neuro.png). Text below ~10px is not text on
 ## a stream: it is texture. These floors are the contract, not a preference.
+##
+## THE FONT LADDER SCALES WITH THE CELL, so a board with room for readable text gets it. The old caps
+## (name 13, price 11) were the reason the board still looked empty after every cell was given a
+## name: whatever the board's size, the name could not exceed 13px. On the owner's 1310px stage the
+## cells are 68px - room for ~15px - and the ceiling spent that room on nothing. The lower half of
+## the ring measured as blank because its text was too small to see, not because it was missing.
+## (The camera's double-centring bug produced the same symptom from the other direction; both had to
+## be fixed for the cells to read.)
 const NAME_MIN := 11
-const NAME_MAX := 13
+const NAME_MAX := 20
 const PRICE_MIN := 9
-const PRICE_MAX := 11
+const PRICE_MAX := 16
 const BADGE_MIN := 12.0
 const HOUSES_MIN := 10
 
@@ -61,7 +69,12 @@ func setup(skin: SkinManager, idx: int, data: Dictionary, cell: float, side: Str
 
 func _build(data: Dictionary) -> void:
 	_face = Panel.new()
-	_face.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# THE FACE IS LAID OUT BY `_layout_children`, NOT BY ITS ANCHORS. This line used to also call
+	# `set_anchors_preset(PRESET_FULL_RECT)`, which makes a Control fill its parent on its own - and
+	# `_layout_children` then ALSO set `_face.position`/`_face.size` to the padded rect. The two
+	# mechanisms fought: measured on the live tree every cell was 95x95 with a 186x186 face hanging
+	# out of it, so all 40 cells drew a second panel twice their own size. That overlap is what the
+	# owner saw as cells "по две". One owner for a rect: the layout.
 	_face.add_theme_stylebox_override("panel",
 		UiTheme.box(UiTheme.COL().panel_dark if _corner else UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	_face.mouse_filter = Control.MOUSE_FILTER_IGNORE

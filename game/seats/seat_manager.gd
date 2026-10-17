@@ -236,14 +236,25 @@ func emit_spectator() -> void:
 	var proj = ProjScript.new()
 	var spec = proj.for_spectator(engine)
 	# P3: add timer fields for timer ring
+	#
+	# THE TIMER WINDOW IS A PROPERTY OF THE TURN, NOT OF AN AI SEAT. These fields used to be written
+	# only inside `if holder >= 0`, so on a HUMAN turn - where no seat holds a decision, because the
+	# human does - `timer_window` was never set at all. `top_bar` then read 0, `_timer_on` went false
+	# and the clock vanished: the player saw `0:28` and then an empty box. HG-13 caught it
+	# ("the timer does not tick (`0:28` -> `` after ~2.2s)"), and it was there before this session's
+	# work - it fails identically on the previous commit.
+	#
+	# `find_decision_holder` answers "which SEAT must act"; the timer answers "how long does the
+	# CURRENT turn have", and those differ on the human's own turn.
+	var window: float = float(engine.settings.turn_timer)
+	if engine.phase == "AUCTION":
+		window = float(engine.settings.auction_timer)
+	spec["timer_window"] = window
+	spec["timer_elapsed"] = 0.0
+	spec["timer_active"] = window > 0.0
 	var holder: int = find_decision_holder(engine, engine.player_count())
 	if holder >= 0:
 		var seat = _seat(holder)
 		if seat != null:
-			var window: float = float(engine.settings.turn_timer)
-			if engine.phase == "AUCTION":
-				window = float(engine.settings.auction_timer)
-			spec["timer_window"] = window
 			spec["timer_elapsed"] = seat.decision_waiting
-			spec["timer_active"] = window > 0.0
 	state_changed.emit(spec)

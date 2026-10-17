@@ -1,4 +1,6 @@
 extends Node
+# the ONE home for the launch window size - this gate's main profile reads it
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 ## SG-11 gate — the AUTO half of the usability checklist (docs/restoration/gates.md SG-11).
 ##
 ## "Интерфейс объясняется сам." Three objective rules on the live tree, plus the manual
@@ -27,7 +29,10 @@ var _frame := 0
 var _state := "boot"
 var _wait := 6
 var _profile_idx := 0
-var _profiles := [Vector2i(1440, 900), Vector2i(1000, 650)]
+## The main profile is READ from `LayoutProfile` (one home), so the window the app opens and the
+## window this gate scans cannot drift apart. 1000x650 stays a literal: it is a deliberate
+## SMALL-window case, not the launch size.
+var _profiles := [LayoutProfile.new().screen, Vector2i(1000, 650)]
 var _fails: Array = []
 var _checks := 0
 var _scan_notes: Array = []

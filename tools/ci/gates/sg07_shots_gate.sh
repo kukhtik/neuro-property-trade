@@ -105,7 +105,19 @@ esac
 ## The side-by-side a human judges: the mockup's own scene on the left, THIS RUN's app frame on
 ## the right. The app half is named explicitly and its age is checked, so the old failure mode
 ## (current mockup vs yesterday's build) cannot come back.
-PAIRS="turn-human:turn-human:1440x900 auction:auction:1440x900 compact:compact:880x600"
+##
+## THE MAIN SIZE COMES FROM THE PROFILE, not from a literal here. This list is a PROMISE about the
+## frames the app produces; the app asks for `LayoutProfile.screen` at launch. When the shell's window
+## grew to 1600x1200 and this line still said 1440x900, SG-07 failed with "1600x1200, the profile
+## promises 1440x900" - a gate correctly catching one truth living in two homes. The compact profile
+## stays a literal: it is a deliberate SMALL-window case, not the launch size.
+MAIN_SIZE="$(grep -aoE 'screen := Vector2i\([0-9]+, *[0-9]+\)' "$repo/game/ui/core/layout_profile.gd" \
+	| head -1 | grep -aoE '[0-9]+, *[0-9]+' | tr -d ' ' | tr ',' 'x')"
+if [ -z "$MAIN_SIZE" ]; then
+	echo "==> SG-07 FAILED: cannot read LayoutProfile.screen from game/ui/core/layout_profile.gd"
+	exit 1
+fi
+PAIRS="turn-human:turn-human:$MAIN_SIZE auction:auction:$MAIN_SIZE compact:compact:880x600"
 for pair in $PAIRS; do
 	st="${pair%%:*}"
 	rest="${pair#*:}"
