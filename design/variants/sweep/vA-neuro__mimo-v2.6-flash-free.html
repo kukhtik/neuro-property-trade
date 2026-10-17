@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<!--
+  Neuro Property Trade — макет главного экрана, вариант A (скин neuro).
+  Канва 1600×1200, фиксированная (R-18: высота кадра — ручка читаемости, доска не сжимается).
+  Профиль 1280×720: доки сжимаются, зазоры 8; клетка держит пол 77 px (кольцо не меньше 847 px),
+    панно остаётся полным — все четыре зоны; консоль действий сжимается в один ряд кнопок.
+  Профиль 880×600 (компакт): доки уезжают в дроверы за словами «Игроки» и «Журнал» — пустых
+    полос-рейлов нет (R-15); панно скрывает ТОЛЬКО зону «Журнал» (R-16): «Бросок», «Событие»,
+    «Игроки» остаются читаемыми; метки чипов шапки скрываются, значения остаются.
+  Если кегли R-7 и пол клетки R-17 входят в конфликт при уменьшении окна — растёт высота кадра
+    (LayoutProfile.screen), а не уменьшается доска (R-18).
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Neuro Property Trade — панно хода</title>
+<style>
+:root{
+  --bg:#0b0613; --s1:#130b1f; --s2:#1b1230; --s3:#281b42;
+  --line:#3b2a5e; --text:#f7effd; --muted:#a896c8;
+  --accent:#ff6fae; --on-accent:#2a0618; --accent2:#5fe3ff;
+  --money:#5fe3ff; --danger:#ff4d6d; --warn:#ffb020;
+  --ring-bg:#3b2a5e99; --dice-bg:#f2f6fa; --dice-ink:#16191f;
+  --board2:#101820; --board3:#22303c;
+  --p0:#ff6fae; --p1:#e8264f; --p2:#5fe3ff; --p3:#b6ff6b; --p4:#ffb020; --p5:#b36bff;
+  --g-brown:#8b5a3c; --g-lightblue:#5bb8e8; --g-pink:#d85aa8; --g-orange:#ee8a2a;
+  --g-red:#d8363c; --g-yellow:#e8c61e; --g-green:#2fa862; --g-darkblue:#2e5fd8;
+  --ui:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1600px;height:1200px;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--ui);font-size:16px;line-height:1.25}
+.t-value{white-space:nowrap}
+.t-para{white-space:normal}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.money{color:var(--money)}
+.caps{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* каркас */
+.frame{width:1600px;height:1200px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.main{flex:1;display:grid;grid-template-columns:264px 920px 368px;gap:12px;min-height:0}
+
+/* шапка */
+.top{height:68px;flex:0 0 68px;background:var(--s1);border:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 16px}
+.brand{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.16em;white-space:nowrap}
+.chip{display:flex;flex-direction:column;justify-content:center;gap:2px;background:var(--s2);border:1px solid var(--line);padding:5px 12px}
+.chip-row{display:flex;align-items:center;gap:8px}
+.chip-value{font-size:22px;font-weight:600;line-height:1.1}
+.chip-tag{font-size:12px;letter-spacing:.06em;color:var(--on-accent);background:var(--accent);padding:2px 8px;white-space:nowrap}
+.swatch{width:12px;height:12px;flex:0 0 12px;display:inline-block}
+.top-actions{margin-left:auto;display:flex;gap:8px}
+
+/* кнопки: только словами (R-9) */
+.btn{font-family:var(--ui);font-weight:600;color:var(--text);background:var(--s3);border:1px solid var(--line);
+  height:44px;padding:0 16px;font-size:15px;letter-spacing:.02em;white-space:nowrap;cursor:default;
+  display:inline-flex;align-items:center;justify-content:center}
+.btn:hover{filter:brightness(1.3);border-color:var(--accent2)}
+.btn:active{filter:brightness(.92)}
+.btn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+.btn-hero{background:var(--accent);color:var(--on-accent);border-color:var(--accent);
+  height:64px;padding:0 40px;font-size:24px;letter-spacing:.06em}
+.btn-hero:hover{filter:brightness(1.12);border-color:var(--accent)}
+.btn-hero:active{filter:brightness(.94)}
+.btn-sm{height:36px;font-size:14px;padding:0 12px}
+
+/* левый док: места */
+.seats{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;padding:12px;gap:10px;min-height:0}
+.dock-head{display:flex;align-items:baseline;justify-content:space-between}
+.dock-title{font-size:14px;letter-spacing:.12em;font-weight:700}
+.seat-card{background:var(--s2);border:1px solid var(--line);padding:14px;display:flex;flex-direction:column;
+  justify-content:space-between;flex:1;min-height:0}
+.seat-card.turn{border-left:4px solid var(--accent);background:var(--s3)}
+.seat-name-row{display:flex;align-items:center;gap:10px}
+.seat-swatch{width:14px;height:30px;flex:0 0 14px}
+.seat-name{font-size:24px;font-weight:700;line-height:1.1}
+.seat-money{font-size:26px;font-weight:700;line-height:1.1}
+.seat-cell{font-size:20px}
+.seat-meta{font-size:16px;color:var(--muted)}
+.seat-driver{font-size:14px;color:var(--muted)}
+.tag{font-size:12px;letter-spacing:.06em;padding:3px 8px;white-space:nowrap;border:1px solid var(--line);background:var(--s3);color:var(--muted)}
+.tag-turn{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.tag-jail{color:var(--danger);border-color:var(--danger)}
+
+/* сцена: доска + панно + консоль */
+.stage{display:flex;flex-direction:column;gap:8px;min-height:0}
+.board-frame{margin:0 auto;background:var(--ring-bg);border:1px solid var(--line);padding:6px;
+  display:grid;grid-template-columns:repeat(11,82px);grid-template-rows:repeat(11,82px)}
+.board{grid-area:1/1/12/12;display:grid;grid-template-columns:repeat(11,82px);grid-template-rows:repeat(11,82px)}
+.tile{position:relative;background:var(--board2);border:1px solid var(--line);overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px}
+.tile.alt{background:var(--board3)}
+.tile .band{position:absolute;left:0;right:0;top:0;height:8px}
+.tile .tname{font-size:11px;line-height:1.15;text-align:center}
+.tile.corner .tname{font-size:13px;font-weight:700}
+.tile .own{position:absolute;left:0;right:0;bottom:0;height:6px}
+.tile .houses{position:absolute;top:11px;display:flex;gap:3px}
+.tile .houses i{width:12px;height:9px;background:var(--g-green);border:1px solid var(--bg)}
+.tile.mort .tname{color:var(--muted)}
+.tile.mort::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent 0 5px,var(--line) 5px 7px);opacity:.65}
+.tile.sel{box-shadow:inset 0 0 0 2px var(--accent2)}
+.tile .token{position:absolute;right:4px;bottom:10px;width:20px;height:20px;border-radius:50%;
+  border:2px solid var(--bg);box-shadow:0 0 0 1px var(--line)}
+
+/* панно хода: один модуль, grid-поток, без absolute (R-13) */
+.center{grid-area:2/2/11/11;background:var(--s1);border:1px solid var(--line);z-index:1;
+  display:grid;grid-template-rows:170fr 210fr 230fr 150fr;min-height:0}
+.zone{display:flex;flex-direction:column;padding:10px 14px;gap:6px;min-height:0;overflow:hidden}
+.zone+.zone{border-top:1px solid var(--line)}
+.zone-head{display:flex;align-items:baseline;justify-content:space-between}
+.zone-title{font-size:13px;letter-spacing:.12em;font-weight:700;color:var(--muted)}
+
+/* зона: бросок */
+.roll-row{flex:1;display:flex;align-items:center;gap:28px;min-height:0}
+.dice{display:flex;gap:14px}
+.die{width:88px;height:88px;display:block;border-radius:8px}
+.sum-block{display:flex;flex-direction:column;gap:2px}
+.sum{font-size:88px;font-weight:700;line-height:1}
+.sum-label{font-size:13px;letter-spacing:.1em;color:var(--muted)}
+
+/* зона: событие */
+.event-card{flex:1;background:var(--s3);border:1px solid var(--line);padding:12px 16px;
+  display:flex;flex-direction:column;justify-content:space-evenly;min-height:0}
+.event-top{display:flex;align-items:center;gap:12px}
+.event-player{font-size:24px;font-weight:700}
+.event-type{font-size:22px}
+.event-tile{display:flex;align-items:baseline;gap:10px}
+.event-tile-name{font-size:26px;font-weight:600}
+.event-tile-num{font-size:20px;color:var(--muted)}
+.event-amount{font-size:34px;font-weight:700}
+
+/* зона: игроки */
+.plist{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-height:0}
+.prow{display:flex;align-items:center;gap:12px;padding:3px 8px}
+.prow.turn{background:var(--s3);border-left:4px solid var(--accent)}
+.prow .sw{width:14px;height:28px;flex:0 0 14px}
+.prow .nm{font-size:22px;font-weight:700;width:150px}
+.prow .mo{font-size:22px;font-weight:700;width:130px;text-align:right}
+.prow .ow{font-size:20px;color:var(--muted)}
+
+/* зона: журнал */
+.jlist-mini{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;min-height:0}
+.jline-mini{font-size:20px;line-height:1.3}
+.jname{font-weight:700}
+
+/* консоль действий */
+.act{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;
+  justify-content:center;gap:14px;padding:20px}
+.act-status{font-size:20px}
+.act-row{display:flex;align-items:center;gap:12px}
+.act-hint{margin-left:auto;font-size:15px;color:var(--muted)}
+
+/* правый док: журнал + инспектор */
+.dock-right{display:flex;flex-direction:column;gap:10px;min-height:0}
+.journal{background:var(--s1);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px;flex:636;min-height:0}
+.jcount{font-size:14px;color:var(--muted)}
+.jfilters{display:flex;gap:8px;flex-wrap:wrap}
+.jlines{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+.jitem{background:var(--s2);border:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;
+  gap:8px;flex:1;justify-content:center}
+.jtag{align-self:flex-start;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  background:var(--s3);border:1px solid var(--line);padding:2px 8px}
+.jtag.t-money{color:var(--money)}
+.jtag.t-warn{color:var(--warn)}
+.jtext{font-size:19px;line-height:1.3}
+
+.inspector{background:var(--s1);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:10px;flex:430;min-height:0}
+.ins-name{font-size:30px;font-weight:700;line-height:1.1}
+.ins-group{display:flex;align-items:center;gap:10px}
+.ins-band{width:64px;height:12px}
+.irow{display:flex;align-items:baseline;justify-content:space-between;background:var(--s2);border:1px solid var(--line);padding:8px 12px}
+.irow .k{font-size:15px;color:var(--muted)}
+.irow .v{font-size:20px;font-weight:600}
+.ins-note{font-size:16px;color:var(--muted)}
+.ins-actions{display:flex;gap:10px;margin-top:auto}
+.ins-actions .btn{flex:1}
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <header class="top" data-region="top" data-od-id="top">
+    <div class="brand" data-od-id="brand">NEURO PROPERTY TRADE</div>
+    <div class="chip" data-od-id="chip-turn">
+      <span class="caps">Ход</span>
+      <span class="chip-row"><span class="swatch" style="background:var(--p0)"></span><span class="chip-value t-value">Хост</span><span class="chip-tag t-value">ваш ход</span></span>
+    </div>
+    <div class="chip" data-od-id="chip-phase">
+      <span class="caps">Фаза</span>
+      <span class="chip-value t-value">Начало хода</span>
+    </div>
+    <div class="chip" data-od-id="chip-round">
+      <span class="caps">Раунд</span>
+      <span class="chip-value num t-value">7</span>
+    </div>
+    <div class="chip" data-od-id="chip-pot">
+      <span class="caps">Банк парковки</span>
+      <span class="chip-value num money t-value">$240</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn" data-od-id="btn-settings">Настройки</button>
+      <button class="btn" data-od-id="btn-rules">Правила</button>
+      <button class="btn" data-od-id="btn-restart">Рестарт</button>
+      <button class="btn" data-od-id="btn-theme">Тема: Neuro</button>
+      <button class="btn" data-od-id="btn-lang">Язык: RU</button>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <aside class="seats" data-region="seats" data-od-id="seats">
+      <div class="dock-head"><span class="dock-title">ИГРОКИ</span><span class="caps">4 места</span></div>
+      <div class="seat-card turn" data-od-id="seat-card-host">
+        <div class="seat-name-row"><span class="seat-swatch" style="background:var(--p0)"></span><span class="seat-name t-value" style="color:var(--p0)">Хост</span><span class="tag tag-turn t-value">ваш ход</span></div>
+        <div class="seat-money num money t-value">$1215</div>
+        <div class="seat-cell t-value">6 Cedar Ave</div>
+        <div class="seat-meta t-value">Владений 2 • Домов 0 • Залогов 0</div>
+        <div class="seat-driver t-value">Драйвер — LOCAL</div>
+      </div>
+      <div class="seat-card" data-od-id="seat-card-neuro">
+        <div class="seat-name-row"><span class="seat-swatch" style="background:var(--p2)"></span><span class="seat-name t-value" style="color:var(--p2)">Neuro</span></div>
+        <div class="seat-money num money t-value">$980</div>
+        <div class="seat-cell t-value">24 Harbor Drive</div>
+        <div class="seat-meta t-value">Владений 3 • Домов 1 • Залогов 0</div>
+        <div class="seat-driver t-value">Драйвер — SDK</div>
+      </div>
+      <div class="seat-card" data-od-id="seat-card-evil">
+        <div class="seat-name-row"><span class="seat-swatch" style="background:var(--p1)"></span><span class="seat-name t-value" style="color:var(--p1)">evil</span><span class="tag tag-jail t-value">в тюрьме — попытка 2</span></div>
+        <div class="seat-money num money t-value">$640</div>
+        <div class="seat-cell t-value">10 Jail</div>
+        <div class="seat-meta t-value">Владений 1 • Домов 0 • Залогов 1</div>
+        <div class="seat-driver t-value">Драйвер — SDK</div>
+      </div>
+      <div class="seat-card" data-od-id="seat-card-mira">
+        <div class="seat-name-row"><span class="seat-swatch" style="background:var(--p3)"></span><span class="seat-name t-value" style="color:var(--p3)">Mira</span></div>
+        <div class="seat-money num money t-value">$1500</div>
+        <div class="seat-cell t-value">33 Chest</div>
+        <div class="seat-meta t-value">Владений 2 • Домов 0 • Залогов 1</div>
+        <div class="seat-driver t-value">Драйвер — ИИ «Магнат»</div>
+      </div>
+    </aside>
+    <div class="stage" data-region="stage" data-od-id="stage">
+      <div class="board-frame" data-od-id="board-frame">
+        <div class="board" data-region="board" data-od-id="board">
+          <div class="tile corner alt" data-od-id="tile-0" style="grid-area:11/11"><span class="tname t-para">Start</span></div>
+          <div class="tile" data-od-id="tile-1" style="grid-area:11/10"><span class="band" style="background:var(--g-brown)"></span><span class="tname t-para">Sunset Blvd</span></div>
+          <div class="tile alt" data-od-id="tile-2" style="grid-area:11/9"><span class="band" style="background:var(--muted)"></span><span class="tname t-para">Chest</span></div>
+          <div class="tile" data-od-id="tile-3" style="grid-area:11/8"><span class="band" style="background:var(--g-brown)"></span><span class="tname t-para">Palm Row</span><span class="own" style="background:var(--p0)"></span></div>
+          <div class="tile alt" data-od-id="tile-4" style="grid-area:11/7"><span class="band" style="background:var(--danger)"></span><span class="tname t-para">Tax</span></div>
+          <div class="tile" data-od-id="tile-5" style="grid-area:11/6"><span class="band" style="background:var(--line)"></span><span class="tname t-para">Harbor Station</span></div>
+          <div class="tile alt sel" data-od-id="tile-6" style="grid-area:11/5"><span class="band" style="background:var(--g-lightblue)"></span><span class="tname t-para">Cedar Ave</span><span class="own" style="background:var(--p0)"></span><span class="token" style="background:var(--p0)"></span></div>
+          <div class="tile" data-od-id="tile-7" style="grid-area:11/4"><span class="band" style="background:var(--warn)"></span><span class="tname t-para">Fortune</span></div>
+          <div class="tile alt" data-od-id="tile-8" style="grid-area:11/3"><span class="band" style="background:var(--g-lightblue)"></span><span class="tname t-para">Elm Ave</span><span class="houses"><i></i><i></i></span><span class="own" style="background:var(--p2)"></span></div>
+          <div class="tile" data-od-id="tile-9" style="grid-area:11/2"><span class="band" style="background:var(--g-lightblue)"></span><span class="tname t-para">Linden Ave</span><span class="own" style="background:var(--p2)"></span></div>
+          <div class="tile corner alt" data-od-id="tile-10" style="grid-area:11/1"><span class="tname t-para">Jail</span><span class="token" style="background:var(--p1)"></span></div>
+          <div class="tile mort" data-od-id="tile-11" style="grid-area:10/1"><span class="band" style="background:var(--g-pink)"></span><span class="tname t-para">Oak Street</span><span class="own" style="background:var(--p1)"></span></div>
+          <div class="tile alt" data-od-id="tile-12" style="grid-area:9/1"><span class="band" style="background:var(--muted)"></span><span class="tname t-para">Tower Utilities</span></div>
+          <div class="tile" data-od-id="tile-13" style="grid-area:8/1"><span class="band" style="background:var(--g-pink)"></span><span class="tname t-para">Maple Street</span></div>
+          <div class="tile alt" data-od-id="tile-14" style="grid-area:7/1"><span class="band" style="background:var(--g-pink)"></span><span class="tname t-para">Birch Street</span></div>
+          <div class="tile" data-od-id="tile-15" style="grid-area:6/1"><span class="band" style="background:var(--line)"></span><span class="tname t-para">Central Station</span></div>
+          <div class="tile alt" data-od-id="tile-16" style="grid-area:5/1"><span class="band" style="background:var(--g-orange)"></span><span class="tname t-para">Willow Way</span></div>
+          <div class="tile" data-od-id="tile-17" style="grid-area:4/1"><span class="band" style="background:var(--muted)"></span><span class="tname t-para">Chest</span></div>
+          <div class="tile alt" data-od-id="tile-18" style="grid-area:3/1"><span class="band" style="background:var(--g-orange)"></span><span class="tname t-para">Aspen Way</span></div>
+          <div class="tile" data-od-id="tile-19" style="grid-area:2/1"><span class="band" style="background:var(--g-orange)"></span><span class="tname t-para">Fir Way</span></div>
+          <div class="tile corner alt" data-od-id="tile-20" style="grid-area:1/1"><span class="tname t-para">Free Parking</span></div>
+          <div class="tile" data-od-id="tile-21" style="grid-area:1/2"><span class="band" style="background:var(--g-red)"></span><span class="tname t-para">Lake Drive</span></div>
+          <div class="tile alt" data-od-id="tile-22" style="grid-area:1/3"><span class="band" style="background:var(--warn)"></span><span class="tname t-para">Fortune</span></div>
+          <div class="tile" data-od-id="tile-23" style="grid-area:1/4"><span class="band" style="background:var(--g-red)"></span><span class="tname t-para">River Drive</span></div>
+          <div class="tile alt" data-od-id="tile-24" style="grid-area:1/5"><span class="band" style="background:var(--g-red)"></span><span class="tname t-para">Harbor Drive</span><span class="own" style="background:var(--p2)"></span><span class="token" style="background:var(--p2)"></span></div>
+          <div class="tile" data-od-id="tile-25" style="grid-area:1/6"><span class="band" style="background:var(--line)"></span><span class="tname t-para">West Station</span></div>
+          <div class="tile alt mort" data-od-id="tile-26" style="grid-area:1/7"><span class="band" style="background:var(--g-yellow)"></span><span class="tname t-para">Crest Point</span><span class="own" style="background:var(--p3)"></span></div>
+          <div class="tile" data-od-id="tile-27" style="grid-area:1/8"><span class="band" style="background:var(--g-yellow)"></span><span class="tname t-para">Crest Square</span><span class="houses"><i></i></span><span class="own" style="background:var(--p3)"></span></div>
+          <div class="tile alt" data-od-id="tile-28" style="grid-area:1/9"><span class="band" style="background:var(--muted)"></span><span class="tname t-para">Tower Water</span></div>
+          <div class="tile" data-od-id="tile-29" style="grid-area:1/10"><span class="band" style="background:var(--g-yellow)"></span><span class="tname t-para">Crest Heights</span></div>
+          <div class="tile corner alt" data-od-id="tile-30" style="grid-area:1/11"><span class="tname t-para">Go To Jail</span></div>
+          <div class="tile" data-od-id="tile-31" style="grid-area:2/11"><span class="band" style="background:var(--g-green)"></span><span class="tname t-para">Garden Grove</span></div>
+          <div class="tile alt" data-od-id="tile-32" style="grid-area:3/11"><span class="band" style="background:var(--g-green)"></span><span class="tname t-para">Garden Park</span></div>
+          <div class="tile" data-od-id="tile-33" style="grid-area:4/11"><span class="band" style="background:var(--muted)"></span><span class="tname t-para">Chest</span><span class="token" style="background:var(--p3)"></span></div>
+          <div class="tile alt" data-od-id="tile-34" style="grid-area:5/11"><span class="band" style="background:var(--g-green)"></span><span class="tname t-para">Garden Court</span></div>
+          <div class="tile" data-od-id="tile-35" style="grid-area:6/11"><span class="band" style="background:var(--line)"></span><span class="tname t-para">South Station</span></div>
+          <div class="tile alt" data-od-id="tile-36" style="grid-area:7/11"><span class="band" style="background:var(--warn)"></span><span class="tname t-para">Fortune</span></div>
+          <div class="tile" data-od-id="tile-37" style="grid-area:8/11"><span class="band" style="background:var(--g-darkblue)"></span><span class="tname t-para">Grand Avenue</span><span class="own" style="background:var(--p2)"></span></div>
+          <div class="tile alt" data-od-id="tile-38" style="grid-area:9/11"><span class="band" style="background:var(--danger)"></span><span class="tname t-para">Luxury Tax</span></div>
+          <div class="tile" data-od-id="tile-39" style="grid-area:10/11"><span class="band" style="background:var(--g-darkblue)"></span><span class="tname t-para">Grand Place</span></div>
+        </div>
+
+        <section class="center" data-region="center" data-od-id="turn-panel">
+          <div class="zone zone-roll" data-od-id="zone-roll">
+            <div class="zone-head"><span class="zone-title">БРОСОК</span><span class="caps">Хост</span></div>
+            <div class="roll-row">
+              <div class="dice" data-od-id="dice">
+                <svg class="die" viewBox="0 0 88 88" data-od-id="die-5" role="img" aria-label="кубик 5">
+                  <rect width="88" height="88" rx="8" fill="#f2f6fa"/>
+                  <circle cx="22" cy="22" r="7.5" fill="#16191f"/><circle cx="66" cy="22" r="7.5" fill="#16191f"/>
+                  <circle cx="22" cy="44" r="7.5" fill="#16191f"/><circle cx="44" cy="44" r="7.5" fill="#16191f"/><circle cx="66" cy="44" r="7.5" fill="#16191f"/>
+                  <circle cx="22" cy="66" r="7.5" fill="#16191f"/><circle cx="66" cy="66" r="7.5" fill="#16191f"/>
+                </svg>
+                <svg class="die" viewBox="0 0 88 88" data-od-id="die-3" role="img" aria-label="кубик 3">
+                  <rect width="88" height="88" rx="8" fill="#f2f6fa"/>
+                  <circle cx="22" cy="22" r="7.5" fill="#16191f"/><circle cx="44" cy="44" r="7.5" fill="#16191f"/><circle cx="66" cy="66" r="7.5" fill="#16191f"/>
+                </svg>
+              </div>
+              <div class="sum-block" data-od-id="roll-sum">
+                <span class="sum-label">СУММА БРОСКА</span>
+                <span class="sum num t-value">8</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="zone zone-event" data-od-id="zone-event">
+            <div class="zone-head"><span class="zone-title">СОБЫТИЕ</span><span class="caps">последнее</span></div>
+            <div class="event-card" data-od-id="event-card">
+              <div class="event-top">
+                <span class="seat-swatch" style="background:var(--p3)"></span>
+                <span class="event-player t-value" style="color:var(--p3)">Mira</span>
+                <span class="event-type t-value">Продажа дома</span>
+              </div>
+              <div class="event-tile">
+                <span class="event-tile-name t-value">Crest Square</span>
+                <span class="event-tile-num num t-value">(27)</span>
+              </div>
+              <div class="event-amount num money t-value">+$70</div>
+            </div>
+          </div>
+
+          <div class="zone zone-players" data-od-id="zone-players">
+            <div class="zone-head"><span class="zone-title">ИГРОКИ</span><span class="caps">деньги и владения</span></div>
+            <div class="plist">
+              <div class="prow turn" data-od-id="prow-host"><span class="sw" style="background:var(--p0)"></span><span class="nm t-value" style="color:var(--p0)">Хост</span><span class="mo num money t-value">$1215</span><span class="ow t-value">Владений 2 • ваш ход</span></div>
+              <div class="prow" data-od-id="prow-neuro"><span class="sw" style="background:var(--p2)"></span><span class="nm t-value" style="color:var(--p2)">Neuro</span><span class="mo num money t-value">$980</span><span class="ow t-value">Владений 3</span></div>
+              <div class="prow" data-od-id="prow-evil"><span class="sw" style="background:var(--p1)"></span><span class="nm t-value" style="color:var(--p1)">evil</span><span class="mo num money t-value">$640</span><span class="ow t-value">Владений 1 • в тюрьме</span></div>
+              <div class="prow" data-od-id="prow-mira"><span class="sw" style="background:var(--p3)"></span><span class="nm t-value" style="color:var(--p3)">Mira</span><span class="mo num money t-value">$1500</span><span class="ow t-value">Владений 2</span></div>
+            </div>
+          </div>
+
+          <div class="zone zone-journal" data-od-id="zone-journal">
+            <div class="zone-head"><span class="zone-title">ЖУРНАЛ</span><span class="caps">3 последние строки</span></div>
+            <div class="jlist-mini">
+              <div class="jline-mini t-para"><span class="jname" style="color:var(--p3)">Mira</span> продаёт с клетки 27</div>
+              <div class="jline-mini t-para"><span class="jname" style="color:var(--p1)">evil</span> закладывает клетку 11</div>
+              <div class="jline-mini t-para"><span class="jname" style="color:var(--p1)">evil</span> попадает в тюрьму</div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="act" data-region="act" data-od-id="act">
+        <div class="act-status t-para" data-od-id="act-status">Хост • ваш ход — выберите действие</div>
+        <div class="act-row">
+          <button class="btn btn-hero" data-od-id="btn-roll">Бросок</button>
+          <button class="btn" data-od-id="btn-buy">Купить $100</button>
+          <button class="btn" data-od-id="btn-pass">Отказ</button>
+          <button class="btn" data-od-id="btn-trade">Торг</button>
+          <button class="btn" data-od-id="btn-endturn">Конец хода</button>
+          <span class="act-hint t-value">Кубики 5 и 3 — сумма 8</span>
+        </div>
+      </footer>
+    </div>
+    <aside class="dock-right" data-od-id="dock-right">
+      <section class="journal" data-region="journal" data-od-id="journal">
+        <div class="dock-head"><span class="dock-title">ХОД СОБЫТИЙ</span><span class="jcount t-value">показано 4 из 132</span></div>
+        <div class="jfilters">
+          <button class="btn btn-sm" data-od-id="jfilter-player">игрок: все</button>
+          <button class="btn btn-sm" data-od-id="jfilter-type">тип: все</button>
+          <button class="btn btn-sm" data-od-id="jfilter-money">только деньги</button>
+        </div>
+        <div class="jlines">
+          <div class="jitem" data-od-id="jline-1"><span class="jtag t-warn t-value">бросок</span><div class="jtext t-para"><span class="jname" style="color:var(--p3)">Mira</span> бросает 4+4</div></div>
+          <div class="jitem" data-od-id="jline-2"><span class="jtag t-money t-value">деньги</span><div class="jtext t-para"><span class="jname" style="color:var(--p3)">Mira</span> продаёт с клетки 27</div></div>
+          <div class="jitem" data-od-id="jline-3"><span class="jtag t-money t-value">деньги</span><div class="jtext t-para"><span class="jname" style="color:var(--p1)">evil</span> закладывает клетку 11</div></div>
+          <div class="jitem" data-od-id="jline-4"><span class="jtag t-value">другое</span><div class="jtext t-para"><span class="jname" style="color:var(--p1)">evil</span> попадает в тюрьму</div></div>
+        </div>
+        <button class="btn btn-sm" data-od-id="jexport">экспорт .jsonl</button>
+      </section>
+
+      <section class="inspector" data-region="inspector" data-od-id="inspector">
+        <span class="caps">КЛЕТКА</span>
+        <div class="ins-name t-value" data-od-id="ins-name">Cedar Ave</div>
+        <div class="ins-group"><span class="ins-band" style="background:var(--g-lightblue)"></span><span class="t-value muted">группа lightblue</span></div>
+        <div class="irow" data-od-id="ins-price"><span class="k">Цена</span><span class="v num money t-value">$100</span></div>
+        <div class="irow" data-od-id="ins-rent"><span class="k">Аренда</span><span class="v num money t-value">$6</span></div>
+        <div class="irow" data-od-id="ins-owner"><span class="k">Владелец</span><span class="v t-value" style="color:var(--p0)">Хост</span></div>
+        <div class="ins-note t-para" data-od-id="ins-note">группа не собрана</div>
+        <div class="ins-actions">
+          <button class="btn" data-od-id="btn-pin">Закрепить</button>
+          <button class="btn" data-od-id="btn-ins-close">Закрыть</button>
+        </div>
+      </section>
+    </aside>
+
+  </div>
+</div>
+</body>
+</html>

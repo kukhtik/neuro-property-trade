@@ -1,0 +1,273 @@
+<!--
+Layout adaptation notes:
+1280×720 (desktop): left/right docks collapse to 48px rails with drawer triggers showing words "Места" / "Журнал"; center panel keeps all 4 zones; header condenses brand+steps, keeps turn chip/round/bank/timer; console stays 96px.
+880×600 (compact/min): rails stay 48px; center panel may drop Journal zone (150px) only — Roll (170), Event (210), Players (230) remain readable; board cells ≥77px; frame height grows if needed (R-18); header shows only brand+turn+round+bank; console stacks to 2 rows.
+Wide ≥1600: full docks 280/380; all zones visible; generous gaps.
+-->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Neuro Property Trade — Главный экран</title>
+<style>
+:root {
+  /* Skin: neuro — from files/skin-neuro.json */
+  --bg: #0b0613;
+  --surface-1: #130b1f;
+  --surface-2: #1b1230;
+  --surface-3: #281b42;
+  --line: #3b2a5e;
+  --text: #f7effd;
+  --muted: #a896c8;
+  --accent: #ff6fae;
+  --on-accent: #2a0618;
+  --accent2: #5fe3ff;
+  --money: #5fe3ff;
+  --danger: #ff4d6d;
+  --warn: #ffb020;
+  --ring-bg: #3b2a5e99;
+  --dice-bg: #f2f6fa;
+  --dice-ink: #16191f;
+  --good: #2fa862;
+  --glow: #ff6fae55;
+  --scrim: #0b0613b8;
+
+  /* Player seat colors p0..p7 */
+  --player-0: #ff6fae;
+  --player-1: #e8264f;
+  --player-2: #5fe3ff;
+  --player-3: #b6ff6b;
+  --player-4: #ffb020;
+  --player-5: #b36bff;
+  --player-6: #ffd166;
+  --player-7: #8f9bff;
+
+  /* Group colors */
+  --group-brown: #8b5a3c;
+  --group-lightblue: #5bb8e8;
+  --group-pink: #d85aa8;
+  --group-orange: #ee8a2a;
+  --group-red: #d8363c;
+  --group-yellow: #e8c61e;
+  --group-green: #2fa862;
+  --group-darkblue: #2e5fd8;
+
+  /* Event type colors */
+  --ev-money: #5cb85c;
+  --ev-build: #c9a84c;
+  --ev-danger: #d9534f;
+  --ev-card: #9a86c9;
+  --ev-accent: #9fd0ff;
+  --ev-text: #e8edf3;
+
+  /* Board cell backgrounds */
+  --board-bg2: #101820;
+  --board-bg3: #22303c;
+
+  /* Typography scale (neuro skin) */
+  --sz-xs: 11px;
+  --sz-s: 13px;
+  --sz-m: 14px;
+  --sz-l: 18px;
+  --sz-xl: 28px;
+
+  /* Spacing scale */
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+
+  /* Shape */
+  --radius: 0;
+  --chamfer: 9px;
+  --line-w: 1px;
+  --line-active: 2px;
+
+  /* UI metrics (design size 1440×900, scaled to 1600×1200) */
+  --header-h: 56px;
+  --console-h: 96px;
+  --gap: 8px;
+  --pad: 12px;
+  --dock-left: 280px;
+  --dock-right: 380px;
+  --rail-w: 48px;
+  --drawer-w: 320px;
+
+  /* Board metrics */
+  --cell-min: 77px;        /* R-17: minimum cell size */
+  --board-gap: 2px;
+  --board-frame: 6px;
+
+  /* Center panel zones (proportions from spec §4.1) */
+  --center-w: 857px;   /* 9 cells × ~95px at 1600×1200 */
+  --center-h: 800px;
+  --zone-roll-h: 170px;    /* 22% */
+  --zone-event-h: 210px;   /* 28% */
+  --zone-players-h: 230px; /* 30% */
+  --zone-journal-h: 150px; /* 20% */
+  --zone-total-h: 760px;   /* 95% of center */
+
+  /* Font stacks */
+  --font-ui: Segoe UI, -apple-system, Roboto, Helvetica Neue, Arial, sans-serif;
+  --font-mono: Cascadia Mono, Consolas, JetBrains Mono, ui-monospace, Menlo, monospace;
+  --font-display: var(--font-ui);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  width: 1600px;
+  height: 1200px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--sz-m);
+  line-height: 1.4;
+  overflow: hidden;
+}
+
+/* Text roles — P-3/P-4, R-8 */
+.t-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.t-para {
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+[data-grow] { flex-grow: 1; min-width: 0; }
+
+/* Utility */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-4 { gap: var(--sp-4); }
+.gap-8 { gap: var(--sp-8); }
+.gap-12 { gap: var(--sp-12); }
+.gap-16 { gap: var(--sp-16); }
+.pad { padding: var(--pad); }
+.pad-x { padding-left: var(--pad); padding-right: var(--pad); }
+.pad-y { padding-top: var(--pad); padding-bottom: var(--pad); }
+
+/* Panels */
+.panel {
+  background: var(--surface-1);
+  border: var(--line-w) solid var(--line);
+  border-radius: var(--radius);
+}
+.panel-raised { background: var(--surface-2); }
+.panel-nested { background: var(--surface-3); }
+
+/* Chamfered corners via clip-path */
+.chamfer { clip-path: polygon(var(--chamfer) 0, 100% 0, 100% calc(100% - var(--chamfer)), calc(100% - var(--chamfer)) 100%, 0 100%, 0 var(--chamfer)); }
+.chamfer-sm { clip-path: polygon(var(--chamfer_small) 0, 100% 0, 100% calc(100% - var(--chamfer_small)), calc(100% - var(--chamfer_small)) 100%, 0 100%, 0 var(--chamfer_small)); }
+</style>
+</head>
+<body>
+<div class="app" style="display:grid; width:100%; height:100%; grid-template-rows: var(--header-h) 1fr var(--console-h); grid-template-columns: var(--dock-left) 1fr var(--dock-right);">
+
+  <!-- TOP: Header -->
+  <header class="panel chamfer" data-region="top" style="grid-column:1/-1; display:grid; grid-template-columns: auto 1fr auto; align-items:center; padding:0 var(--sp-16);">
+    <!-- Brand + Turn chip -->
+    <div class="flex items-center gap-12" style="min-width:0;">
+      <span class="t-value" style="font-size:var(--sz-l); font-weight:700; letter-spacing:0.08em;">NEURO PROPERTY TRADE</span>
+      <div class="panel-raised chamfer-sm flex items-center gap-8" style="padding:var(--sp-4) var(--sp-12);">
+        <span class="t-value" style="font-size:var(--sz-m); color:var(--player-0);">●</span>
+        <span class="t-value" style="font-size:var(--sz-m);">ХОД: Хост</span>
+        <span class="t-value muted" style="font-size:var(--sz-s);">ФАЗА: Начало хода</span>
+      </div>
+    </div>
+
+    <!-- Round / Bank -->
+    <div class="flex items-center gap-16 justify-center" style="min-width:0;">
+      <div class="flex items-center gap-4">
+        <span class="t-value muted" style="font-size:var(--sz-s);">РАУНД</span>
+        <span class="t-value" style="font-size:var(--sz-l); font-weight:700;">7</span>
+      </div>
+      <div class="flex items-center gap-4" style="border-left:var(--line-w) solid var(--line); padding-left:var(--sp-16);">
+        <span class="t-value muted" style="font-size:var(--sz-s);">БАНК ПАРКОВКИ</span>
+        <span class="t-value" style="font-size:var(--sz-l); font-weight:700; color:var(--money);">$240</span>
+      </div>
+    </div>
+
+    <!-- Controls (words, not icons) -->
+    <nav class="flex items-center gap-8" style="min-width:0;">
+      <button class="panel-raised chamfer-sm flex items-center gap-4 pad-x" style="padding-top:var(--sp-4); padding-bottom:var(--sp-4); font-size:var(--sz-s);">Настройки</button>
+      <button class="panel-raised chamfer-sm flex items-center gap-4 pad-x" style="padding-top:var(--sp-4); padding-bottom:var(--sp-4); font-size:var(--sz-s);">Правила</button>
+      <button class="panel-raised chamfer-sm flex items-center gap-4 pad-x" style="padding-top:var(--sp-4); padding-bottom:var(--sp-4); font-size:var(--sz-s);">Рестарт</button>
+      <div class="flex items-center gap-4 pad-x" style="padding-top:var(--sp-4); padding-bottom:var(--sp-4); font-size:var(--sz-s); color:var(--muted);">
+        <span>Тема: Neuro</span>
+        <span>•</span>
+        <span>Язык: RU</span>
+      </div>
+    </nav>
+  </header>
+
+  <!-- LEFT DOCK: Seats -->
+  <aside class="panel" data-region="seats" style="grid-row:2; display:flex; flex-direction:column; gap:var(--gap); padding:var(--gap); overflow:auto;">
+    <!-- Seat cards will go here -->
+  </aside>
+
+  <!-- CENTER STAGE: Board + Center Panel -->
+  <main class="flex flex-col" data-region="stage" style="grid-row:2; grid-column:2; gap:var(--gap); padding:var(--gap);">
+    <!-- BOARD RING -->
+    <div class="panel chamfer" data-region="board" style="position:relative; width:100%; aspect-ratio:1; min-width:0; min-height:0; background:var(--ring-bg);">
+      <!-- 40 cells as grid: 11×11 with empty center 9×9 -->
+      <div class="board-ring" style="display:grid; width:100%; height:100%; grid-template-columns:repeat(11,1fr); grid-template-rows:repeat(11,1fr); gap:var(--board-gap); padding:var(--board-frame);">
+        <!-- Cells generated by index 0-39 mapping to ring positions -->
+      </div>
+    </div>
+
+    <!-- CENTER PANEL (Panorama of Turn) -->
+    <div class="panel chamfer" data-region="center" style="width:var(--center-w); height:var(--center-h); margin:0 auto; display:grid; grid-template-rows: var(--zone-roll-h) var(--zone-event-h) var(--zone-players-h) var(--zone-journal-h); gap:var(--gap); overflow:hidden;">
+      <!-- Zone 1: Roll -->
+      <div class="panel-raised chamfer-sm" data-zone="roll" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--sp-8); padding:var(--sp-16);">
+      </div>
+      <!-- Zone 2: Event -->
+      <div class="panel-raised chamfer-sm" data-zone="event" style="display:flex; flex-direction:column; padding:var(--sp-16); gap:var(--sp-12);">
+      </div>
+      <!-- Zone 3: Players -->
+      <div class="panel-raised chamfer-sm" data-zone="players" style="display:flex; flex-direction:column; padding:var(--sp-16); gap:var(--sp-8);">
+      </div>
+      <!-- Zone 4: Journal -->
+      <div class="panel-raised chamfer-sm" data-zone="journal" style="display:flex; flex-direction:column; padding:var(--sp-16); gap:var(--sp-8); overflow:auto;">
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT DOCK: Journal (top) + Inspector (bottom) -->
+  <aside class="flex flex-col" data-region="journal" style="grid-row:2; grid-column:3; display:flex; flex-direction:column; gap:var(--gap); padding:var(--gap); min-width:0;">
+    <div class="panel flex-1 chamfer" data-region="journal" style="display:flex; flex-direction:column; min-height:0;">
+      <!-- Journal header + list -->
+    </div>
+    <div class="panel chamfer" data-region="inspector" style="height:var(--inspector_min_h,150px); display:flex; flex-direction:column; min-height:0;">
+      <!-- Inspector -->
+    </div>
+  </aside>
+
+  <!-- CONSOLE: Act -->
+  <footer class="panel chamfer" data-region="act" style="grid-column:1/-1; display:grid; grid-template-rows:auto 1fr; gap:var(--sp-8); padding:var(--sp-12) var(--sp-16);">
+    <!-- Status line -->
+    <div class="flex items-center gap-12" style="min-width:0;">
+      <span class="t-value" style="font-size:var(--sz-m); color:var(--player-0);">Хост</span>
+      <span class="t-para muted" style="font-size:var(--sz-m);">· ваш ход — выберите действие</span>
+    </div>
+    <!-- Action buttons -->
+    <div class="flex items-center gap-8" style="justify-content:flex-end;">
+      <button class="panel-raised chamfer-sm flex items-center gap-4" style="padding:var(--sp-8) var(--sp-24); font-size:var(--sz-m); background:var(--accent); color:var(--on-accent); border:none; font-weight:600;">Бросок</button>
+      <button class="panel-raised chamfer-sm flex items-center gap-4" style="padding:var(--sp-8) var(--sp-16); font-size:var(--sz-m); border:var(--line-w) solid var(--line); background:transparent;">Купить $100</button>
+      <button class="panel-raised chamfer-sm flex items-center gap-4" style="padding:var(--sp-8) var(--sp-16); font-size:var(--sz-m); border:var(--line-w) solid var(--line); background:transparent;">Отказ</button>
+      <button class="panel-raised chamfer-sm flex items-center gap-4" style="padding:var(--sp-8) var(--sp-16); font-size:var(--sz-m); border:var(--line-w) solid var(--line); background:transparent;">Торг</button>
+      <button class="panel-raised chamfer-sm flex items-center gap-4" style="padding:var(--sp-8) var(--sp-16); font-size:var(--sz-m); border:var(--line-w) solid var(--line); background:transparent;">Конец хода</button>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

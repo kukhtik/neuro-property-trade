@@ -1,0 +1,505 @@
+<!doctype html>
+<!--
+  NPT / скин neuro — главный экран, канва 1600×1200 (профиль wide: доки 280/380, рейлов 48 нет — R-15).
+  1280×720 (desktop): доки 268/344, из шапки уходят только слово-логотип и подписи-капсы —
+  числа (ХОД, ФАЗА, РАУНД, БАНК ПАРКОВКИ) и все пять контролов остаются. Панно хода в центре
+  кольца и консоль с героем «Бросок» обязательны на всех профилях (R-4/R-5).
+  880×600 (compact, R-16): доки уходят в дроверы, открываемые словом «Журнал» и «Клетка», —
+  пустой полосы не остаётся. Панно скрывает ТОЛЬКО зону «Журнал»: «Бросок», «Событие» и «Игроки»
+  остаются читаемыми, потому что без них ход не читается с одного взгляда.
+  R-18: если R-7 (кегль) и R-17 (77 px на клетку) конфликтуют — растёт высота кадра LayoutProfile.screen,
+  доска не уменьшается. Здесь: 892 / 11 = 78 px на клетку.
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Neuro Property Trade — главный экран</title>
+<style>
+:root{
+  --bg:#0b0613; --s1:#130b1f; --s2:#1b1230; --s3:#281b42;
+  --line:#3b2a5e; --text:#f7effd; --muted:#a896c8;
+  --accent:#ff6fae; --on-accent:#2a0618; --accent2:#5fe3ff; --money:#5fe3ff;
+  --danger:#ff4d6d; --warn:#ffb020; --ring-bg:#3b2a5e99;
+  --dice-bg:#f2f6fa; --dice-ink:#16191f;
+  --cell:#101820; --cell2:#22303c;
+  --p0:#ff6fae; --p1:#e8264f; --p2:#5fe3ff; --p3:#b6ff6b;
+  --g-brown:#8b5a3c; --g-lightblue:#5bb8e8; --g-pink:#d85aa8; --g-orange:#ee8a2a;
+  --g-red:#d8363c; --g-yellow:#e8c61e; --g-green:#2fa862; --g-darkblue:#2e5fd8;
+  --ui:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --chamfer:9px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  width:1600px;height:1200px;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:var(--ui);font-size:13px;line-height:1.25;
+  display:grid;grid-template-columns:280px 1fr 380px;grid-template-rows:100px 1fr 132px;
+  gap:8px;padding:16px;
+}
+/* ---- роли текста (R-8): значение не переносится, абзац переносится ---- */
+.t-value{white-space:nowrap;width:content}
+.t-para{white-space:normal;width:auto}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cap{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.money{color:var(--money)}
+/* ---- состояния: контраст не падает (фон движется, передний цвет остаётся) ---- */
+button{font-family:var(--ui);font-size:13px;color:var(--text);background:var(--s3);
+  border:1px solid var(--line);border-radius:2px;padding:0 16px;height:44px;cursor:pointer}
+button.secondary{height:40px;padding:0 14px;color:var(--text);background:var(--s3)}
+button.secondary:hover{background:var(--line);border-color:var(--muted)}
+button.secondary:active{background:var(--s2)}
+button.hero{height:52px;padding:0 30px;background:var(--accent);color:var(--on-accent);
+  border-color:var(--accent);font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+button.hero:hover{filter:brightness(1.12)}
+button.hero:active{filter:brightness(.94)}
+button.ghost{height:28px;padding:0 10px;font-size:12px;background:transparent;color:var(--muted);
+  border-color:var(--line)}
+button.ghost:hover{color:var(--text);background:var(--s3);border-color:var(--muted)}
+button.ghost[aria-pressed="true"]{color:var(--text);background:var(--line);border-color:var(--accent2)}
+:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+/* ---- шапка ---- */
+.top{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:16px;padding:0 16px;
+  background:var(--s1);border:1px solid var(--line);overflow:hidden}
+.brand{font-size:17px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.brand span{color:var(--muted)}
+.turnchip{display:flex;align-items:center;gap:12px;padding:0 18px;height:64px;
+  background:var(--s3);border:1px solid var(--accent);border-radius:2px;white-space:nowrap}
+.turnchip .dot{width:14px;height:14px;border-radius:50%;background:var(--p0);flex:none}
+.turnchip .who{font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.turnchip .ph{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.hstat{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+.hstat .v{font-size:26px;font-weight:700;line-height:1}
+.ctrls{margin-left:auto;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.ctrls .lbl{font-size:12px;color:var(--muted);padding:0 8px;border-left:1px solid var(--line)}
+/* ---- доки ---- */
+.dock{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;
+  gap:10px;padding:12px;min-height:0;overflow:hidden}
+.seats{grid-column:1;grid-row:2/4}
+.dright{grid-column:3;grid-row:2/4;gap:12px;background:transparent;border:0;padding:0}
+.dhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  border-bottom:1px solid var(--line);padding-bottom:6px}
+.dhead h2{margin:0;font-size:14px;letter-spacing:.1em;text-transform:uppercase}
+/* ---- места ---- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line)}
+.stats div{background:var(--s2);padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.stats .v{font-size:18px;font-weight:700}
+.ownbar{background:var(--s2);padding:8px;display:flex;flex-direction:column;gap:6px}
+.ownbar .track{display:flex;height:14px;width:100%;gap:2px}
+.ownbar .track i{flex:1 1 auto}
+.ownbar .lg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+.ownbar .lg b{font-weight:400;color:var(--text)}
+.ownbar .lg i{display:inline-block;width:8px;height:8px;margin-right:5px}
+.seats-list{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:0}
+.seat{background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--pc);
+  padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-height:0}
+.seat.active{border-color:var(--accent2);background:var(--s3)}
+.seat .r1{display:flex;align-items:center;gap:8px}
+.seat .nm{font-size:20px;font-weight:700;color:var(--pc)}
+.seat .cash{margin-left:auto;font-size:20px;font-weight:700}
+.seat .r2{font-size:13px;color:var(--muted)}
+.seat .r3{display:flex;gap:10px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.seat .r3 b{color:var(--text);font-weight:400}
+.ledger{background:var(--s2);border:1px solid var(--line);padding:8px 10px;display:flex;
+  flex-direction:column;gap:3px}
+.ledger .row{display:flex;gap:8px;font-size:12px;color:var(--muted);align-items:baseline}
+.ledger .row b{font-weight:400;color:var(--text);flex:none}
+.ledger .row .g{width:8px;height:8px;flex:none}
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;background:var(--s2);
+  border:1px solid var(--line);padding:8px 10px}
+.groups div{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.groups i{width:10px;height:10px;flex:none}
+.ins-grid{flex:1 1 auto;min-height:0;grid-template-rows:repeat(4,1fr)}
+.ins-grid div{justify-content:center}
+.entry{flex:1 1 0;min-height:0;justify-content:space-between}
+/* ---- сцена: доска + кольцо ---- */
+.stage{grid-column:2;grid-row:2;display:flex;align-items:center;justify-content:center;min-height:0}
+.board{width:892px;height:892px;background:var(--cell);border:1px solid var(--line);
+  padding:6px;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);
+  gap:2px;flex:none}
+/* R-18: кегль (R-7) выше 77 px на клетку не жмётся — растёт высота кадра. 892/11 = 78.2 px. */
+.ring{grid-area:1/1/12/12;display:grid;grid-template-columns:repeat(11,1fr);
+  grid-template-rows:repeat(11,1fr);gap:2px}
+.cell{background:var(--cell);border:1px solid var(--line);position:relative;overflow:hidden;
+  display:flex;flex-direction:column;padding:3px 4px 4px}
+.cell.corner{background:var(--cell2)}
+.cell .bar{height:4px;flex:none;margin:-3px -4px 3px;background:var(--line)}
+.cell .nm{font-size:13px;line-height:1.05;color:var(--text);overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;word-break:break-word}
+.cell .cap{font-size:11px;letter-spacing:.06em}
+.cell.corner .nm{font-size:14px}
+.cell.owned{border:2px solid var(--pc)}
+.cell.owned .bar{margin:-3px -4px 3px}
+.cell.mortgaged{background-image:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 7px)}
+.cell .hs{position:absolute;left:5px;bottom:4px;display:flex;gap:2px}
+.cell .hs i{width:7px;height:7px;background:var(--gc)}
+.cell .pt{position:absolute;right:4px;bottom:4px;display:flex;gap:2px}
+.cell .pt i{width:9px;height:9px;border-radius:50%;background:var(--pc);border:1px solid var(--bg)}
+.cell.sel{border:2px dashed var(--accent2)}
+/* ---- панно хода в центре кольца (§4.1) ---- */
+.center{grid-area:2/2/11/10;background:var(--ring-bg);padding:10px;display:flex;
+  flex-direction:column;gap:8px;min-height:0;overflow:hidden}
+.zone{background:var(--s1);border:1px solid var(--line);padding:8px 14px;display:flex;
+  flex-direction:column;gap:6px;min-height:0;overflow:hidden}
+.z-roll{flex:22 1 0}
+.z-event{flex:28 1 0}
+.z-play{flex:30 1 0}
+.z-jrn{flex:20 1 0}
+.zhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex:none}
+.zhead .r{font-size:12px;color:var(--muted);white-space:nowrap}
+/* зона «Бросок» */
+.roll{display:flex;align-items:center;gap:18px;flex:1 1 auto;min-height:0}
+.dice{display:flex;gap:12px;flex:none}
+.die{width:66px;height:66px;background:var(--dice-bg);border-radius:8px;position:relative;flex:none}
+.die i{position:absolute;width:13px;height:13px;border-radius:50%;background:var(--dice-ink)}
+.roll .txt{flex:1 1 auto;min-width:0}
+.roll .txt p{margin:0;font-size:20px;color:var(--text)}
+.sumbox{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.sumbox .sum{font-size:84px;font-weight:700;line-height:.86;color:var(--text)}
+/* зона «Событие» */
+.ev{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:4px 18px;
+  flex:1 1 auto;align-content:center;min-height:0}
+.ev .type{font-size:16px;letter-spacing:.09em;text-transform:uppercase;color:var(--warn)}
+.ev .amount{grid-row:1/3;grid-column:2;align-self:center;font-size:58px;font-weight:700;line-height:.9}
+.ev .who{font-size:34px;font-weight:700;color:var(--pc);display:flex;align-items:center;gap:10px}
+.ev .who i{width:18px;height:18px;border-radius:50%;background:var(--pc);flex:none}
+.ev .tile{font-size:28px;color:var(--text)}
+.ev .tile b{font-weight:400;color:var(--muted);font-size:18px}
+.ev .note{grid-column:1/-1;font-size:13px;color:var(--muted);border-top:1px solid var(--line);
+  padding-top:6px}
+.ev .sub{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;min-width:0}
+.ev .chips{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);
+  padding-top:8px;margin-top:4px}
+/* зона «Игроки» */
+.pl-tbl{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.pl-tbl .thead{display:flex;gap:12px;padding:0 8px 4px 11px;border-bottom:1px solid var(--line)}
+.pl-tbl .rows{display:flex;flex-direction:column;gap:3px;flex:1 1 auto;min-height:0}
+.prow{flex:1 1 0;display:flex;align-items:center;gap:12px;padding:0 8px;background:var(--s2);
+  border-left:3px solid var(--pc);min-height:0}
+.prow.active{background:var(--s3)}
+.prow .nm{width:104px;font-size:20px;font-weight:700;color:var(--pc);flex:none}
+.prow .at{flex:1 1 auto;min-width:0;font-size:14px;color:var(--muted);overflow:hidden;white-space:nowrap}
+.prow .own{width:104px;flex:none;text-align:right;font-size:15px;color:var(--text)}
+.prow .cash{width:104px;flex:none;text-align:right;font-size:24px;font-weight:700}
+/* зона «Журнал» */
+.jlines{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;justify-content:center;min-height:0}
+.jline{display:flex;gap:8px;align-items:baseline;font-size:15px;line-height:1.2}
+.jline b{font-weight:700;flex:none}
+.jline span{color:var(--muted)}
+/* ---- правый док: журнал + инспектор ---- */
+.panel{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;
+  gap:10px;padding:12px;min-height:0;overflow:hidden}
+.p-journal{flex:50 1 0}
+.p-inspector{flex:50 1 0}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.feed{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:0;overflow:hidden}
+.entry{background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--pc);
+  padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.entry .l1{display:flex;gap:8px;align-items:baseline}
+.entry .l1 b{font-size:14px;font-weight:700;color:var(--pc)}
+.entry .l1 .when{margin-left:auto;font-size:11px;color:var(--muted);letter-spacing:.08em}
+.entry .l2{font-size:13px}
+.entry .l3{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.ins-tile{font-size:26px;font-weight:700;display:flex;align-items:center;gap:10px}
+.ins-tile i{width:6px;height:26px;flex:none}
+.ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+.ins-grid div{background:var(--s2);padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.ins-grid .v{font-size:18px}
+.ins-flags{display:flex;gap:8px;flex-wrap:wrap}
+.flag{font-size:12px;padding:4px 10px;background:var(--s3);border:1px solid var(--line);color:var(--muted)}
+.flag.on{color:var(--text);border-color:var(--warn)}
+.ins-acts{display:flex;gap:10px;margin-top:auto}
+/* ---- консоль ---- */
+.act{grid-column:2;grid-row:3;background:var(--s1);border:1px solid var(--line);
+  padding:14px 16px;display:flex;flex-direction:column;
+  justify-content:center;gap:12px;overflow:hidden}
+.act .prompt{display:flex;align-items:center;gap:14px}
+.act .prompt p{margin:0;font-size:20px}
+.chip{font-size:13px;padding:6px 12px;background:var(--s3);border:1px solid var(--line);
+  color:var(--text);white-space:nowrap}
+.chip b{color:var(--money);font-weight:700}
+.act .row2{display:flex;align-items:center;gap:10px}
+</style>
+</head>
+<body>
+<header class="top" data-region="top" data-od-id="top-header">
+  <div class="brand" data-od-id="brand-wordmark">Neuro <span>Property Trade</span></div>
+  <div class="turnchip" data-od-id="turn-chip">
+    <span class="dot"></span>
+    <span class="who t-value">Ход: Хост</span>
+    <span class="ph t-value">Фаза: Начало хода</span>
+  </div>
+  <div class="hstat"><span class="cap">Раунд</span><span class="v num t-value">7</span></div>
+  <div class="hstat"><span class="cap">Банк парковки</span><span class="v num money t-value">$240</span></div>
+  <div class="ctrls" data-od-id="header-controls">
+    <button class="secondary" type="button">Настройки</button>
+    <button class="secondary" type="button">Правила</button>
+    <button class="secondary" type="button">Рестарт</button>
+    <span class="lbl">Тема: Neuro</span>
+    <span class="lbl">Язык: RU</span>
+  </div>
+</header>
+<aside class="dock seats" data-region="seats" data-od-id="left-dock">
+  <div class="dhead"><h2>Игроки</h2><span class="cap">мест 4</span></div>
+  <div class="stats" data-od-id="table-stats">
+    <div><span class="cap">Событий</span><span class="v num t-value">132</span></div>
+    <div><span class="cap">Домов</span><span class="v num t-value">3</span></div>
+    <div><span class="cap">Залогов</span><span class="v num t-value">2</span></div>
+  </div>
+  <div class="ownbar" data-od-id="ownership-bar">
+    <span class="cap">Владения по местам — всего 8</span>
+    <div class="track" aria-hidden="true">
+      <i style="background:var(--p0);flex:2 1 0"></i>
+      <i style="background:var(--p2);flex:3 1 0"></i>
+      <i style="background:var(--p1);flex:1 1 0"></i>
+      <i style="background:var(--p3);flex:2 1 0"></i>
+    </div>
+    <div class="lg">
+      <span><i style="background:var(--p0)"></i>Хост <b>2</b></span>
+      <span><i style="background:var(--p2)"></i>Neuro <b>3</b></span>
+      <span><i style="background:var(--p1)"></i>evil <b>1</b></span>
+      <span><i style="background:var(--p3)"></i>Mira <b>2</b></span>
+    </div>
+  </div>
+  <div class="seats-list" data-od-id="seats-list">
+    <div class="seat active" data-od-id="seat-host" style="--pc:var(--p0)">
+      <div class="r1"><span class="nm t-value">Хост</span><span class="cash num t-value money">$1215</span></div>
+      <div class="r2 t-value">6 Cedar Ave</div>
+      <div class="r3"><span>владений <b>2</b></span><span>домов <b>0</b></span><span>залогов <b>0</b></span></div>
+      <div class="r3">LOCAL <b>• ваш ход</b></div>
+    </div>
+    <div class="seat" data-od-id="seat-neuro" style="--pc:var(--p2)">
+      <div class="r1"><span class="nm t-value">Neuro</span><span class="cash num t-value money">$980</span></div>
+      <div class="r2 t-value">24 Harbor Drive</div>
+      <div class="r3"><span>владений <b>3</b></span><span>домов <b>1</b></span><span>залогов <b>0</b></span></div>
+      <div class="r3">SDK</div>
+    </div>
+    <div class="seat" data-od-id="seat-evil" style="--pc:var(--p1)">
+      <div class="r1"><span class="nm t-value">evil</span><span class="cash num t-value money">$640</span></div>
+      <div class="r2 t-value">10 Jail</div>
+      <div class="r3"><span>владений <b>1</b></span><span>домов <b>0</b></span><span>залогов <b>1</b></span></div>
+      <div class="r3">SDK <b>• в тюрьме, попытка 2</b></div>
+    </div>
+    <div class="seat" data-od-id="seat-mira" style="--pc:var(--p3)">
+      <div class="r1"><span class="nm t-value">Mira</span><span class="cash num t-value money">$1500</span></div>
+      <div class="r2 t-value">33 Chest</div>
+      <div class="r3"><span>владений <b>2</b></span><span>домов <b>0</b></span><span>залогов <b>1</b></span></div>
+      <div class="r3">ИИ «Магнат»</div>
+    </div>
+  </div>
+  <div class="groups" data-od-id="group-legend">
+    <div><i style="background:var(--g-brown)"></i>brown — 1, 3</div>
+    <div><i style="background:var(--g-lightblue)"></i>lightblue — 6, 8, 9</div>
+    <div><i style="background:var(--g-pink)"></i>pink — 11, 13, 14</div>
+    <div><i style="background:var(--g-orange)"></i>orange — 16, 18, 19</div>
+    <div><i style="background:var(--g-red)"></i>red — 21, 23, 24</div>
+    <div><i style="background:var(--g-yellow)"></i>yellow — 26, 27, 29</div>
+    <div><i style="background:var(--g-green)"></i>green — 31, 32, 34</div>
+    <div><i style="background:var(--g-darkblue)"></i>darkblue — 37, 39</div>
+  </div>
+  <div class="ledger" data-od-id="ownership-ledger">
+    <span class="cap">Владения по клеткам</span>
+    <div class="row"><i class="g" style="background:var(--g-brown)"></i><b>3 Palm Row</b><span>Хост</span></div>
+    <div class="row"><i class="g" style="background:var(--g-lightblue)"></i><b>6 Cedar Ave</b><span>Хост</span></div>
+    <div class="row"><i class="g" style="background:var(--g-lightblue)"></i><b>8 Elm Ave</b><span>Neuro • 2 дома</span></div>
+    <div class="row"><i class="g" style="background:var(--g-lightblue)"></i><b>9 Linden Ave</b><span>Neuro</span></div>
+    <div class="row"><i class="g" style="background:var(--g-pink)"></i><b>11 Oak Street</b><span>evil • в залоге</span></div>
+    <div class="row"><i class="g" style="background:var(--g-yellow)"></i><b>26 Crest Point</b><span>Mira • в залоге</span></div>
+    <div class="row"><i class="g" style="background:var(--g-yellow)"></i><b>27 Crest Square</b><span>Mira • 1 дом</span></div>
+    <div class="row"><i class="g" style="background:var(--g-darkblue)"></i><b>37 Grand Avenue</b><span>Neuro</span></div>
+  </div>
+</aside>
+<main class="stage" data-region="stage" data-od-id="stage-column">
+  <div class="board" data-region="board" data-od-id="board-ring">
+    <div class="ring" data-od-id="ring-40">
+      <div class="cell corner" style="grid-area:11/1"><span class="bar"></span><span class="nm">Start</span></div>
+      <div class="cell" style="grid-area:11/2;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Sunset Blvd</span></div>
+      <div class="cell" style="grid-area:11/3"><span class="bar"></span><span class="nm">Chest</span><span class="cap">шанс</span></div>
+      <div class="cell owned" style="grid-area:11/4;--gc:var(--g-brown);--pc:var(--p0)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Palm Row</span><span class="pt"><i></i></span></div>
+      <div class="cell" style="grid-area:11/5"><span class="bar"></span><span class="nm">Tax</span><span class="cap">налог</span></div>
+      <div class="cell" style="grid-area:11/6;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Harbor Station</span><span class="cap">станция</span></div>
+      <div class="cell owned sel" style="grid-area:11/7;--gc:var(--g-lightblue);--pc:var(--p0)"><span class="bar" style="background:var(--g-lightblue)"></span><span class="nm">Cedar Ave</span><span class="pt"><i></i></span></div>
+      <div class="cell" style="grid-area:11/8"><span class="bar"></span><span class="nm">Fortune</span><span class="cap">фортун</span></div>
+      <div class="cell owned" style="grid-area:11/9;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="bar" style="background:var(--g-lightblue)"></span><span class="nm">Elm Ave</span><span class="hs" style="--gc:var(--g-lightblue)"><i></i><i></i></span></div>
+      <div class="cell owned" style="grid-area:11/10;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="bar" style="background:var(--g-lightblue)"></span><span class="nm">Linden Ave</span></div>
+      <div class="cell corner" style="grid-area:11/11"><span class="bar"></span><span class="nm">Jail</span></div>
+      <div class="cell owned mortgaged" style="grid-area:10/11;--gc:var(--g-pink);--pc:var(--p1)"><span class="bar" style="background:var(--g-pink)"></span><span class="nm">Oak Street</span></div>
+      <div class="cell" style="grid-area:9/11"><span class="bar"></span><span class="nm">Tower Utilities</span><span class="cap">услуга</span></div>
+      <div class="cell" style="grid-area:8/11;--gc:var(--g-pink)"><span class="bar" style="background:var(--g-pink)"></span><span class="nm">Maple Street</span></div>
+      <div class="cell" style="grid-area:7/11;--gc:var(--g-pink)"><span class="bar" style="background:var(--g-pink)"></span><span class="nm">Birch Street</span></div>
+      <div class="cell" style="grid-area:6/11;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Central Station</span><span class="cap">станция</span></div>
+      <div class="cell" style="grid-area:5/11;--gc:var(--g-orange)"><span class="bar" style="background:var(--g-orange)"></span><span class="nm">Willow Way</span></div>
+      <div class="cell" style="grid-area:4/11"><span class="bar"></span><span class="nm">Chest</span><span class="cap">шанс</span></div>
+      <div class="cell" style="grid-area:3/11;--gc:var(--g-orange)"><span class="bar" style="background:var(--g-orange)"></span><span class="nm">Aspen Way</span></div>
+      <div class="cell" style="grid-area:2/11;--gc:var(--g-orange)"><span class="bar" style="background:var(--g-orange)"></span><span class="nm">Fir Way</span></div>
+      <div class="cell corner" style="grid-area:1/11"><span class="bar"></span><span class="nm">Free Parking</span></div>
+      <div class="cell" style="grid-area:1/10;--gc:var(--g-red)"><span class="bar" style="background:var(--g-red)"></span><span class="nm">Lake Drive</span></div>
+      <div class="cell" style="grid-area:1/9"><span class="bar"></span><span class="nm">Fortune</span><span class="cap">фортун</span></div>
+      <div class="cell" style="grid-area:1/8;--gc:var(--g-red)"><span class="bar" style="background:var(--g-red)"></span><span class="nm">River Drive</span></div>
+      <div class="cell" style="grid-area:1/7;--gc:var(--g-red);--pc:var(--p2)"><span class="bar" style="background:var(--g-red)"></span><span class="nm">Harbor Drive</span><span class="pt"><i></i></span></div>
+      <div class="cell" style="grid-area:1/6;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">West Station</span><span class="cap">станция</span></div>
+      <div class="cell owned mortgaged" style="grid-area:1/5;--gc:var(--g-yellow);--pc:var(--p3)"><span class="bar" style="background:var(--g-yellow)"></span><span class="nm">Crest Point</span></div>
+      <div class="cell owned" style="grid-area:1/4;--gc:var(--g-yellow);--pc:var(--p3)"><span class="bar" style="background:var(--g-yellow)"></span><span class="nm">Crest Square</span><span class="hs" style="--gc:var(--g-yellow)"><i></i></span></div>
+      <div class="cell" style="grid-area:1/3"><span class="bar"></span><span class="nm">Tower Water</span><span class="cap">услуга</span></div>
+      <div class="cell" style="grid-area:1/2;--gc:var(--g-yellow)"><span class="bar" style="background:var(--g-yellow)"></span><span class="nm">Crest Heights</span></div>
+      <div class="cell corner" style="grid-area:1/1"><span class="bar"></span><span class="nm">Go To Jail</span></div>
+      <div class="cell" style="grid-area:2/1;--gc:var(--g-green)"><span class="bar" style="background:var(--g-green)"></span><span class="nm">Garden Grove</span></div>
+      <div class="cell" style="grid-area:3/1;--gc:var(--g-green)"><span class="bar" style="background:var(--g-green)"></span><span class="nm">Garden Park</span></div>
+      <div class="cell" style="grid-area:4/1;--pc:var(--p3)"><span class="bar"></span><span class="nm">Chest</span><span class="pt"><i></i></span></div>
+      <div class="cell" style="grid-area:5/1;--gc:var(--g-green)"><span class="bar" style="background:var(--g-green)"></span><span class="nm">Garden Court</span></div>
+      <div class="cell" style="grid-area:6/1;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">South Station</span><span class="cap">станция</span></div>
+      <div class="cell" style="grid-area:7/1"><span class="bar"></span><span class="nm">Fortune</span><span class="cap">фортун</span></div>
+      <div class="cell owned" style="grid-area:8/1;--gc:var(--g-darkblue);--pc:var(--p2)"><span class="bar" style="background:var(--g-darkblue)"></span><span class="nm">Grand Avenue</span></div>
+      <div class="cell" style="grid-area:9/1"><span class="bar"></span><span class="nm">Luxury Tax</span><span class="cap">налог</span></div>
+      <div class="cell" style="grid-area:10/1;--gc:var(--g-darkblue)"><span class="bar" style="background:var(--g-darkblue)"></span><span class="nm">Grand Place</span></div>
+    </div>
+    <div class="center" data-region="center" data-od-id="center-panno">
+  <section class="zone z-roll" data-od-id="zone-roll">
+    <div class="zhead"><span class="cap">Бросок</span><span class="r">ходит Хост</span></div>
+    <div class="roll">
+      <div class="dice" data-od-id="dice-pair">
+        <div class="die" data-od-id="die-five"><i style="left:13%;top:13%"></i><i style="left:74%;top:13%"></i><i style="left:13%;top:74%"></i><i style="left:43.5%;top:43.5%"></i><i style="left:74%;top:74%"></i></div>
+        <div class="die" data-od-id="die-three"><i style="left:13%;top:13%"></i><i style="left:43.5%;top:43.5%"></i><i style="left:74%;top:74%"></i></div>
+      </div>
+      <div class="txt"><p class="t-para">Хост бросил 5 и 3 — ход начинается с этого броска</p></div>
+      <div class="sumbox" data-od-id="roll-sum">
+        <span class="sum num t-value">8</span>
+        <span class="cap">Сумма броска</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="zone z-event" data-od-id="zone-event">
+    <div class="zhead"><span class="cap">Событие</span><span class="r">последнее в партии</span></div>
+    <div class="ev" style="--pc:var(--p3)">
+      <div class="type">продажа дома</div>
+      <div class="amount num t-value money" data-od-id="event-amount">$70</div>
+      <div class="sub">
+        <span class="who t-value"><i></i>Mira</span>
+        <span class="tile t-value">Crest Square</span>
+        <span class="tile t-value"><b>27</b></span>
+      </div>
+      <div class="chips">
+        <span class="flag">клетка 27</span>
+        <span class="flag">группа yellow</span>
+        <span class="flag">дом 1</span>
+        <span class="flag on">приход денег</span>
+      </div>
+    </div>
+  </section>
+  <section class="zone z-play" data-od-id="zone-players">
+    <div class="zhead"><span class="cap">Игроки</span><span class="r">мест 4 • владений 8</span></div>
+    <div class="pl-tbl">
+      <div class="thead">
+        <span class="cap" style="width:104px">Место</span>
+        <span class="cap t-para" style="flex:1 1 auto">Клетка</span>
+        <span class="cap" style="width:104px;text-align:right">Владения</span>
+        <span class="cap" style="width:104px;text-align:right">Деньги</span>
+      </div>
+      <div class="rows">
+        <div class="prow active" data-od-id="player-row-host" style="--pc:var(--p0)">
+          <span class="nm t-value">Хост</span>
+          <span class="at t-value">6 Cedar Ave</span>
+          <span class="own t-value">2 владения</span>
+          <span class="cash num t-value money">$1215</span>
+        </div>
+        <div class="prow" data-od-id="player-row-neuro" style="--pc:var(--p2)">
+          <span class="nm t-value">Neuro</span>
+          <span class="at t-value">24 Harbor Drive</span>
+          <span class="own t-value">3 владения</span>
+          <span class="cash num t-value money">$980</span>
+        </div>
+        <div class="prow" data-od-id="player-row-evil" style="--pc:var(--p1)">
+          <span class="nm t-value">evil</span>
+          <span class="at t-value">10 Jail</span>
+          <span class="own t-value">1 владение</span>
+          <span class="cash num t-value money">$640</span>
+        </div>
+        <div class="prow" data-od-id="player-row-mira" style="--pc:var(--p3)">
+          <span class="nm t-value">Mira</span>
+          <span class="at t-value">33 Chest</span>
+          <span class="own t-value">2 владения</span>
+          <span class="cash num t-value money">$1500</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="zone z-jrn" data-od-id="zone-journal">
+    <div class="zhead"><span class="cap">Журнал</span><span class="r">показано 3 из 132</span></div>
+    <div class="jlines">
+      <div class="jline"><b style="color:var(--p3)">Mira</b><span>продаёт с клетки 27 — Crest Square</span></div>
+      <div class="jline"><b style="color:var(--p1)">evil</b><span>закладывает клетку 11 — Oak Street</span></div>
+      <div class="jline"><b style="color:var(--p1)">evil</b><span>попадает в тюрьму</span></div>
+    </div>
+  </section>
+</div>
+  </div>
+</main>
+<aside class="dock dright" data-od-id="right-dock">
+  <section class="panel p-journal" data-region="journal" data-od-id="journal-panel">
+    <div class="dhead"><h2>Ход событий</h2><span class="cap">показано 4 из 132</span></div>
+    <div class="filters" data-od-id="journal-filters">
+      <button class="ghost" type="button" aria-pressed="true">игрок: все</button>
+      <button class="ghost" type="button" aria-pressed="true">тип: все</button>
+      <button class="ghost" type="button">только деньги</button>
+      <button class="ghost" type="button" style="margin-left:auto">экспорт .jsonl</button>
+    </div>
+    <div class="feed" data-od-id="journal-feed">
+      <div class="entry" style="--pc:var(--p3)">
+        <div class="l1"><b>Mira</b><span class="cap">бросок</span><span class="when">раунд 7</span></div>
+        <div class="l2 t-para">бросает 4 и 4</div>
+      </div>
+      <div class="entry" style="--pc:var(--p3)">
+        <div class="l1"><b>Mira</b><span class="cap">сделка</span><span class="when">раунд 7</span></div>
+        <div class="l2 t-para">продаёт с клетки 27 — Crest Square</div>
+        <div class="l3 t-para">группа yellow • дом продан • $70</div>
+      </div>
+      <div class="entry" style="--pc:var(--p1)">
+        <div class="l1"><b>evil</b><span class="cap">залог</span><span class="when">раунд 7</span></div>
+        <div class="l2 t-para">закладывает клетку 11 — Oak Street</div>
+        <div class="l3 t-para">группа pink • клетка в залоге</div>
+      </div>
+      <div class="entry" style="--pc:var(--p1)">
+        <div class="l1"><b>evil</b><span class="cap">тюрьма</span><span class="when">раунд 7</span></div>
+        <div class="l2 t-para">попадает в тюрьму</div>
+        <div class="l3 t-para">клетка 10 Jail • попытка 2</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel p-inspector" data-region="inspector" data-od-id="inspector-panel">
+    <div class="dhead"><h2>Клетка</h2><span class="cap">закреплена на 6</span></div>
+    <div class="ins-tile"><i style="background:var(--g-lightblue)"></i><span class="t-value">Cedar Ave</span></div>
+    <div class="ins-grid">
+      <div><span class="cap">Цена</span><span class="v num t-value money">$100</span></div>
+      <div><span class="cap">Аренда</span><span class="v num t-value money">$6</span></div>
+      <div><span class="cap">Владелец</span><span class="v t-value" style="color:var(--p0)">Хост</span></div>
+      <div><span class="cap">Клетка</span><span class="v num t-value">6</span></div>
+      <div><span class="cap">Домов</span><span class="v num t-value">0</span></div>
+      <div><span class="cap">Залогов</span><span class="v num t-value">0</span></div>
+      <div><span class="cap">Группа</span><span class="v t-value">lightblue</span></div>
+      <div><span class="cap">Группа собрана</span><span class="v t-value">нет</span></div>
+    </div>
+    <div class="ins-acts">
+      <button class="secondary" type="button">Закрепить</button>
+      <button class="secondary" type="button">Закрыть</button>
+    </div>
+  </section>
+</aside>
+<section class="act" data-region="act" data-od-id="act-console">
+  <div class="prompt">
+    <p class="t-para">Хост • ваш ход — выберите действие</p>
+    <span class="chip">последний бросок: <b>5 и 3</b></span>
+    <span class="chip">сумма <b>8</b></span>
+  </div>
+  <div class="row2" data-od-id="act-buttons">
+    <button class="hero" type="button" data-od-id="act-roll">Бросок</button>
+    <button class="secondary" type="button">Купить $100</button>
+    <button class="secondary" type="button">Отказ</button>
+    <button class="secondary" type="button">Торг</button>
+    <button class="secondary" type="button">Конец хода</button>
+  </div>
+</section>
+</body>
+</html>

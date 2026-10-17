@@ -1,0 +1,14 @@
+opencode/glm-5.3-flash-free|A|rc=0|NO_DONE_LINE
+opencode/glm-5.3-flash-free|B|rc=0|NO_DONE_LINE
+opencode/deepseek-v4.1-flash-free|A|rc=0|DONE vA-neuro__deepseek-v4.1-flash-free.html 36539
+opencode/deepseek-v4.1-flash-free|B|rc=0|DONE vB-classic__deepseek-v4.1-flash-free.html 
+opencode/nemotron-3-ultra-free|A|rc=0|NO_DONE_LINE
+opencode/longcat-2.5-preview-free|A|rc=0|DONE vA-neuro__longcat-2.5-preview-free.html 38510
+opencode/longcat-2.5-preview-free|B|rc=0|DONE vB-classic__longcat-2.5-preview-free.html 39483
+opencode/nemotron-3-ultra-free|B|rc=0|NO_DONE_LINE
+opencode/nemotron-3.5-super-vl-free|A|rc=0|NO_DONE_LINE
+opencode/nemotron-3.5-lightning-free|A|rc=0|NO_DONE_LINE
+opencode/nemotron-3.5-lightning-free|B|rc=0|NO_DONE_LINE
+opencode/nemotron-3.5-super-vl-free|B|rc=0|NO_DONE_LINE
+opencode/space-bunny-free|A|rc=0|DONE vA-neuro__space-bunny-free.html 36114
+opencode/space-bunny-free|B|rc=0|DONE vB-classic__space-bunny-free.html 30437
