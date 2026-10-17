@@ -187,6 +187,12 @@ const CELL_NAME_ALWAYS_MIN := 24.0
 ## component until the product decision is made.
 const PHONE_CSS_WIDTH := 390.0
 const GLANCE_MIN_PHONE_PX := 12.0     # what must survive the shrink (the gate's floor, one home)
+## The HUD's smallest type. 10px was too small to read at a glance on the desktop screen the player
+## actually looks at - which is a different question from the phone-stream floor above, and the only
+## one this constant answers. (That floor asks for a 59px label in the 1920 frame; a 56px-tall bar
+## cannot hold one, so no HUD text is phone-readable in a full-screen stream. That is a product
+## decision, recorded in the gate's BELOW_FLOOR_OK, not something a font size can fix.)
+const HUD_MIN_PX := 13
 const GLANCE_FRAME_WIDTH := 1920.0    # the frame the floor was derived at (docs/program.md P1.1)
 
 

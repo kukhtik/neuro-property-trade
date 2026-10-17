@@ -55,6 +55,14 @@ const GLANCE_SET := [
 ## Roles that may sit below the glance floor by design (a single-glyph tag, a secondary counter):
 ## reported as context, never judged. Empty today - the point is that the exclusion is a written
 ## decision, not a silent skip.
+##
+## WHY THIS STAYS EMPTY. The obvious move is to list the HUD here and call STREAM-READ green - no
+## HUD text can reach 59px in a 56px bar. But `layout_profile.gd` already records, at length, that the
+## promise is self-defeating: the frame is scaled down by exactly the factor the text would have to
+## grow by, so a 13px label reads 2.6px from a 1920 frame and 1.3px from 3840, and at 854 the
+## requirement is still 26px. Excluding roles here would bury the arithmetic in a second home and
+## make the gate look satisfied when nothing was decided. The gate reports the number; the decision
+## belongs to the owner.
 const BELOW_FLOOR_OK := []
 
 ## A fixed seed so the measured match is the same every run (a gate whose numbers move is not a

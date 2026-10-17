@@ -12,6 +12,8 @@ signal skin_requested(skin_id: String)
 signal panels_requested
 
 const UiTheme := preload("res://ui/theme.gd")
+# the ONE home for the HUD's smallest type size (see HUD_MIN_PX)
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const KeyboardNav := preload("res://ui/core/keyboard_nav.gd")
@@ -76,7 +78,7 @@ func _init() -> void:
 	# whose turn it is and what is happening - so the stream-readability measurement has to be
 	# able to find them. See game/tools/gates/stream_read_gate.gd.
 	_turn_name.name = "turn-name"
-	_turn_phase = UiTheme.label("", 10, UiTheme.COL().text_dim)
+	_turn_phase = UiTheme.label("", LayoutProfile.HUD_MIN_PX, UiTheme.COL().text_dim)
 	_turn_phase.name = "turn-phase"
 	meta.add_child(_turn_name)
 	meta.add_child(_turn_phase)
@@ -157,7 +159,7 @@ func _notification(what: int) -> void:
 
 
 func _chip(text: String) -> Label:
-	var l := UiTheme.label(text, 10, UiTheme.COL().text_dim)
+	var l := UiTheme.label(text, LayoutProfile.HUD_MIN_PX, UiTheme.COL().text_dim)
 	l.add_theme_stylebox_override("normal",
 		UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
 	l.add_theme_constant_override("outline_size", 0)
