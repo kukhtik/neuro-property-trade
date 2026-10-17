@@ -93,6 +93,40 @@ def dist(a, b):
     return max(abs(a[0] - b[0]), abs(a[1] - b[1]), abs(a[2] - b[2]))
 
 
+## IS THIS COLOUR A MIX OF TWO DECLARED TOKENS?
+##
+## The palette describes the colours the skin INTENDS. The renderer produces every pixel BETWEEN
+## them: text is rasterised with antialiasing, 1px borders have no solid interior at these sizes, and
+## any translucent surface composites what is behind it. On the relayout (frame 1440x900 -> 1600x1200)
+## that turned into 30+ "unexplained" colours across the three skins - all of them a token over a
+## token, e.g. neuro's `#2e204b` is `#1b1230` + `#3b2a5e` (error 1.2/255) and evil's `#391621` (the
+## largest finding, 5804px) is `line` over `surface.3`.
+##
+## Allowlisting those was the wrong fix: the list would need rewriting every time a font size or a
+## panel width changed, which is precisely the "one truth in two homes" defect this repo keeps
+## finding. So the relation is checked instead - with a tolerance, because the blend is quantised to
+## 8 bits and the two endpoints are rounded independently.
+##
+## Deliberately NOT a general "anything near the convex hull" test: an unlisted colour that happens to
+## sit between two tokens would hide there. The test is a MIX, so the colour must lie close to the
+## straight line, with a real alpha in (0,1) - not merely inside the region.
+def is_blend(rgb, tokens, tol: int = 6) -> bool:
+    for a in tokens:
+        for b in tokens:
+            if a == b:
+                continue
+            # the alpha that would put `rgb` on the a->b line, from the channel with the most range
+            span = max(range(3), key=lambda i: abs(a[i] - b[i]))
+            if abs(a[span] - b[span]) < 8:
+                continue                     # too close to fit an alpha reliably
+            t = (rgb[span] - b[span]) / (a[span] - b[span])
+            if not (0.0 < t < 1.0):
+                continue
+            if all(abs(rgb[i] - (a[i] * t + b[i] * (1.0 - t))) <= tol for i in range(3)):
+                return True
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--frame", required=True)
@@ -126,6 +160,7 @@ def main():
 
     unexplained = []   # (pixels, rgb)
     allowed = []
+    blended = []       # a mix of two declared tokens (see is_blend)
     for count, rgb in colors:
         if count < MIN_PIXELS:
             continue
@@ -134,6 +169,11 @@ def main():
         hit = next((a for a in allow if dist(rgb, a) <= DELTA), None)
         if hit is not None:
             allowed.append((count, rgb))
+        elif is_blend(rgb, tokens):
+            # a mix of two declared colours: antialiasing, a translucent surface, a 1px border.
+            # Reported as blended, never as unexplained - see `is_blend` for why this is a
+            # RELATION and not a bigger allowlist.
+            blended.append((count, rgb))
         else:
             unexplained.append((count, rgb))
     unexplained.sort(reverse=True)
@@ -162,8 +202,8 @@ def main():
         print("SG-03 calibrated: %d colour(s) appended to %s" % (len(fresh), allow_path))
 
     u = len(unexplained)
-    print("==> SG-03 REPORT %s: %d unexplained (>=%dpx), %d allowlisted, %d tokens"
-          % (skin, u, MIN_PIXELS, len(allowed), len(tokens)))
+    print("==> SG-03 REPORT %s: %d unexplained (>=%dpx), %d allowlisted, %d blended of two tokens, %d tokens"
+          % (skin, u, MIN_PIXELS, len(allowed), len(blended), len(tokens)))
     for c, r in unexplained[:8]:
         print("    unexplained: #%02x%02x%02x  %d px" % (r[0], r[1], r[2], c))
     if args.strict and u > 0:
