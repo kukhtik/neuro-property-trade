@@ -140,6 +140,9 @@ Without a limit a match can be unbounded: with no colour group nothing is built,
 	# showing only a chevron is still a labelled button (owner, 17.10)
 	"rail.expand":             {"ru": "Показать панель", "en": "Show panel"},
 	"rail.collapse":           {"ru": "Скрыть панель", "en": "Hide panel"},
+	# the rail's own caption, short enough for a 48px strip: a WORD, never a chevron
+	"rail.show":               {"ru": "Открыть", "en": "Open"},
+	"rail.hide":               {"ru": "Скрыть", "en": "Hide"},
 	"settings.tab_controls":   {"ru": "Управление", "en": "Controls"},
 	# ---- design v3: per-field "when it applies" tags (F-48; design/coverage.md §4) ----
 	"settings.tag_live":       {"ru": "применится живьём", "en": "applies live"},

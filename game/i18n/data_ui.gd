@@ -8,6 +8,11 @@ const D := {
 	"ui.ok":            {"ru": "OK", "en": "OK"},
 	"ui.cancel":        {"ru": "Отмена", "en": "Cancel"},
 	"ui.close":         {"ru": "Закрыть", "en": "Close"},
+	# ICON-ONLY CONTROLS BECOME WORDS (owner, 17.10: no glyphs at all). The captions the
+	# close / remove / pin buttons now carry.
+	"ui.close_tip":     {"ru": "Закрыть это окно", "en": "Close this window"},
+	"settings.remove":  {"ru": "Убрать", "en": "Remove"},
+	"ins.pin":          {"ru": "Закрепить", "en": "Pin"},
 	"ui.reset":         {"ru": "сброс", "en": "reset"},
 	"ui.back":          {"ru": "НАЗАД", "en": "BACK"},
 	"ui.players":       {"ru": "ИГРОКИ", "en": "PLAYERS"},
@@ -94,6 +99,13 @@ const D := {
 	"top.lang_tip":         {"ru": "Язык интерфейса", "en": "Interface language"},
 	"top.restart_tip":      {"ru": "Пересобрать партию с новым сидом (рестарт)", "en": "Rebuild the match with a new seed (restart)"},
 	"top.panels_tip":       {"ru": "Скрыть или показать боковые панели", "en": "Hide or show the side panels"},
+	# THE HEADER CONTROLS READ AS WORDS (owner, 17.10: "значки не используем впринципе ... нужны
+	# нормальные читаемые надписи"). Short enough to sit in the 56px bar, long enough to be understood.
+	"top.settings":         {"ru": "Настройки", "en": "Settings"},
+	"top.panels":           {"ru": "Панели", "en": "Panels"},
+	"top.restart":          {"ru": "Заново", "en": "Restart"},
+	"top.skin":             {"ru": "Тема", "en": "Theme"},
+	"top.lang":             {"ru": "Язык", "en": "Language"},
 	# PART 4 — bindings. One label per rebindable action, plus the screen's own furniture. The screen
 	# reads these by `Bindings.label_key(act)`, so a new action cannot ship without its strings.
 	"bind.buy":             {"ru": "Купить", "en": "Buy"},

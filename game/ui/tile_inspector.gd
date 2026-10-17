@@ -47,7 +47,7 @@ func _init() -> void:
 	var title := UiTheme.label(I18n.t("ins.title"), 12, UiTheme.COL().accent)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
-	var pin := UiTheme.button("", I18n.t("ins.pin_tip"))
+	var pin := UiTheme.button(I18n.t("ins.pin"), I18n.t("ins.pin_tip"))
 	pin.custom_minimum_size = Vector2(26, 22)
 	pin.toggle_mode = true
 	pin.connect("toggled", func(pressed: bool) -> void:
@@ -55,7 +55,7 @@ func _init() -> void:
 		if pressed:
 			_hide_timer = _HIDE_AFTER)
 	head.add_child(pin)
-	var close := UiTheme.button("×", I18n.t("ins.close_tip"))
+	var close := UiTheme.button(I18n.t("ui.close"), I18n.t("ins.close_tip"))
 	close.custom_minimum_size = Vector2(26, 22)
 	close.connect("pressed", Callable(self, "clear"))
 	head.add_child(close)

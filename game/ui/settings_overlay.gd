@@ -790,7 +790,7 @@ func _add_row(_unused: Variant = null) -> void:
 	persona.tooltip_text = I18n.t("settings.persona_tip")
 	h.add_child(persona)
 
-	var remove_btn := UiTheme.button("×", I18n.t("settings.remove_tip"))
+	var remove_btn := UiTheme.button(I18n.t("settings.remove"), I18n.t("settings.remove_tip"))
 	remove_btn.custom_minimum_size = Vector2(24, 20)
 	remove_btn.disabled = (idx == 0)
 	remove_btn.connect("pressed", Callable(self, "_remove_row").bind(idx))

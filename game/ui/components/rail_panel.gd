@@ -32,9 +32,11 @@ var _collapsed := false
 var _content: Control
 var _header: Control
 var _title_label: Label
+## Holds the rotated title in the rail. The label keeps its natural size (a Label cannot be narrowed
+## below its text) and turns inside this holder, which IS the rail's rectangle - so the layout, and
+## SG-02, measure the rail rather than a word wider than it. See `_apply_rail_title`.
+var _title_holder: Control
 var _chevron: Label
-## The panel's icon, shown beside the chevron so the collapsed strip says WHICH panel it is.
-var _icon: Label
 var _count_label: Label
 var _manual := false      # true once the user toggled it by hand
 ## The width the panel keeps while EXPANDED. `_apply_state` used to reset
@@ -86,13 +88,27 @@ func _build() -> void:
 	box.add_theme_constant_override("separation", _skin.space(1, 4))
 	(_header as Chamfer).add_child(box)
 
+	# THE TITLE LIVES IN A FIXED HOLDER, ROTATED.
+	#
+	# Two Godot facts forced this shape, both measured:
+	#   1. A Control inside a Container has its rotation reset to 0 on the next frame;
+	#   2. a Label cannot be given a box narrower than its text - assigning 18x98 reads back 98x98.
+	# So the label keeps its natural size and is turned inside a holder that IS the rail's rectangle.
+	# The holder is what the layout (and SG-02) measures, so a 65px word in a 48px rail is reported
+	# against the rail, which is also what the eye sees.
+	_title_holder = Control.new()
+	_title_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_title_holder.clip_contents = true
+	(_header as Chamfer).add_child(_title_holder)
+
 	_title_label = Label.new()
 	_title_label.add_theme_font_size_override("font_size", _skin.size("s", 12))
 	_title_label.add_theme_color_override("font_color", _skin.color("muted"))
 	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# no ellipsis: the rail lays the word out itself, and trimming would eat the vertical text
+	_title_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(_title_label)
+	_title_holder.add_child(_title_label)
 
 	_count_label = Label.new()
 	_count_label.add_theme_font_size_override("font_size", _skin.size("xs", 10))
@@ -109,23 +125,11 @@ func _build() -> void:
 	_chevron.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_chevron)
 
-	# THE RAIL'S OWN LABEL. The collapsed strip is 48px wide and has room for one more thing, and a
-	# chevron alone does not say what it opens. This is the icon the panel is known by, kept visible
-	# in BOTH states so the strip reads as "the players panel, collapsed" rather than "an arrow".
-	# The name is in the tooltip (see `_collapse_tip`), which is where the full text fits.
-	_icon = Label.new()
-	_icon.add_theme_font_size_override("font_size", _skin.size("m", 14))
-	_icon.add_theme_color_override("font_color", _skin.color("muted"))
-	_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_icon.text = ""
-	box.add_child(_icon)
-
 	add_child(_header)
 
 
 ## The tooltip for the collapse control, in the ACTIVE locale, and it names the panel it belongs to
-## so a rail showing a chevron still says what expanding it will bring back.
+## so a collapsed strip still says what expanding it will bring back.
 func _collapse_tip() -> String:
 	var what := _title_text if _title_text != "" else _title_key
 	var verb := "rail.expand" if _collapsed else "rail.collapse"
@@ -146,15 +150,8 @@ func set_content(c: Control) -> void:
 func set_title(text: String) -> void:
 	_title_text = text
 	_title_label.text = text
-	if _icon != null:
-		_icon.tooltip_text = text
 
 
-## The glyph that identifies this panel in the collapsed strip, so a 48px rail is recognisable
-## without reading the tooltip. Call with the panel's own icon.
-func set_icon(glyph: String) -> void:
-	if _icon != null:
-		_icon.text = glyph
 
 
 ## A short count/status shown in the rail so it never looks empty.
@@ -224,13 +221,66 @@ func _apply_state(animate: bool) -> void:
 	tooltip_text = tip
 
 
-## Lay the title vertically in the rail by stacking its characters, which works
-## without a rotated-font trick and survives any skin font.
+## Lay the title for the rail, or restore it for the expanded panel.
 func _rotate_title(vertical: bool) -> void:
 	if vertical:
-		var chars: Array = []
-		for i in _title_text.length():
-			chars.append(_title_text[i])
-		_title_label.text = "\n".join(chars)
+		# the vertical title lives under the holder (a Container would reset its rotation)
+		_title_label.reparent(_title_holder, false)
+		_apply_rail_title()
 	else:
+		_title_label.rotation = 0.0
+		_title_holder.visible = false
+		if _title_label.get_parent() != _header:
+			_title_label.reparent(_header, false)
 		_title_label.text = _title_text
+
+
+## Place the rotated title inside the rail. Safe to call repeatedly: it reads the CURRENT header
+## size, so a resize, a late layout or a locale change is corrected rather than left wrong.
+func _apply_rail_title() -> void:
+	if _title_label == null or _title_holder == null or not _collapsed or _header == null:
+		return
+	var hs: Vector2 = _header.size
+	if hs.x <= 1.0 or hs.y <= 1.0:
+		return                      # not laid out yet; a visibility change or notification comes back
+	_title_holder.visible = true
+	# THE HOLDER IS CLAMPED TO WHAT IS ON SCREEN. The header's size can be stale (a rail built while
+	# hidden, or measured before a resize), and sizing the holder to it put 818px of holder in a 720px
+	# window - SG-02: `@Control@108 rect [9,73 46x818]` in a 1280x720 viewport. Clamp to the visible
+	# rect so the measured box can never be larger than the window it sits in.
+	var vis: Vector2 = hs
+	var vp := get_viewport_rect()
+	if vp.size.x > 1.0 and vp.size.y > 1.0:
+		var gr: Rect2 = _header.get_global_rect()
+		vis.y = minf(hs.y, maxf(1.0, vp.size.y - gr.position.y))
+		vis.x = minf(hs.x, maxf(1.0, vp.size.x - gr.position.x))
+	_title_holder.size = vis
+	_title_holder.position = Vector2.ZERO
+	_title_holder.pivot_offset = Vector2.ZERO
+	# measure the word from the FONT: a rotated Label reports its ROTATED size, so `reset_size`
+	# round-trips are unreliable (measured 18x98 assigned, 98x98 read back)
+	var f: Font = _title_label.get_theme_font("font")
+	var fs: int = _title_label.get_theme_font_size("font_size")
+	var w: float = 0.0
+	var h: float = 0.0
+	if f != null:
+		var m: Vector2 = f.get_string_size(_title_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		w = ceilf(m.x)
+		h = ceilf(m.y)
+	if w <= 0.0 or h <= 0.0:
+		return
+	_title_label.size = Vector2(w, h)
+	_title_label.pivot_offset = Vector2(w, h) * 0.5
+	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# centre the label's own box on the rail; the rotation turns it about the same centre, so the
+	# (h x w) footprint stays centred in the strip
+	_title_label.position = hs * 0.5 - Vector2(w, h) * 0.5
+	_title_label.rotation = deg_to_rad(-90.0 if _left_side else 90.0)
+
+
+## A rail is BUILT HIDDEN and shown later, so its header has no real size until then - and a rotation
+## placed while hidden is placed against a zero rect. Re-place the title when that changes.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED or what == NOTIFICATION_RESIZED:
+		_apply_rail_title()

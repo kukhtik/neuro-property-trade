@@ -18,7 +18,7 @@ const D := {
 	"admin.quick_force_pass_tip": {"ru": "Пропустить текущее решение держателя (покупка/аукцион/ход).", "en": "Skip the holder's current decision (purchase/auction/turn)."},
 	"admin.quick_rollback":     {"ru": "< откат решения", "en": "< decision rollback"},
 	"admin.quick_rollback_tip": {"ru": "Сбросить зависшее ожидание решения (очистить pending-состояние без изменения денег/владений).", "en": "Clear a stuck decision wait (reset pending without changing cash/ownership)."},
-	"admin.away_pid_lbl":       {"ru": "◊ сброс away: pid", "en": "◊ reset away: pid"},
+	"admin.away_pid_lbl":       {"ru": "сброс away: pid", "en": "reset away: pid"},
 	"admin.away_pid_tip":       {"ru": "pid игрока, которому вернуть право хода после «away».", "en": "pid to restore turn priority to after “away”."},
 	"admin.reset_away":         {"ru": "применить", "en": "apply"},
 	"admin.reset_away_tip":     {"ru": "Снять пометку «away» с места, чтобы менеджер снова ждал его решения.", "en": "Clear the “away” mark so the manager waits for its decision again."},

@@ -36,7 +36,7 @@ func _init() -> void:
 	_title.name = "DrawerTitle"
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	var x := UiTheme.button("×", I18n.t("settings.close_tip"))
+	var x := UiTheme.button(I18n.t("ui.close"), I18n.t("settings.close_tip"))
 	x.name = "DrawerClose"
 	x.custom_minimum_size = Vector2(28, 24)
 	x.connect("pressed", Callable(self, "close"))

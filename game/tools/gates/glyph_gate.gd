@@ -16,9 +16,12 @@ extends Node
 
 const SCAN_DIRS := ["res://ui", "res://visual", "res://i18n"]
 
-## The glyphs a screen may draw. Every entry was checked against the font; add a new one ONLY after
-## verifying it renders, or the box comes back.
-const ALLOWED := "—•…‹›◊«»§×"
+## THE OWNER'S RULE (17.10): "значки не используем впринципе, в том виде в котором ты сделал, нужны
+## нормальные читаемые надписи". No control may be a glyph, and no string may open with a decorative
+## picture. What stays allowed is punctuation that carries a MEANING in running text - a dash, an
+## ellipsis, a bullet in a log line, an arrow in a tooltip sentence - never a symbol standing in for
+## a word.
+const ALLOWED := "—•…→"
 
 var _fails: Array = []
 var _checked := 0
