@@ -181,7 +181,7 @@ func _refresh_ownbar(players: Array, seats: Array) -> void:
 	for c in _own_legend.get_children():
 		_own_legend.remove_child(c)
 		c.queue_free()
-	# total owned across players → proportional segments
+	# total owned across players -> proportional segments
 	var total := 0
 	for p in players:
 		total += (p.get("tiles", []) as Array).size()

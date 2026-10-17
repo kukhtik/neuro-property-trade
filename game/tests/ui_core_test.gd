@@ -46,6 +46,8 @@ static func test_list() -> Array[String]:
 		"test_bindings_reset_one_returns_the_default",
 		"test_bindings_labels_exist_in_both_languages",
 		"test_bindings_no_two_actions_share_a_default_key",
+		# the collapse control on the side panels names itself (owner, 17.10)
+		"test_rail_tip_names_the_panel_and_the_action",
 		# EventAdapter — adapt()
 		"test_adapt_roll", "test_adapt_purchase", "test_adapt_rent",
 		"test_adapt_unknown_type_returns_empty",
@@ -1138,4 +1140,32 @@ static func test_bindings_no_two_actions_share_a_default_key() -> String:
 		if seen.has(k):
 			return "'%s' and '%s' both ship on %s" % [str(seen[k]), str(a["act"]), OS.get_keycode_string(k)]
 		seen[k] = str(a["act"])
+	return ""
+
+
+# --- the panel collapse control names itself -------------------------------------------------
+
+static func test_rail_tip_names_the_panel_and_the_action() -> String:
+	# The owner: "не просто кнопку оставлять, а кнопку с подписью что это". A collapsed rail is a
+	# 48px strip; a tooltip that says only "collapse/expand" does not say WHICH panel comes back, and
+	# the old one was a hard-coded Russian string (so an English reader got Russian).
+	#
+	# This asserts the CONTRACT the rail builds its tooltip from, without instantiating the widget:
+	# both keys exist in both locales, and each names an action rather than repeating the word panel.
+	var prev: String = I18nScript.current
+	var seen := {}
+	for loc in ["ru", "en"]:
+		I18nScript.set_locale(loc)
+		for k in ["rail.expand", "rail.collapse"]:
+			var t: String = I18nScript.t(k)
+			if t == k or t.begins_with("{"):
+				I18nScript.set_locale(prev)
+				return "no %s string for '%s' - the rail would show the raw key" % [loc, k]
+			if seen.has(k) and seen[k] == t:
+				I18nScript.set_locale(prev)
+				return "'%s' reads the same in ru and en ('%s') - one of them is untranslated" % [k, t]
+			seen[k] = t
+	I18nScript.set_locale(prev)
+	if seen["rail.expand"] == seen["rail.collapse"]:
+		return "expand and collapse must not read identically ('%s')" % seen["rail.expand"]
 	return ""

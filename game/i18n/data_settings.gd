@@ -8,7 +8,7 @@ const D := {
 	"settings.title":          {"ru": "НАСТРОЙКИ МАТЧА", "en": "MATCH SETTINGS"},
 	"settings.reset_btn":      {"ru": "сброс", "en": "reset"},
 	"settings.reset_tip":      {"ru": "Сбросить все настройки к значениям по умолчанию", "en": "Reset all settings to defaults"},
-	"settings.close_btn":      {"ru": "✕ ESC", "en": "✕ ESC"},
+	"settings.close_btn":      {"ru": "× ESC", "en": "× ESC"},
 	"settings.close_tip":      {"ru": "Закрыть настройки (ESC)", "en": "Close settings (ESC)"},
 	"settings.presets_lbl":    {"ru": "ПРЕСЕТЫ:", "en": "PRESETS:"},
 	"settings.preset_classic": {"ru": "Классика", "en": "Classic"},
@@ -17,11 +17,11 @@ const D := {
 	"settings.preset_fast_tip": {"ru": "Таймер 10с, капитал 1000", "en": "10s timer, 1000 capital"},
 	"settings.preset_hard":    {"ru": "Хардкор", "en": "Hardcore"},
 	"settings.preset_hard_tip": {"ru": "Без залога/торгов, агрессия 80", "en": "No mortgage/trades, aggression 80"},
-	"settings.start_btn":      {"ru": "▶  СТАРТ ПАРТИЮ", "en": "▶  START MATCH"},
+	"settings.start_btn":      {"ru": "»  СТАРТ ПАРТИЮ", "en": "»  START MATCH"},
 	"settings.start_tip":      {"ru": "Начать партию с выбранными игроками и настройками", "en": "Start the match with the selected players and settings"},
 	"settings.apply_btn":      {"ru": "ПРИМЕНИТЬ: новая партия", "en": "APPLY: new match"},
 	"settings.apply_tip":      {"ru": "Пересобрать движок с этими настройками (нужен рестарт)", "en": "Rebuild the engine with these settings (requires restart)"},
-	"settings.rules_btn":      {"ru": "📜 ПРАВИЛА", "en": "📜 RULES"},
+	"settings.rules_btn":      {"ru": " ПРАВИЛА", "en": " RULES"},
 	"settings.rules_tip":      {"ru": "Показать полные правила по текущим настройкам", "en": "Show full rules for the current settings"},
 
 	# player tab
@@ -70,8 +70,8 @@ const D := {
 	"settings.doubles":        {"ru": "Дубли", "en": "Doubles"},
 	"settings.doubles_lbl":    {"ru": "дубли", "en": "doubles"},
 	"settings.doubles_tip":    {"ru": "Повторный ход при выпадении дублей.", "en": "Extra turn when rolling doubles."},
-	"settings.triple_doubles": {"ru": "3 дубля → тюрьма", "en": "3 doubles → jail"},
-	"settings.triple_doubles_lbl": {"ru": "3 дубля → тюрьма", "en": "3 doubles → jail"},
+	"settings.triple_doubles": {"ru": "3 дубля -> тюрьма", "en": "3 doubles -> jail"},
+	"settings.triple_doubles_lbl": {"ru": "3 дубля -> тюрьма", "en": "3 doubles -> jail"},
 	"settings.triple_doubles_tip": {"ru": "Три дубля подряд отправляют в тюрьму.", "en": "Three doubles in a row send you to jail."},
 	"settings.auctions":       {"ru": "Аукционы", "en": "Auctions"},
 	"settings.auctions_tip":   {"ru": "Проводить ли аукцион, когда игрок отказывается покупать клетку.", "en": "Whether to run an auction when a player refuses to buy a tile."},
@@ -136,6 +136,10 @@ Without a limit a match can be unbounded: with no colour group nothing is built,
 
 	# data tab
 	"settings.tab_data":       {"ru": "Данные", "en": "Data"},
+	# the collapse control on the side panels: it NAMES the panel it will bring back, so a rail
+	# showing only a chevron is still a labelled button (owner, 17.10)
+	"rail.expand":             {"ru": "Показать панель", "en": "Show panel"},
+	"rail.collapse":           {"ru": "Скрыть панель", "en": "Hide panel"},
 	"settings.tab_controls":   {"ru": "Управление", "en": "Controls"},
 	# ---- design v3: per-field "when it applies" tags (F-48; design/coverage.md §4) ----
 	"settings.tag_live":       {"ru": "применится живьём", "en": "applies live"},
@@ -162,7 +166,7 @@ Without a limit a match can be unbounded: with no colour group nothing is built,
 	"rules.off":               {"ru": "выкл", "en": "off"},
 	"rules.free_parking":      {"ru": "Бесплатная стоянка: %s", "en": "Free parking: %s"},
 	"rules.doubles":           {"ru": "Дубли: %s", "en": "Doubles: %s"},
-	"rules.triple_doubles":    {"ru": "Тройные дубли → тюрьма: %s", "en": "Triple doubles → jail: %s"},
+	"rules.triple_doubles":    {"ru": "Тройные дубли -> тюрьма: %s", "en": "Triple doubles -> jail: %s"},
 	"rules.auctions":          {"ru": "Аукционы при отказе: %s", "en": "Auctions on refusal: %s"},
 	"rules.housing":           {"ru": "Строительство: %s", "en": "Building: %s"},
 	"rules.even_build":        {"ru": "Равномерная застройка: %s", "en": "Even build: %s"},

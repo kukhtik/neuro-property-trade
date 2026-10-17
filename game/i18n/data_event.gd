@@ -5,7 +5,7 @@ extends RefCounted
 
 const D := {
 	"event.roll":       {"ru": "%s бросает %d+%d", "en": "%s rolls %d+%d"},
-	"event.move":       {"ru": "%s двигается → %d", "en": "%s moves → %d"},
+	"event.move":       {"ru": "%s двигается -> %d", "en": "%s moves -> %d"},
 	"event.land":       {"ru": "%s приземляется на клетку %d", "en": "%s lands on tile %d"},
 	"event.purchase":   {"ru": "%s покупает клетку %d ($%d)", "en": "%s buys tile %d ($%d)"},
 	"event.pass":       {"ru": "%s пропускает клетку %d", "en": "%s passes tile %d"},
@@ -19,7 +19,7 @@ const D := {
 	"event.go_bonus":   {"ru": "%s получает бонус GO", "en": "%s collects GO bonus"},
 	"event.tax":        {"ru": "%s платит налог", "en": "%s pays tax"},
 	"event.card_draw":  {"ru": "%s тянет карту", "en": "%s draws a card"},
-	"event.card_land":  {"ru": "%s карта → клетка %d", "en": "%s card → tile %d"},
+	"event.card_land":  {"ru": "%s карта -> клетка %d", "en": "%s card -> tile %d"},
 	"event.winner":     {"ru": "%s ПОБЕДИЛ!", "en": "%s WINS!"},
 	"event.trade":      {"ru": "сделка завершена", "en": "trade complete"},
 	"event.auction_win": {"ru": "%s выигрывает аукцион клетки %d", "en": "%s wins auction of tile %d"},
@@ -140,8 +140,8 @@ const D := {
 	# now carry the composition in tile NAMES; `trade.terms` is the ONE renderer all three surfaces
 	# (journal, modal, toast) share, so a reader cannot be told three things about one deal.
 	"jrn.ev.trdoffer": {"ru": "предлагает сделку %s: %s", "en": "offers a trade to %s: %s"},
-	"jrn.ev.trade":    {"ru": "%s ⇄ %s: %s", "en": "%s ⇄ %s: %s"},
-	"trade.terms":     {"ru": "%s ⇄ %s", "en": "%s ⇄ %s"},
+	"jrn.ev.trade":    {"ru": "%s <> %s: %s", "en": "%s <> %s: %s"},
+	"trade.terms":     {"ru": "%s <> %s", "en": "%s <> %s"},
 	"trade.nothing":   {"ru": "ничего", "en": "nothing"},
 	"jrn.ev.trdno":    {"ru": "сделка отклонена", "en": "trade declined"},
 	"jrn.ev.bank":     {"ru": "банкрот", "en": "bankrupt"},

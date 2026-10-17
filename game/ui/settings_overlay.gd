@@ -103,7 +103,7 @@ var _p_hard: Button
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_build()
-	# P5: language switch → retranslate in place (no scene rebuild). OptionButton
+	# P5: language switch -> retranslate in place (no scene rebuild). OptionButton
 	# items that carry data (driver/token/dice/deck) keep their stable values; we
 	# only re-apply text labels collected via i18n_key/i18n_tip metadata.
 	I18n.inst().locale_changed.connect(_on_locale_changed)
@@ -491,7 +491,7 @@ func _build_interface_tab() -> void:
 	_tile_count.tooltip_text = I18n.t("settings.tile_count_tip")
 	grid.add_child(_h("settings.tile_count", _tile_count))
 
-## P5: language selected → switch locale (retranslate via _on_locale_changed).
+## P5: language selected -> switch locale (retranslate via _on_locale_changed).
 func _on_language(idx: int) -> void:
 	I18n.set_locale("en" if idx == 1 else "ru")
 
@@ -790,7 +790,7 @@ func _add_row(_unused: Variant = null) -> void:
 	persona.tooltip_text = I18n.t("settings.persona_tip")
 	h.add_child(persona)
 
-	var remove_btn := UiTheme.button("✕", I18n.t("settings.remove_tip"))
+	var remove_btn := UiTheme.button("×", I18n.t("settings.remove_tip"))
 	remove_btn.custom_minimum_size = Vector2(24, 20)
 	remove_btn.disabled = (idx == 0)
 	remove_btn.connect("pressed", Callable(self, "_remove_row").bind(idx))

@@ -78,6 +78,10 @@ GATES=(
 	"HG-13|hg|required|scene|hg13_hotkeys_timer_gate"
 	"HG-08|hg|required|script|tools/ci/gates/hg08_sdk_seat_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
+	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
+	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph
+	# boxes - a defect that looks like a deliberate icon and that no screenshot review caught.
+	"GLYPH|sg|quarantine|scene|glyph_gate"
 	"SG-03|sg|required|script|tools/ci/gates/sg03_palette_gate.sh"
 	# SG-07 runs LAST: it spawns windowed Godot captures for every state x skin, and SG-10's
 	# clean-machine preflight must never see one of them alive (that is the race that once made

@@ -57,7 +57,7 @@ func _init() -> void:
 	m.add_child(row)
 
 	# brand: the diamond in accent + the name in text colour (proto `.brand`)
-	_brand = UiTheme.label("●  NEURO PROPERTY TRADE", 12, UiTheme.COL().text)
+	_brand = UiTheme.label("•  NEURO PROPERTY TRADE", 12, UiTheme.COL().text)
 	_brand.add_theme_constant_override("letter_spacing", 2)
 	row.add_child(_brand)
 
@@ -109,15 +109,15 @@ func _init() -> void:
 	_rolebadge = _chip(I18n.t("mode.player"))
 	row.add_child(_rolebadge)
 
-	_btn_settings = _icon_btn("⚙", I18n.t("top.settings_tip"))
+	_btn_settings = _icon_btn("*", I18n.t("top.settings_tip"))
 	_btn_settings.connect("pressed", func() -> void: settings_requested.emit())
 	row.add_child(_btn_settings)
 	# PART 2: hide/show the side panels. A header button and the H key do the same thing, so the
 	# order's "a button on the panel OR a hotkey" is both, and the badge names the key.
-	_btn_panels = _icon_btn("▤", I18n.t("top.panels_tip"))
+	_btn_panels = _icon_btn("◊", I18n.t("top.panels_tip"))
 	_btn_panels.connect("pressed", func() -> void: panels_requested.emit())
 	row.add_child(_btn_panels)
-	_btn_restart = _icon_btn("⟳", I18n.t("top.restart_tip"))
+	_btn_restart = _icon_btn("×", I18n.t("top.restart_tip"))
 	_btn_restart.connect("pressed", func() -> void: restart_requested.emit())
 	row.add_child(_btn_restart)
 	_btn_lang = _icon_btn("RU", I18n.t("top.lang_tip"))
@@ -126,7 +126,7 @@ func _init() -> void:
 		I18n.set_locale(_locale)
 		retranslate())
 	row.add_child(_btn_lang)
-	_btn_skin = _icon_btn("◐", I18n.t("top.skin_tip"))
+	_btn_skin = _icon_btn("«", I18n.t("top.skin_tip"))
 	_btn_skin.connect("pressed", Callable(self, "_cycle_skin"))
 	row.add_child(_btn_skin)
 
@@ -249,7 +249,7 @@ func _process(_delta: float) -> void:
 
 
 func retranslate() -> void:
-	_brand.text = "●  " + I18n.t("top.title")
+	_brand.text = "•  " + I18n.t("top.title")
 	# the ACTIVE locale is the source of truth: a switch from elsewhere (settings sheet, a
 	# gate) must not leave the toggle showing the wrong next-language
 	_locale = I18n.current

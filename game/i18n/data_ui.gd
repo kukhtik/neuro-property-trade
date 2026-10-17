@@ -146,12 +146,12 @@ const D := {
 	"plr.pos_tiles":        {"ru": "@ %s · %d тайл.", "en": "@ %s · %d tiles."},
 	"plr.auto_pass":        {"ru": "авто-пас", "en": "auto-pass"},
 	"plr.bankrupt":         {"ru": "БАНКРОТ", "en": "BANKRUPT"},
-	"plr.active":           {"ru": "▶ ход", "en": "▶ turn"},
+	"plr.active":           {"ru": "» ход", "en": "» turn"},
 	"plr.tooltip":          {"ru": "Игрок: %s\nДрайвер: %s\nДеньги: $%d\nПозиция: %s\nТайлы: %d\nДома: %d · Залоги: %d", "en": "Player: %s\nDriver: %s\nCash: $%d\nPosition: %s\nTiles: %d\nHouses: %d · Mortgaged: %d"},
 
 	# ---- action panel ----
 	"act.cold_status":      {"ru": "Партия ещё не начата", "en": "Match not started yet"},
-	"act.start_btn":        {"ru": "▶  НАЧАТЬ ПАРТИЮ", "en": "▶  START MATCH"},
+	"act.start_btn":        {"ru": "»  НАЧАТЬ ПАРТИЮ", "en": "»  START MATCH"},
 	"act.start_tip":        {"ru": "Открыть настройки и начать партию", "en": "Open settings and start the match"},
 	"act.ai_status":        {"ru": "%s: управляется ИИ — ход выполняется автоматически", "en": "%s: AI-controlled — turn runs automatically"},
 	"act.human_status":     {"ru": "%s  ·  ваш ход — выберите действие", "en": "%s  ·  your turn — pick an action"},
@@ -219,7 +219,7 @@ const D := {
 	"tip.rent_hotel":       {"ru": "аренда $%d (отель)", "en": "rent $%d (hotel)"},
 
 	# ---- journal ----
-	"jrn.title":            {"ru": "◆ ХОД СОБЫТИЙ", "en": "◆ EVENT LOG"},
+	"jrn.title":            {"ru": "◊ ХОД СОБЫТИЙ", "en": "◊ EVENT LOG"},
 	"jrn.player_lbl":       {"ru": "игрок", "en": "player"},
 	"jrn.type_lbl":         {"ru": "тип", "en": "type"},
 	# The journal's filter categories — the mockup's `ty.*`, eight of them, not the raw engine

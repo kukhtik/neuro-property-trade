@@ -109,7 +109,7 @@ func _text_for(k: String, row: Dictionary, ctx: Dictionary) -> String:
 	return ""
 
 
-## E-1: the composition of a trade, in words - "Harbor Stn, Palm Row + $200 ⇄ $150 + Chest".
+## E-1: the composition of a trade, in words - "Harbor Stn, Palm Row + $200 <> $150 + Chest".
 ##
 ## ONE renderer for three surfaces (the journal line, the incoming-trade modal and the toast), so
 ## the reader cannot be told three different things about one deal. The arrow points from what the

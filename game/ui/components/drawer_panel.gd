@@ -2,7 +2,7 @@ class_name DrawerPanel
 extends PanelContainer
 ## The compact profile's drawer (v3 mockup `.drawer`): a 320px panel that slides in beside
 ## the rail, over the stage, and holds one dock's content. The rail itself stays visible —
-## a second click on it closes the drawer — and the ✕ in the drawer's header does the same.
+## a second click on it closes the drawer — and the × in the drawer's header does the same.
 ##
 ## This is what the mockup does in the compact profile INSTEAD of expanding a dock in
 ## place: expanding a 268px dock on an 1100px window would eat a third of the board, which
@@ -36,7 +36,7 @@ func _init() -> void:
 	_title.name = "DrawerTitle"
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	var x := UiTheme.button("✕", I18n.t("settings.close_tip"))
+	var x := UiTheme.button("×", I18n.t("settings.close_tip"))
 	x.name = "DrawerClose"
 	x.custom_minimum_size = Vector2(28, 24)
 	x.connect("pressed", Callable(self, "close"))

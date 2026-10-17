@@ -87,7 +87,7 @@ func show_event_toast(ev: Dictionary, ctx: Dictionary = {}) -> void:
 	var lbl := UiTheme.label_wrap(text, 12, UiTheme.COL().text)
 	v.add_child(lbl)
 	row.add_child(v)
-	var x := UiTheme.button("✕", "")
+	var x := UiTheme.button("×", "")
 	x.custom_minimum_size = Vector2(20, 20)
 	x.connect("pressed", func() -> void:
 		card.queue_free())

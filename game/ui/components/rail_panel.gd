@@ -20,6 +20,7 @@ signal toggled(collapsed: bool)
 const SkinManager := preload("res://visual/skin_manager.gd")
 const Chamfer := preload("res://ui/components/chamfer_panel.gd")
 const UiTheme := preload("res://ui/theme.gd")
+const I18n := preload("res://i18n/i18n.gd")
 
 const RAIL_W := 48
 
@@ -32,6 +33,8 @@ var _content: Control
 var _header: Control
 var _title_label: Label
 var _chevron: Label
+## The panel's icon, shown beside the chevron so the collapsed strip says WHICH panel it is.
+var _icon: Label
 var _count_label: Label
 var _manual := false      # true once the user toggled it by hand
 ## The width the panel keeps while EXPANDED. `_apply_state` used to reset
@@ -67,7 +70,15 @@ func _build() -> void:
 	(_header as Chamfer).cut = "none"
 	_header.mouse_filter = Control.MOUSE_FILTER_STOP
 	_header.gui_input.connect(_on_header_input)
-	_header.tooltip_text = "Свернуть / развернуть"
+	# THE TOOLTIP GOES ON THE RAIL AS WELL AS THE HEADER, and it is LOCALIZED.
+	#
+	# It used to be a hard-coded Russian string on the header only, so a reader of the rail
+	# (the thing that is actually clickable when collapsed) found `tooltip=''` in English - and the
+	# collapsed state showed nothing but a chevron beside an unlabelled vertical title. The owner's
+	# report: "не просто кнопку оставлять, а кнопку с подписью что это". A control nobody can name is
+	# a control nobody presses.
+	_header.tooltip_text = _collapse_tip()
+	tooltip_text = _collapse_tip()
 
 	var box := HBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -98,7 +109,27 @@ func _build() -> void:
 	_chevron.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_chevron)
 
+	# THE RAIL'S OWN LABEL. The collapsed strip is 48px wide and has room for one more thing, and a
+	# chevron alone does not say what it opens. This is the icon the panel is known by, kept visible
+	# in BOTH states so the strip reads as "the players panel, collapsed" rather than "an arrow".
+	# The name is in the tooltip (see `_collapse_tip`), which is where the full text fits.
+	_icon = Label.new()
+	_icon.add_theme_font_size_override("font_size", _skin.size("m", 14))
+	_icon.add_theme_color_override("font_color", _skin.color("muted"))
+	_icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_icon.text = ""
+	box.add_child(_icon)
+
 	add_child(_header)
+
+
+## The tooltip for the collapse control, in the ACTIVE locale, and it names the panel it belongs to
+## so a rail showing a chevron still says what expanding it will bring back.
+func _collapse_tip() -> String:
+	var what := _title_text if _title_text != "" else _title_key
+	var verb := "rail.expand" if _collapsed else "rail.collapse"
+	return "%s: %s" % [I18n.t(verb), what]
 
 
 ## The content that hides when collapsed. Added under the header.
@@ -115,6 +146,15 @@ func set_content(c: Control) -> void:
 func set_title(text: String) -> void:
 	_title_text = text
 	_title_label.text = text
+	if _icon != null:
+		_icon.tooltip_text = text
+
+
+## The glyph that identifies this panel in the collapsed strip, so a 48px rail is recognisable
+## without reading the tooltip. Call with the panel's own icon.
+func set_icon(glyph: String) -> void:
+	if _icon != null:
+		_icon.text = glyph
 
 
 ## A short count/status shown in the rail so it never looks empty.
@@ -176,6 +216,12 @@ func _apply_state(animate: bool) -> void:
 		custom_minimum_size.x = target_w
 	# in the rail the title reads vertically
 	_rotate_title(_collapsed)
+	# the tooltip says what THIS state does, and names the panel, so a collapsed rail is still a
+	# labelled control rather than a bare chevron
+	var tip := _collapse_tip()
+	if _header != null:
+		_header.tooltip_text = tip
+	tooltip_text = tip
 
 
 ## Lay the title vertically in the rail by stacking its characters, which works

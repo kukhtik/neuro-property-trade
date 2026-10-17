@@ -470,6 +470,8 @@ func _build_compact_shell(body: Control) -> void:
 	_rail_left.name = "rail-left"
 	(_rail_left as RailPanel).setup(UiTheme.skin(), "ui.players", true)
 	(_rail_left as RailPanel).set_title(I18n.t("ui.players"))
+	# the icon keeps the collapsed strip recognisable: a chevron alone says "a panel", not WHICH one
+	(_rail_left as RailPanel).set_icon("•")
 	(_rail_left as RailPanel).set_collapsed(true, false)
 	(_rail_left as RailPanel).toggled.connect(
 		func(_c: bool) -> void: _toggle_drawer("seats", _rail_left))
@@ -485,6 +487,7 @@ func _build_compact_shell(body: Control) -> void:
 	(_rail_r_journal as RailPanel).name = "rail-right-journal"
 	(_rail_r_journal as RailPanel).setup(UiTheme.skin(), "jrn.title", false)
 	(_rail_r_journal as RailPanel).set_title(I18n.t("jrn.title"))
+	(_rail_r_journal as RailPanel).set_icon("◊")
 	(_rail_r_journal as RailPanel).set_collapsed(true, false)
 	(_rail_r_journal as RailPanel).toggled.connect(
 		func(_c: bool) -> void: _toggle_drawer("journal", _rail_r_journal))
@@ -493,6 +496,7 @@ func _build_compact_shell(body: Control) -> void:
 	(_rail_r_inspector as RailPanel).name = "rail-right-inspector"
 	(_rail_r_inspector as RailPanel).setup(UiTheme.skin(), "ins.title", false)
 	(_rail_r_inspector as RailPanel).set_title(I18n.t("ins.title"))
+	(_rail_r_inspector as RailPanel).set_icon("«")
 	(_rail_r_inspector as RailPanel).set_collapsed(true, false)
 	(_rail_r_inspector as RailPanel).toggled.connect(
 		func(_c: bool) -> void: _toggle_drawer("inspector", _rail_r_inspector))
@@ -875,7 +879,7 @@ func _submit(pid: int, action: String, params: Dictionary) -> void:
 		show_rejection(str(res.get("reason", "?")))
 
 
-## Engine/manager events → toasts, journal rows and board animations.
+## Engine/manager events -> toasts, journal rows and board animations.
 func _on_events(events: Array) -> void:
 	for ev in events:
 		var e: Dictionary = ev

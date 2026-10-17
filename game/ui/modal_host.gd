@@ -81,7 +81,7 @@ func _init() -> void:
 	_title = UiTheme.label("", 16, UiTheme.COL().text)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
-	var x := UiTheme.button("✕", "")
+	var x := UiTheme.button("×", "")
 	x.custom_minimum_size = Vector2(26, 26)
 	x.connect("pressed", Callable(self, "close"))
 	head.add_child(x)

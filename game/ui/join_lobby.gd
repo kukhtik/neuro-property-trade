@@ -64,7 +64,7 @@ func _build() -> void:
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(_title)
 
-	_spinner = UiTheme.label("●", 22, UiTheme.COL().accent)
+	_spinner = UiTheme.label("•", 22, UiTheme.COL().accent)
 	_spinner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_spinner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(_spinner)
@@ -125,12 +125,12 @@ func _process(delta: float) -> void:
 	if _elapsed >= GIVE_UP_AFTER and _retry.visible == false:
 		_stall()
 	_dots = int(_elapsed * 2.0) % 4
-	_spinner.text = "●" + ".".repeat(_dots)
+	_spinner.text = "•" + ".".repeat(_dots)
 
 
 func _on_joined(pid: int) -> void:
 	print("JOIN_LOBBY joined pid=%d" % pid)
-	_spinner.text = "✓"
+	_spinner.text = "+"
 	_spinner.add_theme_color_override("font_color", UiTheme.COL().accent2)
 	_status.text = I18n.t("join.joined")
 	joined.emit(pid)
