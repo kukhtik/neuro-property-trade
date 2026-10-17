@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>NPT — три варианта переработки интерфейса (16.10)</title>
+<style>
+  :root { --bg:#0b0613; --panel:#130b1f; --line:#3b2a5e; --text:#f7effd; --muted:#a896c8;
+          --accent:#ff6fae; --money:#5fe3ff; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:14px/1.5 "Segoe UI", -apple-system, Roboto, Arial, sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); }
+  h1 { margin:0 0 6px; font-size:20px; letter-spacing:.02em; }
+  .sub { color:var(--muted); font-size:13px; }
+  .grid { display:grid; grid-template-columns:repeat(3, 500px); gap:16px; padding:16px 20px 32px; justify-content:start; }
+  .card { background:var(--panel); border:1px solid var(--line); }
+  .card h2 { margin:0; padding:10px 12px; font-size:14px; border-bottom:1px solid var(--line); }
+  .card h2 span { color:var(--money); font-variant-numeric:tabular-nums; }
+  .shot { width:500px; height:375px; overflow:hidden; position:relative; background:#000; }
+  .shot iframe { width:1600px; height:1200px; border:0; transform-origin:0 0; transform:scale(0.3125); }
+  .meta { padding:8px 12px; color:var(--muted); font-size:12px; }
+  .meta b { color:var(--text); font-weight:600; }
+  .meta .ok { color:#5cb85c; }
+  .meta .no { color:#ff4d6d; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Neuro Property Trade — три варианта переработки интерфейса</h1>
+  <div class="sub">Канва 1600×1200 (кадр из §1 брифа), сцена «идёт матч, ход человека», скин neuro.
+  Сгенерировано моделью <b>deepseek-v4.1-flash-free</b> (провайдер opencode) через OpenDesign,
+  по брифу <code>docs/specs/ui-redesign-brief.md</code>. Замеры — <code>tools/</code> этого каталога.</div>
+</header>
+<div class="grid">
+
+  <div class="card">
+    <h2>V1 «Панно в центре кольца» <span>R-1 3.7 % · R-2 100 % · клетка 81 px</span></h2>
+    <div class="shot"><iframe src="variant-1-center-panel.html" scrolling="no" loading="lazy"></iframe></div>
+    <div class="meta">
+      Буквальная схема §4.1: внутри кольца — четыре зоны (бросок · событие · игроки · журнал),
+      доки 280/380 без рейлов. <a href="variant-1-center-panel.html">Файл</a> ·
+      <a href="variant-1-notes.md">Заметки</a>.
+      <br>OD <code>lint</code>: <span class="no">P0 — left-accent-card</span> (скругление 5px + левая акцентная
+      полоса у строк мест; DESIGN.md §2 требует <code>radius 0</code>).
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>V2 «Полоса хода под доской» <span>R-1 0 % · R-2 100 % · клетка 79 px</span></h2>
+    <div class="shot"><iframe src="variant-2-band-under-board.html" scrolling="no" loading="lazy"></iframe></div>
+    <div class="meta">
+      Внутри кольца — только бросок и строка события; под доской плотная полоса из четырёх колонок
+      (места · событие · журнал · ход). Боковых доков нет, инспектор — строкой под кубиками.
+      <a href="variant-2-band-under-board.html">Файл</a> · <a href="variant-2-notes.md">Заметки</a>.
+      <br>OD <code>lint</code>: <span class="ok">clean</span> (0 находок).
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>V3 «Одно полотно» <span>R-1 0 % · R-2 99.3 % · клетка 102 px</span></h2>
+    <div class="shot"><iframe src="variant-3-single-canvas.html" scrolling="no" loading="lazy"></iframe></div>
+    <div class="meta">
+      Ни доков, ни рейлов: слева доска во всю высоту, справа единая сетка 2×2 (места · журнал ·
+      клетка · ход), в центре кольца — самый крупный бросок кадра. <a href="variant-3-single-canvas.html">Файл</a> ·
+      <a href="variant-3-notes.md">Заметки</a>.
+      <br>OD <code>lint</code>: <span class="ok">clean</span> (0 находок).
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
