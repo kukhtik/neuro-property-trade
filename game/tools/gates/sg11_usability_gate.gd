@@ -54,21 +54,62 @@ func _process(_dt: float) -> void:
 				return
 			_launcher.call("_autostart")
 			_state = "settle"
-			_wait = 40
+			# WAIT FOR THE SHELL TO BE BUILT, NOT FOR A FRAME COUNT. 40 frames was enough on a warm
+			# machine and not enough in the gate sweep, where the console's buttons had not been
+			# added yet: the scan then found 5 of 11 interactive controls and reported "the scan
+			# proves nothing" - a failure that read like a UI defect and was a race. Poll the thing
+			# that is about to be measured, with a bound so a genuinely broken shell still fails.
+			_wait = 600
 		"settle":
+			# READY = the console's action row has its buttons. That is the LAST thing the shell
+			# builds, so its presence means everything the scan looks for exists.
+			if _interactive_count() >= 8:
+				_check_tree("profile %dx%d" % [_profiles[_profile_idx].x, _profiles[_profile_idx].y])
+				_profile_idx += 1
+				if _profile_idx < _profiles.size():
+					get_tree().root.size = _profiles[_profile_idx]
+					DisplayServer.window_set_size(_profiles[_profile_idx])
+					_state = "settle2"
+					_wait = 600
+					return
+				_check_rejection()
+				_write_checklist()
+				_report()
+				return
 			_wait -= 1
 			if _wait > 0:
 				return
+			# the bound expired: run the check anyway so the failure names what it found
 			_check_tree("profile %dx%d" % [_profiles[_profile_idx].x, _profiles[_profile_idx].y])
 			_profile_idx += 1
 			if _profile_idx < _profiles.size():
 				get_tree().root.size = _profiles[_profile_idx]
 				DisplayServer.window_set_size(_profiles[_profile_idx])
-				_wait = 20
+				_state = "settle2"
+				_wait = 600
 				return
 			_check_rejection()
 			_write_checklist()
 			_report()
+		"settle2":
+			if _interactive_count() >= 8 or _wait <= 0:
+				_check_tree("profile %dx%d" % [_profiles[_profile_idx].x, _profiles[_profile_idx].y])
+				_check_rejection()
+				_write_checklist()
+				_report()
+				return
+			_wait -= 1
+
+
+## How many interactive controls exist right now. Used as the READINESS test in `_process`: the gate
+## must not measure a shell that is still being built. See the note in the "settle" state.
+func _interactive_count() -> int:
+	var gv = _launcher.get("_game_view")
+	if gv == null:
+		return 0
+	var bundle: Array = [0, [], []]
+	_scan(gv, bundle, "readiness")
+	return int(bundle[0])
 
 
 ## 1 + 3: tooltips everywhere; buttons keep caption + padding.
