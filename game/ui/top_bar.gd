@@ -104,7 +104,13 @@ func _init() -> void:
 	row.add_child(_pot_chip)
 
 	_decision = UiTheme.label("", 12, UiTheme.COL().accent)
+	_decision.name = "top-decision"
+	# A timer must not shove its neighbours: "9:59" and "10:00" are different widths, the row is
+	# centred, and every tick re-centred it - the owner saw the timer jump as the time changed. The
+	# box is fixed to the widest sample and the digits centre inside it, so the clock only changes.
+	_decision.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(_decision)
+	_decision.custom_minimum_size.x = _timer_box_w()
 
 	_rolebadge = _chip(I18n.t("mode.player"))
 	row.add_child(_rolebadge)
@@ -308,6 +314,19 @@ func _process(_delta: float) -> void:
 	rem = maxf(rem, 0.0)
 	_decision.text = "%d:%02d" % [int(rem / 60.0), int(rem) % 60]
 	_decision.visible = true
+
+
+## The widest a clock can get: the box is sized once from "88:88", so a tick from 9:59 to 10:00
+## (or any digit whose advance differs) cannot re-flow the header row around it.
+func _timer_box_w() -> float:
+	if _decision == null:
+		return 64.0
+	var f: Font = _decision.get_theme_font("font")
+	if f == null:
+		return 64.0
+	var fs: int = _decision.get_theme_font_size("font_size")
+	var w: float = f.get_string_size("88:88", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	return ceilf(w) + 8.0
 
 
 func retranslate() -> void:

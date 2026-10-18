@@ -203,9 +203,14 @@ func _apply_state(animate: bool) -> void:
 	if _collapsed:
 		_title_label.add_theme_font_size_override("font_size", _skin.size("s", 12))
 		_chevron.text = ("›" if _left_side else "‹")
+		# THE RAIL IS A BUTTON, NOT A CHIP. It measured 48x28 in a 1120px rail: the word it carries
+		# is rotated, so the strip has to be as TALL as the word is wide - the title was being
+		# clipped by a 26px holder (owner: «кнопки боковых панелей супер маленькие»).
+		custom_minimum_size.y = _rail_min_h()
 	else:
 		_title_label.add_theme_font_size_override("font_size", _skin.size("s", 12))
 		_chevron.text = ("‹" if _left_side else "›")
+		custom_minimum_size.y = 0.0
 	if t != null:
 		var d: float = _skin.motion("panel", 0.3)
 		t.tween_property(self, "custom_minimum_size:x", float(target_w), d)
@@ -219,6 +224,18 @@ func _apply_state(animate: bool) -> void:
 	if _header != null:
 		_header.tooltip_text = tip
 	tooltip_text = tip
+
+
+## The rail strip must be as tall as the rotated word is wide - that is what turns a 48px chip into
+## a labelled control. Measured from the FONT: a rotated Label reports its ROTATED size.
+func _rail_min_h() -> float:
+	var f: Font = _title_label.get_theme_font("font")
+	var fs: int = _title_label.get_theme_font_size("font_size")
+	var w := 96.0
+	if f != null:
+		var t := _title_text if _title_text != "" else _title_key
+		w = ceilf(f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+	return clampf(w + 16.0, 64.0, 320.0)
 
 
 ## Lay the title for the rail, or restore it for the expanded panel.
