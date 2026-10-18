@@ -8,6 +8,14 @@
   "static": "22/22 checks passed"
  },
  {
+  "file": "vA-neuro__glm-5.3-flash-free.html",
+  "empty_cells_pct": 0.0,
+  "R1_ok": true,
+  "center_occupied_pct": 100.0,
+  "R2_ok": true,
+  "static": "18/22 checks passed"
+ },
+ {
   "file": "vA-neuro__longcat-2.5-preview-free.html",
   "empty_cells_pct": 0.0,
   "R1_ok": true,
@@ -32,6 +40,14 @@
   "static": "8/22 checks passed"
  },
  {
+  "file": "vA-neuro__nemotron-3.5-lightning-free.html",
+  "empty_cells_pct": 1.8,
+  "R1_ok": true,
+  "center_occupied_pct": 13.9,
+  "R2_ok": false,
+  "static": "20/22 checks passed"
+ },
+ {
   "file": "vA-neuro__space-bunny-free.html",
   "empty_cells_pct": 0.0,
   "R1_ok": true,
@@ -46,6 +62,14 @@
   "center_occupied_pct": 100.0,
   "R2_ok": true,
   "static": "22/22 checks passed"
+ },
+ {
+  "file": "vB-classic__glm-5.3-flash-free.html",
+  "empty_cells_pct": 0.0,
+  "R1_ok": true,
+  "center_occupied_pct": 100.0,
+  "R2_ok": true,
+  "static": "21/22 checks passed"
  },
  {
   "file": "vB-classic__longcat-2.5-preview-free.html",
@@ -70,6 +94,14 @@
   "center_occupied_pct": 100.0,
   "R2_ok": true,
   "static": "14/22 checks passed"
+ },
+ {
+  "file": "vB-classic__nemotron-3.5-lightning-free.html",
+  "empty_cells_pct": 0.0,
+  "R1_ok": true,
+  "center_occupied_pct": 100.0,
+  "R2_ok": true,
+  "static": "21/22 checks passed"
  },
  {
   "file": "vB-classic__nemotron-3.5-super-vl-free.html",

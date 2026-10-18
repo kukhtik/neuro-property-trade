@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<!-- NPT vA «Панно хода в центре доски», скин neuro. Канва 1600×1200 (R-18: если R-7 и R-17
+     конфликтуют, растёт высота кадра — LayoutProfile.screen, а не размер доски).
+     wide 1600×1200: шапка 56; доки «Места» 280 / «Журнал+Клетка» 380; колонка центра 892;
+     кольцо доски 892×892, клетка 78,4 px (R-17: не ниже 77). Центр кольца — ОДИН модуль
+     «панно хода» (R-13, grid/flex, без абсолютных координат): четыре зоны по §4.1 в порядке
+     чтения сверху вниз и в пропорциях §4.1 — Бросок 22% / Событие 28% / Игроки 30% / Журнал 20% (R-2).
+     Рейлов 48 px нет (R-15); доки заполнены, не сворачиваются в пустую полосу.
+     desktop 1280×720: доки 268/344; клетка не опускается ниже 77 — сначала растёт высота кадра (R-18),
+     состав и порядок зон панно не меняются; ничего не скрывается.
+     compact 880×600: панно прячет ТОЛЬКО зону «Журнал» (R-16); «Бросок», «Событие», «Игроки»,
+     чей ход, фаза, кубики с суммой и деньги всех четырёх мест остаются видны (R-4/R-5/R-11);
+     кегли значений ≥ 20 px сохраняются (R-7).
+     Режимов нет (R-6): игрок, наблюдатель и стрим видят один и тот же экран, без оверлеев над доской. -->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1600, initial-scale=1">
+<title>NPT — вариант A «Панно хода» (скин neuro)</title>
+<style>
+  :root{
+    --bg:#0b0613; --s1:#130b1f; --s2:#1b1230; --s3:#281b42; --line:#3b2a5e;
+    --text:#f7effd; --muted:#a896c8; --accent:#ff6fae; --on-accent:#2a0618;
+    --accent2:#5fe3ff; --money:#5fe3ff; --danger:#ff4d6d; --warn:#ffb020; --good:#2fa862;
+    --ring:#3b2a5e99; --dice-bg:#f2f6fa; --dice-ink:#16191f;
+    --ev-money:#5cb85c; --ev-build:#c9a84c; --ev-danger:#d9534f;
+    --ev-card:#9a86c9; --ev-accent:#9fd0ff;
+    --b2:#101820; --b3:#22303c;
+    --p0:#ff6fae; --p1:#e8264f; --p2:#5fe3ff; --p3:#b6ff6b;
+    --g-brown:#8b5a3c; --g-lightblue:#5bb8e8; --g-pink:#d85aa8; --g-orange:#ee8a2a;
+    --g-red:#d8363c; --g-yellow:#e8c61e; --g-green:#2fa862; --g-darkblue:#2e5fd8;
+    --font-ui:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+    --font-mono:"Cascadia Mono",Consolas,"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg)}
+  body{width:1600px;height:1200px;overflow:hidden;font-family:var(--font-ui);color:var(--text);
+       display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+  .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums lining-nums}
+  .t-value{white-space:nowrap}
+  .t-para{white-space:normal;overflow-wrap:break-word}
+  .cap{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--text);flex:0 0 auto}
+
+  /* ШАПКА — region top */
+  .top{flex:0 0 56px;height:56px;background:var(--s1);border-bottom:1px solid var(--line);
+       display:flex;align-items:center;gap:12px;padding:0 12px}
+  .brand{font-size:15px;font-weight:700;letter-spacing:.16em}
+  .brand b{color:var(--accent)}
+  .chip{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;
+        background:var(--s2);border:1px solid var(--line);font-size:14px;white-space:nowrap}
+  .chip .k{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:600}
+  .chip .v{font-size:17px;font-weight:700}
+  .chip .v.name{color:var(--p0);font-size:21px}
+  .chip.phase{border-color:var(--accent2)}
+  .chip.phase .v{font-size:18px}
+  .chip.numchip .v{font-family:var(--font-mono);font-size:20px}
+  .chip.numchip .v.money{color:var(--money)}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .hc{height:30px;padding:0 12px;font:600 13px/1 var(--font-ui);color:var(--text);
+      background:var(--s2);border:1px solid var(--line);cursor:pointer}
+  .hc:hover{background:var(--s3);border-color:var(--accent)}
+  .hc:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+/* КАРКАС: док слева | колонка центра (доска + консоль) | док справа */
+.main{flex:1;min-height:0;padding:12px;display:flex;gap:12px}
+.panel{background:var(--s1);border:1px solid var(--line);padding:12px;display:flex;
+       flex-direction:column;gap:8px;min-width:0;min-height:0;overflow:hidden}
+.panelhead{display:flex;align-items:baseline;gap:10px}
+.panelhead .cap{flex:1}
+.pnote{font-size:13px;color:var(--muted)}
+
+/* КОЛОНКА ЦЕНТРА: мат + кольцо доски + панно */
+.stagecol{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+.boardmat{flex:1;min-height:0;background:var(--ring);border:1px solid var(--line);
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.bmark{font-size:14px;letter-spacing:.3em;color:var(--muted);font-weight:700}
+.boardwrap{width:892px;height:892px;flex:none;display:grid;
+           grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr)}
+.board{grid-area:1/1/12/12;display:grid;gap:3px;
+       grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr)}
+
+/* КЛЕТКИ КОЛЬЦА */
+.tile{min-width:0;min-height:0;overflow:hidden;background:var(--b2);border:1px solid var(--b3);
+      display:flex;flex-direction:column;padding:4px;gap:3px}
+.tband{display:block;height:5px;flex:0 0 auto}
+.tile[data-g="brown"] .tband{background:var(--g-brown)}
+.tile[data-g="lightblue"] .tband{background:var(--g-lightblue)}
+.tile[data-g="pink"] .tband{background:var(--g-pink)}
+.tile[data-g="orange"] .tband{background:var(--g-orange)}
+.tile[data-g="red"] .tband{background:var(--g-red)}
+.tile[data-g="yellow"] .tband{background:var(--g-yellow)}
+.tile[data-g="green"] .tband{background:var(--g-green)}
+.tile[data-g="darkblue"] .tband{background:var(--g-darkblue)}
+.tile[data-g="tax"] .tband{background:var(--danger)}
+.tile[data-g="railroad"] .tband{background:var(--muted)}
+.tile[data-g="utility"] .tband{background:var(--warn)}
+.tile[data-g="chance"] .tband{background:var(--ev-card)}
+.tile[data-g="community"] .tband{background:var(--ev-accent)}
+.tile[data-g="jail"] .tband{background:var(--warn)}
+.tile[data-g="free"] .tband{background:var(--good)}
+.tile[data-g="gotojail"] .tband{background:var(--danger)}
+.tile[data-g="go"] .tband{background:var(--accent)}
+.tname{font-size:12px;font-weight:600;line-height:1.08;display:-webkit-box;
+       -webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tfoot{margin-top:auto;display:flex;align-items:center;gap:3px;min-height:14px}
+.tfoot .tok{margin-left:auto}
+.tword{font-size:10px;font-style:normal;color:var(--muted);letter-spacing:.07em;text-transform:uppercase}
+.tprice{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--text)}
+.tmtg{font-size:10px;font-style:normal;color:var(--warn);letter-spacing:.08em;text-transform:uppercase}
+.h{width:7px;height:7px;background:var(--good);flex:0 0 auto}
+.h.hotel{background:var(--warn);width:10px;height:9px}
+.tok{width:14px;height:14px;border-radius:50%;border:2px solid var(--text);flex:0 0 auto}
+.tok.p0{background:var(--p0)} .tok.p1{background:var(--p1)}
+.tok.p2{background:var(--p2)} .tok.p3{background:var(--p3)}
+.tile.ow0{border-left:3px solid var(--p0)} .tile.ow1{border-left:3px solid var(--p1)}
+.tile.ow2{border-left:3px solid var(--p2)} .tile.ow3{border-left:3px solid var(--p3)}
+.tile.mtg{background:repeating-linear-gradient(45deg,var(--b2) 0 4px,var(--b3) 4px 8px)}
+.tile.pin{outline:2px dashed var(--accent2);outline-offset:-2px}
+.corner{background:var(--s2);text-align:center;justify-content:center;padding:5px}
+.corner .tband{width:100%}
+.corner .tname{font-size:13px;font-weight:700}
+.corner .tfoot{justify-content:center}
+.corner .tfoot .tok{margin-left:0}
+/* ПАННО ХОДА (R-13): один модуль, четыре зоны, порядок сверху вниз — Бросок 22 / Событие 28 / Игроки 30 / Журнал 20 */
+.center{grid-area:2/2/11/11;z-index:1;background:var(--s1);border:2px solid var(--line);
+        padding:10px;display:grid;grid-template-rows:22fr 28fr 30fr 20fr;gap:8px;
+        min-width:0;min-height:0;overflow:hidden}
+.zone{background:var(--s2);border:1px solid var(--line);padding:8px 14px;display:flex;
+      flex-direction:column;gap:6px;min-width:0;min-height:0;overflow:hidden}
+.zonehead{display:flex;align-items:baseline;gap:12px}
+.zonehead .cap{flex:1}
+.zmeta{font-size:13px;color:var(--muted)}
+
+/* ЗОНА БРОСОК */
+.roll{flex:1;min-height:0;display:flex;align-items:center;gap:18px}
+.die{width:74px;height:74px;flex:0 0 auto}
+.dface{fill:var(--dice-bg)}
+.dpip{fill:var(--dice-ink)}
+.arrow{font-size:32px;color:var(--accent2);font-weight:400}
+.sumwrap{display:flex;flex-direction:column;align-items:center;gap:2px;margin-left:auto;padding-right:10px}
+.sum{font-family:var(--font-mono);font-size:96px;line-height:1;font-weight:700;color:var(--text)}
+.sumcap{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* ЗОНА СОБЫТИЕ */
+.etyp{font-size:21px;font-weight:700;background:var(--s3);border:1px solid var(--line);padding:2px 10px}
+.event{flex:1;min-height:0;display:flex;align-items:center;gap:14px}
+.evwho{display:flex;align-items:center;gap:10px}
+.evwho .dot{border-color:var(--text)}
+.evname{font-size:23px;font-weight:700;white-space:nowrap}
+.evname.m3{color:var(--p3)}
+.evcell{font-size:20px;color:var(--muted);white-space:nowrap}
+.evline{font-size:20px;color:var(--text);overflow-wrap:break-word;min-width:0;flex:1}
+.evout{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto}
+.evsum{font-family:var(--font-mono);font-size:46px;line-height:1;font-weight:700;color:var(--ev-money)}
+.evcap{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+/* ЗОНА ИГРОКИ */
+.prows{flex:1;display:flex;flex-direction:column;gap:4px;min-height:0}
+.prow{flex:1;display:flex;align-items:center;gap:12px;background:var(--s3);
+      border:1px solid var(--line);border-left:3px solid var(--line);padding:4px 12px;min-height:0}
+.prow.m0{border-left-color:var(--p0)} .prow.m1{border-left-color:var(--p1)}
+.prow.m2{border-left-color:var(--p2)} .prow.m3{border-left-color:var(--p3)}
+.prow.active{border-color:var(--accent)}
+.pname{font-size:21px;font-weight:700;white-space:nowrap}
+.pn0{color:var(--p0)} .pn1{color:var(--p1)} .pn2{color:var(--p2)} .pn3{color:var(--p3)}
+.prow .dot{border-color:var(--text)}
+.pown{font-size:13px;color:var(--muted)}
+.pown b{font-family:var(--font-mono);font-size:18px;color:var(--text);font-weight:700}
+.pmoney{margin-left:auto;font-family:var(--font-mono);font-size:25px;font-weight:700;color:var(--money);white-space:nowrap}
+
+/* ЗОНА ЖУРНАЛ (трей) */
+.zj{flex:1;display:flex;flex-direction:column;gap:2px;min-height:0;justify-content:center}
+.zjline{font-size:15px;line-height:1.32;color:var(--text);overflow-wrap:break-word}
+.zjline .jm{color:var(--muted);margin-right:8px}
+.jn0{color:var(--p0);font-weight:700} .jn1{color:var(--p1);font-weight:700}
+.jn2{color:var(--p2);font-weight:700} .jn3{color:var(--p3);font-weight:700}
+/* ЧИПЫ-МЕТА ШАПКИ */
+.hc.tag{background:transparent;cursor:default;color:var(--muted)}
+.hc.tag:hover{background:transparent;border-color:var(--line)}
+
+/* ЛЕВЫЙ ДОК «Места» (region seats) */
+.dockL{flex:0 0 280px}
+.seats{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0}
+.seat{flex:1;min-height:0;background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--line);
+       padding:10px 12px;display:flex;flex-direction:column;gap:4px;justify-content:space-between;overflow:hidden}
+.seat.m0{border-left-color:var(--p0)} .seat.m1{border-left-color:var(--p1)}
+.seat.m2{border-left-color:var(--p2)} .seat.m3{border-left-color:var(--p3)}
+.seatrow{display:flex;align-items:baseline;gap:8px}
+.sname{font-size:20px;font-weight:700;white-space:nowrap}
+.sn0{color:var(--p0)} .sn1{color:var(--p1)} .sn2{color:var(--p2)} .sn3{color:var(--p3)}
+.smoney{margin-left:auto;font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--money)}
+.smeta{font-size:12px;color:var(--muted);line-height:1.3}
+.schips{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.schip{font-size:12px;padding:2px 8px;border:1px solid var(--line);background:var(--s3);color:var(--muted)}
+.schip.hero{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.schip.jail{color:var(--warn);border-color:var(--warn)}
+
+/* ПОЛОСА ВЛАДЕНИЙ */
+.obar{display:flex;height:18px;border:1px solid var(--line);flex:0 0 auto}
+.obar i{display:block}
+.obleg{display:flex;gap:12px;flex-wrap:wrap;flex:0 0 auto}
+.lg{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.odot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+
+/* ГРУППЫ ВЛАДЕНИЙ */
+.grps{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0;overflow:hidden}
+.grp{display:flex;align-items:center;gap:8px;flex:1;min-height:24px}
+.gband{width:14px;height:14px;flex:0 0 auto}
+.gb-brown{background:var(--g-brown)} .gb-lightblue{background:var(--g-lightblue)}
+.gb-pink{background:var(--g-pink)} .gb-orange{background:var(--g-orange)}
+.gb-red{background:var(--g-red)} .gb-yellow{background:var(--g-yellow)}
+.gb-green{background:var(--g-green)} .gb-darkblue{background:var(--g-darkblue)}
+.gt{font-family:var(--font-mono);font-size:11px;color:var(--muted);width:36px}
+.gname{font-size:13px;white-space:nowrap}
+.gown{margin-left:auto;font-size:13px;font-weight:600;white-space:nowrap}
+.gfree{margin-left:auto;font-size:12px;color:var(--muted)}
+
+/* ПРАВЫЙ ДОК «Ход событий» + «Клетка» */
+.dockR{flex:0 0 380px;gap:12px;display:flex;flex-direction:column;min-height:0}
+.journal{flex:1;min-height:0}
+.feed{flex:1;display:flex;flex-direction:column;gap:6px;min-height:0}
+.jline{flex:1;min-height:0;background:var(--s2);border:1px solid var(--line);
+       padding:8px 10px;display:flex;align-items:center;gap:8px}
+.jtext{flex:1;min-width:0;font-size:15px;line-height:1.32;color:var(--text);overflow-wrap:break-word}
+.jtag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:2px 6px;
+      white-space:nowrap;flex:0 0 auto}
+.jrow{display:flex;gap:6px;flex-wrap:wrap;flex:0 0 auto}
+.jsm{height:26px;padding:0 10px;font:600 12px/1 var(--font-ui);color:var(--muted);
+     background:var(--s2);border:1px solid var(--line);cursor:pointer}
+.jsm:hover{color:var(--text);border-color:var(--accent2);background:var(--s3)}
+.jsm:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+.jsm.exp{margin-left:auto;color:var(--text)}
+
+/* ИНСПЕКТОР */
+.insp{flex:0 0 auto}
+.itop{display:flex;align-items:center;gap:10px}
+.iband{width:16px;height:16px;flex:0 0 auto}
+.iname{font-size:24px;font-weight:700;white-space:nowrap}
+.irow{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.irow.last{border-bottom:0}
+.ik{font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.iv{margin-left:auto;font-size:16px;text-align:right}
+.iv.money{font-family:var(--font-mono);color:var(--money);font-size:20px;font-weight:700}
+.iown{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.ibtns{display:flex;gap:8px;margin-top:4px}
+.btn{height:32px;padding:0 14px;font:600 13px/1 var(--font-ui);color:var(--text);
+     background:var(--s2);border:1px solid var(--line);cursor:pointer}
+.btn:hover{background:var(--s3);border-color:var(--accent2)}
+.btn:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+
+/* КОНСОЛЬ ДЕЙСТВИЙ (region act) */
+.act{flex:0 0 96px;height:96px;background:var(--s1);border:1px solid var(--line);
+     padding:10px 14px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.arow{display:flex;align-items:center;gap:10px}
+.astatus{flex:1;font-size:16px;color:var(--text)}
+.acn{font-size:13px;color:var(--muted);white-space:nowrap}
+.btnhero{height:44px;padding:0 28px;font:800 20px/1 var(--font-ui);letter-spacing:.04em;
+         color:var(--on-accent);background:var(--accent);border:1px solid var(--accent);cursor:pointer}
+.btnhero:hover{filter:brightness(1.08)}
+.btnhero:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+.btnsec{height:36px;padding:0 16px;font:600 14px/1 var(--font-ui);color:var(--text);
+        background:var(--s2);border:1px solid var(--line);cursor:pointer}
+.btnsec:hover{background:var(--s3);border-color:var(--accent)}
+.btnsec:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+
+</style>
+</head>
+<body>
+<header class="top" data-region="top" data-od-id="top">
+  <div class="brand" data-od-id="brand-wordmark">NEURO <b>PROPERTY</b> TRADE</div>
+  <div class="chip"><span class="k">ХОД</span><span class="v name">Хост</span></div>
+  <div class="chip phase"><span class="k">ФАЗА</span><span class="v">Начало хода</span></div>
+  <div class="chip numchip"><span class="k">РАУНД</span><span class="v num">7</span></div>
+  <div class="chip numchip"><span class="k">БАНК ПАРКОВКИ</span><span class="v money num">$240</span></div>
+  <div class="top-right">
+    <button class="hc" data-od-id="btn-settings">Настройки</button>
+    <button class="hc" data-od-id="btn-rules">Правила</button>
+    <button class="hc" data-od-id="btn-restart">Рестарт</button>
+    <span class="hc tag">Тема: Neuro</span>
+    <span class="hc tag">Язык: RU</span>
+  </div>
+</header>
+<main class="main">
+  <aside class="panel dockL" data-region="seats" data-od-id="seats-dock">
+    <div class="panelhead"><span class="cap">Игроки</span><span class="pnote">4 места</span></div>
+    <div class="seats">
+      <div class="seat m0" data-od-id="seat-host">
+        <div class="seatrow"><span class="sname sn0 t-value">Хост</span><span class="smoney num t-value">$1215</span></div>
+        <span class="smeta">@ 6 Cedar Ave</span>
+        <span class="smeta">владений 2 • домов 0 • залогов 0</span>
+        <div class="schips"><span class="schip hero">ваш ход</span></div>
+      </div>
+      <div class="seat m2" data-od-id="seat-neuro">
+        <div class="seatrow"><span class="sname sn2 t-value">Neuro</span><span class="smoney num t-value">$980</span></div>
+        <span class="smeta">@ 24 Harbor Drive</span>
+        <span class="smeta">владений 3 • домов 1 • залогов 0</span>
+        <div class="schips"><span class="schip">SDK</span></div>
+      </div>
+      <div class="seat m1" data-od-id="seat-evil">
+        <div class="seatrow"><span class="sname sn1 t-value">evil</span><span class="smoney num t-value">$640</span></div>
+        <span class="smeta">@ 10 Jail</span>
+        <span class="smeta">владений 1 • домов 0 • залогов 1</span>
+        <div class="schips"><span class="schip jail">в тюрьме • попытка 2</span></div>
+      </div>
+      <div class="seat m3" data-od-id="seat-mira">
+        <div class="seatrow"><span class="sname sn3 t-value">Mira</span><span class="smoney num t-value">$1500</span></div>
+        <span class="smeta">@ 33 Chest</span>
+        <span class="smeta">владений 2 • домов 0 • залогов 1</span>
+        <div class="schips"><span class="schip">ИИ: Магнат</span></div>
+      </div>
+    </div>
+    <div class="obar" data-od-id="ownership-bar">
+      <i style="width:25%;background:var(--p0)"></i><i style="width:37.5%;background:var(--p2)"></i><i style="width:12.5%;background:var(--p1)"></i><i style="width:25%;background:var(--p3)"></i>
+    </div>
+    <div class="obleg">
+      <span class="lg"><i class="odot" style="background:var(--p0)"></i>Хост — 2</span>
+      <span class="lg"><i class="odot" style="background:var(--p2)"></i>Neuro — 3</span>
+      <span class="lg"><i class="odot" style="background:var(--p1)"></i>evil — 1</span>
+      <span class="lg"><i class="odot" style="background:var(--p3)"></i>Mira — 2</span>
+    </div>
+    <div class="panelhead"><span class="cap">Группы</span><span class="pnote">владения</span></div>
+    <div class="grps" data-od-id="groups-list">
+      <div class="grp"><i class="gband gb-brown"></i><span class="gt num">1, 3</span><span class="gname">Коричневая</span><span class="gown" style="color:var(--p0)">Хост 1</span></div>
+      <div class="grp"><i class="gband gb-lightblue"></i><span class="gt num">6, 8, 9</span><span class="gname">Голубая</span><span class="gown"><b style="color:var(--p0)">Хост 1</b> • <b style="color:var(--p2)">Neuro 2</b></span></div>
+      <div class="grp"><i class="gband gb-pink"></i><span class="gt num">11, 13, 14</span><span class="gname">Розовая</span><span class="gown" style="color:var(--p1)">evil 1</span></div>
+      <div class="grp"><i class="gband gb-orange"></i><span class="gt num">16, 18, 19</span><span class="gname">Оранжевая</span><span class="gfree">свободна</span></div>
+      <div class="grp"><i class="gband gb-red"></i><span class="gt num">21, 23, 24</span><span class="gname">Красная</span><span class="gfree">свободна</span></div>
+      <div class="grp"><i class="gband gb-yellow"></i><span class="gt num">26, 27, 29</span><span class="gname">Жёлтая</span><span class="gown" style="color:var(--p3)">Mira 2</span></div>
+      <div class="grp"><i class="gband gb-green"></i><span class="gt num">31, 32, 34</span><span class="gname">Зелёная</span><span class="gfree">свободна</span></div>
+      <div class="grp"><i class="gband gb-darkblue"></i><span class="gt num">37, 39</span><span class="gname">Синяя</span><span class="gown" style="color:var(--p2)">Neuro 1</span></div>
+    </div>
+  </aside>
+  <div class="stagecol" data-region="stage" data-od-id="stage">
+    <div class="boardmat" data-od-id="board-mat">
+      <div class="bmark" data-od-id="board-watermark">NEURO PROPERTY TRADE</div>
+      <div class="boardwrap">
+        <div class="board" data-region="board" data-od-id="board-ring">
+          <div class="tile corner" data-g="go" data-od-id="tile-00-start" style="grid-area:11/11"><b class="tband"></b><span class="tname">Start</span></div>
+          <div class="tile" data-g="brown" data-od-id="tile-01-sunset-blvd" style="grid-area:11/10"><b class="tband"></b><span class="tname">Sunset Blvd</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="community" data-od-id="tile-02-chest" style="grid-area:11/9"><b class="tband"></b><span class="tname">Chest</span></div>
+          <div class="tile" data-g="brown" data-od-id="tile-03-palm-row" style="grid-area:11/8"><b class="tband"></b><span class="tname">Palm Row</span><span class="tfoot"><i class="tok p0"></i></span></div>
+          <div class="tile" data-g="tax" data-od-id="tile-04-tax" style="grid-area:11/7"><b class="tband"></b><span class="tname">Tax</span></div>
+          <div class="tile" data-g="railroad" data-od-id="tile-05-harbor-station" style="grid-area:11/6"><b class="tband"></b><span class="tname">Harbor Station</span></div>
+          <div class="tile pin" data-g="lightblue" data-od-id="tile-06-cedar-ave" style="grid-area:11/5"><b class="tband"></b><span class="tname">Cedar Ave</span><span class="tfoot"><em class="tprice">$100</em><i class="tok p0"></i></span></div>
+          <div class="tile" data-g="chance" data-od-id="tile-07-fortune" style="grid-area:11/4"><b class="tband"></b><span class="tname">Fortune</span></div>
+          <div class="tile" data-g="lightblue" data-od-id="tile-08-elm-ave" style="grid-area:11/3"><b class="tband"></b><span class="tname">Elm Ave</span><span class="tfoot"><i class="h"></i><i class="h"></i><i class="tok p2"></i></span></div>
+          <div class="tile" data-g="lightblue" data-od-id="tile-09-linden-ave" style="grid-area:11/2"><b class="tband"></b><span class="tname">Linden Ave</span><span class="tfoot"><i class="tok p2"></i></span></div>
+          <div class="tile corner" data-g="jail" data-od-id="tile-10-jail" style="grid-area:11/1"><b class="tband"></b><span class="tname">Jail</span><span class="tfoot"><i class="tok p1"></i></span></div>
+          <div class="tile mtg ow1" data-g="pink" data-od-id="tile-11-oak-street" style="grid-area:10/1"><b class="tband"></b><span class="tname">Oak Street</span><span class="tfoot"><em class="tmtg">залог</em></span></div>
+          <div class="tile" data-g="utility" data-od-id="tile-12-tower-utilities" style="grid-area:9/1"><b class="tband"></b><span class="tname">Tower Utilities</span></div>
+          <div class="tile" data-g="pink" data-od-id="tile-13-maple-street" style="grid-area:8/1"><b class="tband"></b><span class="tname">Maple Street</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="pink" data-od-id="tile-14-birch-street" style="grid-area:7/1"><b class="tband"></b><span class="tname">Birch Street</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="railroad" data-od-id="tile-15-central-station" style="grid-area:6/1"><b class="tband"></b><span class="tname">Central Station</span></div>
+          <div class="tile" data-g="orange" data-od-id="tile-16-willow-way" style="grid-area:5/1"><b class="tband"></b><span class="tname">Willow Way</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="community" data-od-id="tile-17-chest" style="grid-area:4/1"><b class="tband"></b><span class="tname">Chest</span></div>
+          <div class="tile" data-g="orange" data-od-id="tile-18-aspen-way" style="grid-area:3/1"><b class="tband"></b><span class="tname">Aspen Way</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="orange" data-od-id="tile-19-fir-way" style="grid-area:2/1"><b class="tband"></b><span class="tname">Fir Way</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile corner" data-g="free" data-od-id="tile-20-free-parking" style="grid-area:1/1"><b class="tband"></b><span class="tname">Free Parking</span></div>
+          <div class="tile" data-g="red" data-od-id="tile-21-lake-drive" style="grid-area:1/2"><b class="tband"></b><span class="tname">Lake Drive</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="chance" data-od-id="tile-22-fortune" style="grid-area:1/3"><b class="tband"></b><span class="tname">Fortune</span></div>
+          <div class="tile" data-g="red" data-od-id="tile-23-river-drive" style="grid-area:1/4"><b class="tband"></b><span class="tname">River Drive</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="red" data-od-id="tile-24-harbor-drive" style="grid-area:1/5"><b class="tband"></b><span class="tname">Harbor Drive</span><span class="tfoot"><i class="tok p2"></i></span></div>
+          <div class="tile" data-g="railroad" data-od-id="tile-25-west-station" style="grid-area:1/6"><b class="tband"></b><span class="tname">West Station</span></div>
+          <div class="tile mtg ow3" data-g="yellow" data-od-id="tile-26-crest-point" style="grid-area:1/7"><b class="tband"></b><span class="tname">Crest Point</span><span class="tfoot"><em class="tmtg">залог</em></span></div>
+          <div class="tile" data-g="yellow" data-od-id="tile-27-crest-square" style="grid-area:1/8"><b class="tband"></b><span class="tname">Crest Square</span><span class="tfoot"><i class="h"></i><i class="tok p3"></i></span></div>
+          <div class="tile" data-g="utility" data-od-id="tile-28-tower-water" style="grid-area:1/9"><b class="tband"></b><span class="tname">Tower Water</span></div>
+          <div class="tile" data-g="yellow" data-od-id="tile-29-crest-heights" style="grid-area:1/10"><b class="tband"></b><span class="tname">Crest Heights</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile corner" data-g="gotojail" data-od-id="tile-30-go-to-jail" style="grid-area:1/11"><b class="tband"></b><span class="tname">Go To Jail</span></div>
+          <div class="tile" data-g="green" data-od-id="tile-31-garden-grove" style="grid-area:2/11"><b class="tband"></b><span class="tname">Garden Grove</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="green" data-od-id="tile-32-garden-park" style="grid-area:3/11"><b class="tband"></b><span class="tname">Garden Park</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="community" data-od-id="tile-33-chest" style="grid-area:4/11"><b class="tband"></b><span class="tname">Chest</span><span class="tfoot"><i class="tok p3"></i></span></div>
+          <div class="tile" data-g="green" data-od-id="tile-34-garden-court" style="grid-area:5/11"><b class="tband"></b><span class="tname">Garden Court</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+          <div class="tile" data-g="railroad" data-od-id="tile-35-south-station" style="grid-area:6/11"><b class="tband"></b><span class="tname">South Station</span></div>
+          <div class="tile" data-g="chance" data-od-id="tile-36-fortune" style="grid-area:7/11"><b class="tband"></b><span class="tname">Fortune</span></div>
+          <div class="tile" data-g="darkblue" data-od-id="tile-37-grand-avenue" style="grid-area:8/11"><b class="tband"></b><span class="tname">Grand Avenue</span><span class="tfoot"><i class="tok p2"></i></span></div>
+          <div class="tile" data-g="tax" data-od-id="tile-38-luxury-tax" style="grid-area:9/11"><b class="tband"></b><span class="tname">Luxury Tax</span></div>
+          <div class="tile" data-g="darkblue" data-od-id="tile-39-grand-place" style="grid-area:10/11"><b class="tband"></b><span class="tname">Grand Place</span><span class="tfoot"><em class="tword">свободен</em></span></div>
+        </div>
+        <div class="center" data-region="center" data-od-id="center-tray">
+          <section class="zone" data-od-id="zone-roll">
+            <div class="zonehead"><span class="cap">Бросок</span><span class="zmeta">Фаза: Начало хода</span></div>
+            <div class="roll">
+              <svg class="die" viewBox="0 0 80 80" role="img" aria-label="Кубик — пять очков">
+                <rect class="dface" x="2" y="2" width="76" height="76" rx="9"/>
+                <circle class="dpip" cx="20" cy="20" r="7.5"/>
+                <circle class="dpip" cx="60" cy="20" r="7.5"/>
+                <circle class="dpip" cx="40" cy="40" r="7.5"/>
+                <circle class="dpip" cx="20" cy="60" r="7.5"/>
+                <circle class="dpip" cx="60" cy="60" r="7.5"/>
+              </svg>
+              <svg class="die" viewBox="0 0 80 80" role="img" aria-label="Кубик — три очка">
+                <rect class="dface" x="2" y="2" width="76" height="76" rx="9"/>
+                <circle class="dpip" cx="20" cy="20" r="7.5"/>
+                <circle class="dpip" cx="40" cy="40" r="7.5"/>
+                <circle class="dpip" cx="60" cy="60" r="7.5"/>
+              </svg>
+              <span class="arrow">→</span>
+              <div class="sumwrap"><span class="sum num" data-od-id="roll-sum">8</span><span class="sumcap">Сумма</span></div>
+            </div>
+          </section>
+          <section class="zone" data-od-id="zone-event">
+            <div class="zonehead"><span class="cap">Событие</span><span class="etyp">Продажа дома</span></div>
+            <div class="event">
+              <div class="evwho"><i class="dot" style="background:var(--p3)"></i><span class="evname m3 t-value">Mira</span></div>
+              <p class="evline t-para" data-grow>продаёт дом на клетке 27 — Crest Square</p>
+              <div class="evout"><span class="evsum num" data-od-id="event-outcome">+$70</span><span class="evcap">итог</span></div>
+            </div>
+          </section>
+          <section class="zone" data-od-id="zone-players">
+            <div class="zonehead"><span class="cap">Игроки</span><span class="zmeta">4 места</span></div>
+            <div class="prows">
+              <div class="prow m0 active" data-od-id="player-row-host">
+                <i class="dot" style="background:var(--p0)"></i>
+                <span class="pname pn0 t-value">Хост</span>
+                <span class="pown">владений: <b>2</b></span>
+                <span class="pmoney num t-value">$1215</span>
+              </div>
+              <div class="prow m2" data-od-id="player-row-neuro">
+                <i class="dot" style="background:var(--p2)"></i>
+                <span class="pname pn2 t-value">Neuro</span>
+                <span class="pown">владений: <b>3</b></span>
+                <span class="pmoney num t-value">$980</span>
+              </div>
+              <div class="prow m1" data-od-id="player-row-evil">
+                <i class="dot" style="background:var(--p1)"></i>
+                <span class="pname pn1 t-value">evil</span>
+                <span class="pown">владений: <b>1</b></span>
+                <span class="pmoney num t-value">$640</span>
+              </div>
+              <div class="prow m3" data-od-id="player-row-mira">
+                <i class="dot" style="background:var(--p3)"></i>
+                <span class="pname pn3 t-value">Mira</span>
+                <span class="pown">владений: <b>2</b></span>
+                <span class="pmoney num t-value">$1500</span>
+              </div>
+            </div>
+          </section>
+          <section class="zone" data-od-id="zone-journal-tray">
+            <div class="zonehead"><span class="cap">Журнал</span><span class="zmeta">последние 3</span></div>
+            <div class="zj">
+              <p class="zjline t-para"><span class="jm">•</span><span class="jn3">Mira</span> продаёт с клетки 27</p>
+              <p class="zjline t-para"><span class="jm">•</span><span class="jn1">evil</span> закладывает клетку 11</p>
+              <p class="zjline t-para"><span class="jm">•</span><span class="jn1">evil</span> попадает в тюрьму</p>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <section class="act" data-region="act" data-od-id="act-console">
+      <div class="arow"><p class="astatus t-para" data-grow>Хост · ваш ход — выберите действие</p><span class="acn">Фаза: Начало хода</span></div>
+      <div class="arow">
+        <button class="btnhero" data-od-id="hero-btn-roll">Бросок</button>
+        <button class="btnsec" data-od-id="btn-buy">Купить $100</button>
+        <button class="btnsec" data-od-id="btn-pass">Отказ</button>
+        <button class="btnsec" data-od-id="btn-bargain">Торг</button>
+        <button class="btnsec" data-od-id="btn-end-turn">Конец хода</button>
+      </div>
+    </section>
+  </div>
+  <aside class="dockR" data-od-id="right-dock">
+    <section class="panel journal" data-region="journal" data-od-id="journal-dock">
+      <div class="panelhead"><span class="cap">Ход событий</span><span class="pnote num">показано 4 из 132</span></div>
+      <div class="feed">
+        <div class="jline"><p class="jtext t-para"><span class="jn3">Mira</span> бросает 4+4</p><span class="jtag">бросок</span></div>
+        <div class="jline"><p class="jtext t-para"><span class="jn3">Mira</span> продаёт с клетки 27</p><span class="jtag">деньги</span></div>
+        <div class="jline"><p class="jtext t-para"><span class="jn1">evil</span> закладывает клетку 11</p><span class="jtag">деньги</span></div>
+        <div class="jline"><p class="jtext t-para"><span class="jn1">evil</span> попадает в тюрьму</p><span class="jtag">другое</span></div>
+      </div>
+      <div class="jrow" data-od-id="journal-filters">
+        <button class="jsm">игрок: все</button>
+        <button class="jsm">тип: все</button>
+        <button class="jsm">только деньги</button>
+        <button class="jsm exp" data-od-id="btn-export">экспорт .jsonl</button>
+      </div>
+    </section>
+    <section class="panel insp" data-region="inspector" data-od-id="inspector-dock">
+      <div class="panelhead"><span class="cap">Клетка</span><span class="pnote">закреплена</span></div>
+      <div class="itop"><i class="iband" style="background:var(--g-lightblue)"></i><span class="iname t-value">Cedar Ave</span></div>
+      <div class="irow"><span class="ik">Группа</span><span class="iv">lightblue</span></div>
+      <div class="irow"><span class="ik">Цена</span><span class="iv money num">$100</span></div>
+      <div class="irow"><span class="ik">Аренда</span><span class="iv money num">$6</span></div>
+      <div class="irow"><span class="ik">Владелец</span><span class="iv iown"><i class="odot" style="background:var(--p0)"></i>Хост</span></div>
+      <div class="irow last"><span class="ik">Стройка</span><span class="iv" style="color:var(--muted)">группа не собрана</span></div>
+      <div class="ibtns" data-od-id="inspector-actions">
+        <button class="btn" data-od-id="btn-pin">Закрепить</button>
+        <button class="btn" data-od-id="btn-close-inspector">Закрыть</button>
+      </div>
+    </section>
+  </aside>
+</main>
+
+</body>
+</html>

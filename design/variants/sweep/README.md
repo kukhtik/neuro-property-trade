@@ -13,16 +13,23 @@
 | файл | R-1 пустых ячеек | R-2 занятость центра | статика | вердикт |
 |---|---|---|---|---|
 | `vA-neuro__deepseek-v4.1-flash-free` | **0.0 %** | **100 %** | 22/22 | годен |
+| `vA-neuro__glm-5.3-flash-free` | **0.0 %** | **100 %** | 18/22 | годен |
 | `vA-neuro__longcat-2.5-preview-free` | **0.0 %** | **100 %** | 22/22 | годен |
 | `vA-neuro__mimo-v2.6-flash-free` | 1.9 % | 100 % | 18/22 | годен (журнал сформулирован иначе) |
 | `vA-neuro__space-bunny-free` | **0.0 %** | **100 %** | 17/22 | годен (часть строк иначе) |
+| `vA-neuro__nemotron-3.5-lightning-free` | 1.8 % | **13.9 %** | 20/22 | **R-2 провал: центр кольца почти пуст** |
 | `vA-neuro__nemotron-3-ultra-free` | 18.8 % | — | 8/22 | **брак: файл обрезан (12 КБ, 0 клеток)** |
 | `vB-classic__deepseek-v4.1-flash-free` | **0.0 %** | **100 %** | 22/22 | годен |
+| `vB-classic__glm-5.3-flash-free` | **0.0 %** | **100 %** | 21/22 | годен |
 | `vB-classic__longcat-2.5-preview-free` | **0.0 %** | **100 %** | 18/22 | годен |
 | `vB-classic__mimo-v2.6-flash-free` | **0.0 %** | **100 %** | 22/22 | годен |
 | `vB-classic__space-bunny-free` | **0.0 %** | **100 %** | 17/22 | годен |
+| `vB-classic__nemotron-3.5-lightning-free` | **0.0 %** | **100 %** | 21/22 | годен |
 | `vB-classic__nemotron-3.5-super-vl-free` | **0.0 %** | **100 %** | 22/22 | годен |
 | `vB-classic__nemotron-3-ultra-free` | **0.0 %** | **100 %** | 14/22 | структура ок, строки/разметка не по спеке |
+
+Итог: **15 файлов, 13 годных, 1 с провалом R-2, 1 обрезан.** Второй проход (`summary-pass2.txt`)
+догнал `glm B`, `lightning A/B`; `glm A` и `super-vl A` дописывались третьим проходом.
 
 Для сравнения: живой продукт по гейту `FILL` — **55.1 % пустых ячеек, 2.2 % занятости центра**
 (`==> FILL FAILED: turn-human_neuro …`), то есть любой макет из таблицы лучше текущего экрана по
@@ -36,9 +43,9 @@
 | модель | что случилось |
 |---|---|
 | `opencode/beam-free` | `This model is not available in your country` — гео-блок, в свип не включена |
-| `opencode/glm-5.3-flash-free` | A и B: `inactivity_timeout` (сторож демона: 600 с без вывода) — файлов нет |
-| `opencode/nemotron-3.5-lightning-free` | A и B: `inactivity_timeout` — файлов нет |
-| `opencode/nemotron-3.5-super-vl-free` | A упал по тому же сторожу; **B получен и годен** |
+| `opencode/glm-5.3-flash-free` | A: `inactivity_timeout` на 1-м проходе, файл получен только третьим; B — со второго |
+| `opencode/nemotron-3.5-lightning-free` | A и B упали на 1-м проходе (`inactivity_timeout`), оба получены вторым; **A провалил R-2 (13.9 %)** |
+| `opencode/nemotron-3.5-super-vl-free` | B получен с 1-го прохода; A — третьим (файла в этом коммите нет, если третий проход не успел) |
 | `opencode/nemotron-3-ultra-free` | A — обрезан (запись начата, ран умер), B — есть, но не по спеке строк |
 
 Итог первого прохода: **11 файлов, 9 годных** (`summary-pass1.txt` — сводка драйвера).

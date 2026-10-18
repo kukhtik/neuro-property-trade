@@ -1,0 +1,921 @@
+<!-- Layout transitions:
+  1280×720: all center zones visible (Бросок, Событие, Игроки, Журнал);
+  880×600: journal zone hidden in center panel; Бросок, Событие, Игроки остаются читаемыми;
+  seats and act console полны; рейлы absent — панели показывают слово, а не пустоту -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neuro Property Trade — Board</title>
+  <style>
+    :root {
+      --bg: #0b0613;
+      --surface-1: #130b1f;
+      --surface-2: #1b1230;
+      --surface-3: #281b42;
+      --line: #3b2a5e;
+      --text: #f7effd;
+      --muted: #a896c8;
+      --accent: #ff6fae;
+      --on-accent: #2a0618;
+      --accent2: #5fe3ff;
+      --money: #5fe3ff;
+      --danger: #ff4d6d;
+      --warn: #ffb020;
+      --ring-bg: #3b2a5e99;
+      --dice-bg: #f2f6fa;
+      --dice-ink: #16191f;
+      --player-0: #ff6fae;
+      --player-1: #e8264f;
+      --player-2: #5fe3ff;
+      --player-3: #b6ff6b;
+      --player-4: #ffb020;
+      --player-5: #b36bff;
+      --group-brown: #8b5a3c;
+      --group-lightblue: #5bb8e8;
+      --group-pink: #d85aa8;
+      --group-orange: #ee8a2a;
+      --group-red: #d8363c;
+      --group-yellow: #e8c61e;
+      --group-green: #2fa862;
+      --group-darkblue: #2e5fd8;
+      --board-bg2: #101820;
+      --board-bg3: #22303c;
+    }
+
+    body {
+      width: 1600px;
+      height: 1200px;
+      background: var(--bg);
+      font-family: system-ui, -apple-system, Roboto, Helvetica Neue, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    /* === Top Header (data-region="top") === */
+    .top-header {
+      data-region="top";
+      height: 56px;
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      color: var(--text);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .top-brand {
+      font-weight: bold;
+      color: var(--accent);
+      margin-right: 24px;
+    }
+
+    .turn-info {
+      display: flex;
+      align-items: center;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    .turn-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--player-0);
+      color: var(--on-accent);
+      font-weight: bold;
+      font-size: 12px;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .phase-banner {
+      margin: 0 16px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .round-badge {
+      margin: 0 16px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      background: var(--surface-2);
+      border-radius: 3px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+
+    /* === Main Container === */
+    .main-container {
+      display: flex;
+      margin: 8px 0 0 0;
+    }
+
+    /* === Seats Panel (data-region="seats") === */
+    .seats-panel {
+      data-region="seats";
+      flex: 0 0 268px;
+      background: var(--surface-1);
+      border-right: 1px solid var(--line);
+      margin-right: 8px;
+      overflow: hidden;
+    }
+
+    .seats-title {
+      padding: 8px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    .seats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 4px;
+    }
+
+    .seat-card {
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px;
+    }
+
+    .seat-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
+
+    .seat-fixture {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .seat-name {
+      font-weight: bold;
+      font-size: 11px;
+    }
+
+    .seat-stats {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 4px;
+      font-size: 10px;
+    }
+
+    .seat-money {
+      color: var(--money);
+      font-family: ui-monospace, monospace;
+    }
+
+    .seat-properties {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    /* === Stage (center column) === */
+    .stage-container {
+      data-region="stage";
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* === Board Ring (data-region="board") === */
+    .board-ring {
+      data-region="board";
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(11, 1fr);
+      grid-template-rows: repeat(11, 1fr);
+      gap: 2px;
+      justify-items: center;
+      align-items: center;
+    }
+
+    .board-cell {
+      width: calc(100% / 11);
+      height: calc(100% / 11);
+      background: var(--board-bg2);
+      border: 1px solid var(--group-lightblue);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 2px;
+      font-size: 10px;
+    }
+
+    .cell-name {
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      font-weight: bold;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: calc(100% - 4px);
+    }
+
+    .cell-price {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    /* === Center Panel with 4 Zones (data-region="center") === */
+    .center-panel {
+      data-region="center";
+      flex: 1;
+      background: var(--surface-1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 800px;
+      padding: 4px;
+    }
+
+    /* Zone: Бросок (170 px) */
+    .zone-throw {
+      data-region="center";
+      height: 170px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      justify-content: space-between;
+    }
+
+    .dice-display {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .die-face {
+      width: 40px;
+      height: 40px;
+      background: var(--dice-bg);
+      border: 1px solid var(--dice-ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--dice-ink);
+      font-weight: bold;
+    }
+
+    .dice-sum {
+      margin-left: 16px;
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+      min-width: 24px;
+      text-align: right;
+    }
+
+    /* Zone: Событие (210 px) */
+    .zone-event {
+      data-region="center";
+      height: 210px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--line);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .event-card {
+      background: var(--surface-3);
+      border: 1px solid var(--line);
+      padding: 6px 8px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .event-type {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .event-details {
+      font-size: 11px;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .event-amount {
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .event-amount .dollar {
+      color: var(--money);
+      font-family: ui-monospace, monospace;
+      font-weight: bold;
+    }
+
+    .event-amount .accent-span {
+      color: var(--accent);
+      font-size: 11px;
+    }
+
+    /* Zone: Игроки (230 px) */
+    .zone-players {
+      data-region="center";
+      height: 230px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--line);
+      padding: 4px 8px;
+      overflow: hidden;
+    }
+
+    .players-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2px;
+    }
+
+    .player-row {
+      background: var(--surface-3);
+      border: 1px solid var(--line);
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    .player-color-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-right: 6px;
+    }
+
+    .player-color-0 { background: var(--player-0); }
+    .player-color-1 { background: var(--player-1); }
+    .player-color-2 { background: var(--player-2); }
+    .player-color-3 { background: var(--player-3); }
+    .player-color-4 { background: var(--player-4); }
+    .player-color-5 { background: var(--player-5); }
+
+    .player-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .player-name {
+      font-weight: bold;
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+
+    .player-money {
+      color: var(--money);
+      font-family: ui-monospace, monospace;
+      font-size: 9px;
+      min-width: 40px;
+    }
+
+    .player-properties {
+      color: var(--muted);
+      font-size: 8px;
+      white-space: nowrap;
+    }
+
+    /* Zone: Журнал (150 px) */
+    .zone-journal {
+      data-region="center";
+      height: 150px;
+      background: var(--surface-2);
+      padding: 4px 8px;
+      overflow: auto;
+      font-size: 10px;
+    }
+
+    .journal-line {
+      padding: 2px 0;
+      color: var(--text);
+      font-size: 10px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .journal-label {
+      color: var(--muted);
+      font-size: 9px;
+      margin-right: 4px;
+    }
+
+    /* === Journal Panel (data-region="journal") === */
+    .journal-panel {
+      data-region="journal";
+      flex: 0 0 344px;
+      background: var(--surface-1);
+      border-left: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .journal-title {
+      padding: 8px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    .journal-list {
+      padding: 4px;
+    }
+
+    .journal-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 10px;
+      color: var(--text);
+    }
+
+    .entry-turn {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .entry-event {
+      color: var(--money);
+    }
+
+    /* === Inspector Panel (data-region="inspector") === */
+    .inspector-panel {
+      data-region="inspector";
+      flex: 1;
+      background: var(--surface-1);
+      border-left: 1px solid var(--line);
+      overflow: hidden;
+    }
+
+    .inspector-title {
+      padding: 8px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    .inspector-content {
+      padding: 4px 8px;
+    }
+
+    .inspector-row {
+      padding: 4px 0;
+      font-size: 10px;
+      color: var(--text);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .inspector-label {
+      color: var(--muted);
+      margin-right: 4px;
+    }
+
+    .inspector-value {
+      color: var(--money);
+    }
+
+    /* === Act Console (data-region="act") === */
+    .act-console {
+      data-region="act";
+      background: var(--surface-1);
+      border-top: 1px solid var(--line);
+      margin: 8px 0 0 0;
+    }
+
+    .act-header {
+      padding: 6px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      background: var(--surface-2);
+    }
+
+    .act-prompt {
+      color: var(--muted);
+      margin-right: 12px;
+      font-size: 10px;
+    }
+
+    .act-actions {
+      display: flex;
+      gap: 4px;
+      margin: 6px 12px 0 12px;
+      flex-wrap: wrap;
+    }
+
+    .act-button {
+      flex: 0 0 80px;
+      height: 30px;
+      background: var(--accent);
+      color: var(--on-accent);
+      border: none;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+    }
+
+    .act-button.secondary {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .act-button:focus-visible {
+      outline: 2px solid var(--accent2);
+      outline-offset: 2px;
+    }
+
+    .act-roll-display {
+      margin: 6px 12px;
+      padding: 4px 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      font-size: 11px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .roll-dice-text {
+      font-weight: bold;
+      color: var(--accent);
+    }
+
+    .roll-sum-text {
+      color: var(--money);
+      font-family: ui-monospace, monospace;
+    }
+
+    /* R-9/R-10: No emoji, no one-char signs — only — • … → allowed as symbols */
+    .no-emoji *:not(i):not([class*="icon"]):before,
+    .no-emoji *:not(i):not([class*="icon"]):after {
+      content: none !important;
+    }
+
+    button::before,
+    button::after {
+      content: none !important;
+    }
+
+    /* Board cell group indicators use only allowed symbols — • … → */
+    .cell-group-indicator {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 8px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Layout transitions:
+  1280×720: all center zones visible (Бросок, Событие, Игроки, Журнал);
+  880×600: journal zone hidden in center panel; Бросок, Событие, Игроки остаются читаемыми;
+  seats and act console полны; рейлы absent — панели показывают слово, а не пустоту -->
+
+  <div class="top-header">
+    <span class="top-brand">NEURO PROPERTY TRADE</span>
+
+    <div class="turn-info">
+      <span class="turn-chip">H</span>
+      <span class="phase-banner">Начало хода</span>
+      <span class="round-badge">РАУНД 7</span>
+      <span class="role-badge">Хост</span>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <!-- Seats Panel (data-region="seats") -->
+    <div class="seats-panel">
+      <div class="seats-title">Места</div>
+      <div class="seats-grid">
+        <!-- Seat 0: Host -->
+        <div class="seat-card">
+          <div class="seat-header">
+            <span class="seat-fixture">Cedar Ave</span>
+            <span class="seat-name">Хост</span>
+          </div>
+          <div class="seat-stats">
+            <span class="seat-money">$1215</span>
+            <span class="seat-properties">2 дома</span>
+          </div>
+        </div>
+        <!-- Seat 1: Neuro -->
+        <div class="seat-card">
+          <div class="seat-header">
+            <span class="seat-fixture">Harbor Drive</span>
+            <span class="seat-name">Neuro</span>
+          </div>
+          <div class="seat-stats">
+            <span class="seat-money">$980</span>
+            <span class="seat-properties">3 дома</span>
+          </div>
+        </div>
+        <!-- Seat 2: evil -->
+        <div class="seat-card">
+          <div class="seat-header">
+            <span class="seat-fixture">Jail</span>
+            <span class="seat-name">evil</span>
+          </div>
+          <div class="seat-stats">
+            <span class="seat-money">$640</span>
+            <span class="seat-properties">1 дом, тюрьма</span>
+          </div>
+        </div>
+        <!-- Seat 3: Mira -->
+        <div class="seat-card">
+          <div class="seat-header">
+            <span class="seat-fixture">Chest</span>
+            <span class="seat-name">Mira</span>
+          </div>
+          <div class="seat-stats">
+            <span class="seat-money">$1500</span>
+            <span class="seat-properties">2 дома</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage (center column) -->
+    <div class="stage-container">
+      <!-- Board Ring (data-region="board") -->
+      <div class="board-ring">
+        <!-- 40 cells arranged in 11×11 grid perimeter -->
+        <!-- Row 0: bottom side -->
+        <div class="board-cell"><span class="cell-name">Start</span><span class="cell-price">$0</span></div>
+        <div class="board-cell"><span class="cell-name">Fir Way</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Linden Ave</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Elm Ave</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Harbor Station</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Cedar Ave</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Palm Row</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Tax</span><span class="cell-price">$2</span></div>
+        <div class="board-cell"><span class="cell-name">Sunset Blvd</span><span class="cell-price">$10</span></div>
+        <div class="board-cell"><span class="cell-name">Jail</span><span class="cell-price">$0</span></div>
+        <div class="board-cell"><span class="cell-name">Start</span><span class="cell-price">$0</span></div>
+        <!-- Row 1 -->
+        <div class="board-cell"><span class="cell-name">Fortune</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">River Drive</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Crest Square</span><span class="cell-price">$10</span></div>
+        <div class="board-cell"><span class="cell-name">Crest Point</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">West Station</span><span class="cell-price">$10</span></div>
+        <div class="board-cell"><span class="cell-name">Harbor Drive</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Lake Drive</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Fortune</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Free Parking</span><span class="cell-price">$0</span></div>
+        <div class="board-cell"><span class="cell-name">Go To Jail</span><span class="cell-price">$0</span></div>
+        <!-- Row 2 -->
+        <div class="board-cell"><span class="cell-name">Fir Way</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Aspen Way</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Chest</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Willow Way</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Central Station</span><span class="cell-price">$10</span></div>
+        <div class="board-cell"><span class="cell-name">Birch Street</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Maple Street</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Tower Utilities</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Oak Street</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Jail</span><span class="cell-price">$0</span></div>
+        <!-- Row 3 -->
+        <div class="board-cell"><span class="cell-name">Linden Ave</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Elm Ave</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Fortune</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Cedar Ave</span><span class="cell-price">$6</span></div>
+        <div class="board-cell"><span class="cell-name">Harbor Station</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Tax</span><span class="cell-price">$2</span></div>
+        <div class="board-cell"><span class="cell-name">Palm Row</span><span class="cell-price">$8</span></div>
+        <div class="board-cell"><span class="cell-name">Sunset Blvd</span><span class="cell-price">$10</span></div>
+        <div class="board-cell"><span class="cell-name">Start</span><span class="cell-price">$0</span></div>
+      </div>
+
+      <!-- Center Panel with 4 Zones (data-region="center") -->
+      <div class="center-panel">
+        <!-- Zone: Бросок (170 px) -->
+        <div class="zone-throw">
+          <div class="dice-display">
+            <div class="die-face">5</div>
+            <div class="die-face">3</div>
+          </div>
+          <div class="dice-sum">8</div>
+        </div>
+
+        <!-- Zone: Событие (210 px) -->
+        <div class="zone-event">
+          <div class="event-card">
+            <div class="event-type">Продажа</div>
+            <div class="event-details">
+              <span class="event-label">Игрок:</span> Mira
+              <br>
+              <span class="event-label">Клетка:</span> Crest Square (27)
+            </div>
+            <div class="event-amount">
+              <span class="dollar">+$70</span>
+              <span class="accent-span">(герой-экшен)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone: Игроки (230 px) -->
+        <div class="zone-players">
+          <div class="players-grid">
+            <!-- Player 0: Host (color p0) -->
+            <div class="player-row">
+              <div class="player-color-dot player-color-0"></div>
+              <div class="player-info">
+                <span class="player-name">Хост</span>
+                <span class="player-money">$1215</span>
+                <span class="player-properties">2 дома, 6 Cedar Ave</span>
+              </div>
+            </div>
+            <!-- Player 1: evil (color p1) -->
+            <div class="player-row">
+              <div class="player-color-dot player-color-1"></div>
+              <div class="player-info">
+                <span class="player-name">evil</span>
+                <span class="player-money">$640</span>
+                <span class="player-properties">1 дом, тюрьма</span>
+              </div>
+            </div>
+            <!-- Player 2: Neuro (color p2) -->
+            <div class="player-row">
+              <div class="player-color-dot player-color-2"></div>
+              <div class="player-info">
+                <span class="player-name">Neuro</span>
+                <span class="player-money">$980</span>
+                <span class="player-properties">3 дома, 24 Harbor Drive</span>
+              </div>
+            </div>
+            <!-- Player 3: Mira (color p3) -->
+            <div class="player-row">
+              <div class="player-color-dot player-color-3"></div>
+              <div class="player-info">
+                <span class="player-name">Mira</span>
+                <span class="player-money">$1500</span>
+                <span class="player-properties">2 дома, 33 Chest</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Zone: Журнал (150 px) -->
+        <div class="zone-journal">
+          <div class="journal-line">
+            <span class="journal-label">1.</span>
+            <span>Mira бросает 4+4</span>
+          </div>
+          <div class="journal-line">
+            <span class="journal-label">2.</span>
+            <span>Mira продаёт с клетки 27 (Crest Square)</span>
+          </div>
+          <div class="journal-line">
+            <span class="journal-label">3.</span>
+            <span>evil закладывает клетку 11 (Oak Street)</span>
+          </div>
+          <div style="padding: 4px 0; color: var(--muted); font-size: 9px;">
+            Счётчик: показано 4 из 132; фильтры: игрок: все · тип: все · только деньги
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Journal Panel (data-region="journal") -->
+  <div class="journal-panel">
+    <div class="journal-title">Журнал событий</div>
+    <div class="journal-list">
+      <div class="journal-entry">
+        <span class="entry-turn">Ход 7</span>
+        <span class="entry-event">Mira бросает 4+4</span>
+      </div>
+      <div class="journal-entry">
+        <span class="entry-turn">Ход 7</span>
+        <span class="entry-event">Mira продаёт с клетки 27 (Crest Square), +$70</span>
+      </div>
+      <div class="journal-entry">
+        <span class="entry-turn">Ход 7</span>
+        <span class="entry-event">evil закладывает клетку 11 (Oak Street)</span>
+      </div>
+      <div class="journal-entry">
+        <span class="entry-turn">Ход 7</span>
+        <span class="entry-event">evil попадает в тюрьму</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inspector Panel (data-region="inspector") -->
+  <div class="inspector-panel">
+    <div class="inspector-title">Клетка</div>
+    <div class="inspector-content">
+      <div class="inspector-row">
+        <span class="inspector-label">Клетка:</span>
+        <span class="inspector-value">Cedar Ave</span>
+      </div>
+      <div class="inspector-row">
+        <span class="inspector-label">Группа:</span>
+        <span class="inspector-value">lightblue</span>
+      </div>
+      <div class="inspector-row">
+        <span class="inspector-label">Цена:</span>
+        <span class="inspector-value">$100</span>
+      </div>
+      <div class="inspector-row">
+        <span class="inspector-label">Аренда:</span>
+        <span class="inspector-value">$6</span>
+      </div>
+      <div class="inspector-row">
+        <span class="inspector-label">Владелец:</span>
+        <span class="inspector-value">Хост</span>
+      </div>
+      <div class="inspector-row">
+        <span class="inspector-label">Группы собрато:</span>
+        <span class="inspector-value">не собрана</span>
+      </div>
+      <div style="padding: 4px 0;">
+        <button class="act-button secondary">Закрепить</button>
+        <button class="act-button secondary">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Act Console (data-region="act") -->
+  <div class="act-console">
+    <div class="act-header">Ход игрока</div>
+    <div class="act-prompt">Хост · ваш ход — выберите действие</div>
+    <div class="act-actions">
+      <button class="act-button">Бросок</button>
+      <button class="act-button secondary">Купить $100</button>
+      <button class="act-button secondary">Отказ</button>
+      <button class="act-button secondary">Торг</button>
+    </div>
+    <div class="act-roll-display">
+      <span class="roll-dice-text">Кубики: 5 + 3</span>
+      <span class="roll-sum-text">Сумма: 8</span>
+    </div>
+  </div>
+
+</body>
+</html>
