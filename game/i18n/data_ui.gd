@@ -345,4 +345,9 @@ const D := {
 	"panno.journal": {"ru": "ЖУРНАЛ", "en": "LOG"},
 	# One row of the panno's player zone: cash is a separate value, this is what they own.
 	"panno.owns":    {"ru": "владений %d · домов %d", "en": "owns %d · houses %d"},
+	# The journal zone is 169 px tall: with an empty tail it would be a caption over a hole (R-3
+	# measured it: 1 line). These two sentences are TRUE at match start - they are the zone's own
+	# explanation, and the first real event replaces them.
+	"panno.jrn_start": {"ru": "Партия начата · все на старте", "en": "Match started · everyone at GO"},
+	"panno.jrn_hint":  {"ru": "Бросок открывает ход", "en": "A roll opens the turn"},
 }

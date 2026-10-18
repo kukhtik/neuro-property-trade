@@ -296,8 +296,19 @@ func sync(proj: Dictionary, seats: Array, human_pid: int, event_line: Dictionary
 			row["name"].add_theme_color_override("font_color", UiTheme.COL().text)
 
 	# JOURNAL zone: the last lines, oldest first (newest nearest the console).
+	#
+	# An empty tail means "the match has just started": the zone would then be a caption over 169 px
+	# of nothing, which is exactly what R-3 forbids (PANEL-NOT-EMPTY measured 1 line there). Two
+	# true sentences stand in until the first event arrives - they are the zone's own explanation,
+	# not invented game state, so R-14 holds.
+	var start_lines: Array = []
+	if journal_tail.is_empty():
+		start_lines = [I18n.t("panno.jrn_start"), I18n.t("panno.jrn_hint")]
 	for i in JOURNAL_ROWS:
 		var line: Label = _jrn_rows[i]
+		if not start_lines.is_empty():
+			line.text = str(start_lines[i]) if i < start_lines.size() else ""
+			continue
 		var idx: int = journal_tail.size() - JOURNAL_ROWS + i
 		line.text = str(journal_tail[idx]) if idx >= 0 and idx < journal_tail.size() else ""
 

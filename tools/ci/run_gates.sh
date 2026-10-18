@@ -87,6 +87,11 @@ GATES=(
 	# 17.10: 55.1% кадра не рисует ничего, центр кольца занят на 2.2%. Спека:
 	# docs/specs/ui-redesign-brief.md §3 (R-1/R-2).
 	"FILL|sg|quarantine|scene|fill_gate"
+	# PANEL-NOT-EMPTY: панель площадью > 40 000 px не может нести меньше 2 строк текста (R-3).
+	# Написан 18.10 вместе с панно: дамп дерева, а не пиксели - кадр может быть занят четырьмя
+	# пустыми карточками и при этом пройти FILL. Негативная проверка проведена: пустая зона
+	# журнала даёт `PANEL EMPTY zone-journal ... 1 line(s)` и `==> PANEL FAILED`.
+	"PANEL-NOT-EMPTY|sg|quarantine|scene|panel_gate"
 	"SG-03|sg|required|script|tools/ci/gates/sg03_palette_gate.sh"
 	# SG-07 runs LAST: it spawns windowed Godot captures for every state x skin, and SG-10's
 	# clean-machine preflight must never see one of them alive (that is the race that once made
