@@ -93,6 +93,11 @@ const D := {
 	"event_type.trade_declined":   {"ru": "сделка отклонена", "en": "trade declined"},
 	"event_type.unmortgage":       {"ru": "выкуп из залога", "en": "unmortgage"},
 	"event_type.auction_bid":      {"ru": "ставка", "en": "bid"},
+	# --- the GLOBAL PAUSE events (owner: «пауза как глобальное событие», 18.10). Added 19.10 after
+	# --- HG-09 caught them: `event_type.pause` did not resolve, so the toast showed the raw key. The
+	# --- pause is logged in the engine and every client reads it, so it must be a WORD for a human.
+	"event_type.pause":            {"ru": "пауза", "en": "pause"},
+	"event_type.resume":           {"ru": "продолжение", "en": "resume"},
 	"event_type.auction_pass":     {"ru": "пас на аукционе", "en": "auction pass"},
 	"event_type.auction_unwon":    {"ru": "аукцион не разыгран", "en": "auction unwon"},
 	"event_type.setup":            {"ru": "подготовка", "en": "setup"},
