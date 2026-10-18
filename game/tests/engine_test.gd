@@ -2,7 +2,8 @@ extends RefCounted
 ## Tests for the authoritative Engine (core/engine.gd). Scaffold-level.
 
 static func test_list() -> Array[String]:
-	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target", "test_bankrupt_mid_turn_no_deadlock", "test_bankrupt_non_turn_player_keeps_turn", "test_recovered_turn_hands_over_exactly_once", "test_bankruptcy_latch_is_transient", "test_card_back_three_never_leaves_the_board", "test_negative_position_never_pends_a_purchase", "test_invalid_pending_purchase_does_not_deadlock", "test_board_type_at_bounds_checked", "test_imprisoned_penniless_has_a_legal_move", "test_served_sentence_frees_penniless_player", "test_jail_pay_still_required_when_affordable", "test_parking_pot_accumulates_tax", "test_parking_pot_pays_on_landing", "test_parking_pot_off_by_default", "test_parking_pot_survives_snapshot", "test_parking_pot_credits_landing_player_cash", "test_round_counter_advances_on_wrap", "test_round_limit_ends_the_match", "test_round_limit_off_plays_on", "test_round_limit_winner_is_richest", "test_round_no_survives_snapshot"]
+	return ["test_setup_creates_players", "test_setup_money_and_position", "test_submit_intent_wrong_player_rejected", "test_submit_intent_invalid_action_rejected", "test_move_advances_position", "test_move_no_go_bonus_without_wrap", "test_go_bonus_on_wrap", "test_doubles_grants_extra_turn_same_player", "test_non_doubles_advances_next_player", "test_triple_doubles_sends_to_jail", "test_purchase_buy", "test_purchase_insufficient_funds", "test_purchase_pass_leaves_unowned", "test_base_rent_on_property", "test_auction_bid_requires_exceed", "test_auction_single_winner", "test_auction_all_pass_unowned", "test_auction_winner_pays_bid", "test_teleport_helper_moves", "test_railroad_rent_two_owned", "test_railroad_rent_single", "test_utility_rent_single_and_pair", "test_tax_charged", "test_free_parking_default_noop", "test_go_to_jail_sends_to_jail_tile", "test_jail_pay_fine_leaves_and_rolls", "test_jail_roll_doubles_leaves_and_moves", "test_jail_roll_no_doubles_stays_and_fails", "test_jail_three_failures_forces_pay", "test_card_collect_applied", "test_card_go_to_jail", "test_monopoly_rent_x2_doubled", "test_monopoly_rent_not_without_full_set", "test_build_requires_full_set", "test_build_even_and_charge", "test_build_rejects_uneven", "test_house_rent_increases", "test_sell_house_refunds_half", "test_mortgage_grants_loan", "test_mortgage_blocks_rent", "test_mortgage_breaks_monopoly", "test_unmortgage_repays_premium", "test_cannot_mortgage_with_houses", "test_bankrupt_rent_transfers_assets", "test_bankrupt_removes_player", "test_bankruptcy_turns_detect_winner", "test_game_over_blocks_intents", "test_solvent_payment_no_bankruptcy", "test_trade_propose_and_accept_swaps", "test_trade_decline_leaves_state", "test_trade_requires_owning_offered", "test_trade_blocks_non_recipient_response", "test_trade_rejects_self_or_invalid_target", "test_bankrupt_mid_turn_no_deadlock", "test_bankrupt_non_turn_player_keeps_turn", "test_recovered_turn_hands_over_exactly_once", "test_bankruptcy_latch_is_transient", "test_card_back_three_never_leaves_the_board", "test_negative_position_never_pends_a_purchase", "test_invalid_pending_purchase_does_not_deadlock", "test_board_type_at_bounds_checked", "test_imprisoned_penniless_has_a_legal_move", "test_served_sentence_frees_penniless_player", "test_jail_pay_still_required_when_affordable", "test_parking_pot_accumulates_tax", "test_parking_pot_pays_on_landing", "test_parking_pot_off_by_default", "test_parking_pot_survives_snapshot", "test_parking_pot_credits_landing_player_cash", "test_round_counter_advances_on_wrap", "test_round_limit_ends_the_match", "test_round_limit_off_plays_on", "test_round_limit_winner_is_richest", "test_round_no_survives_snapshot",
+	"test_pause_refuses_intents", "test_pause_is_logged_and_resumes", "test_projection_carries_pause"]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
 	var E = load("res://core/engine.gd")
@@ -1177,4 +1178,64 @@ static func test_round_no_survives_snapshot() -> String:
 	var e2 = e.from_snapshot(snap)
 	if e2.round_no != 7:
 		return "round_no must survive a round-trip, got %d" % e2.round_no
+	return ""
+
+
+## GLOBAL PAUSE (owner: «пауза как глобальное событие»): while it holds, the engine accepts NOTHING -
+## not even a stale intent that was already in flight when the pause arrived.
+static func test_pause_refuses_intents() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	var res = e.set_paused(true, "Ada")
+	if not bool(res.get("ok", false)):
+		return "set_paused(true) refused: %s" % str(res.get("reason", ""))
+	if not e.paused:
+		return "the engine says it is not paused after set_paused(true)"
+	var roll = e.submit_intent(0, "roll", {})
+	if bool(roll.get("ok", false)):
+		return "a paused match accepted a roll - the pause is not authoritative"
+	if str(roll.get("reason", "")) != "match paused":
+		return "the refusal must name the pause, got '%s'" % str(roll.get("reason", ""))
+	return ""
+
+
+## The pause is an EVENT: both directions land in the append-only log, so the journal of every
+## client can show who stopped the clock. Resuming must also restore play.
+static func test_pause_is_logged_and_resumes() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	e.set_paused(true, "Ada", "перерыв")
+	var up = e.set_paused(false, "Ada")
+	if bool(e.paused):
+		return "resume did not clear the pause"
+	var kinds: Array = []
+	for entry in e.log.entries():
+		kinds.append(str(entry.get("type", "")))
+	if not kinds.has("pause") or not kinds.has("resume"):
+		return "the log must carry both pause and resume, got %s" % str(kinds)
+	var again = e.submit_intent(0, "roll", {})
+	if not bool(again.get("ok", false)):
+		return "after resume the seat still cannot roll: %s" % str(again.get("reason", ""))
+	if int(up.get("events", []).size()) != 1:
+		return "resume must return exactly one event for the UI to emit"
+	return ""
+
+
+## Every screen reads the same two keys - a seat, a spectator and the admin panel must agree that
+## the match is paused and who did it.
+static func test_projection_carries_pause() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	var Proj = load("res://sdk/projection.gd")
+	var proj = Proj.new()
+	e.set_paused(true, "Ada")
+	var seat: Dictionary = proj.for_player(e, 0)
+	var spec: Dictionary = proj.for_spectator(e)
+	for pair in [["seat", seat], ["spectator", spec]]:
+		var who: String = str(pair[0])
+		var d: Dictionary = pair[1]
+		if not bool(d.get("paused", false)):
+			return "the %s projection does not carry paused=true" % who
+		if str(d.get("paused_by", "")) != "Ada":
+			return "the %s projection says paused_by='%s', want 'Ada'" % [who, str(d.get("paused_by", ""))]
 	return ""

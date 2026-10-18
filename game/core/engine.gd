@@ -39,6 +39,13 @@ var _mortgaged: Array = []   # tile indices currently mortgaged
 var _pending_trade = {}   # {proposer, recipient, give_tiles[], give_cash, want_tiles[], want_cash} or {} when none
 var _recovered_turn: bool = false   # transient: a bankruptcy reassigned the turn during THIS intent
 var _parking_pot: int = 0   # house rule: taxes/fees accumulate here while settings.free_parking is on
+## GLOBAL PAUSE (owner: «пауза как глобальное событие»). A paused match is a fact of the MATCH, not
+## of one screen: the engine refuses intents, the seat manager stops ticking (no AI, no timeouts),
+## the SDK adapter freezes its own timeout, and every client learns it from the projection. It is
+## logged as `pause` / `resume`, so the journal tells the same story to everyone.
+var paused: bool = false
+var paused_by: String = ""
+var pause_reason: String = ""
 
 func setup(s, names: Array) -> void:
 	settings = s
@@ -81,6 +88,10 @@ func submit_intent(pid: int, action: String, params: Dictionary) -> Dictionary:
 	_recovered_turn = false
 	if pid < 0 or pid >= players.size():
 		return {"ok": false, "reason": "no such player", "legal": [], "events": []}
+	# A paused match accepts NOTHING - including a stale intent that was already in flight when the
+	# pause arrived (an SDK seat can have a force outstanding).
+	if paused:
+		return {"ok": false, "reason": "match paused", "legal": [], "events": []}
 	# responder path (cross-player action during the trade window): a pending
 	# trade may be answered by its recipient regardless of whose turn it is
 	# (the proposer's TURN_START). Validated here against _pending_trade.recipient,
@@ -1008,6 +1019,26 @@ func _resolve_auction(winner: int, tile: int, pay: int) -> void:
 	_end_turn_or_continue()
 
 # --- Phase 4: ADMIN overrides (spec §4). Host-local, engine-authoritative. ---
+## Global pause / resume. The returned events are the journal line every client sees.
+##
+## WHY IT LIVES IN THE ENGINE: the owner asked for "пауза как глобальное событие" - a pause that is
+## a fact of the match, not a local freeze. So it is state + an event, and `submit_intent` refuses
+## everything while it holds: a client that keeps clicking (or an SDK seat with a force still
+## outstanding) cannot move the board behind the host's back.
+func set_paused(on: bool, by: String = "", reason: String = "") -> Dictionary:
+	if phase == PHASE_SETUP:
+		return {"ok": false, "reason": "game not started", "events": []}
+	if on == paused:
+		return {"ok": true, "reason": "", "events": []}
+	paused = on
+	paused_by = by if on else ""
+	pause_reason = reason if on else ""
+	var kind := "pause" if on else "resume"
+	var ev := {"type": kind, "data": {"by": by, "reason": reason}}
+	log.append(kind, ev["data"])
+	return {"ok": true, "reason": "", "events": [ev]}
+
+
 ## One admin entry — every edit validated, executed, and written to the SAME
 ## append-only event log (spec §4 hard rule #1). Never gate by the turn-player
 ## guard: an admin is host-local and may act any time, but every op range-checks
@@ -1017,6 +1048,10 @@ func admin_override(op: String, params: Dictionary) -> Dictionary:
 	if settings == null or phase == PHASE_SETUP:
 		return _admin_fail("game not started")
 	match op:
+		"pause":
+			return set_paused(true, str(params.get("by", "admin")), str(params.get("reason", "")))
+		"resume":
+			return set_paused(false, str(params.get("by", "admin")))
 		"set_balance":
 			var pid: int = int(params.get("pid", -1))
 			var amount: int = int(params.get("amount", -1))

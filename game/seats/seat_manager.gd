@@ -115,6 +115,13 @@ func _tick() -> void:
 	if engine.phase == "END_GAME":
 		game_over.emit(engine.player(0).name if engine.player_count() == 1 else "")
 		return
+	# GLOBAL PAUSE: a paused match does not tick. No AI acts, no timeout fires, and no time is
+	# charged to the waiting seat (decision_waiting is cleared, so resuming gives it a full window).
+	if bool(engine.paused):
+		for s in seats:
+			s.decision_waiting = 0.0
+		emit_spectator()
+		return
 	var holder: int = find_decision_holder(engine, engine.player_count())
 	if holder == -1:
 		return

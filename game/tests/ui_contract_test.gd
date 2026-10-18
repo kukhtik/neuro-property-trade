@@ -18,7 +18,8 @@ const ProjScript := preload("res://sdk/projection.gd")
 
 ## Top-level keys a UI/server file may read. `legal`/`private` are wire-only (for_player).
 const CONTRACT := ["phase", "turn_player", "turn", "round", "board", "players", "pending",
-	"legal", "holder", "parking_pot", "timer_window", "timer_elapsed", "timer_active", "private"]
+	"legal", "holder", "parking_pot", "timer_window", "timer_elapsed", "timer_active", "private",
+	"paused", "paused_by"]
 
 
 static func test_list() -> Array[String]:

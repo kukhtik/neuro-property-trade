@@ -45,6 +45,8 @@ const D := {
 	"plr.jail":         {"ru": "ТЮРЬМА", "en": "JAIL"},
 	"stat.round":       {"ru": "РАУНД", "en": "ROUND"},
 	"top.decision":     {"ru": "РЕШЕНИЕ", "en": "DECISION"},
+	# GLOBAL PAUSE chip: the same word on every screen while the match is stopped
+	"top.paused":       {"ru": "ПАУЗА", "en": "PAUSED"},
 	# `plr.owned` is used as a chip WITH the tile count; it was a bare label, so every repaint
 	# raised "not all arguments converted" and the count never appeared.
 	"plr.owned":        {"ru": "В собственности: %d", "en": "Owned: %d"},

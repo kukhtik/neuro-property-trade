@@ -40,6 +40,13 @@ var _b_force_pass: Button
 var _b_rollback: Button
 var _b_reset_away: Button
 var _away_pid: SpinBox
+## GLOBAL PAUSE + LIVE CLOCKS (owner): both are match-wide facts, so they sit in the admin panel
+## right next to "force roll" - the host can stop the table and re-time it without restarting.
+var _b_pause: Button
+var _b_resume: Button
+var _sp_turn: SpinBox
+var _sp_auction: SpinBox
+var _b_apply_timers: Button
 
 # state tab
 var _state: RichTextLabel
@@ -178,6 +185,37 @@ func _build_quick_tab() -> void:
 	_b_rollback.custom_minimum_size.y = 32
 	_b_rollback.connect("pressed", Callable(self, "_quick_rollback"))
 	tab.add_child(_b_rollback)
+
+	# --- global pause -------------------------------------------------------------------------
+	var pause_row := HBoxContainer.new()
+	pause_row.add_theme_constant_override("separation", 8)
+	_b_pause = UiTheme.button(I18n.t("admin.pause"), I18n.t("admin.pause_tip"))
+	_b_pause.custom_minimum_size.y = 32
+	_b_pause.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_b_pause.connect("pressed", Callable(self, "_quick_pause"))
+	pause_row.add_child(_b_pause)
+	_b_resume = UiTheme.button_accent(I18n.t("admin.resume"), I18n.t("admin.resume_tip"))
+	_b_resume.custom_minimum_size.y = 32
+	_b_resume.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_b_resume.connect("pressed", Callable(self, "_quick_resume"))
+	pause_row.add_child(_b_resume)
+	tab.add_child(pause_row)
+
+	# --- live clocks --------------------------------------------------------------------------
+	var clock_row := HBoxContainer.new()
+	clock_row.add_theme_constant_override("separation", 8)
+	clock_row.add_child(UiTheme.label(I18n.t("admin.turn_timer"), 12))
+	_sp_turn = _spin(0, 300, I18n.t("admin.turn_timer_tip"))
+	_sp_turn.value = float(_current_timer("turn_timer"))
+	clock_row.add_child(_sp_turn)
+	clock_row.add_child(UiTheme.label(I18n.t("admin.auction_timer"), 12))
+	_sp_auction = _spin(0, 300, I18n.t("admin.auction_timer_tip"))
+	_sp_auction.value = float(_current_timer("auction_timer"))
+	clock_row.add_child(_sp_auction)
+	_b_apply_timers = UiTheme.button(I18n.t("admin.apply_timers"), I18n.t("admin.apply_timers_tip"))
+	_b_apply_timers.connect("pressed", Callable(self, "_quick_apply_timers"))
+	clock_row.add_child(_b_apply_timers)
+	tab.add_child(clock_row)
 
 	var away_row := HBoxContainer.new()
 	away_row.add_theme_constant_override("separation", 8)
@@ -414,6 +452,35 @@ func _quick_force_pass() -> void:
 
 func _quick_rollback() -> void:
 	_run_op("rollback_decision", {}, I18n.t("admin.quick_tag_rollback"))
+
+## GLOBAL PAUSE: `pause`/`resume` go through the engine (admin_override), so the event lands in the
+## append-only log and every client's journal shows it - the same path an admin edit takes.
+func _quick_pause() -> void:
+	_run_op("pause", {"by": _host_name()}, I18n.t("admin.quick_tag_pause"))
+
+func _quick_resume() -> void:
+	_run_op("resume", {"by": _host_name()}, I18n.t("admin.quick_tag_resume"))
+
+## The clocks are settings, not engine state: the seat manager and the SDK adapter read them every
+## tick, so applying them here takes effect on the very next decision.
+func _quick_apply_timers() -> void:
+	if _controller == null or _controller.engine == null:
+		return
+	_controller.engine.settings.turn_timer = int(_sp_turn.value)
+	_controller.engine.settings.auction_timer = int(_sp_auction.value)
+	_log_admin(I18n.t("admin.log_timers", [int(_sp_turn.value), int(_sp_auction.value)]),
+		{"ok": true, "reason": ""})
+	_refresh_all()
+
+func _current_timer(key: String) -> int:
+	if _controller == null or _controller.engine == null:
+		return 0
+	return int(_controller.engine.settings.get(key))
+
+func _host_name() -> String:
+	if _controller != null and _controller.engine != null and _controller.engine.player_count() > 0:
+		return str(_controller.engine.player(0).name)
+	return "host"
 
 func _quick_reset_away() -> void:
 	var pid := int(_away_pid.value)

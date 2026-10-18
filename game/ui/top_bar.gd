@@ -33,6 +33,9 @@ var _timer_elapsed := 0.0
 var _timer_t0 := 0
 var _timer_on := false
 var _rolebadge: Label
+## GLOBAL PAUSE: a chip that only exists while the match is paused, so every screen says the same
+## thing ("ПАУЗА · кто") and nobody wonders why their buttons do nothing.
+var _pause_chip: Label
 var _btn_settings: Button
 ## PART 2: the header button that hides/shows the side panels.
 var _btn_panels: Button
@@ -114,6 +117,11 @@ func _init() -> void:
 
 	_rolebadge = _chip(I18n.t("mode.player"))
 	row.add_child(_rolebadge)
+	_pause_chip = _chip(I18n.t("top.paused"))
+	_pause_chip.name = "top-paused"
+	_pause_chip.add_theme_color_override("font_color", UiTheme.COL().warn)
+	_pause_chip.visible = false
+	row.add_child(_pause_chip)
 
 	_btn_settings = _text_btn("top.settings", I18n.t("top.settings_tip"))
 	_btn_settings.connect("pressed", func() -> void: settings_requested.emit())
@@ -302,6 +310,16 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		if str(pend.get("type", "")) == "purchase":
 			_decision.text = I18n.t("top.decision")
 	_decision.visible = _timer_on or _decision.text != ""
+	# GLOBAL PAUSE: the projection carries the fact for every seat and spectator. While it holds,
+	# the clock does not tick (the pause is not the seat's time), and the chip names who stopped it.
+	var is_paused := bool(proj.get("paused", false))
+	if _pause_chip != null:
+		var who := str(proj.get("paused_by", ""))
+		_pause_chip.text = I18n.t("top.paused") + (" · " + who if who != "" else "")
+		_pause_chip.visible = is_paused
+	if is_paused:
+		_timer_on = false
+		_decision.visible = false
 
 
 ## HG-13: the remaining time ticks locally between projections - the projection says how long

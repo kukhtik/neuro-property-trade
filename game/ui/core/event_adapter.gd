@@ -29,6 +29,9 @@ extends RefCounted
 ## journal (move/land/cash are presentation or accounting noise).
 const TYPE_MAP := {
 	"setup": "start",
+	# GLOBAL PAUSE: both directions are journal lines of their own (see data_event event.pause/resume)
+	"pause": "pause",
+	"resume": "resume",
 	"roll": "roll",
 	"move": "move",
 	"teleport": "move",
@@ -68,6 +71,8 @@ const CATEGORY := {
 	"aucwin": "auction", "aucnone": "auction",
 	"build": "build", "sell": "build", "mort": "build", "unmort": "build",
 	"trdoffer": "trade", "trade": "trade", "trdno": "trade",
+	# the global pause is a fact of the match: it belongs in the journal even though no seat acted
+	"pause": "other", "resume": "other",
 }
 
 ## Kinds the journal renders (move/land are board effects only).
@@ -76,6 +81,7 @@ const VISIBLE := [
 	"aucstart", "bid", "pass", "aucwin", "aucnone",
 	"build", "sell", "mort", "unmort",
 	"trdoffer", "trade", "trdno", "bank", "over",
+	"pause", "resume",
 ]
 
 ## Engine types that move money but are NOT journal lines. They must still be

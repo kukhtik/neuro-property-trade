@@ -25,6 +25,10 @@ const D := {
 	"event.auction_win": {"ru": "%s выигрывает аукцион клетки %d", "en": "%s wins auction of tile %d"},
 	"event.auction_start": {"ru": "аукцион начинается на клетке %d", "en": "auction starts on tile %d"},
 	"event.admin_override": {"ru": "админ: %s", "en": "admin: %s"},
+	# GLOBAL PAUSE (owner: «пауза как глобальное событие»): the pause is a MATCH event, so every
+	# client's journal shows it - and says who stopped the clock.
+	"event.pause":      {"ru": "матч на паузе · %s", "en": "match paused · %s"},
+	"event.resume":     {"ru": "матч продолжен · %s", "en": "match resumed · %s"},
 	"event.tile_name":  {"ru": "тайл %d", "en": "tile %d"},
 
 	# toast-specific (event <type> messages shown as toasts/banners)

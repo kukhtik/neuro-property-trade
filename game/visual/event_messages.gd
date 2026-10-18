@@ -55,6 +55,10 @@ static func describe(entry: Dictionary) -> String:
 			return I18n.t("event.auction_start", [int(d.get("tile", -1))])
 		"admin_override":
 			return I18n.t("event.admin_override", [_who(d, "op")])
+		"pause":
+			return I18n.t("event.pause", [str(d.get("by", ""))])
+		"resume":
+			return I18n.t("event.resume", [str(d.get("by", ""))])
 		_:
 			return "[%s]" % t
 

@@ -85,6 +85,11 @@ func _process(delta: float) -> void:
 func _tick_await() -> void:
 	if not _awaiting_result or engine == null or seat_pid < 0:
 		return
+	# A paused match neither forces nor times out: the pause is not the seat's fault, so the window
+	# restarts from the moment play resumes.
+	if bool(engine.paused):
+		_await_since_ms = Time.get_ticks_msec()
+		return
 	var window := float(engine.settings.turn_timer)
 	# An auction runs on its OWN clock (the manager does the same for humans): using the turn window
 	# there would make a bidder wait 20 s in a 15 s auction, and the auction would hang on a silent
@@ -157,6 +162,9 @@ func _make_action(sdk_name: String, engine_action: String, description: String, 
 ## decision point has changed since the last force.
 func _force_if_needed() -> void:
 	if engine == null or seat_pid < 0:
+		return
+	# nothing to force while the match is paused (the projection's actions would be refused)
+	if bool(engine.paused):
 		return
 	# Don't send a new force while the previous one is still awaiting a result
 	# (Randy/Neuro queue or drop a force that arrives mid-result; this caused

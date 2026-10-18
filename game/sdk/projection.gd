@@ -18,9 +18,13 @@ func for_player(engine, pid: int) -> Dictionary:
 	out["private"] = _private_view(engine, pid)
 	out["parking_pot"] = engine.parking_pot()
 	out["round"] = engine.round_no
+	# GLOBAL PAUSE: the seat must know the match is paused too (its force carries actions it is not
+	# allowed to take; the adapter freezes its own timeout on this flag).
+	out["paused"] = engine.paused
+	out["paused_by"] = engine.paused_by
 	return out
 
-## E-3: what the engine would charge a lander on `i` right now. Delegated to the engine's own
+## E-3: what the engine would charge a lander on `i` right now.
 ## `_property_rent`, so the projection never re-implements a game rule (and cannot silently
 ## disagree with what a player is actually charged).
 func _rent_now(engine, i: int) -> int:
@@ -141,8 +145,13 @@ func for_spectator(engine) -> Dictionary:
 	out["pending"] = _pending_view(engine)
 	out["parking_pot"] = engine.parking_pot()
 	out["round"] = engine.round_no
+	# GLOBAL PAUSE: every screen (seat, spectator, admin) reads the same two keys, so a pause is
+	# visible and identical everywhere instead of being a local freeze.
+	out["paused"] = engine.paused
+	out["paused_by"] = engine.paused_by
 	# NOTE: no "legal" and no "private" — a spectator is not a decision holder.
 	return out
+
 
 func _spectator_players_view(engine) -> Array:
 	var players: Array = []
