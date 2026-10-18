@@ -1,0 +1,2709 @@
+<!doctype html>
+<!--
+  NPT v6 — прототип, главный экран + меню и экраны (этапы 1 и 2 из 5).
+  Основа: vA-neuro__space-bunny-free.html (палитра neuro, порядок зон §4.1, плотность и характер
+  сохранены). Этап 1: зум поля 80/100/125/150/200 с кнопками словами и кольцом целиком по умолчанию,
+  сворачиваемые подписанные боковые меню (Места / Журнал / Клетка / Ход), тосты, фильтры журнала.
+  Этап 2: переключатель сцен словами из десяти кнопок, оверлей поверх главного экрана, Настройки
+  на шести вкладках, Правила из текущих настроек, Админ на четырёх вкладках, Приглашение, Лобби,
+  Аукцион, Торг, Стройка, Конец игры, диалоги Подтверждение и Сообщение.
+  Арт-система и анимации событий — этапы 3 и 4.
+
+  Геометрия кадра 1600×1200 (R-18: высота — ручка читаемости, доска не ужимается):
+  шапка 96 · тулбар зума 44 · консоль 112 · доки 276 / 372. Доска 884×884 даёт клетку 77.3 px (R-17 ≥ 77).
+  Кольцо центрируется в зоне просмотра, поэтому по умолчанию 100 % — кольцо целиком (P-1).
+  Разметка для машинного замера: data-region="top|seats|stage|board|center|journal|inspector|act",
+  кольцо — контейнер ровно с 40 детьми-клетками.
+-->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Neuro Property Trade — прототип v6, главный экран</title>
+<style>
+:root{
+  --bg:#0b0613; --s1:#130b1f; --s2:#1b1230; --s3:#281b42;
+  --line:#3b2a5e; --text:#f7effd; --muted:#a896c8;
+  --accent:#ff6fae; --on-accent:#2a0618; --accent2:#5fe3ff; --money:#5fe3ff;
+  --danger:#ff4d6d; --warn:#ffb020; --ring-bg:#3b2a5e99; --scrim:#0b0613d9;
+  --ev-money:#5cb85c; --ev-build:#c9a84c; --ev-danger:#d9534f; --ev-card:#9a86c9; --ev-accent:#9fd0ff;
+  --dice-bg:#f2f6fa; --dice-ink:#16191f;
+  --cell:#101820; --cell2:#22303c;
+  --p0:#ff6fae; --p1:#e8264f; --p2:#5fe3ff; --p3:#b6ff6b;
+  --p4:#ffb020; --p5:#b36bff; --p6:#ffd166; --p7:#8f9bff;
+  --g-brown:#8b5a3c; --g-lightblue:#5bb8e8; --g-pink:#d85aa8; --g-orange:#ee8a2a;
+  --g-red:#d8363c; --g-yellow:#e8c61e; --g-green:#2fa862; --g-darkblue:#2e5fd8;
+  --ui:"Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --ease:cubic-bezier(.2,0,0,1); --t-fast:.12s; --t-base:.19s; --t-slow:.32s;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  width:1600px;height:1200px;margin:0 auto;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:var(--ui);font-size:13px;line-height:1.25;
+  --lw:276px; --rw:372px; --acth:112px;
+  display:grid;grid-template-columns:var(--lw) 1fr var(--rw);
+  grid-template-rows:96px 1fr var(--acth);gap:8px;padding:16px;
+}
+/* свёрнутые меню: слева и справа узкая рельса с СЛОВОМ, снизу — полоса с СЛОВОМ */
+body.fold-seats{--lw:46px}
+body.fold-journal.fold-inspector{--rw:46px}
+body.fold-act{--acth:56px}
+/* ---- роли текста (R-8): значение не переносится, абзац переносится ---- */
+.t-value{white-space:nowrap;width:content}
+.t-para{white-space:normal;width:auto}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.cap{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.money{color:var(--money)}
+/* ---- состояния: контраст не падает, двигается фон ---- */
+button{font-family:var(--ui);font-size:13px;color:var(--text);background:var(--s3);
+  border:1px solid var(--line);border-radius:2px;padding:0 16px;height:44px;cursor:pointer}
+button.secondary{height:40px;padding:0 14px;color:var(--text);background:var(--s3)}
+button.secondary:hover{background:var(--line);border-color:var(--muted)}
+button.secondary:active{background:var(--s2)}
+button.secondary[aria-pressed="true"]{border-color:var(--accent2);background:var(--line)}
+button.hero{height:52px;padding:0 24px;background:var(--accent);color:var(--on-accent);
+  border-color:var(--accent);font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+button.hero:hover{background:#ff85ba}
+button.hero:active{background:#f05b9c}
+button.ghost{height:32px;padding:0 12px;font-size:13px;background:transparent;color:var(--text);
+  border-color:var(--line)}
+button.ghost:hover{background:var(--s3);border-color:var(--muted)}
+button.ghost[aria-pressed="true"]{background:var(--line);border-color:var(--accent2);color:var(--text)}
+button:disabled{background:var(--s1);border-color:var(--line);color:var(--muted);cursor:default}
+:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+/* ---- шапка ---- */
+.top{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:14px;padding:0 16px;
+  background:var(--s1);border:1px solid var(--line);overflow:hidden}
+.brand{font-size:17px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.brand span{color:var(--muted)}
+.turnchip{display:flex;align-items:center;gap:14px;padding:0 18px;height:64px;flex:none;
+  background:var(--s3);border:1px solid var(--accent);border-radius:2px}
+.turnchip .txt{display:flex;flex-direction:column;gap:2px}
+.turnchip .who{font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+.turnchip .ph{font-size:20px;color:var(--text);letter-spacing:.02em}
+.hstat{display:flex;flex-direction:column;gap:2px;flex:none}
+.hstat .v{font-size:26px;font-weight:700;line-height:1}
+.ctrls{margin-left:auto;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.ctrls .lbl{font-size:12px;color:var(--muted);padding:0 8px;border-left:1px solid var(--line)}
+/* ---- доки и сворачиваемые подписанные меню ---- */
+.dock{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;
+  gap:10px;padding:12px;min-height:0;min-width:0;overflow:hidden}
+#dock-seats{grid-column:1;grid-row:2/4}
+.dright{grid-column:3;grid-row:2/4;gap:10px;background:transparent;border:0;padding:0}
+.panel{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;
+  gap:10px;padding:12px;min-height:0;min-width:0;overflow:hidden}
+.p-journal{flex:50 1 0}
+.p-inspector{flex:50 1 0}
+.fold{flex:none;display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;
+  background:var(--s2);border:1px solid var(--line);color:var(--text);font-size:20px;font-weight:700;
+  letter-spacing:.02em;text-align:left}
+.fold:hover{background:var(--s3);border-color:var(--muted)}
+.fold:active{background:var(--line)}
+.fold .fmeta{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted);letter-spacing:.06em}
+.chev{width:10px;height:10px;flex:none;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);
+  transform:rotate(45deg);transition:transform var(--t-base) var(--ease)}
+.folded>.fold .chev{transform:rotate(-135deg)}
+.folded>.fold{background:var(--s3);border-color:var(--accent2)}
+.folded>.fold:hover{background:var(--line)}
+.dbody{display:flex;flex-direction:column;gap:10px;flex:1 1 auto;min-height:0;overflow:hidden}
+#dock-seats.folded .dbody,.panel.folded .pbody{display:none}
+#dock-seats.folded{padding:0}
+.panel.folded{padding:0}
+body.fold-seats #dock-seats .fold,
+body.fold-journal.fold-inspector .panel .fold{
+  writing-mode:vertical-rl;width:100%;height:auto;flex:1 1 auto;
+  justify-content:center;gap:16px;padding:16px 0;text-align:center;letter-spacing:.06em}
+body.fold-seats #dock-seats .fold .fmeta,
+body.fold-journal.fold-inspector .panel .fold .fmeta{margin-left:0;font-size:12px}
+/* ---- места ---- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line)}
+.stats div{background:var(--s2);padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.stats .v{font-size:20px;font-weight:700}
+.ownbar{background:var(--s2);padding:8px;display:flex;flex-direction:column;gap:6px}
+.ownbar .track{display:flex;height:14px;width:100%;gap:2px}
+.ownbar .track i{flex:1 1 auto}
+.ownbar .lg{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+.ownbar .lg b{font-weight:400;color:var(--text)}
+.ownbar .lg i{display:inline-block;width:8px;height:8px;margin-right:5px}
+.seats-list{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:0}
+.seat{background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--pc);
+  padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;gap:4px;min-height:0}
+.seat.active{border-color:var(--accent2);background:var(--s3)}
+.seat .r1{display:flex;align-items:center;gap:8px}
+.seat .nm{font-size:20px;font-weight:700;color:var(--pc)}
+.seat .cash{margin-left:auto;font-size:20px;font-weight:700}
+.seat .r2{font-size:20px}
+.seat .r3{display:flex;gap:10px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.seat .r3 b{color:var(--text);font-weight:400}
+.ledger{background:var(--s2);border:1px solid var(--line);padding:8px 10px;display:flex;
+  flex-direction:column;gap:3px;flex:none}
+.ledger .row{display:flex;gap:8px;font-size:12px;color:var(--muted);align-items:baseline}
+.ledger .row b{font-weight:400;color:var(--text);flex:none}
+.ledger .row .g{width:8px;height:8px;flex:none}
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px;background:var(--s2);
+  border:1px solid var(--line);padding:8px 10px;flex:none}
+.groups div{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.groups i{width:10px;height:10px;flex:none}
+/* ---- сцена: тулбар зума, зона просмотра, доска с кольцом ---- */
+.stage{grid-column:2;grid-row:2;display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+.stagebar{flex:none;height:44px;display:flex;align-items:center;gap:16px;padding:0 12px;
+  background:var(--s1);border:1px solid var(--line)}
+.demobar{display:flex;align-items:center;gap:8px}
+.zoomctl{display:flex;align-items:center;gap:8px}
+.zoomval{display:inline-flex;align-items:center;justify-content:center;min-width:104px;height:32px;
+  padding:0 12px;background:var(--s3);border:1px solid var(--line);font-size:20px;font-weight:700}
+.zoombest{white-space:nowrap}
+.viewport{flex:1 1 auto;min-height:0;min-width:0;position:relative;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;touch-action:none}
+.viewport.pannable{cursor:grab}
+.viewport.panning{cursor:grabbing}
+.board{width:884px;height:884px;flex:none;background:var(--cell);border:1px solid var(--line);
+  padding:6px;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);
+  gap:2px;transform-origin:center center;will-change:transform}
+/* R-18: кегль (R-7) выше 77 px на клетку не жмётся — растёт высота кадра.
+   (884 − 2 рамки − 12 паддинга − 20 зазоров) / 11 = 77.3 px на клетку. */
+.ring{grid-area:1/1/12/12;display:grid;grid-template-columns:repeat(11,1fr);
+  grid-template-rows:repeat(11,1fr);gap:2px}
+.cell{background:var(--cell);border:1px solid var(--line);position:relative;overflow:hidden;
+  display:flex;flex-direction:column;padding:3px 4px 4px}
+.cell.corner{background:var(--cell2)}
+.cell .bar{height:4px;flex:none;margin:-3px -4px 3px;background:var(--line)}
+.cell .nm{font-size:14px;line-height:1.05;color:var(--text);overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;word-break:break-word}
+.cell .cap{font-size:11px;letter-spacing:.06em}
+.cell.corner .nm{font-size:15px}
+.cell.owned{border:2px solid var(--pc);padding-bottom:18px}
+.cell.mortgaged{background-image:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 7px)}
+/* ---- арт на клетке: иконка типа, полоса владельца, дома ---- */
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+svg.tok{width:22px;height:22px;flex:none;color:var(--pc)}
+svg.tok.sm{width:18px;height:18px}
+svg.tok.lg{width:34px;height:34px}
+svg.ti{width:15px;height:15px;flex:none;color:var(--muted)}
+svg.oh{width:12px;height:12px;flex:none}
+.cell .tchip{display:flex;align-items:center;gap:5px;margin-top:auto;min-width:0}
+.cell .cico{display:flex;align-items:center;gap:6px;margin-bottom:3px;min-width:0}
+.cell .cico svg.ti{width:20px;height:20px}
+.cell .own{position:absolute;left:0;right:0;bottom:0;height:16px;display:flex;align-items:center;
+  gap:3px;padding:0 5px;background:var(--pc);color:#0b0613;font-size:11px;font-weight:700;
+  line-height:1;white-space:nowrap;overflow:hidden}
+.cell .own svg.oh{color:#0b0613;opacity:.75}
+.cell.mortgaged .own{background-image:repeating-linear-gradient(45deg,rgba(11,6,19,.6) 0 2px,transparent 2px 6px)}
+.cell.sel{border:2px dashed var(--accent2)}
+.cell.sel:hover{border-color:var(--accent)}
+.cell:not(.owned):hover{border-color:var(--muted)}
+.cell.owned:hover{filter:brightness(1.12)}
+/* ---- панно хода в центре кольца (§4.1): Бросок 22 % · Событие 28 % · Игроки 30 % · Журнал 20 % ---- */
+.center{grid-area:2/2/11/11;background:var(--ring-bg);padding:10px;display:flex;
+  flex-direction:column;gap:8px;min-height:0;overflow:hidden}
+.zone{background:var(--s1);border:1px solid var(--line);padding:8px 14px;display:flex;
+  flex-direction:column;gap:6px;min-height:0;overflow:hidden}
+.z-roll{flex:22 1 0}
+.z-event{flex:28 1 0}
+.z-play{flex:30 1 0}
+.z-jrn{flex:20 1 0}
+.zhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex:none}
+.zhead .r{font-size:12px;color:var(--muted);white-space:nowrap}
+/* зона «Бросок» */
+.roll{display:flex;align-items:center;gap:18px;flex:1 1 auto;min-height:0}
+.dice{display:flex;gap:12px;flex:none}
+svg.die{width:66px;height:66px;flex:none;color:var(--dice-bg)}
+.roll .txt{flex:1 1 auto;min-width:0}
+.roll .txt p{margin:0;font-size:20px;color:var(--text)}
+.sumbox{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.sumbox .sum{font-size:76px;font-weight:700;line-height:.86;color:var(--text)}
+/* зона «Событие» */
+.ev{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;gap:4px 18px;
+  flex:1 1 auto;align-content:center;min-height:0;overflow:hidden}
+.ev .type{font-size:16px;letter-spacing:.09em;text-transform:uppercase;color:var(--warn)}
+.ev .amount{grid-row:1/3;grid-column:2;align-self:center;font-size:48px;font-weight:700;line-height:.9}
+.ev .sub{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;min-width:0}
+.ev .who{font-size:32px;font-weight:700;color:var(--pc);display:flex;align-items:center;gap:10px}
+.ev .who i{width:18px;height:18px;border-radius:50%;background:var(--pc);flex:none}
+.ev .tile{font-size:26px;color:var(--text)}
+.ev .tile b{font-weight:400;color:var(--muted);font-size:20px}
+.ev .chips{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);
+  padding-top:8px;margin-top:4px}
+.flag{font-size:12px;padding:4px 10px;background:var(--s3);border:1px solid var(--line);color:var(--muted);
+  white-space:nowrap}
+.flag.on{color:var(--text);border-color:var(--warn)}
+/* зона «Игроки» */
+.pl-tbl{display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.pl-tbl .thead{display:flex;gap:12px;padding:0 8px 4px 11px;border-bottom:1px solid var(--line);flex:none}
+.pl-tbl .rows{display:flex;flex-direction:column;gap:4px;flex:1 1 auto;min-height:0}
+.prow{flex:1 1 0;display:flex;align-items:center;gap:12px;padding:0 8px;background:var(--s2);
+  border-left:3px solid var(--pc);min-height:0}
+.prow.active{background:var(--s3)}
+.prow .nm{width:92px;font-size:20px;font-weight:700;color:var(--pc);flex:none}
+.prow .at{flex:1 1 auto;min-width:0;font-size:20px;color:var(--muted);overflow:hidden;white-space:nowrap}
+.prow .own{width:216px;flex:none;text-align:right;font-size:20px;color:var(--text)}
+.prow .cash{width:112px;flex:none;text-align:right;font-size:24px;font-weight:700}
+/* зона «Журнал» */
+.jlines{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;justify-content:center;min-height:0;
+  overflow:hidden}
+.jline{display:flex;gap:8px;align-items:baseline;font-size:16px;line-height:1.2}
+.jline b{font-weight:700;flex:none}
+.jline span{color:var(--muted)}
+/* ---- журнал (правый док) ---- */
+.filters{display:flex;gap:6px;flex-wrap:wrap;flex:none}
+.feed{display:flex;flex-direction:column;gap:8px;flex:1 1 auto;min-height:0;overflow:hidden}
+.entry{background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--pc);
+  padding:8px 10px;display:flex;flex-direction:column;gap:3px;flex:none}
+.entry[hidden],.feedempty[hidden]{display:none}
+.entry .l1{display:flex;gap:8px;align-items:baseline}
+.entry .l1 b{font-size:14px;font-weight:700;color:var(--pc)}
+.entry .l1 .when{margin-left:auto;font-size:11px;color:var(--muted);letter-spacing:.08em}
+.entry .l2{font-size:13px}
+.entry .l3{font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.feedempty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;background:var(--s2);border:1px solid var(--line);text-align:center;padding:16px}
+.feedempty p{margin:0;font-size:20px}
+/* ---- инспектор клетки ---- */
+.ins-tile{font-size:26px;font-weight:700;display:flex;align-items:center;gap:10px;flex:none}
+.ins-tile i{width:6px;height:26px;flex:none}
+.ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);flex:1 1 auto;
+  min-height:0;align-content:stretch}
+.ins-grid div{background:var(--s2);padding:8px 10px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.ins-grid .v{font-size:20px}
+.ins-flags{display:flex;gap:8px;flex-wrap:wrap;flex:none}
+.ins-acts{display:flex;gap:10px;flex:none}
+/* ---- консоль хода + тосты ---- */
+.act{grid-column:2;grid-row:3;background:var(--s1);border:1px solid var(--line);
+  padding:12px 16px;display:flex;gap:16px;overflow:hidden}
+.act .amain{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:8px}
+.act .prompt{display:flex;align-items:center;gap:12px;min-width:0}
+.act .prompt p{margin:0;font-size:20px}
+.chip{font-size:12px;padding:5px 10px;background:var(--s3);border:1px solid var(--line);
+  color:var(--text);white-space:nowrap}
+.chip b{color:var(--money);font-weight:700}
+.act .row2{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
+.act-fold{display:none;flex:none;align-items:center;gap:10px;width:100%;padding:0 16px}
+body.fold-act .act{padding:0;align-items:stretch}
+body.fold-act .act-fold{display:flex;height:100%}
+body.fold-act .act .amain{display:none}
+body.fold-act .toasts{display:none}
+.toasts{flex:none;width:236px;display:flex;flex-direction:column;gap:6px;justify-content:center;
+  overflow:hidden}
+.toast{flex:none;display:flex;align-items:center;gap:8px;padding:4px 8px;background:var(--s3);
+  border:1px solid var(--line);border-left:3px solid var(--tc);font-size:12px;
+  animation:toastin var(--t-base) var(--ease)}
+.toast .tk{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex:none}
+.toast .tt{color:var(--text);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+@keyframes toastin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ===== слой сцен: переключатель словами, карточки, формы, диалоги =====
+   Оверлей лежит ПОВЕРХ главного экрана: панно и доска остаются на месте (R-5). */
+body{position:relative}
+.layer{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;
+  background:var(--scrim,rgba(11,6,19,.86))}
+body.scene-on .layer{display:flex}
+.scenebar{flex:none;height:56px;display:flex;align-items:center;gap:8px;padding:0 20px;
+  background:var(--s1);border-bottom:1px solid var(--line)}
+.scenebar .slbl{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+.sbtn{height:40px;padding:0 14px;font-size:15px;background:var(--s2);border:1px solid var(--line);
+  color:var(--text)}
+.sbtn:hover{background:var(--s3);border-color:var(--muted)}
+.sbtn[aria-pressed="true"]{background:var(--s3);border-color:var(--accent);color:var(--text);font-weight:700}
+.scenebar .sclose{margin-left:auto}
+.scenes{flex:1 1 auto;min-height:0;display:flex;padding:20px}
+.scene{display:none;flex:1 1 auto;min-width:0;min-height:0}
+.scene.on{display:flex}
+.card{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;gap:14px;
+  padding:18px 22px;min-width:0;min-height:0;overflow:hidden;flex:1 1 auto}
+.card.narrow{max-width:860px;margin:0 auto;flex:0 1 auto}
+.card.mid{max-width:1180px;margin:0 auto;flex:0 1 auto}
+.card-head{flex:none;display:flex;align-items:baseline;gap:16px;padding-bottom:10px;
+  border-bottom:1px solid var(--line)}
+.card-head h2{margin:0;font-size:22px;letter-spacing:.1em;text-transform:uppercase}
+.card-head .sub{font-size:13px;color:var(--muted)}
+.card-head .spacer{margin-left:auto}
+.cols{display:flex;gap:16px;flex:1 1 auto;min-height:0;overflow:hidden}
+.col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+/* ---- вкладки ---- */
+.tabs{flex:none;display:flex;gap:8px;flex-wrap:wrap}
+.tab{height:44px;padding:0 18px;font-size:16px;background:var(--s2);border:1px solid var(--line);
+  color:var(--muted)}
+.tab:hover{background:var(--s3);color:var(--text)}
+.tab[aria-pressed="true"]{background:var(--s3);border-color:var(--accent2);color:var(--text);font-weight:700}
+.tabpanel{display:none;flex:1 1 auto;min-height:0;overflow:hidden;flex-direction:column;gap:12px}
+.tabpanel.on{display:flex}
+/* ---- поля: слово, значение, тег ---- */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;align-content:start;overflow:hidden}
+.fgrid.one{grid-template-columns:1fr}
+.fld{display:flex;align-items:center;gap:12px;min-width:0;min-height:44px}
+.fld .lb{flex:1 1 auto;min-width:0;font-size:16px;color:var(--text)}
+.fld .lb small{display:block;font-size:12px;color:var(--muted);line-height:1.2}
+.fld input[type=text],.fld input[type=number],.fld select{height:40px;min-width:130px;background:var(--s2);
+  color:var(--text);border:1px solid var(--line);border-radius:2px;font-family:var(--ui);font-size:18px;
+  padding:0 10px}
+.fld input[type=number]{min-width:110px;font-family:var(--mono)}
+.fld input:hover,.fld select:hover{border-color:var(--muted)}
+.fld input:focus-visible,.fld select:focus-visible{border-color:var(--accent2)}
+.fld select{appearance:none;padding-right:28px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),
+    linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 17px,calc(100% - 11px) 17px;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.tag{flex:none;font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;
+  border:1px solid var(--line);background:var(--s2);color:var(--muted)}
+.tag.live{color:var(--accent2);border-color:var(--accent2)}
+.tag.restart{color:var(--warn);border-color:var(--warn)}
+.sw{height:40px;padding:0 18px;font-size:16px;background:var(--s2);border:1px solid var(--line);color:var(--text);min-width:128px}
+.sw:hover{background:var(--s3);border-color:var(--muted)}
+.sw[aria-checked="true"]{background:var(--s3);border-color:var(--accent2);font-weight:700}
+/* ---- игроки: места, настройки ---- */
+.ptable{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);flex:none}
+.pcell{background:var(--s2);padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.pcell .ph{display:flex;align-items:center;gap:8px;min-width:0}
+.pcell .sw2{width:16px;height:16px;flex:none;background:var(--pc)}
+.pcell .pn{font-size:18px;font-weight:700;color:var(--pc);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pcell .pc2{font-size:12px;color:var(--muted)}
+.pcell input,.pcell select{height:36px;width:100%;background:var(--s1);color:var(--text);
+  border:1px solid var(--line);border-radius:2px;font-family:var(--ui);font-size:16px;padding:0 8px;min-width:0}
+.pcell .row2{display:flex;gap:6px}
+.pcell .row2>*{flex:1 1 0;min-width:0}
+.btnrow{flex:none;display:flex;gap:10px;align-items:center}
+.hint{font-size:13px;color:var(--muted)}
+.keycap{flex:none;font-family:var(--mono);font-size:16px;background:var(--s3);
+  border:1px solid var(--line);padding:4px 10px;color:var(--accent2)}
+/* ---- правила: строки из настроек ---- */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;align-content:start;overflow:hidden}
+.rules div{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding:7px 0;
+  font-size:18px}
+.rules div b{margin-left:auto;font-weight:700;color:var(--accent2);font-family:var(--mono)}
+/* ---- админ ---- */
+.dump{font-family:var(--mono);font-size:14px;line-height:1.6;color:var(--muted);background:var(--s2);
+  border:1px solid var(--line);padding:12px 14px;white-space:pre-wrap;overflow:hidden}
+.dtable{display:grid;grid-template-columns:260px 1fr;gap:1px;background:var(--line);font-size:15px;
+  align-content:start;overflow:hidden}
+.dtable[hidden]{display:none}
+.dtable div{background:var(--s2);padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtable div:first-child{color:var(--muted)}
+.evt{display:flex;gap:10px;align-items:baseline;background:var(--s2);border:1px solid var(--line);
+  border-left:3px solid var(--tc);padding:8px 12px;font-size:15px}
+.evt .et{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex:none;width:96px}
+.evt .em{color:var(--text)}
+.evt .ew{margin-left:auto;font-size:12px;color:var(--muted);flex:none}
+/* ---- приглашение / лобби ---- */
+.inv{display:flex;align-items:center;gap:12px;background:var(--s2);border:1px solid var(--line);
+  border-left:3px solid var(--pc);padding:10px 12px}
+.inv .who{font-size:18px;font-weight:700;color:var(--pc);width:110px;flex:none}
+.inv code{font-family:var(--mono);font-size:14px;color:var(--muted);flex:1 1 auto;min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.states{display:flex;gap:8px;flex-wrap:wrap;flex:none}
+.states .sbtn{height:40px;padding:0 16px;font-size:15px}
+.statuscard{flex:1 1 auto;display:flex;flex-direction:column;gap:12px;background:var(--s2);
+  border:1px solid var(--line);padding:18px 20px;align-items:flex-start;justify-content:center}
+.statuscard .big{font-size:30px;font-weight:700}
+.statuscard.ok .big{color:var(--accent2)}
+.statuscard.bad .big{color:var(--danger)}
+.statuscard.wait .big{color:var(--warn)}
+.dots{display:flex;gap:8px}
+.dots i{width:12px;height:12px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--accent2)}
+/* ---- аукцион / торг / стройка ---- */
+.lot{display:flex;align-items:center;gap:14px;background:var(--s2);border:1px solid var(--line);
+  border-left:4px solid var(--gc);padding:12px 14px}
+.lot .lname{font-size:24px;font-weight:700}
+.lot .lmeta{font-size:13px;color:var(--muted)}
+.bidrow{display:flex;align-items:center;gap:18px;background:var(--s2);border:1px solid var(--line);padding:12px 14px}
+.bidrow .bl{font-size:13px;color:var(--muted)}
+.bidrow .bv{font-size:30px;font-weight:700;font-family:var(--mono);color:var(--accent2)}
+.bidrow .blead{margin-left:auto;font-size:18px}
+.bidrow .blead b{color:var(--pc)}
+.give{display:flex;flex-direction:column;gap:8px;background:var(--s2);border:1px solid var(--line);padding:12px}
+.give h3{margin:0;font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.give .line{display:flex;align-items:center;gap:10px;font-size:17px}
+.give .line b{margin-left:auto;font-family:var(--mono);color:var(--money);font-weight:700}
+.houses{display:flex;gap:5px;align-items:center}
+.houses svg.oh{width:18px;height:18px;color:var(--ev-build)}
+.houses svg.oh.empty{color:var(--line)}
+/* ---- конец игры ---- */
+.winner{display:flex;align-items:center;gap:18px;background:var(--s2);border:1px solid var(--accent);padding:16px 20px}
+.winner .wname{font-size:34px;font-weight:700;color:var(--pc)}
+.winner .wsum{margin-left:auto;font-size:30px;font-weight:700;font-family:var(--mono);color:var(--money)}
+.stats3{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);flex:none}
+.stats3 div{background:var(--s2);padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.stats3 .v{font-size:24px;font-weight:700}
+/* ---- диалоги: подтверждение и сообщение ---- */
+.dlg-layer{position:absolute;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+  background:rgba(11,6,19,.72)}
+body.dlg-on .dlg-layer{display:flex}
+.dlg{background:var(--s1);border:1px solid var(--accent);width:680px;padding:22px 24px;
+  display:flex;flex-direction:column;gap:14px}
+.dlg[hidden]{display:none}
+.dlg h3{margin:0;font-size:20px;letter-spacing:.08em;text-transform:uppercase}
+.dlg p{margin:0;font-size:17px;color:var(--text)}
+.dlg .dacts{display:flex;gap:10px;justify-content:flex-end}
+/* ===== анимации: тайминги из токенов скина =====
+   fast 0.12 • base 0.19 • slow 0.32 • card 2.8 • dice_roll 0.85 с, ease cubic-bezier(0.2,0,0,1).
+   Выключатель «Анимации» в настройках вешает anim-off: всё становится мгновенным. */
+body.anim-off *,
+body.anim-off *::before,body.anim-off *::after{
+  animation-duration:.001ms!important;animation-delay:0ms!important;
+  animation-iteration-count:1!important;transition-duration:.001ms!important;transition-delay:0ms!important}
+button{transition:background var(--t-fast) var(--ease),border-color var(--t-fast) var(--ease),
+  transform var(--t-fast) var(--ease),filter var(--t-fast) var(--ease)}
+button:not(:disabled):active{transform:translateY(1px)}
+.dbody,.pbody{transition:opacity var(--t-slow) var(--ease),transform var(--t-slow) var(--ease)}
+.dock.closing .dbody,.panel.closing .pbody,.act.closing .amain,
+.dock.opening .dbody,.panel.opening .pbody,.act.opening .amain{opacity:0;transform:translateX(12px)}
+.act .amain{transition:opacity var(--t-slow) var(--ease),transform var(--t-slow) var(--ease)}
+/* ---- полоса текущего хода переезжает между местами ---- */
+.seats-list{position:relative}
+.turnbar{position:absolute;left:-5px;width:4px;background:var(--accent2);border-radius:2px;top:0;height:0;
+  transition:top var(--t-slow) var(--ease),height var(--t-slow) var(--ease);
+  box-shadow:0 0 0 1px var(--bg)}
+.seat{transition:background var(--t-base) var(--ease),border-color var(--t-base) var(--ease)}
+/* ---- деньги: счётчик и вспышка ---- */
+@keyframes moneyflash{0%{color:var(--warn)}55%{color:var(--warn)}100%{}}
+.flash{animation:moneyflash .7s var(--ease)}
+.entry{transition:opacity var(--t-base) var(--ease),transform var(--t-base) var(--ease)}
+.entry.enter{opacity:0;transform:translateX(-12px)}
+.cell.sel{animation:selpulse 1.6s var(--ease) infinite}
+@keyframes selpulse{0%,100%{box-shadow:inset 0 0 0 0 rgba(95,227,255,0)}50%{box-shadow:inset 0 0 0 3px rgba(95,227,255,.5)}}
+/* ---- слой эффектов над доской ---- */
+.fx{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+.fxbox{position:absolute;transform:translate(-50%,-50%);white-space:nowrap}
+.fxlabel{padding:4px 10px;background:var(--s3);border:1px solid var(--line);border-left:3px solid var(--lc,var(--accent));
+  color:var(--text);font-size:14px;font-weight:700;animation:fxrise 1.5s var(--ease) forwards}
+@keyframes fxrise{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}
+  18%{opacity:1;transform:translate(-50%,-60%) scale(1)}70%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,-110%) scale(1)}}
+.fxcoin{width:38px;height:38px;border-radius:50%;background:var(--money);color:var(--bg);
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-family:var(--mono);
+  animation:fxhop var(--t-slow) var(--ease) forwards}
+@keyframes fxhop{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+  25%{opacity:1;transform:translate(-50%,-160%) scale(1.08)}
+  100%{opacity:0;transform:translate(-50%,-320%) scale(.94)}}
+.fxring{width:26px;height:26px;border-radius:50%;border:3px solid var(--accent2);
+  animation:fxring .7s var(--ease) forwards}
+@keyframes fxring{0%{opacity:.95;transform:translate(-50%,-50%) scale(.4)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(3.4)}}
+.fxwalker{position:absolute;transform:translate(-50%,-50%);color:var(--pc);z-index:2;
+  transition:left var(--t-slow) var(--ease),top var(--t-slow) var(--ease)}
+.fxwalker svg.tok{width:30px;height:30px}
+.fxhammer{width:46px;height:46px;animation:fxhammer .45s var(--ease) forwards}
+@keyframes fxhammer{0%{opacity:0;transform:translate(-50%,-160%) rotate(-38deg)}
+  55%{opacity:1;transform:translate(-50%,-40%) rotate(14deg)}
+  100%{opacity:1;transform:translate(-50%,-46%) rotate(0)}}
+.fxcard{width:200px;padding:8px 10px;background:var(--s2);border:1px solid var(--accent2);
+  color:var(--text);font-size:14px;animation:fxcard 2.8s var(--ease) forwards}
+@keyframes fxcard{0%{opacity:0;transform:translate(-50%,-50%) translateX(-70px) rotate(-6deg)}
+  12%{opacity:1;transform:translate(-50%,-50%) translateX(0) rotate(0)}
+  84%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) translateX(40px)}}
+/* ---- жесты на клетках ---- */
+.cell.fx-flash::after{content:"";position:absolute;inset:0;background:var(--fxc,var(--accent));
+  opacity:0;animation:fxfade .6s var(--ease)}
+@keyframes fxfade{0%{opacity:.5}100%{opacity:0}}
+.cell.fx-blink{animation:fxblink .45s var(--ease) 3}
+@keyframes fxblink{0%,100%{filter:none}50%{filter:brightness(1.75)}}
+.cell.fx-house svg.oh{animation:fxgrow .5s var(--ease) both}
+@keyframes fxgrow{0%{transform:scale(.15) translateY(-8px);opacity:0}
+  60%{transform:scale(1.18) translateY(0);opacity:1}100%{transform:scale(1);opacity:1}}
+.cell.fx-sweep{animation:fxsweep .55s var(--ease) both}
+@keyframes fxsweep{0%{filter:none}45%{filter:brightness(1.85)}100%{filter:none}}
+.cell.fx-hatch{animation:fxhatch .6s var(--ease)}
+@keyframes fxhatch{0%{opacity:.3}100%{opacity:1}}
+svg.die.rolling{animation:dieroll .85s var(--ease)}
+@keyframes dieroll{0%{transform:rotate(0) scale(1)}30%{transform:rotate(-18deg) scale(1.12)}
+  60%{transform:rotate(14deg) scale(1.06)}100%{transform:rotate(0) scale(1)}}
+.prow,.seat,.give{transition:background var(--t-base) var(--ease),border-color var(--t-base) var(--ease)}
+.ev.swap{animation:evswap .5s var(--ease)}
+@keyframes evswap{0%{opacity:.2;transform:translateY(8px)}100%{opacity:1;transform:none}}
+.demo-run{animation:demorun 1.1s var(--ease) infinite}
+@keyframes demorun{0%,100%{box-shadow:0 0 0 0 rgba(95,227,255,0)}50%{box-shadow:0 0 0 3px rgba(95,227,255,.45)}}
+/* ---- перенос в игру, если окно уже 1600 (мелкие профили) ---- */
+@media (max-width:1600px){body{margin:0}}
+</style>
+</head>
+<body>
+<!-- ===== арт-система: спрайт символов, всё инлайном, без внешних картинок =====
+     8 фишек мест · 5 иконок типов клеток · 4 иконки углов · дом и отель · 6 граней кубиков.
+     Фишки и иконки красятся через currentColor, поэтому берут цвет своего места или группы. -->
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+  <symbol id="tok-top_hat" viewBox="0 0 24 24">
+    <ellipse cx="12" cy="18.6" rx="10" ry="3.2" fill="currentColor"/>
+    <path d="M6.6 17 V4.4 C6.6 3.1 7.5 2.3 8.7 2.3 H15.3 C16.5 2.3 17.4 3.1 17.4 4.4 V17 Z" fill="currentColor"/>
+    <rect x="6.6" y="11.4" width="10.8" height="2.9" fill="#0b0613" opacity=".55"/>
+  </symbol>
+  <symbol id="tok-cat" viewBox="0 0 24 24">
+    <path d="M4.6 11.2 L5.4 3.2 L10.7 7.3 Z" fill="currentColor"/>
+    <path d="M19.4 11.2 L18.6 3.2 L13.3 7.3 Z" fill="currentColor"/>
+    <ellipse cx="12" cy="13.4" rx="8" ry="7.4" fill="currentColor"/>
+    <circle cx="9.3" cy="12.1" r="1.15" fill="#0b0613"/>
+    <circle cx="14.7" cy="12.1" r="1.15" fill="#0b0613"/>
+    <path d="M12 15.1 L10.4 16.9 H13.6 Z" fill="#0b0613"/>
+  </symbol>
+  <symbol id="tok-ship" viewBox="0 0 24 24">
+    <path d="M2.6 14.8 H21.4 L18.6 20.2 H5.4 Z" fill="currentColor"/>
+    <rect x="11.1" y="3.4" width="1.8" height="11.6" fill="currentColor"/>
+    <path d="M12.9 4.8 L19.4 11 H12.9 Z" fill="currentColor"/>
+    <path d="M11.1 6.2 H5.4 V11.4 H11.1 Z" fill="currentColor" opacity=".55"/>
+    <path d="M8.4 17.6 H15.6" stroke="#0b0613" stroke-width="1.4" opacity=".45"/>
+  </symbol>
+  <symbol id="tok-race_car" viewBox="0 0 24 24">
+    <path d="M2.4 16.2 V12.4 H6.8 L9.4 8.2 H14.6 L17.8 12.4 H21.6 V16.2 Z" fill="currentColor"/>
+    <rect x="2.4" y="16.1" width="19.2" height="3.3" rx="1.65" fill="currentColor"/>
+    <circle cx="7" cy="19.6" r="2.7" fill="currentColor"/>
+    <circle cx="17" cy="19.6" r="2.7" fill="currentColor"/>
+    <circle cx="7" cy="19.6" r="1" fill="#0b0613"/>
+    <circle cx="17" cy="19.6" r="1" fill="#0b0613"/>
+    <path d="M9.4 8.2 H14.6 L16.2 10.4 H10.8 Z" fill="#0b0613" opacity=".45"/>
+  </symbol>
+  <symbol id="tok-dog" viewBox="0 0 24 24">
+    <ellipse cx="5.2" cy="11.4" rx="3" ry="6.2" fill="currentColor"/>
+    <ellipse cx="18.8" cy="11.4" rx="3" ry="6.2" fill="currentColor"/>
+    <ellipse cx="12" cy="11.2" rx="6.8" ry="6.8" fill="currentColor"/>
+    <ellipse cx="12" cy="17" rx="4.2" ry="3.2" fill="currentColor"/>
+    <circle cx="9.6" cy="9.6" r="1.15" fill="#0b0613"/>
+    <circle cx="14.4" cy="9.6" r="1.15" fill="#0b0613"/>
+    <ellipse cx="12" cy="14.7" rx="1.7" ry="1.3" fill="#0b0613"/>
+  </symbol>
+  <symbol id="tok-boot" viewBox="0 0 24 24">
+    <path d="M6.6 2.8 H11.9 V13.3 L20.4 15.6 V20.6 H6.6 Z" fill="currentColor"/>
+    <rect x="5" y="18.8" width="16.4" height="2.6" rx="1.3" fill="#0b0613" opacity=".45"/>
+    <path d="M10.4 2.8 H11.9 V13.6 H10.4 Z" fill="#0b0613" opacity=".35"/>
+  </symbol>
+  <symbol id="tok-iron" viewBox="0 0 24 24">
+    <path d="M9.2 10.4 V6.3 C9.2 5.2 10 4.7 11 4.7 H14.6 C15.6 4.7 16.2 5.4 16.2 6.5 V10.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M3 17.8 L7.4 10.4 H16.6 L21 17.8 Z" fill="currentColor"/>
+    <rect x="5.6" y="18.6" width="12.8" height="2.4" rx="1.2" fill="#0b0613" opacity=".45"/>
+  </symbol>
+  <symbol id="tok-wheelbarrow" viewBox="0 0 24 24">
+    <path d="M4.6 6.2 H18.4 L15.4 13.6 H7.6 Z" fill="currentColor"/>
+    <path d="M4.6 6.2 L1.8 3.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M18.4 6.2 L22 5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+    <path d="M6.6 14.6 H15.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="9.2" cy="18.4" r="3.6" fill="currentColor"/>
+    <circle cx="9.2" cy="18.4" r="1.4" fill="#0b0613"/>
+  </symbol>
+  <symbol id="ic-tax" viewBox="0 0 24 24">
+    <rect x="2.6" y="6.4" width="18.8" height="11.2" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/>
+    <circle cx="12" cy="12" r="2.8" fill="currentColor"/>
+    <path d="M5.9 9.7 V14.3 M18.1 9.7 V14.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="ic-railroad" viewBox="0 0 24 24">
+    <rect x="3.2" y="8" width="12.4" height="6.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="2"/>
+    <rect x="14.6" y="4.4" width="4.6" height="10.2" rx="1.6" fill="currentColor"/>
+    <circle cx="12.4" cy="11.3" r="1.3" fill="currentColor"/>
+    <circle cx="6.6" cy="17.3" r="1.9" fill="currentColor"/>
+    <circle cx="13.4" cy="17.3" r="1.9" fill="currentColor"/>
+    <path d="M2.4 21.2 H21.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="ic-utility" viewBox="0 0 24 24">
+    <path d="M3.4 5.6 H12.6 V9.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <rect x="9.8" y="8.6" width="7.4" height="3.2" rx="1.6" fill="currentColor"/>
+    <path d="M13.5 11.8 V14.4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M13.5 14.6 C11.3 17.2 10.4 18.6 10.4 19.7 C10.4 21.2 11.8 22.2 13.5 22.2 C15.2 22.2 16.6 21.2 16.6 19.7 C16.6 18.6 15.7 17.2 13.5 14.6 Z" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-chance" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M9 9.2 C9 7.4 10.4 6.2 12.1 6.2 C13.9 6.2 15.2 7.4 15.2 9 C15.2 11.3 12.1 11.1 12.1 13.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="12.1" cy="16.6" r="1.35" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-community" viewBox="0 0 24 24">
+    <path d="M3.2 11 A8.8 8.8 0 0 1 20.8 11 V19.4 H3.2 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+    <rect x="2.2" y="9.4" width="19.6" height="3.4" rx="1.2" fill="currentColor"/>
+    <rect x="10.6" y="12" width="2.8" height="5.6" rx="1.2" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-go" viewBox="0 0 24 24">
+    <path d="M3 12 H15.6" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M11.6 5.6 L19.6 12 L11.6 18.4 Z" fill="currentColor"/>
+  </symbol>
+  <symbol id="ic-jail" viewBox="0 0 24 24">
+    <rect x="3.4" y="3.8" width="17.2" height="16.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="2"/>
+    <path d="M8.2 3.8 V20.2 M12 3.8 V20.2 M15.8 3.8 V20.2" stroke="currentColor" stroke-width="1.9"/>
+  </symbol>
+  <symbol id="ic-go_to_jail" viewBox="0 0 24 24">
+    <path d="M2.4 8.4 H13" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M9.6 4.2 L16.4 8.4 L9.6 12.6 Z" fill="currentColor"/>
+    <path d="M17.6 4 V20 M21.4 4 V20" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="ic-free_parking" viewBox="0 0 24 24">
+    <rect x="2.8" y="2.8" width="18.4" height="18.4" rx="3" fill="none" stroke="currentColor" stroke-width="2.2"/>
+    <path d="M9.2 17.6 V6.6 H13.4 A3.9 3.9 0 0 1 13.4 14.4 H9.2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="ic-house" viewBox="0 0 24 24">
+    <path d="M12 2.6 L21.8 11 H19.6 V21.4 H4.4 V11 H2.2 Z" fill="currentColor"/>
+    <rect x="10.3" y="15.2" width="3.4" height="6.2" fill="#0b0613" opacity=".5"/>
+  </symbol>
+  <symbol id="ic-hotel" viewBox="0 0 24 24">
+    <rect x="10.6" y="1.4" width="2.8" height="3.8" fill="currentColor"/>
+    <rect x="4" y="5" width="16" height="16.4" rx="1" fill="currentColor"/>
+    <rect x="6.6" y="7.8" width="3.6" height="3.4" fill="#0b0613" opacity=".5"/>
+    <rect x="13.8" y="7.8" width="3.6" height="3.4" fill="#0b0613" opacity=".5"/>
+    <rect x="6.6" y="14.2" width="3.6" height="3.4" fill="#0b0613" opacity=".5"/>
+    <rect x="13.8" y="14.2" width="3.6" height="3.4" fill="#0b0613" opacity=".5"/>
+  </symbol>
+  <symbol id="die-1" viewBox="0 0 40 40">
+    <rect width="40" height="40" rx="7" fill="currentColor"/>
+    <g fill="#16191f"><circle cx="20" cy="20" r="3.5"/></g>
+  </symbol>
+  <symbol id="die-2" viewBox="0 0 40 40">
+    <rect width="40" height="40" rx="7" fill="currentColor"/>
+    <g fill="#16191f"><circle cx="11" cy="11" r="3.5"/><circle cx="29" cy="29" r="3.5"/></g>
+  </symbol>
+  <symbol id="die-3" viewBox="0 0 40 40">
+    <rect width="40" height="40" rx="7" fill="currentColor"/>
+    <g fill="#16191f"><circle cx="11" cy="11" r="3.5"/><circle cx="20" cy="20" r="3.5"/><circle cx="29" cy="29" r="3.5"/></g>
+  </symbol>
+  <symbol id="die-4" viewBox="0 0 40 40">
+    <rect width="40" height="40" rx="7" fill="currentColor"/>
+    <g fill="#16191f"><circle cx="11" cy="11" r="3.5"/><circle cx="29" cy="11" r="3.5"/><circle cx="11" cy="29" r="3.5"/><circle cx="29" cy="29" r="3.5"/></g>
+  </symbol>
+  <symbol id="die-5" viewBox="0 0 40 40">
+    <rect width="40" height="40" rx="7" fill="currentColor"/>
+    <g fill="#16191f"><circle cx="11" cy="11" r="3.5"/><circle cx="29" cy="11" r="3.5"/><circle cx="20" cy="20" r="3.5"/><circle cx="11" cy="29" r="3.5"/><circle cx="29" cy="29" r="3.5"/></g>
+  </symbol>
+  <symbol id="die-6" viewBox="0 0 40 40">
+    <rect width="40" height="40" rx="7" fill="currentColor"/>
+    <g fill="#16191f"><circle cx="11" cy="11" r="3.5"/><circle cx="29" cy="11" r="3.5"/><circle cx="11" cy="20" r="3.5"/><circle cx="29" cy="20" r="3.5"/><circle cx="11" cy="29" r="3.5"/><circle cx="29" cy="29" r="3.5"/></g>
+  </symbol>
+</defs></svg>
+<header class="top" data-region="top" data-od-id="top-header">
+  <div class="brand" data-od-id="brand-wordmark">Neuro <span>Property Trade</span></div>
+  <div class="turnchip" data-od-id="turn-chip">
+    <svg class="tok lg" style="color:var(--p0)" data-od-id="token-host" role="img" aria-label="фишка места Хост"><use href="#tok-top_hat"></use></svg>
+    <span class="txt">
+      <span class="who t-value" id="turn-who">Ход: Хост</span>
+      <span class="ph t-value" id="turn-phase">Фаза: Начало хода</span>
+    </span>
+  </div>
+  <div class="hstat"><span class="cap">Раунд</span><span class="v num t-value">7</span></div>
+  <div class="hstat"><span class="cap">Банк парковки</span><span class="v num money t-value" id="bank-value">$240</span></div>
+  <div class="ctrls" data-od-id="header-controls">
+    <button class="secondary" type="button" id="btn-screens" data-od-id="btn-screens">Сцены</button>
+    <button class="secondary" type="button" id="btn-settings" data-od-id="btn-settings">Настройки</button>
+    <button class="secondary" type="button" id="btn-rules" data-od-id="btn-rules">Правила</button>
+    <button class="secondary" type="button" id="btn-restart" data-od-id="btn-restart">Рестарт</button>
+    <span class="lbl">Тема: Neuro</span>
+    <span class="lbl">Язык: RU</span>
+  </div>
+</header>
+
+<aside class="dock" id="dock-seats" data-region="seats" data-od-id="left-dock">
+  <button class="fold" type="button" id="fold-seats" data-fold="dock-seats" aria-expanded="true" aria-controls="dock-seats-body" data-od-id="fold-btn-seats">
+    <span class="fname">Места</span>
+    <span class="fmeta">мест 4</span>
+    <span class="chev" aria-hidden="true"></span>
+  </button>
+  <div class="dbody" id="dock-seats-body" data-od-id="seats-body">
+    <div class="stats" data-od-id="table-stats">
+      <div><span class="cap">Событий</span><span class="v num t-value">132</span></div>
+      <div><span class="cap">Домов</span><span class="v num t-value">3</span></div>
+      <div><span class="cap">Залогов</span><span class="v num t-value">2</span></div>
+    </div>
+    <div class="ownbar" data-od-id="ownership-bar">
+      <span class="cap">Владения по местам — всего 8</span>
+      <div class="track" aria-hidden="true">
+        <i style="background:var(--p0);flex:2 1 0"></i>
+        <i style="background:var(--p2);flex:3 1 0"></i>
+        <i style="background:var(--p1);flex:1 1 0"></i>
+        <i style="background:var(--p3);flex:2 1 0"></i>
+      </div>
+      <div class="lg">
+        <span><i style="background:var(--p0)"></i>Хост <b>2</b></span>
+        <span><i style="background:var(--p2)"></i>Neuro <b>3</b></span>
+        <span><i style="background:var(--p1)"></i>evil <b>1</b></span>
+        <span><i style="background:var(--p3)"></i>Mira <b>2</b></span>
+      </div>
+    </div>
+    <div class="seats-list" data-od-id="seats-list">
+      <div class="turnbar" id="turnbar" data-od-id="turn-bar" aria-hidden="true"></div>
+      <div class="seat active" data-od-id="seat-host" style="--pc:var(--p0)">
+        <div class="r1"><svg class="tok" data-od-id="token-seat-host" role="img" aria-label="фишка места"><use href="#tok-top_hat"></use></svg><span class="nm t-value">Хост</span><span class="cash num t-value money">$1215</span></div>
+        <div class="r2 t-value">6 Cedar Ave</div>
+        <div class="r3"><span>владений <b>2</b></span><span>домов <b>0</b></span><span>залогов <b>0</b></span></div>
+        <div class="r3">LOCAL <b>• ваш ход</b></div>
+      </div>
+      <div class="seat" data-od-id="seat-neuro" style="--pc:var(--p2)">
+        <div class="r1"><svg class="tok" data-od-id="token-seat-neuro" role="img" aria-label="фишка места"><use href="#tok-cat"></use></svg><span class="nm t-value">Neuro</span><span class="cash num t-value money">$980</span></div>
+        <div class="r2 t-value">24 Harbor Drive</div>
+        <div class="r3"><span>владений <b>3</b></span><span>домов <b>1</b></span><span>залогов <b>0</b></span></div>
+        <div class="r3">SDK</div>
+      </div>
+      <div class="seat" data-od-id="seat-evil" style="--pc:var(--p1)">
+        <div class="r1"><svg class="tok" data-od-id="token-seat-evil" role="img" aria-label="фишка места"><use href="#tok-ship"></use></svg><span class="nm t-value">evil</span><span class="cash num t-value money">$640</span></div>
+        <div class="r2 t-value">10 Jail</div>
+        <div class="r3"><span>владений <b>1</b></span><span>домов <b>0</b></span><span>залогов <b>1</b></span></div>
+        <div class="r3">SDK <b>• в тюрьме, попытка 2</b></div>
+      </div>
+      <div class="seat" data-od-id="seat-mira" style="--pc:var(--p3)">
+        <div class="r1"><svg class="tok" data-od-id="token-seat-mira" role="img" aria-label="фишка места"><use href="#tok-race_car"></use></svg><span class="nm t-value">Mira</span><span class="cash num t-value money">$1500</span></div>
+        <div class="r2 t-value">33 Chest</div>
+        <div class="r3"><span>владений <b>2</b></span><span>домов <b>0</b></span><span>залогов <b>1</b></span></div>
+        <div class="r3">ИИ «Магнат»</div>
+      </div>
+    </div>
+    <div class="groups" data-od-id="group-legend">
+      <div><i style="background:var(--g-brown)"></i>brown — 1, 3</div>
+      <div><i style="background:var(--g-lightblue)"></i>lightblue — 6, 8, 9</div>
+      <div><i style="background:var(--g-pink)"></i>pink — 11, 13, 14</div>
+      <div><i style="background:var(--g-orange)"></i>orange — 16, 18, 19</div>
+      <div><i style="background:var(--g-red)"></i>red — 21, 23, 24</div>
+      <div><i style="background:var(--g-yellow)"></i>yellow — 26, 27, 29</div>
+      <div><i style="background:var(--g-green)"></i>green — 31, 32, 34</div>
+      <div><i style="background:var(--g-darkblue)"></i>darkblue — 37, 39</div>
+    </div>
+    <div class="ledger" data-od-id="ownership-ledger">
+      <span class="cap">Владения по клеткам</span>
+      <div class="row"><i class="g" style="background:var(--g-brown)"></i><b>3 Palm Row</b><span>Хост</span></div>
+      <div class="row"><i class="g" style="background:var(--g-lightblue)"></i><b>6 Cedar Ave</b><span>Хост</span></div>
+      <div class="row"><i class="g" style="background:var(--g-lightblue)"></i><b>8 Elm Ave</b><span>Neuro • 2 дома</span></div>
+      <div class="row"><i class="g" style="background:var(--g-lightblue)"></i><b>9 Linden Ave</b><span>Neuro</span></div>
+      <div class="row"><i class="g" style="background:var(--g-pink)"></i><b>11 Oak Street</b><span>evil • в залоге</span></div>
+      <div class="row"><i class="g" style="background:var(--g-yellow)"></i><b>26 Crest Point</b><span>Mira • в залоге</span></div>
+      <div class="row"><i class="g" style="background:var(--g-yellow)"></i><b>27 Crest Square</b><span>Mira • 1 дом</span></div>
+      <div class="row"><i class="g" style="background:var(--g-darkblue)"></i><b>37 Grand Avenue</b><span>Neuro</span></div>
+    </div>
+  </div>
+</aside>
+
+<main class="stage" data-region="stage" data-od-id="stage-column">
+  <div class="stagebar" data-od-id="zoom-toolbar">
+    <div class="demobar" data-od-id="demo-controls">
+      <button class="ghost" type="button" id="demo-start" data-od-id="demo-start">Показать события</button>
+      <button class="ghost" type="button" id="demo-stop" disabled data-od-id="demo-stop">Стоп</button>
+    </div>
+    <div class="zoomctl" role="group" aria-label="Масштаб поля" data-od-id="zoom-controls">
+      <button class="ghost" type="button" id="zoom-in" data-od-id="zoom-in">Приблизить</button>
+      <button class="ghost" type="button" id="zoom-out" data-od-id="zoom-out">Отдалить</button>
+      <button class="ghost" type="button" id="zoom-fit" data-od-id="zoom-fit">Целиком</button>
+      <span class="zoomval num t-value" id="zoom-value" data-od-id="zoom-value">100 %</span>
+    </div>
+    <span class="cap zoombest" id="zoom-state" data-od-id="zoom-state">кольцо целиком</span>
+  </div>
+
+  <div class="viewport" id="viewport" data-od-id="board-viewport">
+    <div class="fx" id="fx" data-od-id="board-fx"></div>
+    <div class="board" id="board" data-region="board" data-od-id="board-ring">
+      <div class="ring" id="ring" data-od-id="ring-40" data-cell-count="40">
+        <div class="cell corner" data-cell="0" data-od-id="cell-00-start" style="grid-area:11/1"><span class="bar"></span><span class="nm">Start</span></div>
+        <div class="cell" data-cell="1" style="grid-area:11/2;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Sunset Blvd</span></div>
+        <div class="cell" data-cell="2" style="grid-area:11/3"><span class="bar"></span><span class="nm">Chest</span></div>
+        <div class="cell owned" data-cell="3" data-od-id="cell-03-palm-row" style="grid-area:11/4;--gc:var(--g-brown);--pc:var(--p0)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Palm Row</span></div>
+        <div class="cell" data-cell="4" style="grid-area:11/5"><span class="bar"></span><span class="nm">Tax</span></div>
+        <div class="cell" data-cell="5" style="grid-area:11/6;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Harbor Station</span></div>
+        <div class="cell owned sel" data-cell="6" data-od-id="cell-06-cedar-ave" style="grid-area:11/7;--gc:var(--g-lightblue);--pc:var(--p0)"><span class="bar" style="background:var(--g-lightblue)"></span><span class="nm">Cedar Ave</span></div>
+        <div class="cell" data-cell="7" style="grid-area:11/8"><span class="bar"></span><span class="nm">Fortune</span></div>
+        <div class="cell owned" data-cell="8" data-od-id="cell-08-elm-ave" style="grid-area:11/9;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="bar" style="background:var(--g-lightblue)"></span><span class="nm">Elm Ave</span></div>
+        <div class="cell owned" data-cell="9" style="grid-area:11/10;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="bar" style="background:var(--g-lightblue)"></span><span class="nm">Linden Ave</span></div>
+        <div class="cell corner" data-cell="10" data-od-id="cell-10-jail" style="grid-area:11/11"><span class="bar"></span><span class="nm">Jail</span></div>
+        <div class="cell owned mortgaged" data-cell="11" style="grid-area:10/11;--gc:var(--g-pink);--pc:var(--p1)"><span class="bar" style="background:var(--g-pink)"></span><span class="nm">Oak Street</span></div>
+        <div class="cell" data-cell="12" style="grid-area:9/11"><span class="bar"></span><span class="nm">Tower Utilities</span></div>
+        <div class="cell" data-cell="13" style="grid-area:8/11;--gc:var(--g-pink)"><span class="bar" style="background:var(--g-pink)"></span><span class="nm">Maple Street</span></div>
+        <div class="cell" data-cell="14" style="grid-area:7/11;--gc:var(--g-pink)"><span class="bar" style="background:var(--g-pink)"></span><span class="nm">Birch Street</span></div>
+        <div class="cell" data-cell="15" style="grid-area:6/11;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">Central Station</span></div>
+        <div class="cell" data-cell="16" style="grid-area:5/11;--gc:var(--g-orange)"><span class="bar" style="background:var(--g-orange)"></span><span class="nm">Willow Way</span></div>
+        <div class="cell" data-cell="17" style="grid-area:4/11"><span class="bar"></span><span class="nm">Chest</span></div>
+        <div class="cell" data-cell="18" style="grid-area:3/11;--gc:var(--g-orange)"><span class="bar" style="background:var(--g-orange)"></span><span class="nm">Aspen Way</span></div>
+        <div class="cell" data-cell="19" style="grid-area:2/11;--gc:var(--g-orange)"><span class="bar" style="background:var(--g-orange)"></span><span class="nm">Fir Way</span></div>
+        <div class="cell corner" data-cell="20" data-od-id="cell-20-free-parking" style="grid-area:1/11"><span class="bar"></span><span class="nm">Free Parking</span></div>
+        <div class="cell" data-cell="21" style="grid-area:1/10;--gc:var(--g-red)"><span class="bar" style="background:var(--g-red)"></span><span class="nm">Lake Drive</span></div>
+        <div class="cell" data-cell="22" style="grid-area:1/9"><span class="bar"></span><span class="nm">Fortune</span></div>
+        <div class="cell" data-cell="23" style="grid-area:1/8;--gc:var(--g-red)"><span class="bar" style="background:var(--g-red)"></span><span class="nm">River Drive</span></div>
+        <div class="cell" data-cell="24" data-od-id="cell-24-harbor-drive" style="grid-area:1/7;--gc:var(--g-red);--pc:var(--p2)"><span class="bar" style="background:var(--g-red)"></span><span class="nm">Harbor Drive</span></div>
+        <div class="cell" data-cell="25" style="grid-area:1/6;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">West Station</span></div>
+        <div class="cell owned mortgaged" data-cell="26" style="grid-area:1/5;--gc:var(--g-yellow);--pc:var(--p3)"><span class="bar" style="background:var(--g-yellow)"></span><span class="nm">Crest Point</span></div>
+        <div class="cell owned" data-cell="27" data-od-id="cell-27-crest-square" style="grid-area:1/4;--gc:var(--g-yellow);--pc:var(--p3)"><span class="bar" style="background:var(--g-yellow)"></span><span class="nm">Crest Square</span></div>
+        <div class="cell" data-cell="28" style="grid-area:1/3"><span class="bar"></span><span class="nm">Tower Water</span></div>
+        <div class="cell" data-cell="29" style="grid-area:1/2;--gc:var(--g-yellow)"><span class="bar" style="background:var(--g-yellow)"></span><span class="nm">Crest Heights</span></div>
+        <div class="cell corner" data-cell="30" data-od-id="cell-30-go-to-jail" style="grid-area:1/1"><span class="bar"></span><span class="nm">Go To Jail</span></div>
+        <div class="cell" data-cell="31" style="grid-area:2/1;--gc:var(--g-green)"><span class="bar" style="background:var(--g-green)"></span><span class="nm">Garden Grove</span></div>
+        <div class="cell" data-cell="32" style="grid-area:3/1;--gc:var(--g-green)"><span class="bar" style="background:var(--g-green)"></span><span class="nm">Garden Park</span></div>
+        <div class="cell" data-cell="33" data-od-id="cell-33-chest" style="grid-area:4/1;--pc:var(--p3)"><span class="bar"></span><span class="nm">Chest</span></div>
+        <div class="cell" data-cell="34" style="grid-area:5/1;--gc:var(--g-green)"><span class="bar" style="background:var(--g-green)"></span><span class="nm">Garden Court</span></div>
+        <div class="cell" data-cell="35" style="grid-area:6/1;--gc:var(--g-brown)"><span class="bar" style="background:var(--g-brown)"></span><span class="nm">South Station</span></div>
+        <div class="cell" data-cell="36" style="grid-area:7/1"><span class="bar"></span><span class="nm">Fortune</span></div>
+        <div class="cell owned" data-cell="37" data-od-id="cell-37-grand-avenue" style="grid-area:8/1;--gc:var(--g-darkblue);--pc:var(--p2)"><span class="bar" style="background:var(--g-darkblue)"></span><span class="nm">Grand Avenue</span></div>
+        <div class="cell" data-cell="38" style="grid-area:9/1"><span class="bar"></span><span class="nm">Luxury Tax</span></div>
+        <div class="cell" data-cell="39" style="grid-area:10/1;--gc:var(--g-darkblue)"><span class="bar" style="background:var(--g-darkblue)"></span><span class="nm">Grand Place</span></div>
+      </div>
+
+      <div class="center" data-region="center" data-od-id="center-panno">
+        <section class="zone z-roll" data-od-id="zone-roll">
+          <div class="zhead"><span class="cap">Бросок</span><span class="r" id="roll-who">ходит Хост</span></div>
+          <div class="roll" id="roll-box">
+            <div class="dice" data-od-id="dice-pair">
+              <svg class="die" data-od-id="die-five" role="img" aria-label="кубик: пять"><use href="#die-5"></use></svg>
+              <svg class="die" data-od-id="die-three" role="img" aria-label="кубик: три"><use href="#die-3"></use></svg>
+            </div>
+            <div class="txt"><p class="t-para">Хост бросил 5 и 3 — ход начинается с этого броска</p></div>
+            <div class="sumbox" data-od-id="roll-sum">
+              <span class="sum num t-value">8</span>
+              <span class="cap">Сумма броска</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="zone z-event" data-od-id="zone-event">
+          <div class="zhead"><span class="cap">Событие</span><span class="r" id="ev-note" data-od-id="event-note">последнее в партии</span></div>
+          <div class="ev" id="ev-box" style="--pc:var(--p3)">
+            <div class="type" id="ev-type">продажа дома</div>
+            <div class="amount num t-value money" id="ev-amount" data-od-id="event-amount">$70</div>
+            <div class="sub">
+              <span class="who t-value" id="ev-who"><i></i>Mira</span>
+              <span class="tile t-value" id="ev-tile">Crest Square</span>
+              <span class="tile t-value" id="ev-index"><b>27</b></span>
+            </div>
+            <div class="chips" id="ev-chips">
+              <span class="flag">клетка 27</span>
+              <span class="flag">группа yellow</span>
+              <span class="flag">дом 1</span>
+              <span class="flag on">приход денег</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="zone z-play" data-od-id="zone-players">
+          <div class="zhead"><span class="cap">Игроки</span><span class="r">мест 4 • владений 8 • домов 3</span></div>
+          <div class="pl-tbl">
+            <div class="thead">
+              <span class="cap" style="width:92px">Место</span>
+              <span class="cap t-para" style="flex:1 1 auto">Клетка</span>
+              <span class="cap" style="width:216px;text-align:right">Владения и дома</span>
+              <span class="cap" style="width:112px;text-align:right">Деньги</span>
+            </div>
+            <div class="rows">
+              <div class="prow active" data-od-id="player-row-host" style="--pc:var(--p0)">
+                <svg class="tok sm" data-od-id="token-player-row-host" role="img" aria-label="фишка места"><use href="#tok-top_hat"></use></svg><span class="nm t-value">Хост</span>
+                <span class="at t-value">6 Cedar Ave</span>
+                <span class="own t-value">владений 2 • домов 0</span>
+                <span class="cash num t-value money">$1215</span>
+              </div>
+              <div class="prow" data-od-id="player-row-neuro" style="--pc:var(--p2)">
+                <svg class="tok sm" data-od-id="token-player-row-neuro" role="img" aria-label="фишка места"><use href="#tok-cat"></use></svg><span class="nm t-value">Neuro</span>
+                <span class="at t-value">24 Harbor Drive</span>
+                <span class="own t-value">владений 3 • домов 1</span>
+                <span class="cash num t-value money">$980</span>
+              </div>
+              <div class="prow" data-od-id="player-row-evil" style="--pc:var(--p1)">
+                <svg class="tok sm" data-od-id="token-player-row-evil" role="img" aria-label="фишка места"><use href="#tok-ship"></use></svg><span class="nm t-value">evil</span>
+                <span class="at t-value">10 Jail</span>
+                <span class="own t-value">владений 1 • домов 0</span>
+                <span class="cash num t-value money">$640</span>
+              </div>
+              <div class="prow" data-od-id="player-row-mira" style="--pc:var(--p3)">
+                <svg class="tok sm" data-od-id="token-player-row-mira" role="img" aria-label="фишка места"><use href="#tok-race_car"></use></svg><span class="nm t-value">Mira</span>
+                <span class="at t-value">33 Chest</span>
+                <span class="own t-value">владений 2 • домов 0</span>
+                <span class="cash num t-value money">$1500</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="zone z-jrn" data-od-id="zone-journal">
+          <div class="zhead"><span class="cap">Журнал</span><span class="r">показано 3 из 132</span></div>
+          <div class="jlines">
+            <div class="jline"><b style="color:var(--p3)">Mira</b><span>продаёт с клетки 27 — Crest Square</span></div>
+            <div class="jline"><b style="color:var(--p1)">evil</b><span>закладывает клетку 11 — Oak Street</span></div>
+            <div class="jline"><b style="color:var(--p1)">evil</b><span>попадает в тюрьму</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<aside class="dock dright" data-od-id="right-dock">
+  <section class="panel p-journal" id="panel-journal" data-region="journal" data-od-id="journal-panel">
+    <button class="fold" type="button" data-fold="panel-journal" aria-expanded="true" aria-controls="journal-body" data-od-id="fold-btn-journal">
+      <span class="fname">Журнал</span>
+      <span class="fmeta" id="journal-count">показано 4 из 132</span>
+      <span class="chev" aria-hidden="true"></span>
+    </button>
+    <div class="pbody" style="display:flex;flex-direction:column;gap:10px;flex:1 1 auto;min-height:0;overflow:hidden" data-od-id="journal-body">
+      <div class="filters" data-od-id="journal-filters">
+        <button class="ghost" type="button" id="filter-player" aria-pressed="false" data-od-id="filter-player">игрок: все</button>
+        <button class="ghost" type="button" id="filter-type" aria-pressed="false" data-od-id="filter-type">тип: все</button>
+        <button class="ghost" type="button" id="filter-money" aria-pressed="false" data-od-id="filter-money">только деньги</button>
+        <button class="ghost" type="button" id="journal-export" style="margin-left:auto" data-od-id="journal-export">экспорт .jsonl</button>
+      </div>
+      <div class="feed" id="journal-feed" data-od-id="journal-feed">
+        <div class="entry" data-entry="1" data-player="Mira" data-type="бросок" data-money="0" style="--pc:var(--p3)">
+          <div class="l1"><b>Mira</b><span class="cap">бросок</span><span class="when">раунд 7</span></div>
+          <div class="l2 t-para">бросает 4 и 4</div>
+        </div>
+        <div class="entry" data-entry="2" data-player="Mira" data-type="сделка" data-money="1" style="--pc:var(--p3)">
+          <div class="l1"><b>Mira</b><span class="cap">сделка</span><span class="when">раунд 7</span></div>
+          <div class="l2 t-para">продаёт с клетки 27 — Crest Square</div>
+          <div class="l3 t-para">группа yellow • дом продан • $70</div>
+        </div>
+        <div class="entry" data-entry="3" data-player="evil" data-type="залог" data-money="0" style="--pc:var(--p1)">
+          <div class="l1"><b>evil</b><span class="cap">залог</span><span class="when">раунд 7</span></div>
+          <div class="l2 t-para">закладывает клетку 11 — Oak Street</div>
+          <div class="l3 t-para">группа pink • клетка в залоге</div>
+        </div>
+        <div class="entry" data-entry="4" data-player="evil" data-type="тюрьма" data-money="0" style="--pc:var(--p1)">
+          <div class="l1"><b>evil</b><span class="cap">тюрьма</span><span class="when">раунд 7</span></div>
+          <div class="l2 t-para">попадает в тюрьму</div>
+          <div class="l3 t-para">клетка 10 Jail • попытка 2</div>
+        </div>
+        <div class="feedempty" id="journal-empty" hidden data-od-id="journal-empty">
+          <p>Под фильтры не подошла ни одна строка</p>
+          <button class="ghost" type="button" id="filter-reset">Сбросить фильтры</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel p-inspector" id="panel-inspector" data-region="inspector" data-od-id="inspector-panel">
+    <button class="fold" type="button" data-fold="panel-inspector" aria-expanded="true" aria-controls="inspector-body" data-od-id="fold-btn-inspector">
+      <span class="fname">Клетка</span>
+      <span class="fmeta">закреплена на 6</span>
+      <span class="chev" aria-hidden="true"></span>
+    </button>
+    <div class="pbody" style="display:flex;flex-direction:column;gap:10px;flex:1 1 auto;min-height:0;overflow:hidden" data-od-id="inspector-body">
+      <div class="ins-tile"><i style="background:var(--g-lightblue)"></i><svg class="tok sm" style="color:var(--p0)" data-od-id="token-inspector" role="img" aria-label="фишка владельца Хост"><use href="#tok-top_hat"></use></svg><span class="t-value">Cedar Ave</span></div>
+      <div class="ins-grid">
+        <div><span class="cap">Цена</span><span class="v num t-value money">$100</span></div>
+        <div><span class="cap">Аренда</span><span class="v num t-value money">$6</span></div>
+        <div><span class="cap">Владелец</span><span class="v t-value" style="color:var(--p0)">Хост</span></div>
+        <div><span class="cap">Клетка</span><span class="v num t-value">6</span></div>
+        <div><span class="cap">Владений у владельца</span><span class="v num t-value">2</span></div>
+        <div><span class="cap">Домов на клетке</span><span class="v num t-value" id="ins-houses">0</span></div>
+        <div><span class="cap">Группа</span><span class="v t-value">lightblue</span></div>
+        <div><span class="cap">Группа собрана</span><span class="v t-value">нет</span></div>
+      </div>
+      <div class="ins-flags">
+        <span class="flag on">Хост • владений 2 • домов 0</span>
+        <span class="flag">группа не собрана</span>
+        <span class="flag">в залоге: нет</span>
+      </div>
+      <div class="ins-acts">
+        <button class="secondary" type="button" id="ins-pin" aria-pressed="true" data-od-id="ins-pin">Закрепить</button>
+        <button class="secondary" type="button" id="ins-close" data-od-id="ins-close">Закрыть</button>
+      </div>
+    </div>
+  </section>
+</aside>
+
+<section class="act" id="panel-act" data-region="act" data-od-id="act-console">
+  <button class="fold act-fold" type="button" data-fold="panel-act" aria-expanded="true" aria-controls="act-main" data-od-id="fold-btn-act">
+    <span class="fname">Ход</span>
+    <span class="fmeta">Хост • сумма броска 8</span>
+    <span class="chev" aria-hidden="true"></span>
+  </button>
+  <div class="amain" data-od-id="act-main">
+    <div class="prompt">
+      <p class="t-para">Хост • ваш ход — выберите действие</p>
+      <span class="chip">последний бросок: <b>5 и 3</b></span>
+      <span class="chip">сумма <b>8</b></span>
+    </div>
+    <div class="row2" data-od-id="act-buttons">
+      <button class="hero" type="button" id="act-roll" data-od-id="act-roll">Бросок</button>
+      <button class="secondary" type="button" data-action="Купить $100" data-od-id="act-buy">Купить $100</button>
+      <button class="secondary" type="button" data-action="Отказ" data-od-id="act-pass">Отказ</button>
+      <button class="secondary" type="button" data-action="Торг" data-od-id="act-trade">Торг</button>
+      <button class="secondary" type="button" data-action="Конец хода" data-od-id="act-end">Конец хода</button>
+    </div>
+  </div>
+  <div class="toasts" id="toasts" data-od-id="toasts" aria-live="polite">
+    <div class="toast" data-pinned="1" style="--tc:var(--ev-money)" data-od-id="toast-last-event">
+      <span class="tk">событие</span>
+      <span class="tt">Mira • Crest Square • $70</span>
+    </div>
+  </div>
+</section>
+
+<!-- ================= слой сцен: переключатель словами ================= -->
+<div class="layer" id="scene-layer" data-od-id="scene-layer">
+  <nav class="scenebar" data-od-id="scene-switcher" aria-label="Переключатель сцен">
+    <span class="slbl">Сцена</span>
+    <button class="sbtn" type="button" data-goto="main" aria-pressed="true">Главный</button>
+    <button class="sbtn" type="button" data-goto="settings" aria-pressed="false">Настройки</button>
+    <button class="sbtn" type="button" data-goto="rules" aria-pressed="false">Правила</button>
+    <button class="sbtn" type="button" data-goto="admin" aria-pressed="false">Админ</button>
+    <button class="sbtn" type="button" data-goto="invite" aria-pressed="false">Приглашение</button>
+    <button class="sbtn" type="button" data-goto="lobby" aria-pressed="false">Лобби</button>
+    <button class="sbtn" type="button" data-goto="auction" aria-pressed="false">Аукцион</button>
+    <button class="sbtn" type="button" data-goto="trade" aria-pressed="false">Торг</button>
+    <button class="sbtn" type="button" data-goto="build" aria-pressed="false">Стройка</button>
+    <button class="sbtn" type="button" data-goto="over" aria-pressed="false">Конец игры</button>
+    <span class="cap sclose" id="scene-name" data-od-id="scene-name">сцена: главный экран</span>
+  </nav>
+
+  <div class="scenes" data-od-id="scenes">
+    <section class="scene" data-scene="menu" data-od-id="scene-menu">
+      <div class="card narrow" data-od-id="card-menu">
+        <div class="card-head"><h2>Экраны</h2><span class="sub">переключение словами сверху, без перезагрузки</span></div>
+        <p class="hint">Выберите экран в переключателе. Панно, доска и ход остаются под оверлеем нетронутыми — экран закрывается кнопкой «Главный».</p>
+        <p class="hint">Главный экран: ход человека, раунд 7, банк парковки $240.</p>
+        <div class="btnrow">
+          <button class="secondary" type="button" data-goto="main" data-od-id="menu-back">Вернуться к партии</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-scene="settings" data-od-id="scene-settings">
+      <div class="card" id="card-settings" data-od-id="card-settings">
+        <div class="card-head">
+          <h2>Настройки</h2>
+          <span class="sub">каждое поле помечено: меняется живьём или требует рестарта</span>
+          <span class="spacer"></span>
+          <span class="cap" id="settings-caption">мест 4 из 8</span>
+        </div>
+        <div class="tabs" role="group" aria-label="Вкладки настроек" data-od-id="settings-tabs">
+          <button class="tab" type="button" data-tab="players" aria-pressed="true">Игроки</button>
+          <button class="tab" type="button" data-tab="rules" aria-pressed="false">Правила</button>
+          <button class="tab" type="button" data-tab="pace" aria-pressed="false">Темп</button>
+          <button class="tab" type="button" data-tab="ui" aria-pressed="false">Интерфейс</button>
+          <button class="tab" type="button" data-tab="data" aria-pressed="false">Данные</button>
+          <button class="tab" type="button" data-tab="keys" aria-pressed="false">Управление</button>
+        </div>
+
+        <div class="tabpanel on" data-panel="players" data-od-id="settings-players">
+          <div class="ptable" id="players-table" data-od-id="players-table"></div>
+          <div class="btnrow">
+            <button class="secondary" type="button" id="seat-add" data-od-id="seat-add">Добавить место</button>
+            <button class="secondary" type="button" id="seat-del" data-od-id="seat-del">Удалить место</button>
+            <span class="hint">От 2 до 8 мест. Имя, цвет, фишка, драйвер и характер меняются живьём, состав — только с рестарта.</span>
+          </div>
+        </div>
+
+        <div class="tabpanel" data-panel="rules" data-od-id="settings-rules">
+          <div class="fgrid">
+            <div class="fld"><span class="lb">Аукцион в партии<small>клетки без владельца уходят на торг</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="auction">включён</button><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Налог с банка парковки<small>процент от накопленного банка</small></span>
+              <input type="number" id="set-banktax" value="10" min="0" max="30"><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Штраф за тюрьму<small>платит место, выходящее по доле</small></span>
+              <input type="number" id="set-jailfine" value="50" min="0" max="500" step="10"><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Двойная аренда при полном наборе<small>удвоение, когда собрана вся группа</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="false" data-set="doublerent">выключено</button><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Карт в колоде шанс<small>колода карт делится поровну</small></span>
+              <input type="number" id="set-chance" value="32" min="8" max="64" step="4"><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Карт в колоде казна<small>колода карт делится поровну</small></span>
+              <input type="number" id="set-chest" value="32" min="8" max="64" step="4"><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Банкротство при долге<small>место снимается с доски</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="bankrupt">включено</button><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Свободный ход после аукциона<small>очередь не сдвигается</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="afterauction">включено</button><span class="tag live">живьём</span></div>
+          </div>
+        </div>
+
+        <div class="tabpanel" data-panel="pace" data-od-id="settings-pace">
+          <div class="fgrid">
+            <div class="fld"><span class="lb">Таймер хода<small>обнуляется на каждой фазе</small></span>
+              <input type="number" id="set-turntimer" value="30" min="0" max="180" step="5"><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Таймер аукциона<small>на всю процедуру торгов</small></span>
+              <input type="number" id="set-auctiontimer" value="20" min="0" max="120" step="5"><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">При тайм-ауте<small>что делает место, не успевшее сходить</small></span>
+              <select id="set-timeout"><option>Автопас на аукционе</option><option>Автобросок и ход</option><option>Пропустить ход</option></select><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Пауза между ходами<small>тишина после передачи хода</small></span>
+              <input type="number" id="set-gap" value="2" min="0" max="10"><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Подтверждение хода<small>спрашивать перед броском</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="false" data-set="confirmroll">выключено</button><span class="tag live">живьём</span></div>
+          </div>
+        </div>
+
+        <div class="tabpanel" data-panel="ui" data-od-id="settings-ui">
+          <div class="fgrid">
+            <div class="fld"><span class="lb">Анимации<small>выключение делает всё мгновенным</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="anim">включены</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Журнал событий<small>лента в правом доке</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="log">включён</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Звук<small>кости, фишки, уведомления</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="sound">включён</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Подсветка владельца<small>рамка клетки цветом места</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="ownerhl">включена</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Язык интерфейса<small>смена переводит подписи, не данные</small></span>
+              <select id="set-lang"><option>Русский</option><option>English</option></select><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Показывать тосты<small>короткие строки событий у консоли</small></span>
+              <button class="sw" type="button" role="switch" aria-checked="true" data-set="toasts">включены</button><span class="tag live">живьём</span></div>
+          </div>
+        </div>
+
+        <div class="tabpanel" data-panel="data" data-od-id="settings-data">
+          <div class="fgrid">
+            <div class="fld"><span class="lb">RNG-сид<small>одинаковая последовательность бросков</small></span>
+              <input type="text" id="set-seed" value="neuro-7"><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Число клеток на доске<small>от 16 до 64, кратно размерам кольца</small></span>
+              <input type="number" id="set-cells" value="40" min="16" max="64" step="4"><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Стартовый капитал<small>деньги каждого места в раунде 1</small></span>
+              <input type="number" id="set-cash" value="1500" min="100" max="10000" step="50"><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Бонус за проход Start<small>платит клетка 0</small></span>
+              <input type="number" id="set-go" value="200" min="0" max="1000" step="50"><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Лимит раундов<small>после него игра заканчивается</small></span>
+              <input type="number" id="set-rounds" value="40" min="5" max="200"><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Сид партии<small>скрыт от мест, виден админу</small></span>
+              <span class="hint num">NPT-2026-07-A</span><span class="tag live">живьём</span></div>
+          </div>
+        </div>
+
+        <div class="tabpanel" data-panel="keys" data-od-id="settings-keys">
+          <div class="fgrid one" id="keys-list"></div>
+        </div>
+      </div>
+    </section>
+<section class="scene" data-scene="rules" data-od-id="scene-rules">
+      <div class="card narrow" data-od-id="card-rules">
+        <div class="card-head">
+          <h2>Правила</h2>
+          <span class="sub">собраны из текущих настроек — меняете поле, меняется строка</span>
+          <span class="spacer"></span>
+          <button class="secondary" type="button" data-goto="settings" data-od-id="rules-to-settings">К настройкам</button>
+        </div>
+        <div class="rules" id="rules-list" data-od-id="rules-list"></div>
+        <p class="hint">Строка без значения означает выключенное правило. Список обновляется сразу после изменения поля.</p>
+      </div>
+    </section>
+
+    <section class="scene" data-scene="admin" data-od-id="scene-admin">
+      <div class="card" data-od-id="card-admin">
+        <div class="card-head">
+          <h2>Админ</h2>
+          <span class="sub">только для ведущего, места и наблюдатели этих вкладок не видят</span>
+          <span class="spacer"></span>
+          <span class="cap">хост: локально</span>
+        </div>
+        <div class="tabs" role="group" aria-label="Вкладки админа" data-od-id="admin-tabs">
+          <button class="tab" type="button" data-atab="quick" aria-pressed="true">Быстрые</button>
+          <button class="tab" type="button" data-atab="state" aria-pressed="false">Состояние</button>
+          <button class="tab" type="button" data-atab="events" aria-pressed="false">События</button>
+          <button class="tab" type="button" data-atab="edits" aria-pressed="false">Правки</button>
+        </div>
+
+        <div class="tabpanel on" data-apanel="quick" data-od-id="admin-quick">
+          <div class="fgrid">
+            <div class="fld"><span class="lb">Форс-ролл<small>бросок вместо хода игрока</small></span>
+              <button class="secondary" type="button" data-adm="Форс-ролл" data-od-id="adm-force-roll">Бросить сейчас</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Форс-пас<small>место сразу пасует</small></span>
+              <button class="secondary" type="button" data-adm="Форс-пас" data-od-id="adm-force-pass">Паснуть место</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Откат хода<small>вернуть последнее событие</small></span>
+              <button class="secondary" type="button" data-adm="Откат хода" data-od-id="adm-undo">Откатить на шаг</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Сброс away<small>снять место с доски за долг</small></span>
+              <button class="secondary" type="button" data-adm="Сброс away" data-od-id="adm-away">Сбросить место</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Добавить раунд<small>сдвинуть лимит и счётчик</small></span>
+              <button class="secondary" type="button" data-adm="Добавить раунд" data-od-id="adm-plus-round">Плюс раунд</button><span class="tag restart">рестарт</span></div>
+            <div class="fld"><span class="lb">Пересобрать партию<small>те же места, нулевой раунд</small></span>
+              <button class="secondary" type="button" id="adm-restart" data-od-id="adm-restart">Пересобрать</button><span class="tag restart">рестарт</span></div>
+          </div>
+          <p class="hint">Быстрые действия пишут строку в ленту событий и показывают тост — их видно всем местам.</p>
+        </div>
+
+        <div class="tabpanel" data-apanel="state" data-od-id="admin-state">
+          <div class="btnrow">
+            <button class="secondary" type="button" id="dump-mode" aria-pressed="false" data-od-id="dump-mode">Показать строкой</button>
+            <button class="secondary" type="button" id="dump-copy" data-od-id="dump-copy">Скопировать дамп</button>
+            <span class="hint" id="dump-note">дамп читается из живой сцены</span>
+          </div>
+          <div class="dump" id="dump-text" data-od-id="dump-text"></div>
+          <div class="dtable" id="dump-table" hidden data-od-id="dump-table"></div>
+        </div>
+
+        <div class="tabpanel" data-apanel="events" data-od-id="admin-events">
+          <div class="btnrow">
+            <select id="adm-filter" style="height:40px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--ui);font-size:16px;padding:0 10px" data-od-id="adm-filter">
+              <option value="все">тип: все</option>
+              <option value="бросок">тип: бросок</option>
+              <option value="деньги">тип: деньги</option>
+              <option value="залог">тип: залог</option>
+              <option value="тюрьма">тип: тюрьма</option>
+              <option value="аукцион">тип: аукцион</option>
+            </select>
+            <button class="secondary" type="button" id="adm-export" data-od-id="adm-export">Экспорт .jsonl</button>
+            <span class="hint" id="adm-count">показано 6 из 132</span>
+          </div>
+          <div class="col" id="adm-feed" data-od-id="adm-feed"></div>
+        </div>
+
+        <div class="tabpanel" data-apanel="edits" data-od-id="admin-edits">
+          <div class="fgrid">
+            <div class="fld"><span class="lb">Баланс места<small>прибавить или снять деньги</small></span>
+              <select id="edit-money-who"></select>
+              <input type="number" id="edit-money" value="500" step="50" style="height:40px;width:110px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--mono);font-size:18px;padding:0 10px">
+              <button class="secondary" type="button" data-adm="Правка баланса" data-od-id="edit-money-apply">Применить</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Телепорт<small>переставить фишку на клетку</small></span>
+              <select id="edit-tp-who"></select>
+              <input type="text" id="edit-tp-cell" value="6" size="4" style="height:40px;width:80px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--mono);font-size:18px;padding:0 10px">
+              <button class="secondary" type="button" data-adm="Правка телепорта" data-od-id="edit-tp-apply">Переставить</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Форс-кубы<small>задать сумму броска</small></span>
+              <input type="text" id="edit-dice" value="12" size="4" style="height:40px;width:80px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--mono);font-size:18px;padding:0 10px">
+              <button class="secondary" type="button" data-adm="Правка кубов" data-od-id="edit-dice-apply">Задать</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Отдать клетку<small>сделать клетку собственностью места</small></span>
+              <select id="edit-cell-who"></select>
+              <input type="text" id="edit-cell-n" value="31" size="4" style="height:40px;width:80px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--mono);font-size:18px;padding:0 10px">
+              <button class="secondary" type="button" data-adm="Правка клетки" data-od-id="edit-cell-apply">Отдать</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Число домов<small>0 — 4 дома, 5 — отель</small></span>
+              <select id="edit-houses-cell"><option>8 Elm Ave — Neuro</option><option>27 Crest Square — Mira</option><option>6 Cedar Ave — Хост</option></select>
+              <input type="text" id="edit-houses-n" value="2" size="2" style="height:40px;width:70px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--mono);font-size:18px;padding:0 10px">
+              <button class="secondary" type="button" data-adm="Правка домов" data-od-id="edit-houses-apply">Поставить</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Залог<small>клетка уходит в залог и обратно</small></span>
+              <select id="edit-mort-cell"><option>11 Oak Street — evil</option><option>26 Crest Point — Mira</option><option>6 Cedar Ave — Хост</option></select>
+              <button class="secondary" type="button" data-adm="Правка залога" data-od-id="edit-mort-apply">Переключить</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Цена клетки<small>переписать цену и аренду</small></span>
+              <input type="text" id="edit-price-cell" value="6" size="4" style="height:40px;width:80px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--mono);font-size:18px;padding:0 10px">
+              <input type="text" id="edit-price" value="$100" size="6" style="height:40px;width:100px;background:var(--s2);color:var(--text);border:1px solid var(--line);font-family:var(--mono);font-size:18px;padding:0 10px">
+              <button class="secondary" type="button" data-adm="Правка цены" data-od-id="edit-price-apply">Задать</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Карты<small>выдать карту из колоды</small></span>
+              <select id="edit-card-deck"><option>колода: шанс</option><option>колода: казна</option></select>
+              <button class="secondary" type="button" data-adm="Правка карт" data-od-id="edit-card-apply">Выдать карту</button><span class="tag live">живьём</span></div>
+            <div class="fld"><span class="lb">Порядок хода<small>поставить место следующим или последним</small></span>
+              <select id="edit-order-who"></select>
+              <select id="edit-order-where"><option>следующим</option><option>последним</option></select>
+              <button class="secondary" type="button" data-adm="Правка порядка" data-od-id="edit-order-apply">Применить</button><span class="tag live">живьём</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-scene="invite" data-od-id="scene-invite">
+      <div class="card mid" data-od-id="card-invite">
+        <div class="card-head">
+          <h2>Приглашение</h2>
+          <span class="sub">ссылка даёт одно место за столом</span>
+          <span class="spacer"></span>
+          <button class="secondary" type="button" data-goto="main" data-od-id="invite-close">Закрыть</button>
+        </div>
+        <div class="col" id="invite-list" data-od-id="invite-list"></div>
+        <p class="hint">Ссылка одноразовая: место занимает тот, кто открыл её первым, и имя в списке меняется на его. Партия не начнётся, пока за столом меньше двух мест.</p>
+        <p class="hint">Хост рассылает ссылки из этого окна, остальные места приходят по своей.</p>
+      </div>
+    </section>
+
+    <section class="scene" data-scene="lobby" data-od-id="scene-lobby">
+      <div class="card mid" data-od-id="card-lobby">
+        <div class="card-head">
+          <h2>Лобби подключения</h2>
+          <span class="sub">четыре состояния входа в партию</span>
+          <span class="spacer"></span>
+          <span class="cap">выбранное состояние</span>
+        </div>
+        <div class="states" id="lobby-states" data-od-id="lobby-states">
+          <button class="sbtn" type="button" data-lobby="wait" aria-pressed="false">Подключаемся к партии</button>
+          <button class="sbtn" type="button" data-lobby="ok" aria-pressed="false">Вы в игре</button>
+          <button class="sbtn" type="button" data-lobby="fail" aria-pressed="false">Не удалось подключиться</button>
+          <button class="sbtn" type="button" data-lobby="nolink" aria-pressed="false">Нет приглашения</button>
+        </div>
+        <div class="statuscard ok" id="lobby-card" data-od-id="lobby-card">
+          <span class="big" id="lobby-title">Вы в игре</span>
+          <span id="lobby-text" class="hint">Место Хост, раунд 7, ход ваш.</span>
+          <div class="dots" id="lobby-dots" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+          <div class="btnrow" id="lobby-acts"></div>
+        </div>
+      </div>
+    </section>
+<section class="scene" data-scene="auction" data-od-id="scene-auction">
+      <div class="card mid" data-od-id="card-auction">
+        <div class="card-head">
+          <h2>Аукцион</h2>
+          <span class="sub">клетка без владельца уходит с молотка</span>
+          <span class="spacer"></span>
+          <div class="states">
+            <button class="sbtn" type="button" data-auc="own" aria-pressed="true">Свой аукцион</button>
+            <button class="sbtn" type="button" data-auc="watch" aria-pressed="false">Наблюдение</button>
+          </div>
+        </div>
+        <div class="lot" style="--gc:var(--g-green)" data-od-id="auction-lot">
+          <span class="lname">31 Garden Grove</span>
+          <span class="lmeta">группа green • базовая цена $80 • аренда $12</span>
+          <span class="lmeta" style="margin-left:auto">лот из очереди</span>
+        </div>
+        <div class="bidrow" data-od-id="auction-bid">
+          <span class="bl">Текущая ставка</span>
+          <span class="bv" id="auc-bid">$120</span>
+          <span class="blead">лидер: <b id="auc-leader" style="color:var(--p2)">Neuro</b></span>
+        </div>
+        <div class="cols">
+          <div class="col">
+            <div class="give">
+              <h3>Ход торгов</h3>
+              <div class="line">Минимальная надбавка<b>$10</b></div>
+              <div class="line">Осталось времени<b>12 с</b></div>
+              <div class="line">Мест в очереди<b>3</b></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="give">
+              <h3>Ставки мест</h3>
+              <div class="line">Neuro<b>$120</b></div>
+              <div class="line">Mira<b>$90</b></div>
+              <div class="line">Хост<b>—</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="btnrow">
+          <button class="secondary" type="button" id="auc-pass" data-od-id="auc-pass">Пас</button>
+          <button class="hero" type="button" id="auc-bid-btn" data-od-id="auc-bid-btn">Ставка $140</button>
+          <span class="hint" id="auc-hint">в наблюдении кнопки недоступны: ход не ваш</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-scene="trade" data-od-id="scene-trade">
+      <div class="card" data-od-id="card-trade">
+        <div class="card-head">
+          <h2>Торг</h2>
+          <span class="sub">обмен клетками и деньгами — обе стороны подписывают</span>
+          <span class="spacer"></span>
+          <span class="cap">ход: Хост</span>
+        </div>
+        <div class="cols">
+          <div class="col">
+            <div class="give" data-od-id="trade-form">
+              <h3>Предложить сделку</h3>
+              <div class="fld"><span class="lb">Получатель</span>
+                <select id="trade-to"><option>Neuro</option><option>evil</option><option>Mira</option></select></div>
+              <div class="fld"><span class="lb">Даю клетку</span>
+                <select id="trade-give-cell"><option>3 Palm Row — Хост</option><option>6 Cedar Ave — Хост</option><option>нет</option></select></div>
+              <div class="fld"><span class="lb">Даю деньги</span>
+                <input type="text" id="trade-give-money" value="$400"></div>
+              <div class="fld"><span class="lb">Прошу клетку</span>
+                <select id="trade-want-cell"><option>9 Linden Ave — Neuro</option><option>нет</option></select></div>
+              <div class="fld"><span class="lb">Прошу деньги</span>
+                <input type="text" id="trade-want-money" value="$0"></div>
+              <div class="btnrow">
+                <button class="hero" type="button" id="trade-send" data-od-id="trade-send">Предложить</button>
+                <span class="hint">предложение уходит получателю и ждёт ответа</span>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="give" data-od-id="trade-incoming">
+              <h3>Входящее предложение</h3>
+              <div class="line">От кого<b style="color:var(--p1)">evil</b></div>
+              <div class="line">Даёт<b>11 Oak Street • $150</b></div>
+              <div class="line">Просит<b>6 Cedar Ave</b></div>
+              <div class="line">Оценка разницы<b style="color:var(--warn)">+$60</b></div>
+              <div class="btnrow">
+                <button class="secondary" type="button" id="trade-accept" data-od-id="trade-accept">Принять</button>
+                <button class="secondary" type="button" id="trade-decline" data-od-id="trade-decline">Отклонить</button>
+              </div>
+              <span class="hint" id="trade-note">решение принимает Хост, чей ход</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-scene="build" data-od-id="scene-build">
+      <div class="card mid" data-od-id="card-build">
+        <div class="card-head">
+          <h2>Стройка и залог</h2>
+          <span class="sub">застройка своей клетки и залог любой своей клетки</span>
+          <span class="spacer"></span>
+          <span class="cap">группа собрана не полностью</span>
+        </div>
+        <div class="lot" style="--gc:var(--g-lightblue)" data-od-id="build-lot">
+          <span class="lname">8 Elm Ave</span>
+          <span class="lmeta">группа lightblue • Neuro • домов 2 из 4</span>
+          <span class="houses" style="margin-left:auto" aria-hidden="true"><svg class="oh"><use href="#ic-house"></use></svg><svg class="oh"><use href="#ic-house"></use></svg><svg class="oh empty"><use href="#ic-house"></use></svg><svg class="oh empty"><use href="#ic-house"></use></svg></span>
+        </div>
+        <div class="cols">
+          <div class="col">
+            <div class="give">
+              <h3>Смета</h3>
+              <div class="line">Дом<b>$160</b></div>
+              <div class="line">Аренда за дом<b>$24</b></div>
+              <div class="line">Отель <svg class="oh" style="width:16px;height:16px;color:var(--ev-build)"><use href="#ic-hotel"></use></svg> за $320<b>недоступен</b></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="give">
+              <h3>Залог</h3>
+              <div class="line">Клетка в залоге<b style="color:var(--muted)">нет</b></div>
+              <div class="line">Выкуп залога<b>$80</b></div>
+              <div class="line">Денег у места<b>$980</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="btnrow">
+          <button class="hero" type="button" id="build-add" data-od-id="build-add">Строить</button>
+          <button class="secondary" type="button" id="build-sell" data-od-id="build-sell">Продать дом</button>
+          <button class="secondary" type="button" id="build-mort" data-od-id="build-mort">Залог</button>
+          <button class="secondary" type="button" id="build-unmort" data-od-id="build-unmort">Выкупить</button>
+          <span class="hint">кнопки залога включаются, когда клетка в залоге</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" data-scene="over" data-od-id="scene-over">
+      <div class="card mid" data-od-id="card-over">
+        <div class="card-head">
+          <h2>Конец игры</h2>
+          <span class="sub">партия доиграна, места сведены по деньгам и недвижимости</span>
+          <span class="spacer"></span>
+          <span class="cap">раунд 7 из 40</span>
+        </div>
+        <div class="winner" data-od-id="over-winner">
+          <span class="cap">победитель</span>
+          <svg class="tok lg" style="color:var(--p3)" data-od-id="token-winner" role="img" aria-label="фишка места Mira"><use href="#tok-race_car"></use></svg>
+          <span class="wname" style="--pc:var(--p3)">Mira</span>
+          <span class="wsum">$1500</span>
+        </div>
+        <div class="stats3" data-od-id="over-stats">
+          <div><span class="cap">Раундов сыграно</span><span class="v num">7</span></div>
+          <div><span class="cap">Владений</span><span class="v num">2</span></div>
+          <div><span class="cap">Домов</span><span class="v num">0</span></div>
+          <div><span class="cap">Банк парковки</span><span class="v num money">$240</span></div>
+        </div>
+        <div class="cols">
+          <div class="col">
+            <div class="give">
+              <h3>Итоговая таблица</h3>
+              <div class="line" style="--pc:var(--p0)">Хост<b>$1215</b></div>
+              <div class="line" style="--pc:var(--p3)">Mira<b>$1500</b></div>
+              <div class="line" style="--pc:var(--p2)">Neuro<b>$980</b></div>
+              <div class="line" style="--pc:var(--p1)">evil<b>$640</b></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="give">
+              <h3>Что решила партия</h3>
+              <div class="line">Сделок завершено<b>9</b></div>
+              <div class="line">Аукционов разыграно<b>2</b></div>
+              <div class="line">Домов построено<b>3</b></div>
+              <div class="line">Банкротств<b>0</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="btnrow">
+          <button class="hero" type="button" id="over-rematch" data-od-id="over-rematch">Реванш</button>
+          <button class="secondary" type="button" data-goto="main" data-od-id="over-close">К экрану партии</button>
+          <span class="hint">реванш возвращает раунд 1 и те же места</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ================= диалоги: подтверждение и сообщение ================= -->
+<div class="dlg-layer" id="dlg-layer" data-od-id="dialog-layer">
+  <div class="dlg" id="dlg-confirm" role="dialog" aria-modal="true" aria-labelledby="dlg-confirm-title">
+    <h3 id="dlg-confirm-title">Подтверждение</h3>
+    <p id="dlg-confirm-text">Перезапустить партию? Журнал и счёт событий будут очищены.</p>
+    <div class="dacts">
+      <button class="secondary" type="button" id="dlg-no" data-od-id="dlg-no">Отмена</button>
+      <button class="hero" type="button" id="dlg-yes" data-od-id="dlg-yes">Перезапустить</button>
+    </div>
+  </div>
+  <div class="dlg" id="dlg-message" role="dialog" aria-modal="true" aria-labelledby="dlg-message-title" hidden>
+    <h3 id="dlg-message-title">Сообщение</h3>
+    <p id="dlg-message-text">Текст сообщения.</p>
+    <div class="dacts">
+      <button class="secondary" type="button" id="dlg-msg-ok" data-od-id="dlg-msg-ok">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var body=document.body;
+  var $=function(id){return document.getElementById(id);};
+
+  /* ---------- 1. сворачиваемые подписанные меню ---------- */
+  var foldBtns=document.querySelectorAll("[data-fold]");
+  function syncFold(){
+    var jr=$("panel-journal").classList.contains("folded");
+    var ins=$("panel-inspector").classList.contains("folded");
+    body.classList.toggle("fold-seats",$("dock-seats").classList.contains("folded"));
+    body.classList.toggle("fold-journal",jr);
+    body.classList.toggle("fold-inspector",ins);
+    body.classList.toggle("fold-act",$("panel-act").classList.contains("folded"));
+    Array.prototype.forEach.call(foldBtns,function(btn){
+      var p=$(btn.getAttribute("data-fold"));
+      btn.setAttribute("aria-expanded",p.classList.contains("folded")?"false":"true");
+    });
+  }
+  Array.prototype.forEach.call(foldBtns,function(btn){
+    btn.addEventListener("click",function(){foldPanel(btn.getAttribute("data-fold"));});
+  });
+  $("ins-close").addEventListener("click",function(){
+    foldPanel("panel-inspector");
+    toast("инспектор","Слово «Клетка» открывает снова");
+  });
+
+  /* ---------- 2. зум поля: 80 / 100 / 125 / 150 / 200 % ---------- */
+  var STEPS=[80,100,125,150,200];
+  var DEFAULT=1;
+  var board=$("board"),viewport=$("viewport"),zval=$("zoom-value"),zstate=$("zoom-state");
+  var zi=DEFAULT,panX=0,panY=0,dragging=false,sx=0,sy=0,ox=0,oy=0;
+  function limits(){
+    var s=STEPS[zi]/100;
+    return{
+      x:Math.max(0,(board.offsetWidth*s-viewport.clientWidth)/2+48),
+      y:Math.max(0,(board.offsetHeight*s-viewport.clientHeight)/2+48)
+    };
+  }
+  function apply(){
+    var pct=STEPS[zi];
+    var lim=limits();
+    panX=Math.max(-lim.x,Math.min(lim.x,panX));
+    panY=Math.max(-lim.y,Math.min(lim.y,panY));
+    board.style.transform="translate("+panX+"px,"+panY+"px) scale("+(pct/100)+")";
+    zval.textContent=pct+" %";
+    $("zoom-in").disabled=(zi>=STEPS.length-1);
+    $("zoom-out").disabled=(zi<=0);
+    var whole=(zi===DEFAULT);
+    zstate.textContent=whole?"кольцо целиком":"поле можно двигать";
+    viewport.classList.toggle("pannable",!whole);
+  }
+  function setZoom(i,resetPan){
+    zi=Math.max(0,Math.min(STEPS.length-1,i));
+    if(resetPan){panX=0;panY=0;}
+    apply();
+  }
+  $("zoom-in").addEventListener("click",function(){setZoom(zi+1,false);});
+  $("zoom-out").addEventListener("click",function(){setZoom(zi-1,false);});
+  $("zoom-fit").addEventListener("click",function(){setZoom(DEFAULT,true);});
+  viewport.addEventListener("pointerdown",function(e){
+    if(zi===DEFAULT)return;
+    dragging=true;sx=e.clientX;sy=e.clientY;ox=panX;oy=panY;
+    viewport.classList.add("panning");
+    viewport.setPointerCapture(e.pointerId);
+  });
+  viewport.addEventListener("pointermove",function(e){
+    if(!dragging)return;
+    panX=ox+(e.clientX-sx);panY=oy+(e.clientY-sy);apply();
+  });
+  function endDrag(e){
+    if(!dragging)return;
+    dragging=false;viewport.classList.remove("panning");
+    if(e&&e.pointerId!==undefined&&viewport.hasPointerCapture(e.pointerId))viewport.releasePointerCapture(e.pointerId);
+  }
+  viewport.addEventListener("pointerup",endDrag);
+  viewport.addEventListener("pointercancel",endDrag);
+  window.addEventListener("resize",apply);
+
+  /* ---------- 3. журнал: фильтры, счётчик, пустое состояние, экспорт ---------- */
+  var TOTAL=132;
+  var PLAYERS=["все","Хост","Neuro","evil","Mira"];
+  var TYPES=["все","бросок","сделка","залог","тюрьма"];
+  var fPlayer=0,fType=0,fMoney=false;
+  var entries=Array.prototype.slice.call(document.querySelectorAll("#journal-feed .entry"));
+  var emptyState=$("journal-empty");
+  function refreshJournal(){
+    var shown=0;
+    entries.forEach(function(e){
+      var okP=fPlayer===0||e.getAttribute("data-player")===PLAYERS[fPlayer];
+      var okT=fType===0||e.getAttribute("data-type")===TYPES[fType];
+      var okM=!fMoney||e.getAttribute("data-money")==="1";
+      var show=okP&&okT&&okM;
+      e.hidden=!show;
+      if(show)shown++;
+    });
+    emptyState.hidden=shown!==0;
+    $("journal-count").textContent="показано "+shown+" из "+TOTAL;
+  }
+  $("filter-player").addEventListener("click",function(){
+    fPlayer=(fPlayer+1)%PLAYERS.length;
+    this.textContent="игрок: "+PLAYERS[fPlayer];
+    this.setAttribute("aria-pressed",fPlayer!==0?"true":"false");
+    refreshJournal();
+  });
+  $("filter-type").addEventListener("click",function(){
+    fType=(fType+1)%TYPES.length;
+    this.textContent="тип: "+TYPES[fType];
+    this.setAttribute("aria-pressed",fType!==0?"true":"false");
+    refreshJournal();
+  });
+  $("filter-money").addEventListener("click",function(){
+    fMoney=!fMoney;
+    this.setAttribute("aria-pressed",fMoney?"true":"false");
+    refreshJournal();
+  });
+  $("filter-reset").addEventListener("click",function(){
+    fPlayer=0;fType=0;fMoney=false;
+    $("filter-player").textContent="игрок: все";$("filter-player").setAttribute("aria-pressed","false");
+    $("filter-type").textContent="тип: все";$("filter-type").setAttribute("aria-pressed","false");
+    $("filter-money").setAttribute("aria-pressed","false");
+    refreshJournal();
+  });
+  $("journal-export").addEventListener("click",function(){
+    var rows=entries.filter(function(e){return !e.hidden;});
+    if(!rows.length){toast("журнал","Под фильтры нет строк");return;}
+    var lines=rows.map(function(e){
+      return JSON.stringify({
+        round:7,
+        player:e.getAttribute("data-player"),
+        type:e.getAttribute("data-type"),
+        money:e.getAttribute("data-money")==="1",
+        text:e.querySelector(".l2").textContent.trim()
+      });
+    });
+    try{
+      var url=URL.createObjectURL(new Blob([lines.join("\n")+"\n"],{type:"application/x-ndjson"}));
+      var a=document.createElement("a");
+      a.href=url;a.download="neuro-property-trade-r7.jsonl";
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(function(){URL.revokeObjectURL(url);},2000);
+      toast("журнал","Экспорт .jsonl • "+rows.length+" строк");
+    }catch(err){
+      toast("журнал","Экспорт недоступен в окне");
+    }
+  });
+
+  /* ---------- 4. тосты: короткая строка события, детали — в журнале и панно ---------- */
+  var TONES={
+    "ход":"var(--ev-accent)","событие":"var(--ev-money)","клетка":"var(--ev-build)",
+    "журнал":"var(--ev-card)","инспектор":"var(--ev-card)","отказ":"var(--ev-danger)"
+  };
+  var box=$("toasts");
+  function toast(kind,text){
+    var el=document.createElement("div");
+    el.className="toast";
+    el.style.setProperty("--tc",TONES[kind]||"var(--ev-accent)");
+    var k=document.createElement("span");k.className="tk";k.textContent=kind;
+    var t=document.createElement("span");t.className="tt";t.textContent=text;
+    el.appendChild(k);el.appendChild(t);
+    box.appendChild(el);
+    while(box.children.length>3){
+      var drop=box.querySelector(".toast:not([data-pinned])");
+      if(!drop)break;
+      drop.remove();
+    }
+    setTimeout(function(){if(el.parentNode)el.remove();},7000);
+  }
+
+  /* ---------- 5. консоль хода и закрепление клетки ---------- */
+  $("act-roll").addEventListener("click",function(){
+    toast("ход","Хост • сумма броска 8");
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#act-buttons [data-action]"),function(btn){
+    btn.addEventListener("click",function(){
+      var a=this.getAttribute("data-action");
+      if(a==="Купить $100"){toast("клетка","Cedar Ave • покупка $100");}
+      else if(a==="Отказ"){toast("отказ","Отказ от покупки Cedar Ave");}
+      else if(a==="Торг"){toast("ход","Торг по клетке 6");}
+      else{toast("ход","Хост • конец хода");}
+    });
+  });
+  var pinned=$("ins-pin");
+  pinned.addEventListener("click",function(){
+    var on=this.getAttribute("aria-pressed")!=="true";
+    this.setAttribute("aria-pressed",on?"true":"false");
+    document.querySelector('.cell[data-cell="6"]').classList.toggle("sel",on);
+    toast("клетка",on?"Закреплена клетка 6":"Закрепление снято");
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".cell"),function(c){
+    c.addEventListener("click",function(){
+      var i=c.getAttribute("data-cell");
+      if(i==="6"){c.classList.add("sel");return;}
+      toast("клетка","Инспектор держит клетку 6");
+    });
+  });
+
+  /* ---------- 7. переключатель сцен ---------- */
+  var SCENE_NAMES={main:"главный экран",menu:"экраны",settings:"настройки",rules:"правила",
+    admin:"админ",invite:"приглашение",lobby:"лобби",auction:"аукцион",trade:"торг",
+    build:"стройка",over:"конец игры"};
+  function setScene(name){
+    var cl=body.className.replace(/\bscene-[a-z]+\b/g,"").replace(/\s+/g," ").trim();
+    body.className=cl;
+    if(name!=="main"){body.classList.add("scene-"+name);body.classList.add("scene-on");}
+    Array.prototype.forEach.call(document.querySelectorAll(".scene"),function(s){
+      s.classList.toggle("on",s.getAttribute("data-scene")===name);
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".scenebar .sbtn"),function(b){
+      b.setAttribute("aria-pressed",b.getAttribute("data-goto")===name?"true":"false");
+    });
+    $("scene-name").textContent="сцена: "+SCENE_NAMES[name];
+    if(name==="admin")renderDump();
+  }
+  document.addEventListener("click",function(e){
+    var b=e.target&&e.target.closest?e.target.closest("[data-goto]"):null;
+    if(b)setScene(b.getAttribute("data-goto"));
+  });
+  $("btn-screens").addEventListener("click",function(){setScene("menu");});
+  $("btn-settings").addEventListener("click",function(){setScene("settings");});
+  $("btn-rules").addEventListener("click",function(){setScene("rules");});
+  $("btn-restart").addEventListener("click",function(){
+    openConfirm("Перезапустить партию? Журнал и счёт событий будут очищены, места останутся те же.",
+      "Перезапустить","Рестарт партии запрошен");
+  });
+
+  /* ---------- 8. вкладки настроек и админа ---------- */
+  function bindTabGroup(scopeSel,btnAttr,panelAttr){
+    Array.prototype.forEach.call(document.querySelectorAll(scopeSel+" [data-"+btnAttr+"]"),function(b){
+      b.addEventListener("click",function(){
+        var card=b.closest(".card"),v=b.getAttribute("data-"+btnAttr);
+        Array.prototype.forEach.call(card.querySelectorAll("[data-"+btnAttr+"]"),function(x){
+          x.setAttribute("aria-pressed",x.getAttribute("data-"+btnAttr)===v?"true":"false");
+        });
+        Array.prototype.forEach.call(card.querySelectorAll("[data-"+panelAttr+"]"),function(p){
+          p.classList.toggle("on",p.getAttribute("data-"+panelAttr)===v);
+        });
+        renderDump();
+      });
+    });
+  }
+  bindTabGroup('[data-od-id="settings-tabs"]',"tab","panel");
+  bindTabGroup('[data-od-id="admin-tabs"]',"atab","apanel");
+
+  /* ---------- 9. места в настройках: 2–8, живое поле и рестарт ---------- */
+  var SEATS=[
+    {n:"Хост",c:"--p0",t:"Цилиндр",tk:"tok-top_hat",d:"LOCAL",ch:"—"},
+    {n:"Neuro",c:"--p2",t:"Кот",tk:"tok-cat",d:"SDK",ch:"—"},
+    {n:"evil",c:"--p1",t:"Корабль",tk:"tok-ship",d:"SDK",ch:"—"},
+    {n:"Mira",c:"--p3",t:"Гоночная",tk:"tok-race_car",d:"ИИ",ch:"Магнат"}
+  ];
+  var TOKENS=["Цилиндр","Кот","Корабль","Гоночная","Собака","Сапог","Утюг","Тачка"];
+  var TOK_IDS=["tok-top_hat","tok-cat","tok-ship","tok-race_car","tok-dog","tok-boot","tok-iron","tok-wheelbarrow"];
+  var COLORS=["--p0","--p1","--p2","--p3","--p4","--p5","--p6","--p7"];
+  var COLOR_NAMES={"--p0":"розовый","--p1":"малиновый","--p2":"голубой","--p3":"зелёный",
+    "--p4":"янтарный","--p5":"сиреневый","--p6":"охра","--p7":"индиго"};
+  var DRIVERS=["LOCAL","SDK","ИИ"];
+  function opts(list,cur){
+    return list.map(function(v){
+      return '<option'+(v===cur?" selected":"")+'>'+v+'</option>';
+    }).join("");
+  }
+  function renderPlayers(){
+    var box=$("players-table");
+    box.innerHTML=SEATS.map(function(s,i){
+      return '<div class="pcell" data-od-id="seat-setting-'+i+'" style="--pc:var('+s.c+')">'+
+        '<div class="ph"><span class="sw2"></span>'+
+        '<svg class="tok sm" data-od-id="token-setting-'+i+'" role="img" aria-label="фишка места"><use href="#'+s.tk+'"></use></svg>'+
+        '<span class="pn">место '+(i+1)+'</span>'+
+        '<span class="pc2">'+(i===0?"хост локально":"драйвер "+s.d)+'</span></div>'+
+        '<input type="text" value="'+s.n+'" data-seat="'+i+'" data-f="n" aria-label="имя места '+(i+1)+'">'+
+        '<div class="row2"><select data-seat="'+i+'" data-f="c" aria-label="цвет места '+(i+1)+'">'+
+        COLORS.map(function(c){return '<option value="'+c+'"'+(c===s.c?" selected":"")+'>цвет '+
+          COLOR_NAMES[c]+'</option>';}).join("")+'</select>'+
+        '<select data-seat="'+i+'" data-f="t" aria-label="фишка места '+(i+1)+'">'+opts(TOKENS,s.t)+'</select></div>'+
+        '<div class="row2"><select data-seat="'+i+'" data-f="d" aria-label="драйвер места '+(i+1)+'">'+opts(DRIVERS,s.d)+'</select>'+
+        '<input type="text" value="'+s.ch+'" data-seat="'+i+'" data-f="ch" aria-label="характер места '+(i+1)+'"></div>'+
+        '<div style="display:flex;align-items:center;gap:8px"><span class="tag live">живьём</span>'+
+        '<span class="tag restart">рестарт</span></div></div>';
+    }).join("");
+    $("settings-caption").textContent="мест "+SEATS.length+" из 8";
+    Array.prototype.forEach.call(box.querySelectorAll("[data-seat]"),function(el){
+      el.addEventListener("change",function(){
+        var i=+el.getAttribute("data-seat"),f=el.getAttribute("data-f");
+        var v=el.value;
+        SEATS[i][f]=v;
+        if(f==="c")renderPlayers();
+      });
+    });
+  }
+  $("seat-add").addEventListener("click",function(){
+    if(SEATS.length>=8){toast("настройки","Больше восьми мест не создать");return;}
+    var i=SEATS.length;
+    SEATS.push({n:"Место "+(i+1),c:COLORS[i],t:TOKENS[i],tk:TOK_IDS[i],d:"SDK",ch:"—"});
+    renderPlayers();renderRules();
+    toast("настройки","Добавлено место "+(i+1)+" — состав меняется с рестарта");
+  });
+  $("seat-del").addEventListener("click",function(){
+    if(SEATS.length<=2){toast("настройки","Меньше двух мест оставить нельзя");return;}
+    SEATS.pop();renderPlayers();renderRules();
+    toast("настройки","Удалено последнее место — состав меняется с рестарта");
+  });
+
+  /* ---------- 10. переключатели и поля ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll(".sw"),function(b){
+    b.addEventListener("click",function(){
+      var on=b.getAttribute("aria-checked")!=="true";
+      b.setAttribute("aria-checked",on?"true":"false");
+      var w=b.textContent;
+      b.textContent=(w.indexOf("включ")===0)?w.replace("включ","выключ"):w.replace("выключ","включ");
+      renderRules();
+    });
+  });
+  $("card-settings").addEventListener("input",renderRules);
+  $("card-settings").addEventListener("change",renderRules);
+  var KEYS=[["Пробел","бросок кубиков"],["Enter","конец хода"],["B","купить клетку"],["X","отказ от покупки"],
+    ["T","предложить сделку"],["S","залог и стройка"],["M","звук"],["L","журнал событий"],
+    ["Плюс","приблизить поле"],["Минус","отдалить поле"],["Home","показать поле целиком"],
+    ["Esc","закрыть окно"]];
+  $("keys-list").innerHTML=KEYS.map(function(k){
+    return '<div class="fld"><span class="lb">'+k[1]+'</span><span class="keycap">'+k[0]+'</span>'+
+      '<span class="tag live">живьём</span></div>';
+  }).join("");
+
+  /* ---------- 11. правила собираются из настроек ---------- */
+  function v(id,def){var e=$(id);return e&&e.value!==""?e.value:def;}
+  function sw(key){
+    var b=document.querySelector('.sw[data-set="'+key+'"]');
+    return b?(b.getAttribute("aria-checked")==="true"?"включено":"выключено"):"—";
+  }
+  function renderRules(){
+    var lines=[
+      ["Мест за столом",String(SEATS.length)],
+      ["Стартовый капитал","$"+v("set-cash","1500")],
+      ["Число клеток на доске",v("set-cells","40")],
+      ["Бонус за проход Start","$"+v("set-go","200")],
+      ["Лимит раундов",v("set-rounds","40")],
+      ["Аукцион в партии",sw("auction")],
+      ["Налог с банка парковки",v("set-banktax","10")+" %"],
+      ["Штраф за тюрьму","$"+v("set-jailfine","50")],
+      ["Двойная аренда при полном наборе",sw("doublerent")],
+      ["Карт в колоде шанс",v("set-chance","32")],
+      ["Карт в колоде казна",v("set-chest","32")],
+      ["Банкротство при долге",sw("bankrupt")],
+      ["Свободный ход после аукциона",sw("afterauction")],
+      ["Таймер хода",v("set-turntimer","30")+" с"],
+      ["Таймер аукциона",v("set-auctiontimer","20")+" с"],
+      ["При тайм-ауте",v("set-timeout","Автопас на аукционе")],
+      ["Пауза между ходами",v("set-gap","2")+" с"],
+      ["Подтверждение хода",sw("confirmroll")],
+      ["Анимации",sw("anim")],
+      ["Журнал событий",sw("log")],
+      ["Звук",sw("sound")],
+      ["Подсветка владельца",sw("ownerhl")],
+      ["Показывать тосты",sw("toasts")],
+      ["Язык интерфейса",v("set-lang","Русский")],
+      ["RNG-сид",v("set-seed","neuro-7")]
+    ];
+    $("rules-list").innerHTML=lines.map(function(l){
+      return '<div><span>'+l[0]+'</span><b>'+l[1]+'</b></div>';
+    }).join("");
+  }
+
+  /* ---------- 12. приглашение ---------- */
+  function renderInvites(){
+    $("invite-list").innerHTML=SEATS.map(function(s,i){
+      return '<div class="inv" data-od-id="invite-row-'+i+'" style="--pc:var('+s.c+')">'+
+        '<span class="who">'+s.n+'</span>'+
+        '<code>npt.local/j/7f2a-'+(i+1)+'xq</code>'+
+        '<button class="secondary" type="button" data-copy="'+(i+1)+'">Копировать</button></div>';
+    }).join("");
+    Array.prototype.forEach.call($("invite-list").querySelectorAll("[data-copy]"),function(b){
+      b.addEventListener("click",function(){
+        toast("приглашение","Ссылка для места "+(b.getAttribute("data-copy"))+" скопирована");
+      });
+    });
+  }
+
+  /* ---------- 13. лобби: четыре состояния ---------- */
+  var LOBBY={
+    wait:{t:"Подключаемся к партии…",c:"wait",dots:1,
+      x:"Ждём ответа ведущего. Партия начнётся, когда за столом будет не меньше двух мест."},
+    ok:{t:"Вы в игре!",c:"ok",dots:3,
+      x:"Место Хост, раунд 7, ход ваш. Панно и поле показаны на главном экране."},
+    fail:{t:"Не удалось подключиться",c:"bad",dots:0,
+      x:"Ссылка уже занята другим игроком или истекла. Попросите новую у ведущего."},
+    nolink:{t:"Нет приглашения",c:"",dots:0,
+      x:"Чтобы сесть за стол, нужна ссылка от ведущего партии. Без неё партия не начнётся."}
+  };
+  function renderLobby(key){
+    var s=LOBBY[key],card=$("lobby-card");
+    card.className="statuscard"+(s.c?" "+s.c:"");
+    $("lobby-title").textContent=s.t;
+    $("lobby-text").textContent=s.x;
+    $("lobby-dots").innerHTML=[0,1,2].map(function(i){
+      return '<i class="'+(i<s.dots?"on":"")+'"></i>';
+    }).join("");
+    $("lobby-acts").innerHTML=key==="wait"
+      ? '<button class="secondary" type="button" data-lobby="fail">Отменить подключение</button>'
+      : key==="fail"
+        ? '<button class="secondary" type="button" data-lobby="wait">Повторить</button>'+
+          '<button class="secondary" type="button" data-goto="main">Закрыть</button>'
+        : '<button class="secondary" type="button" data-goto="main">Закрыть</button>';
+    bindLobbyActs();
+  }
+  function bindLobbyActs(){
+    Array.prototype.forEach.call($("lobby-acts").querySelectorAll("[data-lobby]"),function(b){
+      b.addEventListener("click",function(){setLobby(b.getAttribute("data-lobby"));});
+    });
+  }
+  function setLobby(key){
+    Array.prototype.forEach.call(document.querySelectorAll("#lobby-states [data-lobby]"),function(b){
+      b.setAttribute("aria-pressed",b.getAttribute("data-lobby")===key?"true":"false");
+    });
+    renderLobby(key);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#lobby-states [data-lobby]"),function(b){
+    b.addEventListener("click",function(){setLobby(b.getAttribute("data-lobby"));});
+  });
+
+  /* ---------- 14. аукцион: свой и наблюдение ---------- */
+  function setAuction(mode){
+    Array.prototype.forEach.call(document.querySelectorAll("[data-auc]"),function(b){
+      b.setAttribute("aria-pressed",b.getAttribute("data-auc")===mode?"true":"false");
+    });
+    var own=mode==="own";
+    $("auc-bid-btn").disabled=!own;
+    $("auc-pass").disabled=!own;
+    $("auc-hint").textContent=own?"вы можете поставить ставку и паснуть"
+      :"наблюдение: ход не ваш, ставка и пас недоступны";
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-auc]"),function(b){
+    b.addEventListener("click",function(){setAuction(b.getAttribute("data-auc"));});
+  });
+  $("auc-bid-btn").addEventListener("click",function(){
+    $("auc-bid").textContent="$140";
+    $("auc-leader").textContent="Хост";
+    $("auc-leader").style.color="var(--p0)";
+    this.textContent="Ставка $160";
+    toast("аукцион","Ставка $140 — лидер Хост");
+  });
+  $("auc-pass").addEventListener("click",function(){
+    toast("аукцион","Хост паснул — ставку можно перебить");
+  });
+
+  /* ---------- 15. торг и стройка ---------- */
+  $("trade-send").addEventListener("click",function(){
+    toast("торг","Предложение Neuro ушло — ждём ответа");
+  });
+  $("trade-accept").addEventListener("click",function(){
+    $("trade-note").textContent="Сделка завершена: 11 Oak Street переходит Хосту за $150";
+    toast("торг","Сделка с evil завершена");
+  });
+  $("trade-decline").addEventListener("click",function(){
+    $("trade-note").textContent="Предложение отклонено, клетки не менялись";
+    toast("торг","Предложение evil отклонено");
+  });
+  $("build-add").addEventListener("click",function(){
+    toast("клетка","Строим дом на 8 Elm Ave — $160");
+  });
+  $("build-sell").addEventListener("click",function(){
+    toast("клетка","Продаём дом на 8 Elm Ave — возврат $80");
+  });
+  $("build-mort").addEventListener("click",function(){
+    toast("клетка","8 Elm Ave уходит в залог");
+  });
+  $("build-unmort").addEventListener("click",function(){
+    toast("клетка","Выкуп залога 8 Elm Ave — $80");
+  });
+  $("over-rematch").addEventListener("click",function(){
+    openConfirm("Начать реванш? Раунд вернётся к 1, деньги мест — к стартовому капиталу.",
+      "Начать реванш","Реванш запрошен");
+  });
+
+  /* ---------- 16. админ: дамп, события, правки ---------- */
+  var STATE=[
+    ["раунд","7 из 40"],["банк парковки","$240"],["чей ход","Хост — место 0"],
+    ["фаза","Начало хода"],["последний бросок","5 и 3, сумма 8"],
+    ["Хост","$1215, клетка 6 Cedar Ave, владений 2, домов 0"],
+    ["Neuro","$980, клетка 24 Harbor Drive, владений 3, домов 1"],
+    ["evil","$640, клетка 10 Jail, владений 1, залогов 1"],
+    ["Mira","$1500, клетка 33 Chest, владений 2, залогов 1"],
+    ["владений всего","8 из 40 клеток"],["событий в журнале","132"],
+    ["аукцион","не начат, лот в очереди 31 Garden Grove"],["таймер хода","30 с, при тайм-ауте автопас"]
+  ];
+  function renderDump(){
+    $("dump-text").textContent=STATE.map(function(r){return r[0]+": "+r[1];}).join("\n");
+    $("dump-table").innerHTML=STATE.map(function(r){
+      return "<div>"+r[0]+"</div><div>"+r[1]+"</div>";
+    }).join("");
+  }
+  $("dump-mode").addEventListener("click",function(){
+    var toTable=this.getAttribute("aria-pressed")!=="true";
+    this.setAttribute("aria-pressed",toTable?"true":"false");
+    this.textContent=toTable?"Показать строкой":"Показать таблицей";
+    $("dump-text").hidden=toTable;
+    $("dump-table").hidden=!toTable;
+  });
+  $("dump-copy").addEventListener("click",function(){
+    toast("админ","Дамп из "+STATE.length+" строк скопирован");
+  });
+  var AEV=[
+    {t:"бросок",who:"Mira",m:"бросает 4 и 4",k:"money"},
+    {t:"деньги",who:"Mira",m:"продаёт дом с клетки 27 Crest Square, получает $70",k:"money"},
+    {t:"залог",who:"evil",m:"закладывает клетку 11 Oak Street",k:"build"},
+    {t:"тюрьма",who:"evil",m:"попадает в тюрьму, попытка 2",k:"danger"},
+    {t:"бросок",who:"Хост",m:"бросает 5 и 3, сумма 8",k:"money"},
+    {t:"деньги",who:"Хост",m:"остаётся на клетке 6 Cedar Ave, аукцион не разыгран",k:"money"}
+  ];
+  function renderAEvents(){
+    var f=$("adm-filter").value,rows=AEV.filter(function(e){return f==="все"||e.t===f;});
+    $("adm-feed").innerHTML=rows.map(function(e){
+      return '<div class="evt" style="--tc:var(--ev-'+e.k+')"><span class="et">'+e.t+'</span>'+
+        '<span class="em">'+e.who+' — '+e.m+'</span><span class="ew">раунд 7</span>'+
+        '<button class="secondary" type="button" data-msg="1" style="height:32px;padding:0 12px">Показать</button></div>';
+    }).join("");
+    $("adm-count").textContent="показано "+rows.length+" из 132";
+    Array.prototype.forEach.call($("adm-feed").querySelectorAll("[data-msg]"),function(b){
+      b.addEventListener("click",function(){
+        var row=b.closest(".evt");
+        openMessage(row.querySelector(".et").textContent+" — "+row.querySelector(".em").textContent);
+      });
+    });
+  }
+  $("adm-filter").addEventListener("change",renderAEvents);
+  $("adm-export").addEventListener("click",function(){
+    toast("админ","Экспорт .jsonl — строк ленты: "+AEV.length);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-adm]"),function(b){
+    b.addEventListener("click",function(){
+      var a=this.getAttribute("data-adm");
+      if(a==="Сброс away"){
+        openConfirm("Сбросить место evil за долг? Клетки перейдут в банк, место вернётся в лобби.",
+          "Сбросить место","Сброс места подтверждён");
+        return;
+      }
+      toast("админ",a+" — выполнено, строка добавлена в ленту");
+    });
+  });
+  $("adm-restart").addEventListener("click",function(){
+    openConfirm("Пересобрать партию тем же составом? Раунд вернётся к 1.",
+      "Пересобрать","Пересборка партии запрошена");
+  });
+  ["edit-money-who","edit-tp-who","edit-cell-who","edit-order-who"].forEach(function(id){
+    var s=$(id);
+    if(s)s.innerHTML=SEATS.map(function(x){return "<option>"+x.n+"</option>";}).join("");
+  });
+
+  /* ---------- 17. диалоги ---------- */
+  var dlgYes=null;
+  function openConfirm(text,yesLabel,after){
+    $("dlg-confirm-text").textContent=text;
+    $("dlg-yes").textContent=yesLabel;
+    $("dlg-confirm").hidden=false;$("dlg-message").hidden=true;
+    body.classList.add("dlg-on");
+    dlgYes=function(){if(after)toast("партия",after);};
+    $("dlg-yes").focus();
+  }
+  function openMessage(text){
+    $("dlg-message-text").textContent=text;
+    $("dlg-confirm").hidden=true;$("dlg-message").hidden=false;
+    body.classList.add("dlg-on");
+    $("dlg-msg-ok").focus();
+  }
+  function closeDlg(){body.classList.remove("dlg-on");dlgYes=null;}
+  $("dlg-no").addEventListener("click",closeDlg);
+  $("dlg-msg-ok").addEventListener("click",closeDlg);
+  $("dlg-yes").addEventListener("click",function(){var f=dlgYes;closeDlg();if(f)f();});
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Escape")return;
+    if(body.classList.contains("dlg-on"))closeDlg();
+    else if(body.classList.contains("scene-on"))setScene("main");
+  });
+  /* ---------- 18. арт доски: иконки типов, полоса владельца, дома ---------- */
+  var ART_TYPE={0:"go",2:"community",4:"tax",5:"railroad",7:"chance",10:"jail",12:"utility",
+    15:"railroad",17:"community",20:"free_parking",22:"chance",25:"railroad",28:"utility",
+    30:"go_to_jail",33:"community",35:"railroad",36:"chance",38:"tax"};
+  var ART_CAP={community:"казна",chance:"шанс",tax:"налог",railroad:"станция",utility:"услуга"};
+  var ART_OWN={3:"Хост",6:"Хост",8:"Neuro",9:"Neuro",11:"evil",24:"Neuro",26:"Mira",27:"Mira",37:"Neuro"};
+  var ART_HOUSES={8:2,27:1};
+  function svgIcon(id,cls,label){
+    return '<svg class="'+cls+'"'+(label?' role="img" aria-label="'+label+'"':' aria-hidden="true"')+
+      '><use href="#'+id+'"></use></svg>';
+  }
+  function paintBoard(){
+    Array.prototype.forEach.call(document.querySelectorAll("#ring .cell"),function(c){
+      var i=+c.getAttribute("data-cell");
+      Array.prototype.slice.call(c.children).forEach(function(k){
+        if(k.className==="pt"||k.className==="hs"||k.className==="cap")k.remove();
+      });
+      var type=ART_TYPE[i];
+      if(type){
+        var corner=c.classList.contains("corner");
+        if(corner){
+          var ico=document.createElement("span");
+          ico.className="cico";
+          ico.innerHTML=svgIcon("ic-"+type,"ti",null);
+          c.insertBefore(ico,c.querySelector(".nm"));
+        }else{
+          var chip=document.createElement("span");
+          chip.className="tchip";
+          chip.innerHTML=svgIcon("ic-"+type,"ti",null)+
+            '<span class="cap">'+(ART_CAP[type]||"")+'</span>';
+          c.appendChild(chip);
+        }
+      }
+      var owner=ART_OWN[i];
+      if(owner){
+        var strip=document.createElement("div");
+        strip.className="own";
+        strip.setAttribute("data-od-id","cell-owner-"+i);
+        var houses=ART_HOUSES[i]||0;
+        var mark="";
+        if(houses>0){
+          var hx=houses>=5?"ic-hotel":"ic-house";
+          for(var k=0;k<Math.min(houses,5);k++)mark+=svgIcon(hx,"oh",null);
+        }
+        strip.innerHTML='<span class="onm">'+owner+'</span>'+mark;
+        c.appendChild(strip);
+      }
+    });
+  }
+  /* ---------- 19. горячие клавиши из вкладки «Управление» ---------- */
+  function typing(e){
+    var t=e.target&&e.target.tagName;
+    return t==="INPUT"||t==="SELECT"||t==="TEXTAREA";
+  }
+  document.addEventListener("keydown",function(e){
+    if(typing(e)||e.ctrlKey||e.metaKey)return;
+    var k=e.key;
+    if(k==="Home"){setZoom(DEFAULT,true);return;}
+    if(k==="+"||k==="="){setZoom(zi+1,false);e.preventDefault();return;}
+    if(k==="-"){setZoom(zi-1,false);return;}
+    if(body.classList.contains("scene-on")||body.classList.contains("dlg-on"))return;
+    if(k===" "){e.preventDefault();$("act-roll").click();return;}
+    if(k==="Enter"){e.preventDefault();clickAction("Конец хода");return;}
+    if(k==="B"||k==="X"||k==="T"||k==="S"||k==="L"||k==="M"){
+      if(k==="S"){setScene("build");return;}
+      if(k==="L"){$("panel-journal").classList.toggle("folded");syncFold();return;}
+      if(k==="M"){var b=document.querySelector('.sw[data-set="sound"]');if(b)b.click();return;}
+      e.preventDefault();
+      clickAction(k==="B"?"Купить $100":k==="X"?"Отказ":"Торг");
+    }
+  });
+  function clickAction(a){
+    var btn=document.querySelector('#act-buttons [data-action="'+a+'"]');
+    if(btn)btn.click();
+  }
+
+  /* ---------- 20. анимации: общий выключатель и планировщик ---------- */
+  var ANIM=true;
+  function setAnim(on){ANIM=on;body.classList.toggle("anim-off",!on);}
+  function animOn(){return ANIM&&!body.classList.contains("anim-off");}
+  function dur(ms){return animOn()?ms:1;}
+  function later(fn,ms){return setTimeout(fn,dur(ms));}
+  var demoTimers=[];
+  function dstep(fn,ms){
+    var id=setTimeout(function(){var i=demoTimers.indexOf(id);if(i>=0)demoTimers.splice(i,1);fn();},dur(ms));
+    demoTimers.push(id);return id;
+  }
+  function clearDemo(){demoTimers.forEach(function(t){clearTimeout(t);});demoTimers=[];}
+
+  /* ---------- 21. панели: сворачивание и разворот с анимацией ---------- */
+  function foldPanel(id,done){
+    var p=$(id),folded=p.classList.contains("folded");
+    if(folded){
+      p.classList.remove("folded","closing","opening");
+      syncFold();
+      if(animOn()){
+        p.classList.add("opening");
+        requestAnimationFrame(function(){requestAnimationFrame(function(){p.classList.remove("opening");});});
+      }
+      if(done)done();
+      return;
+    }
+    if(!animOn()){p.classList.add("folded");syncFold();if(done)done();return;}
+    p.classList.add("closing");
+    setTimeout(function(){
+      p.classList.remove("closing");
+      p.classList.add("folded");
+      syncFold();
+      if(done)done();
+    },dur(220));
+  }
+
+  /* ---------- 22. полоса хода, деньги, журнал ---------- */
+  function moveTurnBar(name){
+    var list=document.querySelector(".seats-list"),bar=$("turnbar"),seat=null;
+    Array.prototype.forEach.call(list.querySelectorAll(".seat"),function(s){
+      var nm=s.querySelector(".nm");
+      if(nm&&nm.textContent===name)seat=s;
+      s.classList.remove("active");
+    });
+    if(!seat)return;
+    seat.classList.add("active");
+    bar.style.height=seat.offsetHeight+"px";
+    bar.style.top=seat.offsetTop+"px";
+    $("turn-who").textContent="Ход: "+name;
+  }
+  var CASH={};
+  function bindMoney(){
+    ["seat-host","seat-neuro","seat-evil","seat-mira","player-row-host","player-row-neuro",
+     "player-row-evil","player-row-mira"].forEach(function(k){
+      var el=document.querySelector('[data-od-id="'+k+'"] .cash');
+      var row=document.querySelector('[data-od-id="'+k+'"] .nm');
+      if(!el||!row)return;
+      (CASH[row.textContent.trim()]=CASH[row.textContent.trim()]||[]).push(el);
+    });
+  }
+  function flash(el){
+    el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");
+    setTimeout(function(){el.classList.remove("flash");},dur(760));
+  }
+  function tweenMoney(el,from,to,prefix){
+    prefix=prefix||"$";
+    el.classList.remove("flash");void el.offsetWidth;el.classList.add("flash");
+    setTimeout(function(){el.classList.remove("flash");},dur(760));
+    if(!animOn()){el.textContent=prefix+to;return;}
+    var t0=performance.now(),d=dur(620);
+    function step(now){
+      var k=Math.min(1,(now-t0)/d),e=1-Math.pow(1-k,3);
+      el.textContent=prefix+Math.round(from+(to-from)*e);
+      if(k<1)requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  function setMoney(name,val){
+    (CASH[name]||[]).forEach(function(el){
+      var cur=parseInt(String(el.textContent).replace(/[^0-9-]/g,""),10)||0;
+      tweenMoney(el,cur,val);
+    });
+  }
+  function setBank(val){
+    var el=$("bank-value"),cur=parseInt(String(el.textContent).replace(/[^0-9-]/g,""),10)||0;
+    tweenMoney(el,cur,val);
+  }
+  function pushJournal(e){
+    var feed=$("journal-feed"),empty=$("journal-empty");
+    var d=document.createElement("div");
+    d.className="entry enter";
+    d.setAttribute("data-player",e.who);
+    d.setAttribute("data-type",e.type);
+    d.setAttribute("data-money",e.money?"1":"0");
+    d.style.setProperty("--pc",e.color);
+    d.innerHTML='<div class="l1"><b>'+e.who+'</b><span class="cap">'+e.type+'</span>'+
+      '<span class="when">раунд 7</span></div>'+
+      '<div class="l2 t-para">'+e.text+'</div>'+
+      (e.extra?'<div class="l3 t-para">'+e.extra+'</div>':'');
+    feed.insertBefore(d,empty);
+    entries.unshift(d);
+    while(entries.length>16){var last=entries.pop();if(last.parentNode)last.remove();}
+    requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.remove("enter");});});
+    refreshJournal();
+  }
+
+  /* ---------- 23. слой эффектов над доской ---------- */
+  var fx=$("fx");
+  function cellEl(n){return document.querySelector('.cell[data-cell="'+n+'"]');}
+  function cellXY(n){
+    var c=cellEl(n);
+    if(!c)return {x:0,y:0};
+    var vr=viewport.getBoundingClientRect(),cr=c.getBoundingClientRect();
+    return {x:cr.left+cr.width/2-vr.left,y:cr.top+cr.height/2-vr.top};
+  }
+  function fxPut(cls,html,pos,color){
+    var el=document.createElement("div");
+    el.className="fxbox "+cls;
+    el.innerHTML=html;
+    el.style.left=pos.x+"px";el.style.top=pos.y+"px";
+    if(color)el.style.setProperty("--lc",color);
+    fx.appendChild(el);
+    return el;
+  }
+  function fxLabel(n,text,color,life){
+    var p=cellXY(n);p.y-=20;
+    var el=fxPut("fxlabel",text,p,color);
+    setTimeout(function(){if(el.parentNode)el.remove();},dur(life||1600));
+  }
+  function fxRing(n,color){
+    var el=fxPut("fxring","",cellXY(n),color);
+    el.style.setProperty("--lc",color);
+    el.style.borderColor=color;
+    setTimeout(function(){if(el.parentNode)el.remove();},dur(760));
+  }
+  function fxCoin(from,to,text,color){
+    var el=fxPut("fxcoin",text,cellXY(from));
+    if(color){el.style.background=color;el.style.color="#0b0613";}
+    var b=cellXY(to);
+    el.style.transition="left "+dur(340)+"ms var(--ease),top "+dur(340)+"ms var(--ease)";
+    requestAnimationFrame(function(){el.style.left=b.x+"px";el.style.top=(b.y-10)+"px";});
+    setTimeout(function(){if(el.parentNode)el.remove();},dur(900));
+  }
+  function fxCoinOut(n,text,color){
+    var p=cellXY(n);
+    var el=document.createElement("div");
+    el.className="fxbox fxcoin";
+    el.innerHTML=text;
+    if(color){el.style.background=color;el.style.color="#0b0613";}
+    el.style.left=p.x+"px";el.style.top=p.y+"px";
+    el.style.transition="top "+dur(420)+"ms var(--ease)";
+    fx.appendChild(el);
+    requestAnimationFrame(function(){el.style.top="-40px";});
+    setTimeout(function(){if(el.parentNode)el.remove();},dur(950));
+  }
+  function fxHammer(n){
+    var el=fxPut("fxhammer",
+      '<svg viewBox="0 0 48 48" width="46" height="46" fill="none" stroke="#f2f6fa" stroke-width="3">'+
+      '<path d="M24 10 V38" stroke-linecap="round"/>'+
+      '<path d="M10 14 H38" stroke-linecap="round"/>'+
+      '<path d="M10 14 V22 M38 14 V22" stroke-linecap="round"/></svg>',cellXY(n));
+    setTimeout(function(){if(el.parentNode)el.remove();},dur(1500));
+  }
+  function fxCard(n,text){
+    var p=cellXY(n);p.y-=24;
+    var el=fxPut("fxcard",text,p);
+    setTimeout(function(){if(el.parentNode)el.remove();},dur(2900));
+  }
+  function fxFlash(n,color){
+    var c=cellEl(n);if(!c)return;
+    c.style.setProperty("--fxc",color||"var(--accent)");
+    c.classList.remove("fx-flash");void c.offsetWidth;c.classList.add("fx-flash");
+    setTimeout(function(){c.classList.remove("fx-flash");},dur(700));
+  }
+  function fxBlink(n,times){
+    var c=cellEl(n);if(!c)return;
+    c.classList.remove("fx-blink");void c.offsetWidth;c.classList.add("fx-blink");
+    setTimeout(function(){c.classList.remove("fx-blink");},dur(1450));
+  }
+  function fxSweep(from,count,step){
+    for(var k=0;k<count;k++){
+      var c=cellEl((from+k)%40);
+      if(!c)continue;
+      c.style.animationDelay=(animOn()?k*(step||22):0)+"ms";
+      c.classList.remove("fx-sweep");void c.offsetWidth;c.classList.add("fx-sweep");
+      (function(el){
+        setTimeout(function(){el.classList.remove("fx-sweep");el.style.animationDelay="";},dur(700+(count*step)));
+      })(c);
+    }
+  }
+  function setCellOwner(n,name,color,houses){
+    var c=cellEl(n);if(!c)return;
+    var strip=c.querySelector(".own");
+    if(!strip){
+      strip=document.createElement("div");
+      strip.className="own";
+      c.appendChild(strip);
+    }
+    var mark="";
+    if(houses>0){
+      var hx=houses>=5?"ic-hotel":"ic-house";
+      for(var k=0;k<Math.min(houses,5);k++)mark+=svgIcon(hx,"oh",null);
+    }
+    strip.style.setProperty("--pc",color);
+    strip.innerHTML='<span class="onm">'+name+'</span>'+mark;
+  }
+  function dropCellOwner(n){
+    var c=cellEl(n);if(!c)return;
+    var strip=c.querySelector(".own");
+    if(strip)strip.remove();
+    c.style.removeProperty("--pc");
+    c.classList.remove("owned","mortgaged");
+  }
+  function makeWalker(n,tok,color){
+    var p=cellXY(n);
+    var el=document.createElement("div");
+    el.className="fxwalker";
+    el.style.setProperty("--pc",color);
+    el.style.left=p.x+"px";el.style.top=p.y+"px";
+    el.innerHTML='<svg class="tok" aria-hidden="true"><use href="#'+tok+'"></use></svg>';
+    fx.appendChild(el);
+    return el;
+  }
+  function moveWalker(el,n){
+    var p=cellXY(n);
+    el.style.left=p.x+"px";el.style.top=p.y+"px";
+  }
+  function walkStep(el,n,done){
+    moveWalker(el,n);
+    setTimeout(done,dur(340));
+  }
+  /* ---------- 24. зона события ---------- */
+  function setEventZone(o){
+    var box=$("ev-box");
+    box.style.setProperty("--pc",o.color||"var(--p3)");
+    $("ev-type").textContent=o.type;
+    $("ev-amount").textContent=o.amount||"";
+    $("ev-amount").style.color=o.amountColor||"var(--money)";
+    $("ev-who").innerHTML="<i></i>"+(o.who||"—");
+    $("ev-tile").textContent=o.tile||"—";
+    $("ev-index").innerHTML=(o.index===undefined||o.index==="")?"":"<b>"+o.index+"</b>";
+    $("ev-chips").innerHTML=(o.chips||[]).map(function(c){
+      return '<span class="flag'+(c[1]?" on":"")+'">'+c[0]+'</span>';
+    }).join("");
+    box.classList.remove("swap");void box.offsetWidth;box.classList.add("swap");
+    setTimeout(function(){box.classList.remove("swap");},dur(560));
+  }
+/* ---------- 25. каталог событий: 25 жестов партии ---------- */
+  var PC={"Хост":"var(--p0)","Neuro":"var(--p2)","evil":"var(--p1)","Mira":"var(--p3)"};
+  var TK={"Хост":"tok-top_hat","Neuro":"tok-cat","evil":"tok-ship","Mira":"tok-race_car"};
+  var MONEY={"Хост":1215,"Neuro":980,"evil":640,"Mira":1500};
+  var BANK=240;
+  function evZone(type,who,tile,index,amount,chips,color,amountColor){
+    setEventZone({type:type,who:who,tile:tile,index:index,amount:amount,chips:chips||[],
+      color:color||PC[who],amountColor:amountColor});
+  }
+  var DEMO=[
+  {word:"старт партии",play:function(d){
+    moveTurnBar("Хост");
+    fxSweep(0,40,16);
+    dstep(function(){
+      evZone("старт партии","Хост","40 клеток",null,"",[["мест 4",1],["банк парковки $240"],["раунд 1"]]);
+      pushJournal({who:"Хост",type:"старт",text:"партия началась: 4 места, 40 клеток",color:PC["Хост"]});
+      d();
+    },dur(900));
+  }},
+  {word:"бросок",play:function(d){
+    var dice=document.querySelectorAll("#roll-box svg.die");
+    Array.prototype.forEach.call(dice,function(x){x.classList.remove("rolling");void x.offsetWidth;x.classList.add("rolling");});
+    $("roll-who").textContent="ходит Хост";
+    dstep(function(){
+      evZone("бросок","Хост","кубики 5 и 3",null,"8",[["сумма 8",1],["ход начинается"]]);
+      pushJournal({who:"Хост",type:"бросок",text:"бросает 5 и 3, сумма 8",color:PC["Хост"]});
+      d();
+    },dur(900));
+  }},
+  {word:"бонус go",play:function(d){
+    fxFlash(0,"var(--ev-money)");
+    fxCoinOut(0,"$200","var(--ev-money)");
+    dstep(function(){
+      MONEY["Хост"]+=200;setMoney("Хост",MONEY["Хост"]);
+      evZone("бонус go","Хост","Start",0,"$200",[["клетка 0",1],["приход денег",1]],"var(--ev-money)");
+      pushJournal({who:"Хост",type:"бонус",text:"проходит Start и получает $200",color:PC["Хост"],money:true,extra:"бонус за клетку 0"});
+      d();
+    },dur(700));
+  }},
+  {word:"ход фишки",play:function(d){
+    var w=makeWalker(0,TK["Хост"],PC["Хост"]),i=0;
+    (function step(){
+      var cur=i;
+      if(cur>6){w.remove();d();return;}
+      walkStep(w,cur,function(){fxRing(cur);step();});
+      i=cur+1;
+    })();
+  }},
+  {word:"приземление",play:function(d){
+    fxRing(6,"var(--accent2)");
+    fxLabel(6,"приземление на 6 Cedar Ave","var(--accent2)");
+    dstep(function(){
+      evZone("приземление","Хост","Cedar Ave",6,"",[["клетка 6",1],["своя клетка"],["цена $100"]]);
+      d();
+    },dur(700));
+  }},
+  {word:"покупка",play:function(d){
+    fxFlash(6,"var(--p0)");
+    dstep(function(){
+      setCellOwner(6,"Хост",PC["Хост"],0);
+      cellEl(6).classList.add("owned");
+      evZone("покупка клетки","Хост","Cedar Ave",6,"$100",[["цена $100",1],["владений 2"]]);
+      pushJournal({who:"Хост",type:"покупка",text:"покупает клетку 6 Cedar Ave за $100",color:PC["Хост"],money:true,extra:"группа lightblue • домов 0"});
+      d();
+    },dur(700));
+  }},
+  {word:"аренда",play:function(d){
+    fxCoin(10,6,"$6");
+    dstep(function(){
+      MONEY["Хост"]+=6;MONEY["evil"]-=6;
+      setMoney("Хост",MONEY["Хост"]);setMoney("evil",MONEY["evil"]);
+      evZone("аренда","Хост","Cedar Ave",6,"$6",[["аренда",1],["платит evil"]],"var(--warn)");
+      pushJournal({who:"evil",type:"аренда",text:"платит $6 аренды за 6 Cedar Ave",color:PC["evil"],money:true,extra:"владелец: Хост"});
+      d();
+    },dur(800));
+  }},
+  {word:"налог",play:function(d){
+    fxCoinOut(4,"$40","var(--danger)");
+    dstep(function(){
+      MONEY["Хост"]-=40;setMoney("Хост",MONEY["Хост"]);
+      BANK+=40;setBank(BANK);
+      evZone("налог","Хост","Tax",4,"$40",[["клетка 4",1],["уходит в банк"]],"var(--danger)");
+      pushJournal({who:"Хост",type:"налог",text:"платит налог $40 за клетку 4 Tax",color:PC["Хост"],money:true,extra:"счёт банка: $280"});
+      d();
+    },dur(800));
+  }},
+  {word:"бесплатная стоянка",play:function(d){
+    fxCoinOut(20,"$30","var(--ev-money)");
+    dstep(function(){
+      BANK+=30;setBank(BANK);
+      evZone("бесплатная стоянка","Хост","Free Parking",20,"$30",[["клетка 20",1],["в банк парковки",1]],"var(--ev-money)");
+      pushJournal({who:"Хост",type:"парковка",text:"остаётся на парковке и получает $30",color:PC["Хост"],money:true,extra:"счёт банка: $310"});
+      d();
+    },dur(800));
+  }},
+  {word:"карта",play:function(d){
+    fxCard(7,"карта шанс: собрать $100");
+    dstep(function(){
+      MONEY["Хост"]+=100;setMoney("Хост",MONEY["Хост"]);
+      evZone("карта шанс","Хост","Fortune",7,"$100",[["колода шанс",1],["приход денег",1]],"var(--ev-money)");
+      pushJournal({who:"Хост",type:"карта",text:"вытягивает карту: собрать $100",color:PC["Хост"],money:true,extra:"колода: шанс"});
+      d();
+    },dur(2100));
+  }},
+  {word:"тюрьма",play:function(d){
+    fxBlink(10,3);
+    fxLabel(10,"evil попадает в тюрьму","var(--danger)");
+    dstep(function(){
+      evZone("тюрьма","evil","Jail",10,"",[["клетка 10",1],["попытка 2"],["владелец карты: Хост"]],"var(--danger)");
+      pushJournal({who:"evil",type:"тюрьма",text:"попадает в тюрьму, попытка 2",color:PC["evil"],extra:"клетка 10 Jail • до выхода 2 хода"});
+      d();
+    },dur(1100));
+  }},
+  {word:"аукцион начался",play:function(d){
+    fxFlash(31,"var(--warn)");
+    fxLabel(31,"лот: 31 Garden Grove","var(--warn)");
+    dstep(function(){
+      evZone("аукцион начался","Хост","Garden Grove",31,"",[["лот в очереди",1],["3 места"],["базовая цена $80"]],"var(--warn)");
+      d();
+    },dur(900));
+  }},
+  {word:"ставка",play:function(d){
+    var steps=[["Mira","$90"],["Neuro","$120"],["Хост","$140"]];
+    var bidEl=document.querySelector('[data-od-id="auction-bid"] .bv');
+    var leadEl=$("auc-leader");
+    var i=0;
+    (function next(){
+      if(i>=steps.length){d();return;}
+      var s=steps[i];
+      if(bidEl){
+        var cur=parseInt(String(bidEl.textContent).replace(/[^0-9]/g,""),10)||0;
+        tweenMoney(bidEl,cur,parseInt(s[1].replace(/\D/g,""),10),"$");
+      }
+      if(leadEl){leadEl.textContent=s[0];leadEl.style.color=PC[s[0]];}
+      fxLabel(31,s[0]+" ставит "+s[1],"var(--accent2)",1200);
+      i++;
+      dstep(next,dur(900));
+    })();
+  }},
+  {word:"пас на аукционе",play:function(d){
+    fxLabel(31,"Mira пас","var(--muted)",1400);
+    dstep(function(){
+      evZone("пас на аукционе","Mira","Garden Grove",31,"",[["пас",1],["вне торгов"],["лидер: Хост"]],"var(--muted)");
+      d();
+    },dur(900));
+  }},
+  {word:"аукцион выигран",play:function(d){
+    fxHammer(31);
+    dstep(function(){
+      setCellOwner(31,"Хост",PC["Хост"],0);
+      cellEl(31).classList.add("owned");
+      MONEY["Хост"]-=140;setMoney("Хост",MONEY["Хост"]);
+      evZone("аукцион выигран","Хост","Garden Grove",31,"$140",[["молоток",1],["группа green"]],"var(--ev-money)");
+      pushJournal({who:"Хост",type:"аукцион",text:"выигрывает аукцион клетки 31 Garden Grove за $140",color:PC["Хост"],money:true,extra:"лидер: Хост • победитель молотка"});
+      d();
+    },dur(900));
+  }},
+  {word:"аукцион не разыгран",play:function(d){
+    var c=cellEl(38);
+    fxLabel(38,"лот не разыгран","var(--muted)",1500);
+    if(c){c.style.animationDelay="0ms";c.classList.remove("fx-mute");void c.offsetWidth;c.classList.add("fx-mute");}
+    dstep(function(){
+      evZone("аукцион не разыгран","Хост","Luxury Tax",38,"",[["ставок не было",1],["клетка свободна"]],"var(--muted)");
+      pushJournal({who:"Хост",type:"аукцион",text:"аукцион клетки 38 не разыгран",color:PC["Хост"],extra:"ставок не поступило"});
+      d();
+    },dur(2100));
+  }},
+  {word:"стройка",play:function(d){
+    var c=cellEl(8);
+    setCellOwner(8,"Neuro",PC["Neuro"],3);
+    c.classList.remove("fx-house");void c.offsetWidth;c.classList.add("fx-house");
+    fxFlash(8,"var(--ev-build)");
+    dstep(function(){
+      evZone("стройка дома","Neuro","Elm Ave",8,"$160",[["домов 2 → 3",1],["группа lightblue"]],"var(--ev-build)");
+      pushJournal({who:"Neuro",type:"стройка",text:"строит дом на клетке 8 Elm Ave за $160",color:PC["Neuro"],money:true,extra:"домов было 2, стало 3"});
+      d();
+    },dur(900));
+  }},
+  {word:"продажа дома",play:function(d){
+    setCellOwner(27,"Mira",PC["Mira"],0);
+    fxCoin(27,33,"$70","var(--ev-money)");
+    dstep(function(){
+      MONEY["Mira"]+=70;setMoney("Mira",MONEY["Mira"]);
+      evZone("продажа дома","Mira","Crest Square",27,"$70",[["дом 1",1],["приход денег",1]],"var(--ev-money)");
+      pushJournal({who:"Mira",type:"сделка",text:"продаёт с клетки 27 Crest Square, получает $70",color:PC["Mira"],money:true,extra:"группа yellow • дом продан • $70"});
+      d();
+    },dur(900));
+  }},
+  {word:"залог",play:function(d){
+    var c=cellEl(11);
+    c.classList.remove("fx-hatch");void c.offsetWidth;c.classList.add("fx-hatch");
+    setCellOwner(11,"evil",PC["evil"],0);
+    dstep(function(){
+      evZone("залог клетки","evil","Oak Street",11,"",[["клетка в залоге",1],["выкуп $40"]],"var(--warn)");
+      pushJournal({who:"evil",type:"залог",text:"закладывает клетку 11 Oak Street",color:PC["evil"],extra:"группа pink • клетка в залоге"});
+      d();
+    },dur(900));
+  }},
+  {word:"выкуп залога",play:function(d){
+    var c=cellEl(26);
+    c.classList.remove("fx-mute","fx-hatch");
+    c.classList.remove("mortgaged");
+    fxCoinOut(26,"$80","var(--ev-money)");
+    dstep(function(){
+      MONEY["Mira"]-=80;setMoney("Mira",MONEY["Mira"]);
+      evZone("выкуп из залога","Mira","Crest Point",26,"$80",[["клетка свободна",1],["аренда снова платится"]],"var(--ev-money)");
+      pushJournal({who:"Mira",type:"выкуп",text:"выкупает из залога клетку 26 Crest Point за $80",color:PC["Mira"],money:true,extra:"группа yellow • залог снят"});
+      d();
+    },dur(900));
+  }},
+  {word:"предложение сделки",play:function(d){
+    fxCard(11,"evil предлагает: 11 Oak Street за 6 Cedar Ave и $150");
+    dstep(function(){
+      evZone("предложение сделки","evil","Oak Street",11,"$150",[["даёт клетку и деньги",1],["ждёт ответа"],["получатель: Хост"]],"var(--ev-accent)");
+      pushJournal({who:"evil",type:"сделка",text:"предлагает обмен: 11 Oak Street на 6 Cedar Ave и $150",color:PC["evil"],extra:"получатель: Хост • ожидает ответа"});
+      d();
+    },dur(2000));
+  }},
+  {word:"сделка завершена",play:function(d){
+    fxCard(6,"сделка принята: клетки меняются местами");
+    dstep(function(){
+      setCellOwner(11,"Хост",PC["Хост"],0);
+      setCellOwner(6,"evil",PC["evil"],0);
+      MONEY["Хост"]-=150;MONEY["evil"]+=150;
+      setMoney("Хост",MONEY["Хост"]);setMoney("evil",MONEY["evil"]);
+      fxCoin(6,11,"$150","var(--ev-money)");
+      dstep(function(){
+        evZone("сделка завершена","Хост","Oak Street",11,"$150",[["11 Oak Street — Хост",1],["6 Cedar Ave — evil",1]],"var(--ev-accent)");
+        pushJournal({who:"Хост",type:"сделка",text:"принимает обмен: получает 11 Oak Street, отдаёт 6 Cedar Ave и $150",color:PC["Хост"],money:true,extra:"сделка завершена • клетки и деньги разошлись"});
+        d();
+      },dur(800));
+    },dur(1900));
+  }},
+  {word:"сделка отклонена",play:function(d){
+    fxCard(24,"Mira отклоняет предложение по 24 Harbor Drive");
+    dstep(function(){
+      evZone("сделка отклонена","Mira","Harbor Drive",24,"",[["отказ",1],["клетки не менялись"]],"var(--danger)");
+      pushJournal({who:"Mira",type:"сделка",text:"отклоняет предложение по клетке 24 Harbor Drive",color:PC["Mira"],extra:"сделка отклонена • состояние не изменилось"});
+      d();
+    },dur(1900));
+  }},
+  {word:"банкротство",play:function(d){
+    fxBlink(11,3);
+    fxLabel(11,"evil — банкротство, клетки в банк","var(--danger)",1800);
+    dstep(function(){
+      dropCellOwner(11);
+      MONEY["evil"]=0;setMoney("evil",0);
+      evZone("банкротство","evil","Jail",10,"",[["долг не погашен",1],["клетки в банк"],["место возвращено в лобби"]],"var(--danger)");
+      pushJournal({who:"evil",type:"банкротство",text:"снимается с доски за долг, клетки уходят в банк",color:PC["evil"],extra:"место возвращено в лобби • партия продолжается"});
+      d();
+    },dur(1300));
+  }},
+  {word:"конец игры",play:function(d){
+    fxSweep(0,40,14);
+    dstep(function(){
+      moveTurnBar("Mira");
+      evZone("игра окончена","Mira","40 клеток",null,"",[["раундов 7 из 40",1],["владений 2"],["банк парковки $310"]],"var(--accent)");
+      pushJournal({who:"Mira",type:"конец",text:"партия окончена, побеждает Mira с $1500",color:PC["Mira"],extra:"раундов сыграно 7 • банкротств 1"});
+      d();
+    },dur(1900));
+  }}
+  ];
+
+  /* ---------- 26. демо-режим ---------- */
+  var demoRunning=false,demoIndex=0;
+  function demoStart(){
+    if(demoRunning)return;
+    demoRunning=true;demoIndex=0;
+    $("demo-start").disabled=true;$("demo-stop").disabled=false;
+    $("demo-start").classList.add("demo-run");
+    $("ev-note").textContent="событие 1 из "+DEMO.length;
+    demoStep();
+  }
+  function demoStep(){
+    if(!demoRunning)return;
+    if(demoIndex>=DEMO.length){demoStop(true);return;}
+    var ev=DEMO[demoIndex];
+    $("ev-note").textContent="событие "+(demoIndex+1)+" из "+DEMO.length+" • "+ev.word;
+    var moved=false;
+    ev.play(function(){
+      if(!demoRunning)return;
+      demoIndex++;
+      if(demoIndex>=DEMO.length){dstep(function(){demoStop(true);},dur(500));return;}
+      $("ev-note").textContent="событие "+(demoIndex+1)+" из "+DEMO.length;
+      dstep(demoStep,dur(420));
+    });
+  }
+  function demoStop(finished){
+    demoRunning=false;clearDemo();
+    $("demo-start").disabled=false;$("demo-stop").disabled=true;
+    $("demo-start").classList.remove("demo-run");
+    $("ev-note").textContent=finished?"демо показано: 25 событий":"демо остановлено";
+    Array.prototype.forEach.call(fx.querySelectorAll(".fxwalker"),function(w){w.remove();});
+  }
+  $("demo-start").addEventListener("click",demoStart);
+  $("demo-stop").addEventListener("click",function(){demoStop(false);});
+
+/* ---------- 6. стартовое состояние ---------- */
+  renderPlayers();
+  renderRules();
+  renderInvites();
+  setLobby("ok");
+  setAuction("own");
+  renderDump();
+  renderAEvents();
+  paintBoard();
+  bindMoney();
+  moveTurnBar("Хост");
+  setAnim(true);
+  var animSw=document.querySelector('.sw[data-set="anim"]');
+  animSw.addEventListener("click",function(){
+    setAnim(this.getAttribute("aria-checked")==="true");
+  });
+  syncFold();
+  setZoom(DEFAULT,true);
+  refreshJournal();
+})();
+</script>
+</body>
+</html>
