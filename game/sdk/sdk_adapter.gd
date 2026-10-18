@@ -213,7 +213,9 @@ func _force_if_needed() -> void:
 	# MULTI-SDK: the window forces on THIS seat's connection
 	_window.conn = conn
 	_window.set_force(
-		float(engine.settings.turn_timer),
+		# 0.0 = invite THIS frame (NPT patch in action_window.register()). The clock below is what
+		# happens when nobody answers: the fallback fires at 1x/2x of the window, measured from now.
+		0.0,
 		decision.get("query", ""),
 		markdown,
 		decision.get("ephemeral_context", true),

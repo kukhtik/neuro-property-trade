@@ -84,6 +84,23 @@ if ! grep -aq "mock: <- force" "$mock_log"; then
 	exit 1
 fi
 
+# --- invite latency: the force must arrive WITH the registration, not one turn clock later ------
+# The vendored ActionWindow used to send the force only after `_force_timeout` (= turn_timer), so a
+# seat was invited to its own turn a whole clock late. The mock stamps the gap between the first
+# command (actions/register) and the first force; anything beyond a few seconds means the invitation
+# is waiting for the clock again.
+latency="$(grep -aoE 'INVITE_LATENCY=[0-9.]+' "$mock_log" | head -1 | cut -d= -f2)"
+if [ -z "$latency" ]; then
+	echo "==> HG-08 FAILED: the mock never recorded an invite latency (no INVITE_LATENCY line)"
+	tail -6 "$mock_log" 2>/dev/null || true
+	exit 1
+fi
+if ! awk -v l="$latency" 'BEGIN { exit !(l < 5.0) }'; then
+	echo "==> HG-08 FAILED: the seat was invited ${latency}s after its actions were registered (want < 5s: the force must go out with the window, not after the turn clock)"
+	exit 1
+fi
+echo "==> HG-08 invite latency ${latency}s (< 5s: the force goes out with the window)"
+
 # --- scenario 2: the archive's seats soak (SDK+AI+AI+LOCAL) ------------------------------------
 # A fresh mock: the first one exits once it answered a client.
 $PY "$mock_win" 0 300 >"$mock2_log" 2>&1 &

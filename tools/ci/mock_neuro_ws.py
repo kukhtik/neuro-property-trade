@@ -113,6 +113,11 @@ def pick_action(actions):
 def serve_one(sock, action_counter):
     """One client connection: the whole exchange. Returns when it ends."""
     handshake(sock)
+    # INVITE LATENCY (HG-08): the game registers the offered actions, then sends the force. The gap
+    # between the two IS the invitation delay the seat feels: it used to be exactly `turn_timer`
+    # (the vendored ActionWindow waited out its force timeout before inviting anybody).
+    first_cmd_t = None
+    first_force_t = None
     send_json(sock, {
         "command": "startup",
         "game": "mock",
@@ -132,7 +137,14 @@ def serve_one(sock, action_counter):
             continue
         command = str(msg.get("command", ""))
         data = msg.get("data", {}) if isinstance(msg.get("data"), dict) else {}
+        if first_cmd_t is None and command != "startup":
+            first_cmd_t = time.time()
         if command == "actions/force":
+            if first_force_t is None:
+                first_force_t = time.time()
+                if first_cmd_t is not None:
+                    log("INVITE_LATENCY=%.3f (%s -> first actions/force)"
+                        % (first_force_t - first_cmd_t, command))
             # the wire key is `action_names` (ActionsForce._get_data); `actions` is only the
             # REGISTER message's key - reading the wrong one made the first version answer
             # nothing and the seat stayed awaiting forever.

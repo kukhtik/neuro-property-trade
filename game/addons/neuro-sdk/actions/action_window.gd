@@ -76,6 +76,17 @@ func register() -> void:
 
 	_state = State.STATE_REGISTERED
 
+	# NPT PATCH (invite now, not after the clock runs out). Upstream waits `_force_timeout` before
+	# sending the force, so a seat was invited to its own turn EXACTLY `turn_timer` seconds late - with
+	# the default 30s clock a Neuro player was asked "your move?" half a minute after the move began,
+	# which the owner could see in the demo. A timeout of 0 now means "force in the frame you register";
+	# what happens if no answer arrives is still owned by the match clock (sdk_adapter's own fallback
+	# at 1x/2x window), not by this timer.
+	if _force_enabled and _force_timeout <= 0.0:
+		_state = State.STATE_FORCED
+		_force_enabled = false
+		_send_force()
+
 func result(execution_result: ExecutionResult) -> ExecutionResult:
 	if _state == State.STATE_BUILDING:
 		push_error("Cannot handle a result before registering.")
@@ -95,7 +106,8 @@ func _validate_frozen() -> bool:
 	return true
 
 func _process(delta: float) -> void:
-	if _state != State.STATE_REGISTERED:
+	# STATE_FORCED keeps ticking: an immediate force (timeout 0 above) must still honour an end timer.
+	if _state != State.STATE_REGISTERED and _state != State.STATE_FORCED:
 		return
 
 	_timer += delta

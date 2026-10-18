@@ -108,7 +108,11 @@ func _build_match() -> void:
 	st.seat_count = 4
 	st.rng_seed = 4242
 	st.round_limit = 8
-	st.turn_timer = 0
+	# A REAL CLOCK, on purpose: with turn_timer = 0 the invite-latency check in HG-08 was VACUOUS -
+	# the vendored window's "force after the timeout" fired immediately too, so the gate could not tell
+	# the fix from the defect (measured: both gave 0.9s). The seat answers every force instantly, so the
+	# clock costs this gate nothing; it only makes a regression visible (~20s late invite).
+	st.turn_timer = 20
 	st.seat_assignments = [
 		{"driver": "sdk:neuro", "name": SDK_NAME},
 		{"driver": "AI", "name": "Bot 2"},
