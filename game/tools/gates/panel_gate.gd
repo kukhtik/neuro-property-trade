@@ -9,7 +9,9 @@ extends Node
 ## why". A frame can be 95 % covered by four nearly-empty cards. So this gate boots the REAL shell,
 ## autostarts a match, and walks the tree for the DEEPEST panels - the ones that actually own text.
 ##
-## Verdict: ==> PANEL PASSED (N panels, 0 empty) / FAILED: <name> <area> px with <k> line(s)
+## Verdict: ==> PANEL-NOT-EMPTY PASSED (N panels, 0 empty) / FAILED: <name> <area> px with <k> line(s)
+## The verdict carries the REGISTRY ID: the runner matches verdicts by `==> <id>`, and a gate whose
+## line says `==> PANEL` is reported as "did not run" while it ran fine (measured 18.10).
 ## Run: godot --headless --path game res://tools/gates/panel_gate.tscn
 
 const MainScript := preload("res://main.gd")
@@ -113,9 +115,9 @@ func _report() -> void:
 	for f in _fails:
 		print("PANEL EMPTY %s" % f)
 	if _fails.is_empty():
-		print("==> PANEL PASSED (%d panels over %d px, 0 empty, every one carries >= %d lines)" % [
+		print("==> PANEL-NOT-EMPTY PASSED (%d panels over %d px, 0 empty, every one carries >= %d lines)" % [
 			_rows.size(), int(MIN_AREA), MIN_LINES])
 		get_tree().quit(0)
 		return
-	print("==> PANEL FAILED: %s" % " | ".join(_fails))
+	print("==> PANEL-NOT-EMPTY FAILED: %s" % " | ".join(_fails))
 	get_tree().quit(1)
