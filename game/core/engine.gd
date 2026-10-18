@@ -747,8 +747,8 @@ func _end_turn_or_continue() -> void:
 	if _no_extra_turn:
 		_no_extra_turn = false
 		_next_turn()
-	elif _last_doubles:
-		phase = PHASE_TURN_START   # same player again
+	elif _last_doubles and settings.doubles:
+		phase = PHASE_TURN_START   # same player again (only when the DOUBLES rule is on)
 	else:
 		_next_turn()
 

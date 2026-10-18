@@ -623,9 +623,11 @@ func _copy_dump() -> void:
 	_log_admin(I18n.t("admin.log_copy"), {"ok": true, "reason": "clipboard"})
 
 func _save_snapshot() -> void:
-	if _controller == null:
+	var engine = _engine()
+	if engine == null:
+		_log_admin(I18n.t("admin.log_save_snap"), {"ok": false, "reason": I18n.t("admin.reason_write_fail")})
+		_refresh_all()
 		return
-	var engine = _controller.engine
 	var ok: bool = Snapshot.save(SNAPSHOT_PATH, engine)
 	_log_admin(I18n.t("admin.log_save_snap"), {"ok": ok, "reason": "" if ok else I18n.t("admin.reason_write_fail")})
 	_refresh_all()
@@ -639,8 +641,10 @@ func _load_snapshot() -> void:
 		_log_admin(I18n.t("admin.log_export"), {"ok": false, "reason": I18n.t("admin.reason_load_fail")})
 		_refresh_all()
 		return
-	# hot-swap: hand the restored engine to the controller + notify main
-	_controller.engine = eng
+	# HOT-SWAP BY SIGNAL, NOT BY HAND. `game_rebuilt` is the one path that swaps the engine AND the
+	# controller AND the seat manager AND the view (main._on_admin_rebuilt). The line that used to be
+	# here - `_controller.engine = eng` - wrote to the GATE (no such field: Invalid access), so the
+	# panel announced a successful load while nothing on the table had changed.
 	game_rebuilt.emit(eng)
 	_log_admin(I18n.t("admin.log_export"), {"ok": true, "reason": I18n.t("admin.load_snap_done")})
 	_refresh_all()

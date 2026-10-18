@@ -75,8 +75,34 @@ func _report() -> void:
 	var gate = _host.get("_gate")
 	if gate == null:
 		_fail("no admin token gate wired - admin actions are unguarded")
+	elif not (gate.has_method("is_guarded") and gate.has_method("authorize")):
+		# The gate used to be "checked" by reading `gate.get("require_token")` - a property that does
+		# not exist on admin_gate.gd, so the line printed `null` and proved nothing (found by the admin
+		# audit, 19.10). Exercise the behaviour instead.
+		_fail("the admin gate has no is_guarded/authorize - the token check cannot be exercised")
 	else:
-		print("HG-12: token gate present (require_token=%s)" % str(gate.get("require_token")))
+		var guarded: bool = bool(gate.is_guarded())
+		var empty_ok: bool = bool(gate.authorize(""))
+		if guarded and empty_ok:
+			_fail("the token gate is configured with a token but accepts an EMPTY one")
+		elif not guarded and not empty_ok:
+			_fail("the token gate is open (no token configured) yet refuses an empty presented token")
+		else:
+			print("HG-12: token gate behaves as configured (guarded=%s, empty token accepted=%s)" % [str(guarded), str(empty_ok)])
+		# BOTH CONFIGURATIONS, not just the one this smoke happens to run in. The live match has no
+		# token, so the guarded path would never be exercised and a broken guarded path would hide
+		# (measured: with authorize() accepting everything, the first version of this check still
+		# PASSED, because the open configuration made every answer "true" and therefore "consistent").
+		var ctrl = gate.get("_controller")
+		gate.setup(ctrl, "hg12-secret")
+		var refuses_empty: bool = not bool(gate.authorize(""))
+		var accepts_right: bool = bool(gate.authorize("hg12-secret"))
+		var refuses_wrong: bool = not bool(gate.authorize("hg12-nope"))
+		gate.setup(ctrl, "")
+		if not (refuses_empty and accepts_right and refuses_wrong):
+			_fail("the guarded token path is broken: refuses_empty=%s accepts_right=%s refuses_wrong=%s" % [str(refuses_empty), str(accepts_right), str(refuses_wrong)])
+		else:
+			print("HG-12: guarded token path exercised (secret refused empty + accepted right + refused wrong)")
 
 	# F12 through the handler the app really uses
 	var ev := InputEventKey.new()

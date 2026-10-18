@@ -397,6 +397,9 @@ func _has_cli_flag(flag: String) -> bool:
 
 ## Pre-game START: build engine + seats + manager, then start the game.
 func _on_started(settings, seats: Array) -> void:
+	# Same as ПРИМЕНИТЬ: the "Анимации" answer must reach the shell on BOTH start paths, or a match
+	# started with START quietly runs with the previous answer (found by the settings audit, 19.10).
+	_game_view.set_animations(bool(settings.animations))
 	_build_game(settings, seats)
 	_overlay.visible = false
 	_game_started = true
@@ -532,6 +535,12 @@ func _on_game_over(winner_name: String) -> void:
 ## controller; re-wire the seat manager + game view to the restored engine.
 func _on_admin_rebuilt(eng) -> void:
 	_engine = eng
+	# THE CONTROLLER MUST FOLLOW THE ENGINE. It was left pointing at the PREVIOUS engine, so after
+	# loading a snapshot the panel was editing one match while the table played another - the panel's
+	# own attempt at the swap (`_controller.engine = eng`) touched the GATE, which has no such field,
+	# raised Invalid access and left the divergence in place (found by the admin audit, 19.10).
+	if _controller != null:
+		_controller.setup(_engine, _controller.seats)
 	if _manager != null and is_instance_valid(_manager):
 		_manager.queue_free()
 	_manager = SeatManager.new()

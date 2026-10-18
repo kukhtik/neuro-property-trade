@@ -146,6 +146,10 @@ Without a limit a match can be unbounded: with no colour group nothing is built,
 	"settings.tab_controls":   {"ru": "Управление", "en": "Controls"},
 	# ---- design v3: per-field "when it applies" tags (F-48; design/coverage.md §4) ----
 	"settings.tag_live":       {"ru": "применится живьём", "en": "applies live"},
+	# For rows that are BUILT BUT NOT WIRED. The settings audit of 19.10 found four of them wearing
+	# tag_live - the sheet promised a live option that nothing read (the same lie as the "Анимации" row,
+	# which is now wired). A row that cannot lie is worth more than a row that looks complete.
+	"settings.tag_inert":      {"ru": "не действует", "en": "not wired"},
 	"settings.tag_restart":    {"ru": "нужен рестарт", "en": "needs restart"},
 	"settings.rng_seed":       {"ru": "RNG-сид (0 = случайно):", "en": "RNG seed (0 = random):"},
 	"settings.rng_seed_tip":   {"ru": "Число для воспроизводимой партии. 0 = случайная.", "en": "Number for a reproducible match. 0 = random."},

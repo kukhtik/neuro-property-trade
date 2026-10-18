@@ -419,7 +419,7 @@ func _build_rules_tab() -> void:
 	_round_limit = _spin(0, 200, 0, I18n.t("settings.round_limit"), I18n.t("settings.round_limit_tip"))
 	grid.add_child(_h("settings.round_limit", _round_limit))
 	_ai_aggression = _spin(0, 100, 50, I18n.t("settings.ai_aggression"), I18n.t("settings.ai_aggression_tip"))
-	grid.add_child(_h("settings.ai_aggression", _ai_aggression))
+	grid.add_child(_h("settings.ai_aggression", _ai_aggression, "settings.tag_inert"))
 
 func _build_tempo_tab() -> void:
 	var tab := UiTheme.vbox(8)
@@ -461,16 +461,18 @@ func _build_interface_tab() -> void:
 	_event_overlay = CheckButton.new(); _event_overlay.text = I18n.t("settings.event_overlay_lbl")
 	_event_overlay.button_pressed = true
 	_event_overlay.tooltip_text = I18n.t("settings.event_overlay_tip")
-	grid.add_child(_h("settings.event_overlay", _event_overlay, "settings.tag_live"))
+	# NOT WIRED (verified 19.10: the only occurrences of the field outside this file are its label).
+	# The tag says so, because the row used to say "применится живьём" and nothing read it.
+	grid.add_child(_h("settings.event_overlay", _event_overlay, "settings.tag_inert"))
 
 	_spectacle = CheckButton.new(); _spectacle.text = I18n.t("settings.spectacle_lbl")
 	_spectacle.button_pressed = false
 	_spectacle.tooltip_text = I18n.t("settings.spectacle_tip")
-	grid.add_child(_h("settings.spectacle", _spectacle, "settings.tag_live"))
+	grid.add_child(_h("settings.spectacle", _spectacle, "settings.tag_inert"))
 	_sound = CheckButton.new(); _sound.text = I18n.t("settings.sound_lbl")
 	_sound.button_pressed = true
 	_sound.tooltip_text = I18n.t("settings.sound_tip")
-	grid.add_child(_h("settings.sound", _sound, "settings.tag_live"))
+	grid.add_child(_h("settings.sound", _sound, "settings.tag_inert"))
 
 	_language = OptionButton.new()
 	# the labels are localized like everything else: a hardcoded pair cannot follow a locale
