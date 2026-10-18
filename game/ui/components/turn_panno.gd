@@ -104,13 +104,13 @@ func build() -> void:
 		_caps.append(cap)
 		_build_zone(i, col)
 
-	# Labels must not set a MINIMUM size the ring cannot pay for, and they must FILL the column:
-	# `UiTheme.label` is the VALUE factory (width by content), which inside a column leaves a 1px
-	# wide label once clipping is on - measured as an empty centre. So: expand horizontally, clip
-	# the values, wrap the paragraphs.
+	# Labels that sit DIRECTLY in a zone column fill it: `UiTheme.label` is the VALUE factory (width
+	# by content), which inside a column leaves a 1px wide label once clipping is on - measured as an
+	# empty centre. A row INSIDE the column is different: SG-04/P-4 allows exactly ONE stretching
+	# child per row, so money/ownership stay at their text width and only the seat name grows.
 	for entry in _font_nodes:
 		var node = entry["node"]
-		if node is Label:
+		if node is Label and (node as Label).get_parent() is VBoxContainer:
 			(node as Label).custom_minimum_size = Vector2.ZERO
 			(node as Label).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			(node as Label).clip_text = (node as Label).autowrap_mode == TextServer.AUTOWRAP_OFF
