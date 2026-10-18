@@ -718,6 +718,17 @@ func _sync_all() -> void:
 		_console.sync(holder, legal, holder == _human_pid and not _observer, _proj, seats)
 	if _inspector != null:
 		_inspector.sync(_proj, seats, legal, _human_pid)
+		# THE RIGHT DOCK IS NOT A DEAD COLUMN. In the wide layout the inspector sat empty until somebody
+		# clicked a tile, so the column carried one short journal and 49% of nothing (READ-02, measured
+		# 19.10). It now shows the tile the turn is ABOUT - the one the player whose turn it is stands
+		# on - until the viewer clicks another. Same fact the camera is following, and it is the tile a
+		# spectator asks about first.
+		if not _is_compact() and int(_inspector.get("selected")) < 0:
+			var tp := int(_proj.get("turn_player", _proj.get("turn", -1)))
+			for p in _proj.get("players", []):
+				if int(p.get("pid", -1)) == tp:
+					_inspector.select(int(p.get("position", 0)))
+					break
 
 
 ## ZOOM-01: the camera follows the turn (the owner asked for the board to zoom on a move) and HOLDS

@@ -24,6 +24,11 @@ extends Node
 const MainScript := preload("res://main.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const I18n := preload("res://i18n/i18n.gd")
+## THE ONE HOME for "when do docks exist at all": the shell collapses them into rails below this width
+## (game_view.WIDE_DOCKS_MIN reads the same constant). The gate used to judge docks from 1280px up,
+## where the app ALREADY runs compact - so READ-02 measured panels whose parents were hidden and called
+## them 49% empty (19.10). A threshold typed twice is how a gate and a product drift apart.
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 
 ## How many ring cells may carry NO readable identifier before the board is unreadable. The
 ## corners (0/10/20/30) are special cells by design and are allowed to be icon-only.
@@ -44,7 +49,7 @@ const DEAD_ZONE_MAX := 0.25
 ## In the compact profile the docks are REPLACED by 48px rails (SG-01's design: a rail is an icon
 ## strip, and an icon strip that stretched its icons over 600px would be the defect). READ-02
 ## therefore judges DOCK profiles only; a rail profile is measured and reported as context.
-const JUDGE_DOCKS_WHEN_WIDE := 1280
+const JUDGE_DOCKS_WHEN_WIDE := LayoutProfile.RAILS_BELOW
 
 ## READ-01 is specified at 1440x900 ("кадр 1440x900 живого матча", master-fix-plan §1 R-1); the other
 ## profiles are MEASURED AND REPORTED as context, not judged. Why that split is honest rather than
@@ -55,6 +60,9 @@ const JUDGE_DOCKS_WHEN_WIDE := 1280
 const JUDGED_PROFILE := "1440x900"
 
 const PROFILES := [
+	# THE DOCK PROFILE FIRST: docks only exist at or above LayoutProfile.RAILS_BELOW, so this is the
+	# only profile where READ-02 can judge a dock that is actually on screen.
+	{"label": "2560x1440", "size": Vector2i(2560, 1440)},
 	{"label": "1440x900", "size": Vector2i(1440, 900)},
 	{"label": "1280x720", "size": Vector2i(1280, 720)},
 	{"label": "880x600", "size": Vector2i(880, 600)},
@@ -342,15 +350,17 @@ func gv_dock(id: String) -> Control:
 	var gv = _launcher.get("_game_view")
 	if gv == null:
 		return null
-	# the docks may live in a rail or a drawer in compact; take whichever exists and is visible
+	# the docks may live in a rail or a drawer in compact; take whichever exists and is DRAWN
+	# (`is_visible_in_tree`, not `visible`: a panel inside a hidden parent reports visible == true,
+	# which is how this gate spent weeks judging a dock nobody could see).
 	var direct: Node = gv.find_child(id, true, false)
-	if direct is Control and (direct as Control).visible:
+	if direct is Control and (direct as Control).is_visible_in_tree():
 		return direct as Control
 	var alt := "drawer-seats" if id == "seats" else "drawer-journal"
 	var alt2 := "zone-players" if id == "seats" else "rail-right"
 	for name_alt in [alt, alt2]:
 		var n: Node = gv.find_child(str(name_alt), true, false)
-		if n is Control and (n as Control).visible:
+		if n is Control and (n as Control).is_visible_in_tree():
 			return n as Control
 	return direct as Control if direct is Control else null
 
