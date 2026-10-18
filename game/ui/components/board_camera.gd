@@ -35,6 +35,16 @@ const ZOOM_STEP := 1.12
 const PAN_STEP := 48.0
 ## Follow: how fast the camera eases to its target (px per second is not used - a tween is).
 const FOLLOW_SEC := 0.35
+## The settings sheet's "Анимации" switch (SkinManager.set_animations). OFF = the camera jumps to its
+## target instead of easing there; the framing is identical either way.
+var animations_enabled: bool = true
+
+
+func set_animations(on: bool) -> void:
+	animations_enabled = on
+
+func _anim_sec() -> float:
+	return FOLLOW_SEC if animations_enabled else 0.0
 
 ## The board (set by the shell). Laid out at this container's size and then transformed.
 var board: Control = null
@@ -236,7 +246,7 @@ func _ease_to_target() -> void:
 	var from := _focus
 	_tween.tween_method(func(v: Vector2) -> void:
 			_focus = v
-			_apply(), from, want, FOLLOW_SEC)
+			_apply(), from, want, _anim_sec())
 
 
 ## --- input ------------------------------------------------------------------------------------

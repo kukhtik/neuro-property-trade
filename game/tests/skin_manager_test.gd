@@ -23,7 +23,8 @@ static func test_list() -> Array[String]:
 		"test_dotted_slot_id_resolves", "test_dotted_color_tokens_come_from_the_skin",
 		"test_metric_not_shadowed_by_fallback", "test_token_path_follows_the_skin",
 		"test_motion_not_shadowed_by_fallback", "test_identity_palette_follows_skin",
-		"test_r3_body_sizes_clear_the_readability_floor"]
+		"test_r3_body_sizes_clear_the_readability_floor",
+		"test_design_motion_tokens_reach_motion", "test_animations_off_makes_everything_instant"]
 
 static func test_default_skin_loads() -> String:
 	var s = SM.new()
@@ -383,4 +384,40 @@ static func test_identity_palette_follows_skin() -> String:
 		PI.set_palette(PI.COLORS)
 		return "an empty palette must be ignored"
 	PI.set_palette(PI.COLORS)
+	return ""
+
+
+## The design's own motion names must resolve to the design's own values.
+## Regression it catches: FALLBACK_MOTION had no fast/base/slow and no skin.json carries them, so
+## motion("fast") quietly returned the 0.3 default - a tween that ran 2.5x slower than the spec.
+static func test_design_motion_tokens_reach_motion() -> String:
+	var s = SM.new()
+	s.load_skin("neuro")
+	var want := {"fast": 0.12, "base": 0.19, "slow": 0.32}
+	for name in want.keys():
+		var got: float = s.motion(name, -1.0)
+		if absf(got - float(want[name])) > 0.001:
+			return "motion('%s') should be %.2f (design/tokens.json), got %.3f" % [name, float(want[name]), got]
+	return ""
+
+
+## The settings sheet's "Анимации" row: OFF must mean INSTANT, everywhere, at the source.
+## Regression it catches: settings_overlay.gd:864 wrote game_settings.animations and nothing read it,
+## so the row was a lie while being tagged settings.tag_live.
+static func test_animations_off_makes_everything_instant() -> String:
+	var s = SM.new()
+	s.load_skin("neuro")
+	var probe := ["fast", "base", "slow", "step", "hop", "panel", "dice_roll"]
+	var on_before: float = s.motion("fast")
+	SM.set_animations(false)
+	for name in probe:
+		if s.motion(name) != 0.0:
+			SM.set_animations(true)
+			return "with animations OFF, motion('%s') should be 0.0 (instant), got %f" % [name, s.motion(name)]
+	if s.motion("panel", 0.3) != 0.0:
+		SM.set_animations(true)
+		return "with animations OFF the fallback duration must be 0.0 too"
+	SM.set_animations(true)
+	if absf(s.motion("fast") - on_before) > 0.001:
+		return "switching animations back ON must restore the token (%f -> %f)" % [on_before, s.motion("fast")]
 	return ""

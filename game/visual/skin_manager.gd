@@ -66,7 +66,21 @@ const FALLBACK_METRICS := {
 const FALLBACK_MOTION := {
 	"step": 0.19, "hop": 0.32, "pop": 0.5, "panel": 0.3, "card": 2.8,
 	"dice_roll": 0.85, "profile": "full",
+	# THE DESIGN TOKENS ARE NOT A SKIN: design/tokens.json:29 defines fast/base/slow, but no skin.json
+	# carries them and this fallback did not either, so motion("fast") silently returned the default
+	# 0.3 (measured) instead of 0.12. The three names now live here at the tokens' own values.
+	"fast": 0.12, "base": 0.19, "slow": 0.32,
 }
+## MASTER ANIMATION SWITCH — the settings sheet's "Анимации" row was a lie: `settings_overlay.gd:864`
+## wrote `game_settings.animations` and NOT ONE line read it (the row is tagged `settings.tag_live`, so
+## the sheet claimed a live option). Everything that eases reads this: a duration of 0.0 still performs
+## the STATE change, it just does not tween — which is what "выключенные анимации" has to mean.
+## STATIC on purpose: every component builds its own SkinManager, and the switch is one fact.
+static var animations_enabled: bool = true
+
+
+static func set_animations(on: bool) -> void:
+	animations_enabled = on
 ## Default player palette (tokens live in the skin, never in code).
 const FALLBACK_PLAYERS := ["#ff6fae", "#e8264f", "#5fe3ff", "#b6ff6b", "#ffb020", "#b36bff"]
 
@@ -253,6 +267,8 @@ func metric(name: String, fallback: float = 0.0) -> float:
 ## An animation duration token. A dict value (e.g. motion.idle) is not a
 ## duration, so the fallback wins.
 func motion(name: String, fallback: float = 0.3) -> float:
+	if not animations_enabled:
+		return 0.0
 	var v: Variant = _lookup("motion." + name)
 	if v == null:
 		v = _lookup("tokens.motion." + name)

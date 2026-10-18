@@ -404,6 +404,9 @@ func _on_started(settings, seats: Array) -> void:
 
 ## In-game restart (ПРИМЕНИТЬ): rebuild the engine with a new seed.
 func _on_apply(settings, seats: Array) -> void:
+	# The "Анимации" row must reach the shell BEFORE the match is built, or the first match runs with
+	# yesterday's answer (the row is tagged live - see game_view.set_animations).
+	_game_view.set_animations(bool(settings.animations))
 	_build_game(settings, seats)
 	_overlay.visible = false
 	_game_started = true

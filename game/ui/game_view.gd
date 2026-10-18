@@ -96,6 +96,18 @@ var _journal_lines = JournalLines.new()
 var _board_tail: Array = []
 
 
+## THE "Анимации" SWITCH, ONE PLACE. `settings_overlay.gd:864` used to write
+## `game_settings.animations` into nothing: no line in the product read it, while the row was tagged
+## `settings.tag_live`. The shell pushes the setting here; this hands it to every owner that eases
+## something, so OFF means "instant" everywhere and not "instant in one widget".
+func set_animations(on: bool) -> void:
+	SkinManager.set_animations(on)
+	if _board != null and _board.has_method("set_animations"):
+		_board.set_animations(on)
+	if _camera != null and _camera.has_method("set_animations"):
+		_camera.set_animations(on)
+
+
 func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP

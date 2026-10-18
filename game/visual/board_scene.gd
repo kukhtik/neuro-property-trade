@@ -16,6 +16,18 @@ const SkinManager := preload("res://visual/skin_manager.gd")
 const TurnPanno := preload("res://ui/components/turn_panno.gd")
 
 var _skin: SkinManager
+## See SkinManager.set_animations: the settings sheet's "Анимации" row used to be inert. The shell
+## pushes the setting here (and into the camera); 0.0 keeps the state change and drops the tween.
+var animations_enabled: bool = true
+
+
+func set_animations(on: bool) -> void:
+	animations_enabled = on
+
+
+## Every duration this scene eases with goes through here.
+func _dur(seconds: float) -> float:
+	return seconds if animations_enabled else 0.0
 var _board: Array = []
 var _tiles: Array = []
 var _cell := 0.0
@@ -406,7 +418,7 @@ func _sync_tokens(proj: Dictionary, seats: Array) -> void:
 		var old: int = int(_token_pos.get(pid, -1))
 		if old != pos and old >= 0:
 			var tw := create_tween()
-			tw.tween_property(tok, "position", target, 0.19)
+			tw.tween_property(tok, "position", target, _dur(0.19))
 		else:
 			tok.position = target
 		_token_pos[pid] = pos
@@ -582,7 +594,7 @@ func play_event(ev: Dictionary) -> void:
 		var to: int = int(ev.get("ti", -1))
 		if pid >= 0 and to >= 0 and _tokens.has(pid):
 			var tw := create_tween()
-			tw.tween_property(_tokens[pid], "position", _token_screen_pos(to, pid, 4), 0.19)
+			tw.tween_property(_tokens[pid], "position", _token_screen_pos(to, pid, 4), _dur(0.19))
 
 
 func _draw_die(holder: Control) -> void:
