@@ -19,6 +19,9 @@ func reset_seat_away(pid: int) -> Dictionary:
 	for s in seats:
 		if s.pid == pid:
 			s.away = false
+			# A cleared "away" flag hands the turn back to a seat: state changed, so the journal says so.
+			if engine != null and engine.has_method("log_admin"):
+				engine.log_admin("reset_away", {"pid": pid})
 			return {"ok": true, "reason": ""}
 	return {"ok": false, "reason": "no seat with pid %d" % pid}
 

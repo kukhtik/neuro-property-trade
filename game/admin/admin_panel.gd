@@ -469,6 +469,10 @@ func _quick_apply_timers() -> void:
 		return
 	eng.settings.turn_timer = int(_sp_turn.value)
 	eng.settings.auction_timer = int(_sp_auction.value)
+	# The clocks are live fields the seat manager and the SDK adapter read every tick, so this edit
+	# changes play - it belongs in the journal, not only in the panel's own feed.
+	if eng.has_method("log_admin"):
+		eng.log_admin("apply_timers", {"turn_timer": int(_sp_turn.value), "auction_timer": int(_sp_auction.value)})
 	_log_admin(I18n.t("admin.log_timers", [int(_sp_turn.value), int(_sp_auction.value)]),
 		{"ok": true, "reason": ""})
 	_refresh_all()

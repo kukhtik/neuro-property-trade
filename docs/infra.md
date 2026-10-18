@@ -188,3 +188,21 @@ at exit Godot may print `ERROR: BUG: Unreferenced static string to 0: …`,
 `RID allocations of type … were leaked at exit`, `ObjectDB instances were
 leaked`. These come from the engine's own cleanup. Verdicts in this repo are
 never read from exit codes, so they affect neither the oracle nor the probes.
+
+## Admin token (the guarded mode)
+
+`settings.admin_token` defaults to `""` and **nothing in the UI could set it**, so
+`AdminGate.is_guarded()` was always false and the guarded path was unreachable code
+(found by the admin audit, 19.10). The secret now comes from the command line, where a
+secret belongs — not from a field an onlooker can read:
+
+```
+"$(tools/ci/godot_bin.sh)" --path game -- --admin-token=<secret>
+```
+
+`main._build_game` reads `--admin-token=` and hands it to the gate; a CLI value wins over
+anything a settings file carried, so the token of the run is the key still in the mouth.
+HG-12 asserts this: started with the flag, the gate must report `guarded=true`
+(`HG-12: --admin-token reached the gate (guarded=true)`), and the gate is exercised in both
+configurations in every run.
+

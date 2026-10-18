@@ -83,6 +83,17 @@ func _report() -> void:
 	else:
 		var guarded: bool = bool(gate.is_guarded())
 		var empty_ok: bool = bool(gate.authorize(""))
+		# THE CLI IS HOW A SECRET REACHES THIS GATE (main reads --admin-token=): if this run was started
+		# with one, the gate must say it is guarded. Without that assertion the wiring could be dead
+		# again - which is exactly what the audit found (settings.admin_token could not be set at all).
+		var want_token := ""
+		for a in OS.get_cmdline_user_args():
+			if str(a).begins_with("--admin-token="):
+				want_token = str(a).substr("--admin-token=".length())
+		if want_token != "" and not guarded:
+			_fail("this run was started with --admin-token but the gate is NOT guarded")
+		elif want_token != "":
+			print("HG-12: --admin-token reached the gate (guarded=%s)" % str(guarded))
 		if guarded and empty_ok:
 			_fail("the token gate is configured with a token but accepts an EMPTY one")
 		elif not guarded and not empty_ok:
@@ -134,8 +145,89 @@ func _report() -> void:
 	print("HG-12: admin panel anatomy: %d labels, %d buttons" % [labels, buttons])
 	if labels < 10 or buttons < 8:
 		_fail("the admin panel is an empty shell (%d labels, %d buttons)" % [labels, buttons])
+	_operations(panel)
 	_check_observer()
 	_finish()
+
+
+func _log_has_op(eng, op: String) -> bool:
+	for entry in eng.log.entries():
+		var d = entry.get("data", {})
+		if str(entry.get("type", "")) == "admin_override" and str(d.get("op", "")) == op:
+			return true
+	return false
+
+
+## PRESS THE OPERATIONS. Until now this gate counted labels and buttons and toggled F12 - it never ran
+## a single admin action, which is why nobody in CI noticed that the snapshot buttons crashed, that a
+## load announced success while nothing changed, or that a clock edit left no trace in the journal (all
+## found by hand on 19.10). An admin panel that builds is not an admin panel that works.
+func _operations(panel) -> void:
+	var eng = _host.get("_engine")
+	if eng == null:
+		_fail("no engine on the host - the admin operations cannot be exercised")
+		return
+
+	# 1. PAUSE / 2. RESUME - one fact, two directions, both visible on the engine.
+	panel.call("_quick_pause")
+	if not bool(eng.paused):
+		_fail("the admin PAUSE did not pause the match")
+	else:
+		print("HG-12: admin PAUSE paused the match (paused_by=%s)" % str(eng.paused_by))
+	panel.call("_quick_resume")
+	if bool(eng.paused):
+		_fail("the admin RESUME did not resume the match")
+	else:
+		print("HG-12: admin RESUME resumed the match")
+
+	# 3. THE CLOCKS - a live field, so it must land in the settings AND in the append-only journal.
+	var sp = panel.get("_sp_turn")
+	if sp != null:
+		(sp as SpinBox).value = 33
+	panel.call("_quick_apply_timers")
+	if int(eng.settings.turn_timer) != 33:
+		_fail("apply_timers did not write the clock (turn_timer=%d, want 33)" % int(eng.settings.turn_timer))
+	elif not _log_has_op(eng, "apply_timers"):
+		_fail("apply_timers changed the LIVE clock but left no trace in the append-only journal")
+	else:
+		print("HG-12: apply_timers wrote the clock AND logged it")
+
+	# 4. THE "AWAY" FLAG - a seat-level fact that hands a turn back.
+	var mgr = _host.get("_manager")
+	var seats: Array = mgr.get("seats") if mgr != null and mgr.get("seats") != null else []
+	if seats.is_empty():
+		_fail("no seats on the manager - the away flag cannot be exercised")
+	else:
+		seats[0].away = true
+		panel.call("_quick_reset_away")
+		if bool(seats[0].away):
+			_fail("reset_away did not clear the seat's away flag")
+		elif not _log_has_op(eng, "reset_away"):
+			_fail("reset_away cleared a seat flag but left no trace in the append-only journal")
+		else:
+			print("HG-12: reset_away cleared the flag AND logged it")
+
+	# 5. SNAPSHOT SAVE, then the REBUILD path the load uses (without the confirm dialog, which is a
+	#    human gate - the dialog is not what is under test here, the swap is).
+	panel.call("_save_snapshot")
+	if not FileAccess.file_exists("user://admin_snapshot.json"):
+		_fail("the admin SAVE wrote no snapshot file")
+	else:
+		print("HG-12: admin SAVE wrote the snapshot")
+	var SnapshotScript := load("res://core/snapshot.gd")
+	var restored = SnapshotScript.load("user://admin_snapshot.json") if SnapshotScript != null else null
+	if restored == null:
+		_fail("the snapshot the panel wrote cannot be loaded back")
+	else:
+		panel.emit_signal("game_rebuilt", restored)
+		if _host.get("_engine") != restored:
+			_fail("after a snapshot load the host still runs the OLD engine (silent split)")
+		elif _host.get("_controller").get("engine") != restored:
+			_fail("after a snapshot load the admin CONTROLLER still points at the old engine - edits would hit the previous match")
+		elif not _log_has_op(restored, "load_snap"):
+			_fail("the snapshot load left no trace in the restored match's journal")
+		else:
+			print("HG-12: the snapshot load swapped engine + controller and logged load_snap")
 
 
 ## The observer half (HG-12 / UiProfile.stream): input dead on every path, no buttons, wider
@@ -203,7 +295,7 @@ func _finish() -> void:
 	if _obs_checks < MIN_OBSERVER_CHECKS and _fails.is_empty():
 		_fail("only %d observer check(s) ran - the gate aborted silently (want >= %d)" % [_obs_checks, MIN_OBSERVER_CHECKS])
 	if _fails.is_empty():
-		print("==> HG-12 PASSED (admin panel builds, F12 toggles, token gate present, stream role clean, observer input dead)")
+		print("==> HG-12 PASSED (admin panel builds, F12 toggles, the token gate is exercised in BOTH configurations, six operations really run - pause, resume, clocks, away-flag, snapshot save, snapshot load - every state change reaches the append-only journal, stream role clean, observer input dead)")
 		get_tree().quit(0)
 	else:
 		print("==> HG-12 FAILED: %s (%d total)" % [_fails[0], _fails.size()])

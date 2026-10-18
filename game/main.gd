@@ -438,6 +438,14 @@ func _build_game(settings, seats: Array) -> void:
 	_controller = AdminController.new()
 	_controller.setup(_engine, seats)
 	_gate = AdminGate.new()
+	# THE TOKEN HAS TO COME FROM SOMEWHERE. `settings.admin_token` defaults to "" and NOTHING could set
+	# it - not the lobby, not the sheet - so `is_guarded()` was always false and the guarded mode was
+	# unreachable code (found by the admin audit, 19.10). The CLI is the honest home for a secret that
+	# must not sit in a UI field: `--admin-token=<secret>` turns the gate on for this run. A token in
+	# the ticket is a KEY still in the mouth, so the CLI value WINS over whatever a file said.
+	var cli_token := _cli_value("--admin-token=")
+	if cli_token != "":
+		settings.admin_token = cli_token
 	_gate.setup(_controller, settings.admin_token)
 	if _panel != null:
 		_panel.setup(_gate)
@@ -541,6 +549,10 @@ func _on_admin_rebuilt(eng) -> void:
 	# raised Invalid access and left the divergence in place (found by the admin audit, 19.10).
 	if _controller != null:
 		_controller.setup(_engine, _controller.seats)
+	# A SNAPSHOT LOAD IS A MATCH-CHANGING ACT: the loaded engine's own journal gets the line, so the
+	# restored match carries the record of what replaced it (the audit found this one silent).
+	if _engine != null and _engine.has_method("log_admin"):
+		_engine.log_admin("load_snap", {"from": "snapshot"})
 	if _manager != null and is_instance_valid(_manager):
 		_manager.queue_free()
 	_manager = SeatManager.new()

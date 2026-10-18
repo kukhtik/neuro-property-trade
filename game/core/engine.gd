@@ -1272,6 +1272,18 @@ func _admin_ok(op: String, params: Dictionary) -> Dictionary:
 	log.append("admin_override", {"op": op, "params": params})
 	return {"ok": true, "reason": "", "legal": [], "events": log.entries()}
 
+
+## THE JOURNAL IS THE ONLY SHARED ACCOUNT OF WHAT HAPPENED, so every admin action that CHANGES the
+## match must appear in it - not only the ones that go through admin_override. The admin audit of
+## 19.10 listed three that changed state in silence: clock edits, cleared "away" seat flags, and
+## snapshot loads. They now append to the same append-only log, with their own `op`, so the journal
+## (and every client reading it) can show them as admin actions.
+func log_admin(op: String, data: Dictionary = {}) -> void:
+	var payload := {"op": op}
+	for k in data:
+		payload[k] = data[k]
+	log.append("admin_override", payload)
+
 # --- Phase 4: SNAPSHOT (export/import full engine state, spec §4.C) ---
 ## Serialize the entire authoritative state to plain JSON-able dictionaries:
 ## settings, players, phase, pending, houses, mortgaged, decks (remaining
