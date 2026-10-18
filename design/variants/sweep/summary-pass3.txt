@@ -1,0 +1,2 @@
+opencode/nemotron-3.5-super-vl-free|A|NO_DONE_LINE
+opencode/glm-5.3-flash-free|A|DONE vA-neuro__glm-5.3-flash-free.html 33417
