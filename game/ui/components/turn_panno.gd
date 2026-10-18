@@ -130,6 +130,11 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 			roll_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			col.add_child(roll_slot)
 			_turn = UiTheme.label("", _fs(FS_META), UiTheme.COL().text_dim)
+			# NAMED FOR THE GATES: STREAM-READ must measure the labels a viewer actually SEES. The
+			# dock's jrn-title/jrn-text are hidden in every profile under 2000px wide (compact mode),
+			# so the gate used to judge an invisible node while the panno - the thing on screen -
+			# carried no names at all.
+			_turn.name = "panno-turn"
 			_turn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			_font_nodes.append({"node": _turn, "ratio": FS_META})
 			col.add_child(_turn)
@@ -139,6 +144,7 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 			_font_nodes.append({"node": _event_who, "ratio": FS_EVENT})
 			col.add_child(_event_who)
 			_event_text = UiTheme.label_wrap("", _fs(FS_EVENT), UiTheme.COL().text)
+			_event_text.name = "panno-event-text"
 			_event_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			_font_nodes.append({"node": _event_text, "ratio": FS_EVENT})
 			col.add_child(_event_text)
@@ -182,6 +188,7 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 		"journal":
 			for r in JOURNAL_ROWS:
 				var line := UiTheme.label_wrap("", _fs(FS_JRN), UiTheme.COL().text_dim)
+				line.name = "panno-jrn-text"
 				_font_nodes.append({"node": line, "ratio": FS_JRN})
 				col.add_child(line)
 				_jrn_rows.append(line)

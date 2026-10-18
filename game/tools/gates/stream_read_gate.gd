@@ -45,12 +45,19 @@ const GLANCE_FLOOR := LayoutProfile.GLANCE_MIN_PHONE_PX
 ## label for the report, and whether it is judged (a money tag or a name may carry a different
 ## floor by design; the gate reports all of them and judges the set below).
 const GLANCE_SET := [
-	{"node": "turn-name", "role": "whose turn (the name)"},
-	{"node": "turn-phase", "role": "what is happening (the phase)"},
-	{"node": "top-round", "role": "the round"},
-	{"node": "top-pot", "role": "the money (parking pot)"},
-	{"node": "jrn-title", "role": "the journal heading"},
-	{"node": "jrn-text", "role": "the newest journal line"},
+	{"node": "panno-turn", "role": "whose turn + what is happening (the panno)"},
+	{"node": "panno-event-text", "role": "what just happened (the panno)"},
+	{"node": "panno-jrn-text", "role": "the newest journal line (the panno)"},
+	{"node": "turn-name", "role": "whose turn (the header)"},
+	{"node": "turn-phase", "role": "what is happening (the header)"},
+	{"node": "top-round", "role": "the round (the header)"},
+	{"node": "top-pot", "role": "the money (parking pot, the header)"},
+	# THE DOCK'S JOURNAL IS MEASURED ONLY WHEN IT IS DRAWN. At every frame narrower than 2000px the
+	# app runs compact and hides the right dock, so jrn-title/jrn-text exist as nodes nobody sees -
+	# the gate used to hand them the verdict and describe a picture that was not on screen (measured:
+	# at 1600x1200 and at 1920x1080 the dock is hidden and the panno carries the journal instead).
+	{"node": "jrn-title", "role": "the journal heading (the dock, when drawn)", "drawn_only": true},
+	{"node": "jrn-text", "role": "the newest journal line (the dock, when drawn)", "drawn_only": true},
 ]
 ## Roles that may sit below the glance floor by design (a single-glyph tag, a secondary counter):
 ## reported as context, never judged. Empty today - the point is that the exclusion is a written
@@ -214,7 +221,13 @@ func _measure() -> void:
 			continue
 		var px := float(node.get_theme_font_size("font_size"))
 		var eff: float = px * (PHONE_WIDTH / float(FRAME.x))
-		_rows.append({"node": spec["node"], "role": spec["role"], "px": px, "eff": eff, "found": true})
+		var drawn: bool = node.is_visible_in_tree()
+		if bool(spec.get("drawn_only", false)) and not drawn:
+			_rows.append({"node": spec["node"], "role": spec["role"], "px": px, "eff": eff, "found": true, "visible": false})
+			print("STREAM-READ ROW %s=%s px=%.0f NOT DRAWN in this frame (compact: the dock is folded) - not judged"
+				% [spec["node"], spec["role"], px])
+			continue
+		_rows.append({"node": spec["node"], "role": spec["role"], "px": px, "eff": eff, "found": true, "visible": drawn})
 		print("STREAM-READ ROW %s=%s px=%.0f effective_on_phone=%.1f  (%.0f px in a %d px frame; the floor is %.0f px here)"
 			% [spec["node"], spec["role"], px, eff, px, FRAME.x,
 				LayoutProfile.glance_floor_px(float(FRAME.x))])
@@ -245,6 +258,8 @@ func _finish() -> void:
 	var worst_role := ""
 	for row in _rows:
 		if not bool(row["found"]):
+			continue
+		if not bool(row.get("visible", true)):
 			continue
 		if str(row["node"]) in BELOW_FLOOR_OK:
 			continue
