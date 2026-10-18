@@ -48,6 +48,14 @@
   "static": "20/22 checks passed"
  },
  {
+  "file": "vA-neuro__nemotron-3.5-super-vl-free.html",
+  "empty_cells_pct": 7.7,
+  "R1_ok": true,
+  "center_occupied_pct": null,
+  "R2_ok": null,
+  "static": "16/22 checks passed"
+ },
+ {
   "file": "vA-neuro__space-bunny-free.html",
   "empty_cells_pct": 0.0,
   "R1_ok": true,
