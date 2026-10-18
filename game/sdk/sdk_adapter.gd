@@ -46,6 +46,14 @@ var _controller
 var _window: ActionWindow = null
 var _last_decision_key: String = ""
 var _awaiting_result: bool = false
+## How long the CURRENT force has been unanswered, and whether it was already retried once.
+## THE HOLE THIS CLOSES (measured 18.10 with a real model seat): the manager deliberately does not
+## auto-pass SDK seats ("imposing a manager timeout would race the adapter"), and the adapter had
+## no timeout of its own - the comment said "a future SDK-side timeout (one short retry then
+## auto-pass, per spec)". A seat whose bridge went quiet (a model thinking 40-120 s, a dead
+## websocket) therefore froze the match at TURN_START forever while the UI clock kept counting.
+var _await_since_ms: int = 0
+var _await_retried: bool = false
 var _poll_elapsed: float = 0.0
 const POLL_INTERVAL := 0.5
 
@@ -67,7 +75,44 @@ func _process(delta: float) -> void:
 	if _poll_elapsed < POLL_INTERVAL:
 		return
 	_poll_elapsed = 0.0
+	_tick_await()
 	tick()
+
+
+## The SDK-side timeout the spec promised: one short retry at `turn_timer`, then the seat's own
+## minimal legal action at 2 x `turn_timer`. With turn_timer = 0 (replay/soak determinism) there is
+## no clock and therefore no promise - nothing here runs.
+func _tick_await() -> void:
+	if not _awaiting_result or engine == null or seat_pid < 0:
+		return
+	var window := float(engine.settings.turn_timer)
+	# An auction runs on its OWN clock (the manager does the same for humans): using the turn window
+	# there would make a bidder wait 20 s in a 15 s auction, and the auction would hang on a silent
+	# bridge exactly like a turn did.
+	if str(engine.get("phase")) == "AUCTION":
+		window = float(engine.settings.auction_timer)
+	if window <= 0.0:
+		return
+	var waited := float(Time.get_ticks_msec() - _await_since_ms) / 1000.0
+	if waited < window:
+		return
+	if not _await_retried:
+		_await_retried = true
+		_awaiting_result = false
+		_last_decision_key = ""
+		_force_if_needed()
+		return
+	# two windows without an answer: play the seat's minimal legal action so the match cannot hang
+	var pick = load("res://seats/minimal_action.gd").pick(engine, seat_pid)
+	_awaiting_result = false
+	_last_decision_key = ""
+	_await_retried = false
+	if pick.is_empty():
+		return
+	var res: Dictionary = engine.submit_intent(seat_pid, str(pick.get("action", "")),
+		pick.get("params", {}))
+	if res.get("events", []).size() > 0:
+		events_emitted.emit(res["events"])
 
 ## Public tick so the seat manager can drive the SDK seat explicitly (in
 ## addition to this node's own _process self-driving). Idempotent: _force_if_needed
@@ -130,6 +175,11 @@ func _force_if_needed() -> void:
 		return
 	_last_decision_key = key
 	_awaiting_result = true
+	_await_since_ms = Time.get_ticks_msec()
+	# NOTE: `_await_retried` is deliberately NOT reset here. The retry itself re-forces, and
+	# resetting the flag on every force made the retry branch fire forever: the seat was re-forced
+	# every window and the auto-pass at 2x window never happened (measured with a silent bridge).
+	# It is reset in `emit_events`, i.e. when an action actually executed.
 	var markdown: String = _renderer.render(proj)
 	# Build a fresh ActionWindow for this decision point.
 	if _window != null:
@@ -169,6 +219,7 @@ func emit_events(events: Array) -> void:
 	# wrongly suppressed by the decision-key guard.
 	_last_decision_key = ""
 	_awaiting_result = false
+	_await_retried = false
 	events_emitted.emit(events)
 
 # --- param extractors (IncomingData -> Dictionary) ---
