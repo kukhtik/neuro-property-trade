@@ -476,16 +476,21 @@ func _build_compact_shell(body: Control) -> void:
 	(_rail_r_journal as RailPanel).setup(UiTheme.skin(), "jrn.title", false)
 	(_rail_r_journal as RailPanel).set_title(I18n.t("jrn.title"))
 	(_rail_r_journal as RailPanel).set_collapsed(true, false)
-	(_rail_r_journal as RailPanel).toggled.connect(
+	_rail_r_journal.toggled.connect(
 		func(_c: bool) -> void: _toggle_drawer("journal", _rail_r_journal))
+	# THE RAIL PANELS FILL THE SIDE (owner: «боковые кнопки… не на всю ширину заполняют сторону»).
+	# Each one takes half of the rail's height, so the clickable area is the whole side of the screen
+	# instead of two chips at the top with 1000px of dead rail under them.
+	(_rail_r_journal as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	rail_col.add_child(_rail_r_journal)
 	_rail_r_inspector = RailPanel.new()
 	(_rail_r_inspector as RailPanel).name = "rail-right-inspector"
 	(_rail_r_inspector as RailPanel).setup(UiTheme.skin(), "ins.title", false)
 	(_rail_r_inspector as RailPanel).set_title(I18n.t("ins.title"))
 	(_rail_r_inspector as RailPanel).set_collapsed(true, false)
-	(_rail_r_inspector as RailPanel).toggled.connect(
+	_rail_r_inspector.toggled.connect(
 		func(_c: bool) -> void: _toggle_drawer("inspector", _rail_r_inspector))
+	(_rail_r_inspector as Control).size_flags_vertical = Control.SIZE_EXPAND_FILL
 	rail_col.add_child(_rail_r_inspector)
 	body.add_child(_rail_right)
 

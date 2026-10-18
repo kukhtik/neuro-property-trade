@@ -22,7 +22,24 @@ func for_player(engine, pid: int) -> Dictionary:
 	# allowed to take; the adapter freezes its own timeout on this flag).
 	out["paused"] = engine.paused
 	out["paused_by"] = engine.paused_by
+	# TIMER: a seat needs its OWN clock just as much as a spectator does. These keys used to be added
+	# only by the seat manager's spectator path, so a shell that stored a for_player projection read
+	# `timer_active` as missing, hid the clock and showed it again on the next spectator frame - the
+	# owner saw the timer BLINK.
+	var tv := _timer_view(engine)
+	out["timer_window"] = tv["timer_window"]
+	out["timer_elapsed"] = tv["timer_elapsed"]
+	out["timer_active"] = tv["timer_active"]
 	return out
+
+
+## The turn's clock, as a pure property of the settings + phase. The seat manager still refines
+## `timer_elapsed` with the real time the decision holder has been waiting (it owns the seats).
+func _timer_view(engine) -> Dictionary:
+	var window := float(engine.settings.turn_timer)
+	if str(engine.phase) == "AUCTION":
+		window = float(engine.settings.auction_timer)
+	return {"timer_window": window, "timer_elapsed": 0.0, "timer_active": window > 0.0}
 
 ## E-3: what the engine would charge a lander on `i` right now.
 ## `_property_rent`, so the projection never re-implements a game rule (and cannot silently
@@ -149,6 +166,10 @@ func for_spectator(engine) -> Dictionary:
 	# visible and identical everywhere instead of being a local freeze.
 	out["paused"] = engine.paused
 	out["paused_by"] = engine.paused_by
+	var tv := _timer_view(engine)
+	out["timer_window"] = tv["timer_window"]
+	out["timer_elapsed"] = tv["timer_elapsed"]
+	out["timer_active"] = tv["timer_active"]
 	# NOTE: no "legal" and no "private" — a spectator is not a decision holder.
 	return out
 

@@ -201,7 +201,9 @@ func _apply_state(animate: bool) -> void:
 		_content.visible = not _collapsed
 	# the header becomes a full-height vertical strip when collapsed
 	if _collapsed:
-		_title_label.add_theme_font_size_override("font_size", _skin.size("s", 12))
+		# A TALL STRIP CAN AFFORD A READABLE WORD: the rail now fills the side of the screen (two
+		# halves), so the caption is a value a viewer can read from a phone, not a 13px whisper.
+		_title_label.add_theme_font_size_override("font_size", _skin.size("l", 18))
 		_chevron.text = ("›" if _left_side else "‹")
 		# THE RAIL IS A BUTTON, NOT A CHIP. It measured 48x28 in a 1120px rail: the word it carries
 		# is rotated, so the strip has to be as TALL as the word is wide - the title was being

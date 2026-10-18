@@ -300,7 +300,10 @@ func sync(proj: Dictionary, seats: Array) -> void:
 	_decision.text = ""
 	# HG-13: the decision zone carries the TIME while a seat waits - the projection has carried
 	# timer_window/elapsed/active all along (seat_manager.emit_spectator); nobody painted them.
-	_timer_on = bool(proj.get("timer_active", false)) and float(proj.get("timer_window", 0.0)) > 0.0
+	# A projection that does not carry the clock at all must not ERASE it: the two views used to
+	# disagree (one had the timer, one did not) and the label flickered off/on four times a second.
+	if proj.has("timer_active"):
+		_timer_on = bool(proj.get("timer_active", false)) and float(proj.get("timer_window", 0.0)) > 0.0
 	if _timer_on:
 		_timer_window = float(proj.get("timer_window", 0.0))
 		_timer_elapsed = float(proj.get("timer_elapsed", 0.0))
