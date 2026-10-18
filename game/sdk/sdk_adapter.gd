@@ -221,7 +221,9 @@ func _force_if_needed() -> void:
 	)
 	for name in decision.get("actions", []):
 		var sdk_name: String = ENGINE_TO_SDK.get(name, name)
-		var action: NeuroAction = NeuroActionHandler.get_action(sdk_name)
+		# MULTI-SDK: ask for OUR OWN connection's action. The registry lookup without a connection
+		# answers for whichever socket spoke last, so a window could take another seat's action.
+		var action: NeuroAction = NeuroActionHandler.get_action_on(conn, sdk_name)
 		if action != null:
 			_window.add_action(action)
 	_window.register()

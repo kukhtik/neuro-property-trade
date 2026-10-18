@@ -125,7 +125,8 @@ def choose(model: str, narrative: str, query: str, offered: list[str], timeout: 
     return fallback, "fallback"
 
 
-def serve_one(sock, model: str, timeout: float, max_actions: int, silent: bool = False) -> None:
+def serve_one(sock, model: str, timeout: float, max_actions: int, silent: bool = False,
+              pace: float = 0.0) -> None:
     ws.handshake(sock)
     ws.send_json(sock, {
         "command": "startup", "game": "llm-seat",
@@ -168,7 +169,15 @@ def serve_one(sock, model: str, timeout: float, max_actions: int, silent: bool =
             _stats["silent"] += 1
             log("SILENT (dead bridge - deliberately no answer)")
             continue
+        # PACE: a demo needs to be WATCHABLE. A scripted answer is instant, so the board would jump
+        # several moves per second and a viewer could not follow a turn. `--pace` keeps every
+        # decision (and therefore every move) at least that long.
+        t_pace = time.time()
         name, source = choose(model, narrative, query, offered, timeout)
+        if pace > 0:
+            left = pace - (time.time() - t_pace)
+            if left > 0:
+                time.sleep(left)
         if name == "":
             _stats["silent"] += 1
             continue
@@ -195,6 +204,8 @@ def main() -> int:
     ap.add_argument("--max-actions", type=int, default=40)
     ap.add_argument("--silent", action="store_true",
                     help="accept the connection and never answer (a dead bridge)")
+    ap.add_argument("--pace", type=float, default=0.0,
+                    help="minimum seconds per decision, so a demo is watchable")
     args = ap.parse_args()
 
     import socket
@@ -214,7 +225,7 @@ def main() -> int:
             continue
         log("client from %s:%d" % addr)
         try:
-            serve_one(client, args.model, args.think, args.max_actions, args.silent)
+            serve_one(client, args.model, args.think, args.max_actions, args.silent, args.pace)
         except (ConnectionError, OSError) as exc:
             log("connection ended: %s" % exc)
         finally:

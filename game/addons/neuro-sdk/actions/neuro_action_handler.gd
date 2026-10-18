@@ -61,13 +61,34 @@ func _notification(what):
 		socket().send_immediate(ActionsUnregister.new(array))
 
 
+## The action of THAT connection (multi-SDK). `get_action` answers for the connection a message
+## arrived on, which is right for an INCOMING action and WRONG for an adapter building its own force
+## window: the "current" connection is sticky, so a window could grab another seat's action object
+## and then execute the wrong seat's turn (measured: "not your turn" from a seat that WAS at turn).
+static func get_action_on(conn: Node, action_name: String) -> NeuroAction:
+	var h := handler_for(conn)
+	if h == null:
+		return null
+	var actions: Array = h._registered_actions.filter(func(action: NeuroAction) -> bool: return action.get_name() == action_name)
+	if actions.size() == 0:
+		return null
+	return actions[0]
+
+
 static func get_action(action_name: String) -> NeuroAction:
 	var h := handler_for()
 	if h == null:
 		return null
 	var actions: Array = h._registered_actions.filter(func(action: NeuroAction) -> bool: return action.get_name() == action_name)
 	if actions.size() == 0:
+		if OS.get_environment("NPT_SDK_DEBUG") != "":
+			print("[sdk-debug] get_action('%s') MISS on conn=%s (registered=%d)" % [
+				action_name, str(h._conn.name if h._conn != null else "autoload"),
+				h._registered_actions.size()])
 		return null
+	if OS.get_environment("NPT_SDK_DEBUG") != "":
+		print("[sdk-debug] get_action('%s') -> conn=%s" % [
+			action_name, str(h._conn.name if h._conn != null else "autoload")])
 	return actions[0]
 
 

@@ -33,6 +33,8 @@ func handle(command: String, data: IncomingData) -> void:
 	# which connection is answering, so `get_action(name)` resolves THIS seat's `roll_dice` and not
 	# another seat's same-named action.
 	NeuroActionHandler.set_incoming_conn(get_parent())
+	if OS.get_environment("NPT_SDK_DEBUG") != "":
+		print("[sdk-debug] incoming '%s' on conn=%s" % [command, str(get_parent().name)])
 	for handler in handlers:
 		if !handler.can_handle(command):
 			continue

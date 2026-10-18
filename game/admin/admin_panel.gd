@@ -464,22 +464,41 @@ func _quick_resume() -> void:
 ## The clocks are settings, not engine state: the seat manager and the SDK adapter read them every
 ## tick, so applying them here takes effect on the very next decision.
 func _quick_apply_timers() -> void:
-	if _controller == null or _controller.engine == null:
+	var eng = _engine()
+	if eng == null:
 		return
-	_controller.engine.settings.turn_timer = int(_sp_turn.value)
-	_controller.engine.settings.auction_timer = int(_sp_auction.value)
+	eng.settings.turn_timer = int(_sp_turn.value)
+	eng.settings.auction_timer = int(_sp_auction.value)
 	_log_admin(I18n.t("admin.log_timers", [int(_sp_turn.value), int(_sp_auction.value)]),
 		{"ok": true, "reason": ""})
 	_refresh_all()
 
+## The panel may hold the GATE (token-guarded wrapper) or the controller itself: the gate keeps the
+## controller in `_controller`, so one hop down is where the engine lives. Reading `_controller.engine`
+## directly threw "Invalid access ... on RefCounted (admin_gate.gd)" (measured in the demo) and cost
+## the pause its "who" label.
+func _engine():
+	if _controller == null:
+		return null
+	if _controller.get("engine") != null:
+		return _controller.engine
+	var inner = _controller.get("_controller")
+	if inner != null and inner.get("engine") != null:
+		return inner.engine
+	return null
+
+
 func _current_timer(key: String) -> int:
-	if _controller == null or _controller.engine == null:
+	var eng = _engine()
+	if eng == null:
 		return 0
-	return int(_controller.engine.settings.get(key))
+	return int(eng.settings.get(key))
+
 
 func _host_name() -> String:
-	if _controller != null and _controller.engine != null and _controller.engine.player_count() > 0:
-		return str(_controller.engine.player(0).name)
+	var eng = _engine()
+	if eng != null and eng.player_count() > 0:
+		return str(eng.player(0).name)
 	return "host"
 
 func _quick_reset_away() -> void:
