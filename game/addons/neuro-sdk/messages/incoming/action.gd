@@ -48,7 +48,11 @@ func _report_result(state: Dictionary, result: ExecutionResult) -> void:
 		push_error("Action.report_result received no action id. It probably could not be parsed in the action. Received result: %s" % [result.message])
 		return
 
-	Websocket.send(ActionResult.new(id, result))
+	# MULTI-SDK: the result must return on the connection the action belongs to (the seat that was
+	# forced), not through the autoload's first socket.
+	var action: NeuroAction = state.get("_action_instance")
+	var conn = action.connection() if action != null and action.has_method("connection") else null
+	(conn if conn != null else Websocket).send(ActionResult.new(id, result))
 
 func _execute(state: Dictionary) -> void:
 	var action: NeuroAction = state["_action_instance"]

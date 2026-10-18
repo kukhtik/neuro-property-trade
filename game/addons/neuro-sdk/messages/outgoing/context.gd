@@ -17,5 +17,5 @@ func _get_data() -> Dictionary:
 		"silent": _silent
 	}
 
-static func send(message: String, silent: bool = false):
-	Websocket.send(Context.new(message, silent))
+static func send(message: String, silent: bool = false, conn: Node = null):
+	(conn if conn != null else Websocket).send(Context.new(message, silent))

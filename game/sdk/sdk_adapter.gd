@@ -40,6 +40,12 @@ const ENGINE_TO_SDK := {
 
 var engine
 var seat_pid: int = -1
+## MULTI-SDK: this seat's OWN websocket, when it was given an endpoint. Empty endpoint = the
+## process-wide `NEURO_SDK_WS_URL` through the autoload, i.e. exactly the old single-SDK behaviour.
+## The engine supports several SDK seats now; each one owns a connection, an action registry and a
+## result path, so two seats never answer for each other.
+var conn: Node = null
+var endpoint: String = ""
 var _projection
 var _renderer
 var _controller
@@ -62,8 +68,18 @@ func _ready() -> void:
 	_projection = ProjectionScript.new()
 	_renderer = Renderer.new()
 	_controller = DecisionController.new()
-	# Re-register + re-force on (re)connect — context survives disconnects.
-	Websocket.connected.connect(_on_connected)
+	# MULTI-SDK: a seat with its own endpoint gets its own connection node. The vendored Websocket
+	# is an ordinary instance script, so N of them can run side by side; the autoload is just the
+	# first one (and stays the single-SDK path).
+	if endpoint != "":
+		var ConnScript = load("res://addons/neuro-sdk/websocket/websocket.gd")
+		conn = ConnScript.new()
+		conn.name = "SdkConn%d" % seat_pid
+		conn.ws_url_override = endpoint
+		add_child(conn)
+	else:
+		conn = Websocket
+	conn.connected.connect(_on_connected)
 	_register_actions()
 
 func _process(delta: float) -> void:
@@ -125,7 +141,8 @@ func _tick_await() -> void:
 func tick() -> void:
 	_force_if_needed()
 
-func setup(eng, pid: int) -> void:
+func setup(eng, pid: int, endpoint_override: String = "") -> void:
+	endpoint = endpoint_override
 	engine = eng
 	seat_pid = pid
 
@@ -153,7 +170,7 @@ func _register_actions() -> void:
 	actions.append(_make_action("respond_trade", "respond_trade", "Accept or decline a pending trade.", {"accept": {"type": "boolean"}}, _accept_param))
 	actions.append(_make_action("pay_jail_fine", "pay", "Pay the jail fine to get out of jail.", {}, _no_params))
 	actions.append(_make_action("use_jail_card", "use_card", "Use a get-out-of-jail card.", {}, _no_params))
-	NeuroActionHandler.register_actions(actions)
+	NeuroActionHandler.register_actions(actions, conn)
 
 func _make_action(sdk_name: String, engine_action: String, description: String, schema: Dictionary, params: Callable) -> NeuroAction:
 	return EngineAction.new(_window, self, sdk_name, engine_action, description, schema, params)
@@ -193,6 +210,8 @@ func _force_if_needed() -> void:
 	if _window != null:
 		_window.queue_free()
 	_window = ActionWindow.new(self)
+	# MULTI-SDK: the window forces on THIS seat's connection
+	_window.conn = conn
 	_window.set_force(
 		float(engine.settings.turn_timer),
 		decision.get("query", ""),

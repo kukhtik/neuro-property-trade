@@ -10,6 +10,20 @@ extends RefCounted
 const PI := preload("res://core/player_identity.gd")
 const Persona := preload("res://seats/ai_persona.gd")
 
+## MULTI-SDK: how many seats are already on the SDK driver (used to hand out endpoints in order).
+static func seen_sdk_count(seats: Array) -> int:
+	var n := 0
+	for s in seats:
+		if str(s.input_driver) == "SDK":
+			n += 1
+	return n
+
+
+static func _endpoints(settings) -> Array:
+	var e = settings.get("sdk_endpoints")
+	return e if e is Array else []
+
+
 static func from_settings(settings) -> Array:
 	var n: int = settings.seat_count
 	if n < 2:
@@ -20,6 +34,13 @@ static func from_settings(settings) -> Array:
 	for i in n:
 		var s = load("res://seats/seat.gd").new(i)
 		var driver_label: String = ""
+		# MULTI-SDK: a seat may name its own SDK endpoint; that seat gets its own connection.
+		var endpoint := ""
+		if i < assignments.size():
+			var a: Dictionary = assignments[i]
+			endpoint = str(a.get("sdk_endpoint", ""))
+			if endpoint == "" and _endpoints(settings).size() > 0 and seen_sdk_count(seats) < _endpoints(settings).size():
+				endpoint = str(_endpoints(settings)[seen_sdk_count(seats)])
 		if i < assignments.size():
 			var a: Dictionary = assignments[i]
 			driver_label = str(a.get("driver", ""))
@@ -37,7 +58,8 @@ static func from_settings(settings) -> Array:
 			s.color = PI.color_of(i)
 			s.token_id = PI.token_of(i)
 		s.driver_label = driver_label
-		s.input_driver = resolve_driver(driver_label, seen_sdk)
+		s.sdk_endpoint = endpoint
+		s.input_driver = resolve_driver(driver_label, seen_sdk, endpoint != "")
 		# the character: an explicit choice wins, otherwise rotate by seat index so
 		# an unconfigured match is never four clones (which produced a dead economy)
 		var picked := ""
@@ -65,7 +87,8 @@ static func from_settings(settings) -> Array:
 			seats[i].pid = i
 	return seats
 
-static func resolve_driver(driver_label: String, sdk_already_used: bool) -> String:
+static func resolve_driver(driver_label: String, sdk_already_used: bool,
+		has_endpoint: bool = false) -> String:
 	var label: String = String(driver_label).to_lower()
 	if label == "local":
 		return "LOCAL"
@@ -80,9 +103,12 @@ static func resolve_driver(driver_label: String, sdk_already_used: bool) -> Stri
 	if label == "ai":
 		return "AI"
 	if label.begins_with("sdk:") or label == "sdk":
-		# Only ONE SDK connection is supported in-process (the vendored SDK is
-		# a single global singleton). Additional SDK seats fall back to the
-		# internal AI driver so the game stays playable.
+		# MULTI-SDK: a seat with its OWN endpoint gets its own connection, so any number of SDK
+		# seats can share the process. Without an endpoint only the FIRST sdk: seat can use the
+		# process-wide NEURO_SDK_WS_URL (one socket, one character) - the rest play as AI, which
+		# keeps the table playable instead of hanging.
+		if has_endpoint:
+			return "SDK"
 		return "AI" if sdk_already_used else "SDK"
 	return "AI"   # unknown assignment -> safe internal AI
 

@@ -8,6 +8,8 @@ enum State {
 	STATE_ENDED
 }
 var _state: State = State.STATE_BUILDING
+## MULTI-SDK: which connection this window speaks on. null = the Websocket autoload (single-SDK).
+var conn: Node = null
 var _force_enabled: bool = false
 var _force_timeout: float
 var _action_force_query: String
@@ -68,8 +70,9 @@ func register() -> void:
 		return
 
 	if _context_enabled:
-		Context.send(_context_message, _context_silent)
-	NeuroActionHandler.register_actions(_actions)
+		Context.send(_context_message, _context_silent, conn)
+	# MULTI-SDK: register on THIS window's connection, not on the autoload's
+	NeuroActionHandler.register_actions(_actions, conn)
 
 	_state = State.STATE_REGISTERED
 
@@ -108,10 +111,11 @@ func _process(delta: float) -> void:
 func _send_force() -> void:
 	var array: Array[String] = []
 	array.assign(_actions.map(func(action: NeuroAction) -> String: return action.get_name()))
-	Websocket.send(ActionsForce.new(_action_force_query, _action_force_state, _action_force_ephemeral_context, array, _action_force_priority))
+	# MULTI-SDK: the force goes out on THIS seat's connection (null = the autoload).
+	(conn if conn != null else Websocket).send(ActionsForce.new(_action_force_query, _action_force_state, _action_force_ephemeral_context, array, _action_force_priority))
 
 func _end() -> void:
-	NeuroActionHandler.unregister_actions(_actions)
+	NeuroActionHandler.unregister_actions(_actions, conn)
 	_end_enabled = false
 	_state = State.STATE_ENDED
 	queue_free()

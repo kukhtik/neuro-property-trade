@@ -17,6 +17,9 @@ var _elapsed_time := 0.0
 var websocket_is_connected: bool = false
 var character_id: String = ""
 var character_display_name: String = ""
+## MULTI-SDK: when set, THIS instance connects here instead of the process-wide env var, and its
+## queue is written to ITS OWN socket (see `_ws_write`). Empty = the autoload behaviour.
+var ws_url_override: String = ""
 
 
 func _enter_tree() -> void:
@@ -70,7 +73,10 @@ func _ws_start() -> void:
 		if state == WebSocketPeer.STATE_OPEN or state == WebSocketPeer.STATE_CONNECTING:
 			_socket.close()
 
-	var ws_url := OS.get_environment("NEURO_SDK_WS_URL")
+	# MULTI-SDK: a seat may bring its OWN endpoint. Empty = the process-wide env var (the single-SDK
+	# path every existing gate uses). One socket per instance is what makes several SDK seats in one
+	# process possible at all - the autoload is just the first of them.
+	var ws_url := ws_url_override if ws_url_override != "" else OS.get_environment("NEURO_SDK_WS_URL")
 	if not ws_url:
 		push_error("NEURO_SDK_WS_URL environment variable is not set")
 		return
@@ -119,7 +125,10 @@ func _ws_read() -> void:
 func _ws_write() -> void:
 	while _message_queue.size() > 0:
 		var message: OutgoingMessage = _message_queue.dequeue()
-		Websocket._send_internal(message.get_ws_message())
+		# `Websocket._send_internal(...)` (the autoload) wrote EVERY instance's queue to the FIRST
+		# socket - a second connection would have answered through the first one. `self` is the
+		# whole difference between one SDK seat and several.
+		_send_internal(message.get_ws_message())
 
 
 func send(message: OutgoingMessage) -> void:

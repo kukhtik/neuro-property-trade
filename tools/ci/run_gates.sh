@@ -92,6 +92,11 @@ GATES=(
 	# пустыми карточками и при этом пройти FILL. Негативная проверка проведена: пустая зона
 	# журнала даёт `PANEL EMPTY zone-journal ... 1 line(s)` и `==> PANEL FAILED`.
 	"PANEL-NOT-EMPTY|sg|quarantine|scene|panel_gate"
+	# MULTI-SDK: два SDK-места в одном процессе, у каждого своё соединение. Гейт поднимает ДВА мока,
+	# отдаёт их порты как NPT_SDK_A/NPT_SDK_B и требует, чтобы оба места были подключены и оба
+	# имели принятые движком интенты. Негатив: без endpoint второй sdk: уходит в AI (проверено
+	# HG-08) - то есть без своих соединений гейт красный.
+	"MULTI-SDK|sg|quarantine|script|tools/ci/multi_sdk_gate.sh"
 	"SG-03|sg|required|script|tools/ci/gates/sg03_palette_gate.sh"
 	# SG-07 runs LAST: it spawns windowed Godot captures for every state x skin, and SG-10's
 	# clean-machine preflight must never see one of them alive (that is the race that once made

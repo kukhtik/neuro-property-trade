@@ -28,6 +28,11 @@ func register_all() -> void:
 	dir.list_dir_end()
 
 func handle(command: String, data: IncomingData) -> void:
+	# MULTI-SDK: this CommandHandler belongs to ONE websocket instance (created in
+	# Websocket._enter_tree), so the message arrived on that connection. Tell the action registry
+	# which connection is answering, so `get_action(name)` resolves THIS seat's `roll_dice` and not
+	# another seat's same-named action.
+	NeuroActionHandler.set_incoming_conn(get_parent())
 	for handler in handlers:
 		if !handler.can_handle(command):
 			continue

@@ -216,6 +216,42 @@ F12, токен-гейт, стрим-роль, наблюдатель без в�
 аргументов — многострочный промпт доезжает одной вводной фразой; stdout модели надо писать в ФАЙЛ,
 не в пайп, иначе `timeout` на Windows ждёт внуков node (замер: кап 45 с дал 78 с).
 
+### П1.11 — мульти-SDK: несколько SDK-мест в одном процессе
+
+Было: `seat_config.resolve_driver` понижал ВСЕ `sdk:`-места после первого до ИИ. Причина — вендорный
+аддон был однопоточным по соединению: `Websocket._ws_write()` писал очередь ЛЮБОГО экземпляра в сокет
+автолоада, а `NeuroActionHandler` держал ОДИН глобальный реестр действий по имени (второе место
+затирало `roll_dice` первого).
+
+Сделано:
+- **Соединение на место**: `sdk_adapter` при наличии endpoint создаёт СВОЙ экземпляр
+  `addons/neuro-sdk/websocket/websocket.gd` (`ws_url_override`), и `_ws_write` пишет в свой сокет.
+  Без endpoint — прежний путь через автолоад (совместимость с HG-08).
+- **Реестр действий на соединение**: `NeuroActionHandler` теперь `handler_for(conn)`; `CommandHandler`
+  (он создаётся на каждый websocket) помечает, на каком соединении пришло сообщение, поэтому
+  `get_action("roll_dice")` разрешается в действие ИМЕННО этого места.
+- **Результат и force идут по своему соединению**: `ActionWindow.conn`, `EngineAction.connection()`,
+  `ActionResult` через `action.connection()`, `Context.send(..., conn)`.
+- **Настройки**: `sdk_endpoints` (список ws-адресов, по месту), `seat.sdk_endpoint`,
+  `resolve_driver(..., has_endpoint)` — место со своим endpoint получает драйвер SDK, без endpoint
+  второй `sdk:` по-прежнему уходит в ИИ (честное ограничение: один сокет = один персонаж).
+
+**Замер (гейт `MULTI-SDK`, два мока, один процесс):**
+```
+MULTI-SDK seats: 2 SDK of 4 (Seat A=SDK, Seat B=SDK, Bot 3=AI, Bot 4=AI)
+MULTI-SDK connection pid=0 node=SdkConn0 connected=true
+MULTI-SDK connection pid=1 node=SdkConn1 connected=true
+MULTI-SDK intents pid=0 accepted=6 · pid=1 accepted=7
+==> MULTI-SDK PASSED (2 connections, round 1)
+```
+Регрессия однопоточного пути: `HG-08 PASSED` (один SDK через автолоад, 4 места, матч идёт).
+Оракул: `ran 414 tests, 0 failed`. Гейт добавлен в `run_gates.sh` карантином.
+
+Побочная находка: вендорное `ActionWindow` отправляет FORCE только когда `_timer >= _force_timeout`,
+то есть **сила задерживается на величину окна** — при `turn_timer=0` уходит сразу. Это объясняет,
+почему старые гейты (с таймером 0) не замечали задержки; в реальном матче с таймером 30 с первое
+приглашение приходит через 30 с. Записано как долг.
+
 ## Осталось
 
 1. **Чистый перф-замер ≥40 на пустой машине** (High Performance, без фоновых процессов) —

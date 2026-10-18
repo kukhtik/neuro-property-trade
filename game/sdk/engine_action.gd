@@ -30,6 +30,14 @@ func _init(window: ActionWindow, adapter, sdk_name: String, engine_action: Strin
 func _get_name() -> String:
 	return _sdk_name
 
+
+## MULTI-SDK: the connection this action was registered on (null = the autoload). The SDK's
+## ActionResult returns through it, so two seats in one process never answer for each other.
+func connection() -> Node:
+	if _adapter != null and _adapter.get("conn") != null:
+		return _adapter.conn
+	return null
+
 func _get_description() -> String:
 	return _description
 

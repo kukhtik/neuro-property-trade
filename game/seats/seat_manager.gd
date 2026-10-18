@@ -61,7 +61,7 @@ func setup(eng, seat_list: Array) -> void:
 			# _ready registers the action set with the engine already known.
 			var ad = load("res://sdk/sdk_adapter.gd").new()
 			ad.name = "SdkAdapter%d" % s.pid
-			ad.setup(engine, s.pid)
+			ad.setup(engine, s.pid, str(s.get("sdk_endpoint")))
 			add_child(ad)
 			ad.events_emitted.connect(func(events: Array) -> void:
 				events_emitted.emit(events)

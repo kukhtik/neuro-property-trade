@@ -9,6 +9,8 @@ var driver_label: String = ""       # raw assignment for display/routing, e.g. "
 var color: Color = Color.WHITE
 var color_custom := false            # true when the colour came from an explicit pick, not the palette
 var token_id: String = ""
+## MULTI-SDK: this seat's own SDK endpoint (empty = the process-wide NEURO_SDK_WS_URL).
+var sdk_endpoint: String = ""
 var away: bool = false              # flagged true once auto-passed (spec §3)
 ## This seat's AI character (see seats/ai_persona.gd). Empty means "not assigned";
 ## seat_config fills it with a rotating default so an automatic match is varied

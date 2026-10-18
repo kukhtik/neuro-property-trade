@@ -37,6 +37,10 @@ var deck_shuffle: String = "per_game"
 
 var turn_timer: int = 30
 var auction_timer: int = 15
+## MULTI-SDK: one websocket endpoint per SDK seat, in seat order. Empty = every SDK seat that exists
+## must share the process-wide NEURO_SDK_WS_URL, which only the FIRST one can (one socket, one
+## character). With endpoints, each seat owns its connection and its own action registry.
+var sdk_endpoints: Array = []
 var timeout_action: String = "auto-pass"
 var ai_aggression: int = 50
 var evil_enabled: bool = false
