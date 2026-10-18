@@ -56,6 +56,9 @@ func _init() -> void:
 		"res://tests/modal_trade_test.gd",
 		# READ-1: the board cell is READABLE (font floors, `short`, label_step, house counter)
 		"res://tests/tile_view_test.gd",
+		# P1.1 (brief §4.1): the ring's centre is a four-zone turn panno - zones, ratios, projection
+		# source and the no-absolute-layout rule are pinned here.
+		"res://tests/panno_test.gd",
 	]
 	_check_orphan_modules(modules)
 	for path in modules:

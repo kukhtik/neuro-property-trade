@@ -11,6 +11,7 @@ const TileView := preload("res://visual/tile_view.gd")
 const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
+const TurnPanno := preload("res://ui/components/turn_panno.gd")
 
 var _skin: SkinManager
 var _board: Array = []
@@ -46,6 +47,13 @@ var _roll_t := 0.0
 var _roll_swap := 0.0
 var _roll_to := Vector2i(1, 1)
 var _watermark := true
+## brief §4.1: the ring's interior is a TURN PANNO, not a hole. It owns the layout of the four
+## zones; the widgets built below (watermark, dice tray, event banner, decision card) are hosted
+## INSIDE its zones, so nothing in the centre is positioned by absolute coordinates any more.
+var _panno: Control
+var _last_line: Dictionary = {}          # the shell's finished journal line (R-14: not computed here)
+var _journal_tail: Array = []            # last N journal sentences, oldest first
+const JRN_TAIL := 3
 
 
 func _ready() -> void:
@@ -55,6 +63,11 @@ func _ready() -> void:
 	_load_board()
 	resized.connect(_layout)
 	_build_centre()
+	# The panno is created in `_build_centre()`, so the FIRST layout pass has to run after it:
+	# `resized` may already have fired while the board was entering the tree, and without this
+	# call the panno stayed at 0x0 for the whole session (measured: the ring's interior still read
+	# 7.3 % occupied because nothing was drawn there).
+	_layout()
 
 
 func _load_board() -> void:
@@ -117,6 +130,26 @@ func _build_centre() -> void:
 	_card_price = UiTheme.label("", 14, UiTheme.COL().money)
 	_card_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cv.add_child(_card_price)
+
+	# brief §4.1 (R-13/R-2): the ring's interior is a four-zone TURN PANNO. Built last, and the
+	# widgets above are moved INTO its zones: the panno owns the layout, they keep their behaviour.
+	# This is what turns the 857x800 hole (84.7 % empty, 94 px of content) into the turn surface.
+	_panno = TurnPanno.new()
+	_panno.name = "turn-panno"
+	add_child(_panno)
+	_panno.build()
+	var roll_col: VBoxContainer = _panno.zone_box("roll")
+	var ev_col: VBoxContainer = _panno.zone_box("event")
+	if roll_col != null:
+		_tray.reparent(roll_col, false)
+	if ev_col != null:
+		_banner.reparent(ev_col, false)
+		_card.reparent(ev_col, false)
+	# The watermark is the COLD state's decoration; the panno already says "партия не начата".
+	# It stays a child of the board (never inside a column: an autowrapping label there demanded
+	# 577px of minimum height and pushed every zone out of the ring).
+	_wm1.visible = false
+	_wm2.visible = false
 
 
 ## Ring coordinates for board index (classic order: GO bottom-right, anti-clockwise).
@@ -190,44 +223,43 @@ func _place_board(side_px: float) -> void:
 
 
 func _place_centre() -> void:
+	# R-13: the panno is given ONE rect - the ring's interior - and lays itself out from there.
+	# Nothing inside it is positioned by absolute coordinates derived from the screen size.
+	if _panno == null:
+		return
 	var side_px: float = _cell * 11.0
 	var ox: float = (size.x - side_px) * 0.5 + _cell
 	var oy: float = (size.y - side_px) * 0.5 + _cell
 	var cw: float = _cell * 9.0
-	# watermark: two centred lines above the tray
-	_wm1.position = Vector2(ox, oy + cw * 0.30)
-	_wm1.size = Vector2(cw, 64)
-	_wm1.add_theme_font_size_override("font_size", maxi(12, int(_cell * 0.30)))
-	_wm2.position = Vector2(ox, oy + cw * 0.30 + 68.0)
-	_wm2.size = Vector2(cw, 20)
-	_wm2.add_theme_font_size_override("font_size", maxi(8, int(_cell * 0.14)))
-	# tray at the vertical middle
-	var die_px: float = maxf(18.0, roundf(_cell * 0.62))
+	_panno.position = Vector2(ox, oy)
+	_panno.size = Vector2(cw, cw)
+	_panno.apply_scale(_cell)
+	# the dice keep the game's own art; only their size follows the cell, as before
+	var die_px: float = maxf(18.0, roundf(_cell * 0.42))
 	for d in _dice:
 		d.custom_minimum_size = Vector2(die_px, die_px)
-	_tray.position = Vector2(ox, oy + cw * 0.5 - die_px * 0.5)
-	_tray.size = Vector2(cw, die_px)
-	_sum.add_theme_font_size_override("font_size", maxi(14, int(_cell * 0.5)))
-	# banner: top 4% of the centre
-	_banner.position = Vector2(ox, oy + cw * 0.04)
-	_banner.size = Vector2(cw, 30)
-	_banner.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.26)))
-	# card: centred panel
-	_card.position = Vector2(ox + cw * 0.25, oy + cw * 0.62)
-	_card.size = Vector2(cw * 0.5, 92)
+	_sum.add_theme_font_size_override("font_size", maxi(14, int(_cell * 0.42)))
+	_banner.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.24)))
+	_card_name.add_theme_font_size_override("font_size", maxi(12, int(_cell * 0.22)))
+	_card_price.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.20)))
 
 
 ## Watermark shows in the cold state only (proto renderCenter).
 func set_watermark(v: bool) -> void:
+	# The watermark is RETIRED from the centre: the panno's event zone already says "партия не
+	# начата" and the cold state is a full surface now. The flag stays because the shell and the
+	# cold path still toggle it; the labels themselves never show again.
 	_watermark = v
-	_wm1.visible = v
-	_wm2.visible = v
+	_wm1.visible = false
+	_wm2.visible = false
 
 
 func set_cold() -> void:
 	set_watermark(true)
 	_banner.visible = false
 	_card.visible = false
+	if _panno != null:
+		_panno.set_cold(true)
 	for pid in _tokens:
 		(_tokens[pid] as Control).visible = false
 
@@ -268,10 +300,24 @@ func sync(proj: Dictionary, seats: Array, human_pid: int) -> void:
 	for i in _tiles.size():
 		_tiles[i].apply(entries.get(i, {}))
 	_sync_tokens(proj, seats)
-	_sync_centre(proj, seats)
+	_sync_centre(proj, seats, human_pid)
 
 
-func _sync_centre(proj: Dictionary, seats: Array) -> void:
+## The shell hands over the SAME finished journal line it gives the toast and the feed, plus the
+## last few sentences for the panno's journal zone (R-14: the panno computes no game state).
+func set_last_line(line: Dictionary) -> void:
+	_last_line = line
+
+
+func set_journal_tail(lines: Array) -> void:
+	_journal_tail = lines
+
+
+func _sync_centre(proj: Dictionary, seats: Array, human_pid: int) -> void:
+	# The panno paints FIRST and unconditionally: the zones (dice, players, journal) must be
+	# current in every phase, including the AUCTION branch below that returns early.
+	if _panno != null:
+		_panno.sync(proj, seats, human_pid, _last_line, _journal_tail)
 	var phase: String = str(proj.get("phase", ""))
 	var dice: Array = proj.get("dice", [0, 0])
 	if int(dice[0]) > 0 and not _rolling:

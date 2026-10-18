@@ -336,4 +336,13 @@ const D := {
 
 	# ---- toast ----
 	"toast.dismiss_tip":    {"ru": "Закрыть", "en": "Close"},
+
+	# ---- turn panno (brief §4.1: the ring's centre carries the turn, not decoration) ----
+	# The four zone captions are WORDS (R-9: no glyphs, no abbreviations a player must guess).
+	"panno.roll":    {"ru": "БРОСОК", "en": "ROLL"},
+	"panno.event":   {"ru": "СОБЫТИЕ", "en": "EVENT"},
+	"panno.players": {"ru": "ИГРОКИ", "en": "PLAYERS"},
+	"panno.journal": {"ru": "ЖУРНАЛ", "en": "LOG"},
+	# One row of the panno's player zone: cash is a separate value, this is what they own.
+	"panno.owns":    {"ru": "владений %d · домов %d", "en": "owns %d · houses %d"},
 }

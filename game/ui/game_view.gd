@@ -92,6 +92,9 @@ var _rail_r_inspector: Control
 var _drawers: Dictionary = {}
 ## SG-06: engine events -> readable journal lines (adapter spans + tile names).
 var _journal_lines = JournalLines.new()
+## brief §4.1: the last journal sentences, shown inside the ring's panno (the board must say what
+## just happened without the side panel). The shell owns the text; board_scene only displays it.
+var _board_tail: Array = []
 
 
 func _init() -> void:
@@ -612,6 +615,11 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 		_journal.clear_rows()
 		if _journal.has_method("set_seats"):
 			_journal.set_seats(seats)
+	# the panno's journal zone starts empty with the match, like the feed it mirrors
+	_board_tail.clear()
+	if _board != null:
+		_board.set_last_line({})
+		_board.set_journal_tail([])
 	# WHO PLAYS HERE: the seat driven by a human (LOCAL/ADMIN), whoever that is. The old
 	# `_human_pid = 0` was right only by convention, and only on the host: any other ordering
 	# (or a client) got a screen whose buttons could never appear or played the wrong seat.
@@ -875,6 +883,20 @@ func _submit(pid: int, action: String, params: Dictionary) -> void:
 		show_rejection(str(res.get("reason", "?")))
 
 
+## The panno's journal zone (brief §4.1): the shell owns the sentence, board_scene only displays
+## it, so the feed, the toast and the ring cannot disagree about what happened.
+func _note_board_line(line: Dictionary) -> void:
+	if _board == null:
+		return
+	_board.set_last_line(line)
+	var who_line := str(line.get("who", ""))
+	var text_line := str(line.get("text", ""))
+	_board_tail.append(text_line if who_line == "" else "%s · %s" % [who_line, text_line])
+	while _board_tail.size() > 3:
+		_board_tail.pop_front()
+	_board.set_journal_tail(_board_tail)
+
+
 ## Engine/manager events -> toasts, journal rows and board animations.
 func _on_events(events: Array) -> void:
 	for ev in events:
@@ -895,6 +917,10 @@ func _on_events(events: Array) -> void:
 			line = _journal_lines.line_for(e, ctx)
 			if not line.is_empty():
 				_journal.append(e, ctx)
+				# brief §4.1 / R-4: the SAME sentence also goes into the panno's journal zone, so
+				# the board itself says what just happened — a viewer following the ring no longer
+				# has to open the side panel to find out.
+				_note_board_line(line)
 				if _console != null and _is_compact():
 					# compact: the journal lives behind rail-right; the newest event shows as the
 					# console's one-line ticker (the registry's own wording for the compact toast)
