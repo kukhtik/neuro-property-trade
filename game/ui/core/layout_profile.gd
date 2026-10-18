@@ -86,8 +86,12 @@ func is_compact() -> bool:
 ## what it wants is HEIGHT; handing 612px of a 1584px row to two panels that show a name and a price
 ## is what the owner saw as "абсурдно огромные панели с парой строк". Rails below the threshold, and
 ## the board takes the row.
+## R-15 (brief §4.2): THE LEFT RAIL IS GONE. Its glance layer (who is playing, their cash, what
+## they own) moved into the panno's players zone, and that zone is the door to `drawer-seats`, so a
+## 48px strip on the left would only repeat the panel next to it. The profile still answers the
+## question the layout asks - do the panels collapse? - through `rail_right()`.
 func rail_left() -> bool:
-	return screen.x < RAILS_BELOW or is_compact()
+	return false
 
 
 ## Should the right journal panel auto-collapse to a rail?

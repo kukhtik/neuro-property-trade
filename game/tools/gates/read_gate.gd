@@ -347,7 +347,7 @@ func gv_dock(id: String) -> Control:
 	if direct is Control and (direct as Control).visible:
 		return direct as Control
 	var alt := "drawer-seats" if id == "seats" else "drawer-journal"
-	var alt2 := "rail-left" if id == "seats" else "rail-right"
+	var alt2 := "zone-players" if id == "seats" else "rail-right"
 	for name_alt in [alt, alt2]:
 		var n: Node = gv.find_child(str(name_alt), true, false)
 		if n is Control and (n as Control).visible:

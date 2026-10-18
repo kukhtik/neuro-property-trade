@@ -26,7 +26,7 @@ const REGIONS := {
 	"top": [],
 	"stage": [],
 	"act": [],
-	"seats": ["rail-left", "drawer-seats"],
+	"seats": ["zone-players", "drawer-seats"],
 	"rightcol": ["rail-right"],
 	"journal": ["rail-right", "drawer-journal"],
 	"inspector": ["rail-right", "drawer-inspector"],
@@ -134,32 +134,38 @@ func _check_profile(profile: Dictionary) -> void:
 			_fail("%s: a dock profile hides the seats dock (not compact by LayoutProfile.RAILS_BELOW=%d)" % [label, LayoutProfile.RAILS_BELOW])
 
 
-## REGION EXISTENCE IS NOT ENOUGH. The replacement must WORK: the rail is a strip, a click
-## opens its drawer, the dock's content really moves inside, and closing brings it back.
-## (An existence-only check would let a decorative 48px strip pass with the docks gone.)
+## REGION EXISTENCE IS NOT ENOUGH. The replacement must WORK: the panno's players zone is the
+## door to the seats drawer, the dock's content really sits inside it, and closing brings it back.
+## (An existence-only check would let a decorative panel pass with the docks gone.)
+##
+## R-15 changed WHAT the door is: the 48px seats rail was removed because its glance layer moved
+## into the panno. The gate follows the requirement, not the old widget: it proves the zone is
+## visible in compact AND that it opens drawer-seats.
 func _check_compact_behaviour(gv, label: String) -> void:
-	var rail = gv.find_child("rail-left", true, false)
-	if rail == null or not (rail as Control).visible:
-		_fail("%s: rail-left missing or invisible in compact" % label)
-	elif (rail as Control).size.x > 60.0:
-		_fail("%s: rail-left is %dpx wide - a rail must be a strip" % [label, int((rail as Control).size.x)])
+	var zone = gv.find_child("zone-players", true, false)
+	if zone == null or not (zone as Control).visible:
+		_fail("%s: zone-players missing or invisible in compact - the seats glance layer has no home (R-15 replaces rail-left with it)" % label)
 	else:
 		_checks += 1
-		(rail as RailPanel).toggled.emit(false)
-		var d = gv.find_child("drawer-seats", true, false)
-		if d == null or not (d as Control).visible:
-			_fail("%s: clicking rail-left did not open drawer-seats" % label)
+		var board = gv.find_child("stage", true, false)
+		if board == null or not board.has_signal("seats_requested"):
+			_fail("%s: the board has no seats_requested signal - the players zone cannot open the seat cards" % label)
 		else:
-			var seats = gv.find_child("seats", true, false)
-			if seats == null or not (d as Control).is_ancestor_of(seats):
-				_fail("%s: drawer-seats opened without the seats panel inside" % label)
+			board.emit_signal("seats_requested")
+			var d = gv.find_child("drawer-seats", true, false)
+			if d == null or not (d as Control).visible:
+				_fail("%s: opening the players zone did not open drawer-seats" % label)
 			else:
-				_checks += 1
-			(d as DrawerPanel).close()
-			if (d as Control).visible:
-				_fail("%s: drawer-seats stayed open after close()" % label)
-			else:
-				_checks += 1
+				var seats = gv.find_child("seats", true, false)
+				if seats == null or not (d as Control).is_ancestor_of(seats):
+					_fail("%s: drawer-seats opened without the seats panel inside" % label)
+				else:
+					_checks += 1
+				(d as DrawerPanel).close()
+				if (d as Control).visible:
+					_fail("%s: drawer-seats stayed open after close()" % label)
+				else:
+					_checks += 1
 	var rj = gv.find_child("rail-right-journal", true, false)
 	if rj == null or not (rj as Control).visible:
 		_fail("%s: rail-right-journal missing or invisible in compact" % label)

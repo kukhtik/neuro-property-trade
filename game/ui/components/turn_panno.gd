@@ -26,6 +26,10 @@ extends Control
 const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 
+## R-15 (brief §4.2): the 48px seats rail is gone - the panno's players zone carries the glance
+## layer, and this signal is the door to the full seat cards in `drawer-seats`.
+signal seats_requested
+
 ## Zone order is the reading order from the brief and must not be shuffled: heights are ratios of
 ## the panno's height, so they scale with the board instead of being fixed pixels.
 const ZONE_KEYS: Array = ["roll", "event", "players", "journal"]
@@ -146,6 +150,9 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 			for r in PLAYER_ROWS:
 				var row := UiTheme.hbox(8)
 				row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				# The rows share the zone's height: with fixed-height rows the column ended 58px
+				# short of its own bottom edge and READ-02 read that as 32 % dead space.
+				row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 				var chip := ColorRect.new()
 				chip.color = UiTheme.COL().border
 				chip.custom_minimum_size = Vector2(10, 10)
@@ -164,6 +171,14 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 				row.add_child(owns)
 				col.add_child(row)
 				_pl_rows.append({"root": row, "chip": chip, "name": nm, "money": money, "owns": owns})
+			# The zone is the DOOR to the full seat cards: with the seats rail removed (R-15) the
+			# drawer would otherwise be unreachable in compact. A click, not a new control.
+			col.mouse_filter = Control.MOUSE_FILTER_STOP
+			col.tooltip_text = I18n.t("ui.players")
+			col.gui_input.connect(func(ev: InputEvent) -> void:
+				if ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed \
+						and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+					seats_requested.emit())
 		"journal":
 			for r in JOURNAL_ROWS:
 				var line := UiTheme.label_wrap("", _fs(FS_JRN), UiTheme.COL().text_dim)
@@ -271,6 +286,10 @@ func sync(proj: Dictionary, seats: Array, human_pid: int, event_line: Dictionary
 	# PLAYERS zone: cash of EVERY seat (R-4) plus what they own.
 	for r in PLAYER_ROWS:
 		var row: Dictionary = _pl_rows[r]
+		# A row with no seat behind it is not "space", it is dead space: READ-02 measured the zone
+		# at 32 % empty in a 2-seat match because the four rows were always drawn. Hide them and
+		# let the column hand the height to the seats that exist.
+		row["root"].visible = r < players.size()
 		if r >= players.size():
 			row["chip"].color = UiTheme.COL().border
 			row["name"].text = ""

@@ -6,6 +6,8 @@ extends Control
 ## Reads the spectator projection; emits tile clicks. It never touches the engine.
 
 signal tile_clicked(index: int)
+## R-15: the panno's players zone is the door to `drawer-seats` once the seats rail is gone.
+signal seats_requested
 
 const TileView := preload("res://visual/tile_view.gd")
 const UiTheme := preload("res://ui/theme.gd")
@@ -138,6 +140,7 @@ func _build_centre() -> void:
 	_panno.name = "turn-panno"
 	add_child(_panno)
 	_panno.build()
+	_panno.seats_requested.connect(func() -> void: seats_requested.emit())
 	var roll_col: VBoxContainer = _panno.zone_box("roll")
 	var ev_col: VBoxContainer = _panno.zone_box("event")
 	if roll_col != null:

@@ -555,9 +555,14 @@ static func test_compact_short_height() -> String:
 
 
 static func test_rail_both_on_compact() -> String:
+	# R-15: there is only ONE rail now (right: journal + inspector). The left rail was removed
+	# because the panno's players zone carries its glance layer - so the test asks for the rail
+	# that exists, and for the left one to be gone.
 	var p = LayoutProfileScript.for_screen(Vector2i(1024, 900))
-	if p.rail_left() != true or p.rail_right() != true:
-		return "compact profile must have both rails collapsed"
+	if p.rail_right() != true:
+		return "compact profile must have the right rail collapsed"
+	if p.rail_left() != false:
+		return "the left rail was removed by R-15, the profile still reports one"
 	return ""
 
 
@@ -572,12 +577,12 @@ static func test_rail_both_open_on_desktop() -> String:
 	# So the rule is now "the panels never cost the ring its size", and that is what is asserted - at
 	# the size where it was hidden (1600x1200) as well as at the size where it never showed.
 	var p = LayoutProfileScript.for_screen(Vector2i(1600, 1200))
-	if not (p.rail_left() and p.rail_right()):
+	if not p.rail_right():
 		return "at 1600x1200 the panels must rail: open, they cut the ring to the column width (972px) where rails give it its full 1048px - the board is a square, so the column is what binds"
 	# the compact profile rails for its own reason (there is no room for docks at all)
 	var c = LayoutProfileScript.for_screen(Vector2i(880, 600))
-	if not (c.rail_left() and c.rail_right()):
-		return "the compact profile must rail both docks"
+	if not c.rail_right():
+		return "the compact profile must rail the right dock"
 	return ""
 
 

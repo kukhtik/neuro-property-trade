@@ -85,7 +85,6 @@ var _body_row: Control
 ## opens the matching 320px DRAWER over the stage with the dock's content inside. The old
 ## compact profile only HID the docks - the audit's defect - which made the journal, the
 ## inspector and (through it) all tile management unreachable.
-var _rail_left: Control
 var _rail_right: Control
 var _rail_r_journal: Control
 var _rail_r_inspector: Control
@@ -158,6 +157,8 @@ func _build() -> void:
 	_board.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_board.tile_clicked.connect(Callable(self, "_on_tile_clicked"))
+	# R-15: the panno's players zone replaces the seats rail; a click on it opens the full cards.
+	_board.seats_requested.connect(func() -> void: _open_drawer("seats"))
 	_camera.add_child(_board)
 	_camera.setup(_board)
 	_camera.token_pos_of = Callable(self, "_token_board_pos")
@@ -295,8 +296,6 @@ func _apply_panels_visibility() -> void:
 		_seats_panel.visible = (not compact) and not _panels_hidden
 	if _rightcol != null:
 		_rightcol.visible = (not compact) and not _panels_hidden
-	if _rail_left != null:
-		_rail_left.visible = compact and not _panels_hidden
 	if _rail_right != null:
 		_rail_right.visible = compact and not _panels_hidden
 
@@ -456,29 +455,17 @@ func _on_locale_changed(_loc: String) -> void:
 		_inspector.retranslate()
 	if _journal != null and _journal.has_method("retranslate"):
 		_journal.retranslate()
-	if _rail_left != null:
-		(_rail_left as RailPanel).set_title(I18n.t("ui.players"))
 	if _rail_r_journal != null:
 		(_rail_r_journal as RailPanel).set_title(I18n.t("jrn.title"))
 	if _rail_r_inspector != null:
 		(_rail_r_inspector as RailPanel).set_title(I18n.t("ins.title"))
 
 
-## The compact shell: two 48px rails replace the docks; each rail click opens the matching
-## 320px drawer (DrawerPanel) that carries the dock's content over the stage. The rail itself
-## never expands in place - on an 1100px window a 268px dock eats a third of the board, which
-## is what the rails exist for.
+## The compact shell: ONE 48px rail on the right (journal + inspector) replaces both docks; a rail
+## click opens the matching 320px drawer (DrawerPanel) over the stage. The seats rail is GONE
+## (brief §4.2, R-15): its glance layer moved into the panno's players zone, and that zone is the
+## door to `drawer-seats` now, so nothing became unreachable.
 func _build_compact_shell(body: Control) -> void:
-	_rail_left = RailPanel.new()
-	_rail_left.name = "rail-left"
-	(_rail_left as RailPanel).setup(UiTheme.skin(), "ui.players", true)
-	(_rail_left as RailPanel).set_title(I18n.t("ui.players"))
-	(_rail_left as RailPanel).set_collapsed(true, false)
-	(_rail_left as RailPanel).toggled.connect(
-		func(_c: bool) -> void: _toggle_drawer("seats", _rail_left))
-	body.add_child(_rail_left)
-	body.move_child(_rail_left, 1)   # left of the stage
-
 	_rail_right = UiTheme.panel()
 	_rail_right.name = "rail-right"
 	_rail_right.custom_minimum_size.x = 48.0
@@ -502,7 +489,6 @@ func _build_compact_shell(body: Control) -> void:
 	rail_col.add_child(_rail_r_inspector)
 	body.add_child(_rail_right)
 
-	_rail_left.visible = false
 	_rail_right.visible = false
 
 	for spec in [["seats", "ui.players"], ["journal", "jrn.title"], ["inspector", "ins.title"]]:
