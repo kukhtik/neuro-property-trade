@@ -55,6 +55,8 @@ func _text_for(k: String, row: Dictionary, ctx: Dictionary) -> String:
 	match k:
 		"start":
 			return I18n.t("jrn.ev.start", [a])
+		"seat_no_endpoint":
+			return I18n.t("event.seat_no_endpoint", [str(row.get("c", ""))])
 		"roll":
 			return I18n.t("jrn.ev.roll", [a, b])
 		"go":

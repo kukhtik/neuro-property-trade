@@ -61,7 +61,15 @@ func setup(eng, seat_list: Array) -> void:
 			# _ready registers the action set with the engine already known.
 			var ad = load("res://sdk/sdk_adapter.gd").new()
 			ad.name = "SdkAdapter%d" % s.pid
-			ad.setup(engine, s.pid, str(s.get("sdk_endpoint")))
+			var ep := str(s.get("sdk_endpoint"))
+			# A SEAT THAT CANNOT SPEAK MUST SAY SO. An `sdk:` seat with no endpoint of its own falls
+			# back to the shared NEURO_SDK_WS_URL - and with several such seats the second one answers
+			# for the first, which looked like "the second sdk: quietly became an AI". The fact is now
+			# recorded in the match journal (every client shows it) instead of staying in the logs.
+			if ep == "":
+				push_warning("sdk seat pid=%d (%s) has no endpoint: it will use the shared NEURO_SDK_WS_URL" % [s.pid, str(s.name)])
+				engine.log.append("seat_no_endpoint", {"pid": s.pid, "name": str(s.name)})
+			ad.setup(engine, s.pid, ep)
 			add_child(ad)
 			ad.events_emitted.connect(func(events: Array) -> void:
 				events_emitted.emit(events)

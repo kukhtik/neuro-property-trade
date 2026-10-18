@@ -156,8 +156,9 @@ func _report() -> void:
 	print("HG-08: %d checks" % _checks)
 	if _checks < MIN_CHECKS and _fails.is_empty():
 		_fail("only %d check(s) ran - the gate aborted silently (want >= %d)" % [_checks, MIN_CHECKS])
+	_check_missing_endpoint_is_recorded()
 	if _fails.is_empty():
-		print("==> HG-08 PASSED (adapter spawned, mock answered, intents accepted, match advanced)")
+		print("==> HG-08 PASSED (adapter spawned, mock answered, intents accepted, match advanced; a seat with no endpoint of its own says so in the journal)")
 		get_tree().quit(0)
 	else:
 		print("==> HG-08 FAILED: %s (%d total)" % [_fails[0], _fails.size()])
@@ -167,3 +168,30 @@ func _report() -> void:
 func _fail(msg: String) -> void:
 	_fails.append(msg)
 	print("FAIL: " + msg)
+
+
+## NO SILENT FALLBACKS. This gate's seat speaks through the shared NEURO_SDK_WS_URL and has no endpoint
+## of its OWN - the arrangement that used to be indistinguishable from "the seat quietly became an AI"
+## when a second SDK seat wanted the same connection. The seat must therefore leave a line in the match
+## journal (which every client renders) saying exactly that.
+func _check_missing_endpoint_is_recorded() -> void:
+	var eng = _launcher.get("_engine")
+	if eng == null:
+		_fail("no engine to read the journal from")
+		return
+	var seats: Array = _launcher.get("_manager").get("seats") if _launcher.get("_manager") != null else []
+	var missing := 0
+	for s in seats:
+		if str(s.get("sdk_endpoint")) == "" and str(s.get("input_driver")) == "SDK":
+			missing += 1
+	var logged := 0
+	for entry in eng.log.entries():
+		if str(entry.get("type", "")) == "seat_no_endpoint":
+			logged += 1
+	_checks += 1
+	if missing == 0:
+		print("HG-08: every SDK seat names its own endpoint - nothing to warn about")
+	elif logged == 0:
+		_fail("%d SDK seat(s) have no endpoint of their own and the journal says NOTHING about it - the fallback is silent again" % missing)
+	else:
+		print("HG-08: %d SDK seat(s) without an endpoint, %d journal line(s) saying so" % [missing, logged])

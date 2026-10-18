@@ -98,6 +98,10 @@ const D := {
 	# --- pause is logged in the engine and every client reads it, so it must be a WORD for a human.
 	"event_type.pause":            {"ru": "пауза", "en": "pause"},
 	"event_type.resume":           {"ru": "продолжение", "en": "resume"},
+	# A seat that cannot speak: an `sdk:` seat with no endpoint of its own. It used to degrade in
+	# silence; the journal now carries the fact, worded for a human (owner's "no silent fallbacks").
+	"event_type.seat_no_endpoint": {"ru": "место без endpoint", "en": "seat without endpoint"},
+	"event.seat_no_endpoint":      {"ru": "%s: нет endpoint — место будет отвечать через общее соединение", "en": "%s: no endpoint — the seat will answer through the shared connection"},
 	"event_type.auction_pass":     {"ru": "пас на аукционе", "en": "auction pass"},
 	"event_type.auction_unwon":    {"ru": "аукцион не разыгран", "en": "auction unwon"},
 	"event_type.setup":            {"ru": "подготовка", "en": "setup"},

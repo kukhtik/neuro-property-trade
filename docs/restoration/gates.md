@@ -133,6 +133,10 @@ LOCAL/AI/REMOTE/CHAT/`sdk:neuro` — состав `seats` совпадает (в
 → место получает force-окно и отвечает; матч не стопорится и завершается.
 **Критерий:** адаптер существует, ≥1 ход SDK-места принят, ноль стопов; вернуть из архива
 `seats_soak` (SDK+AI+AI+LOCAL) как второй сценарий.
+**Плюс «место без endpoint говорит об этом» (19.10):** гейт требует, чтобы SDK-место без своего
+endpoint (оно тогда отвечает через общий `NEURO_SDK_WS_URL`) оставило строку в журнале матча.
+Строка проверки: `HG-08: 1 SDK seat(s) without an endpoint, 1 journal line(s) saying so`; без неё
+падает с «the journal says NOTHING about it - the fallback is silent again».
 **Плюс задержка приглашения (2026-10-19):** мок ставит `INVITE_LATENCY` — разрыв между
 `actions/register` и первым `actions/force`; гейт требует < 5 с. Заведено, потому что
 вендорный `ActionWindow` отправлял силу только по истечении `_force_timeout` (= `turn_timer`),
@@ -140,6 +144,14 @@ LOCAL/AI/REMOTE/CHAT/`sdk:neuro` — состав `seats` совпадает (в
 `turn_timer = 20` именно поэтому: при `turn_timer = 0` проверка была бы пустой (обе редакции
 дали бы 0.9 с — измерено). Негативная проверка: с возвращённым дефектом гейт падает
 строкой «invited 20.883s after its actions were registered»; с исправлением — 0.88 с.
+
+### Промоции 19.10 (карантин → required)
+
+По зелёному полному свипу `run_gates.sh --all`: **GLYPH, FILL, PANEL-NOT-EMPTY, MULTI-SDK,
+READ-01** переведены в required; итог свипа `required 25/26 green` (SG-10 SKIP — на :8080 живёт
+Docker/WSL, «машина соревнуется сама с собой»), `==> GATES PASSED`. В карантине остался один
+**STREAM-READ** — красный по делу, до дизайн-круга R-7.
+READ-01 тянет за собой READ-02 и READ-03: это один скрипт (`read_gate.sh`), и все три вердикта в нём.
 
 ### HG-09 · Контракт i18n · P0 (дешёвый, высокий улов) · CI
 **Доказывает:** пользователь никогда не видит `{ключи}`.

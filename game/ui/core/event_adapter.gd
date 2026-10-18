@@ -73,6 +73,10 @@ const CATEGORY := {
 	"trdoffer": "trade", "trade": "trade", "trdno": "trade",
 	# the global pause is a fact of the match: it belongs in the journal even though no seat acted
 	"pause": "other", "resume": "other",
+	# A SEAT THAT CANNOT SPEAK. An `sdk:` seat without its own endpoint falls back to the shared one
+	# (or drives nothing at all) - the audit's "multy-SDK requires explicit endpoints" note. Silence is
+	# what made it a debt: the seat now says so, in the journal and on the console.
+	"seat_no_endpoint": "other",
 }
 
 ## Kinds the journal renders (move/land are board effects only).
@@ -82,6 +86,7 @@ const VISIBLE := [
 	"build", "sell", "mort", "unmort",
 	"trdoffer", "trade", "trdno", "bank", "over",
 	"pause", "resume",
+	"seat_no_endpoint",
 ]
 
 ## Engine types that move money but are NOT journal lines. They must still be
@@ -170,6 +175,9 @@ func _fill(etype: String, k: String, data: Dictionary, out: Dictionary) -> void:
 		"move", "teleport":
 			out["p"] = int(data.get("player", -1))
 			out["ti"] = int(data.get("to", data.get("tile", -1)))
+		"seat_no_endpoint":
+			out["p"] = int(data.get("pid", -1))
+			out["c"] = str(data.get("name", ""))
 		"go_bonus":
 			out["p"] = int(data.get("player", -1))
 			out["a"] = int(data.get("amount", 0))

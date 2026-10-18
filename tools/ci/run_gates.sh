@@ -52,7 +52,15 @@ done
 #   scene  -> game/tools/gates/<target>.tscn, run headless against the real app;
 #   script -> tools/ci/gates/<target>, a shell check (oracle, frame contract, freshness).
 # PROMOTIONS follow gates.md: quarantine -> required only after 2-3 consecutive green runs of
-# the same session. HG-02/05/07/12 were promoted together with the P0 commit that made them
+# the same session.
+# PROMOTED 19.10 (each was green in the 19.10 full sweep AND in the sweeps before it, with the
+# negative checks already on record):
+#   GLYPH, FILL, PANEL-NOT-EMPTY, MULTI-SDK, READ-01.
+#   FILL: 23.8% empty cells / 98.3% centre fill, thresholds hold. PANEL-NOT-EMPTY: 7 panels, 0 empty.
+#   MULTI-SDK: two mock connections, pid {0:41, 1:45}, round 7. GLYPH: no missing shapes.
+#   READ-01 runs the read_gate script, which also carries READ-02 (dock dead zones; fixed on 19.10 -
+#   it used to judge a dock whose parent was hidden and reported a false 49%; now 1%/0% on the one
+#   profile where docks exist) and READ-03 (role font floors). HG-02/05/07/12 were promoted together with the P0 commit that made them
 # green; HG-06 SKIPS on an environment without playwright (a skip is reported, never a pass,
 # never a block). SG-01 (compact) was promoted when the rails+drawers landed in phase 2.
 GATES=(
@@ -81,22 +89,22 @@ GATES=(
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph
 	# boxes - a defect that looks like a deliberate icon and that no screenshot review caught.
-	"GLYPH|sg|quarantine|scene|glyph_gate"
+	"GLYPH|sg|required|scene|glyph_gate"
 	# FILL: на экране должно быть ЧТО ЧИТАТЬ. Ни один гейт не смотрел на пустоту - SG-01/02
 	# проверяют, что ничего не вылезает, но ни один не проверяет, что что-то ЕСТЬ. Замер на
 	# 17.10: 55.1% кадра не рисует ничего, центр кольца занят на 2.2%. Спека:
 	# docs/specs/ui-redesign-brief.md §3 (R-1/R-2).
-	"FILL|sg|quarantine|scene|fill_gate"
+	"FILL|sg|required|scene|fill_gate"
 	# PANEL-NOT-EMPTY: панель площадью > 40 000 px не может нести меньше 2 строк текста (R-3).
 	# Написан 18.10 вместе с панно: дамп дерева, а не пиксели - кадр может быть занят четырьмя
 	# пустыми карточками и при этом пройти FILL. Негативная проверка проведена: пустая зона
 	# журнала даёт `PANEL EMPTY zone-journal ... 1 line(s)` и `==> PANEL FAILED`.
-	"PANEL-NOT-EMPTY|sg|quarantine|scene|panel_gate"
+	"PANEL-NOT-EMPTY|sg|required|scene|panel_gate"
 	# MULTI-SDK: два SDK-места в одном процессе, у каждого своё соединение. Гейт поднимает ДВА мока,
 	# отдаёт их порты как NPT_SDK_A/NPT_SDK_B и требует, чтобы оба места были подключены и оба
 	# имели принятые движком интенты. Негатив: без endpoint второй sdk: уходит в AI (проверено
 	# HG-08) - то есть без своих соединений гейт красный.
-	"MULTI-SDK|sg|quarantine|script|tools/ci/multi_sdk_gate.sh"
+	"MULTI-SDK|sg|required|script|tools/ci/multi_sdk_gate.sh"
 	"SG-03|sg|required|script|tools/ci/gates/sg03_palette_gate.sh"
 	# SG-07 runs LAST: it spawns windowed Godot captures for every state x skin, and SG-10's
 	# clean-machine preflight must never see one of them alive (that is the race that once made
@@ -109,7 +117,7 @@ GATES=(
 	# QUARANTINE until it has 2-3 consecutive green full sweeps; its negative check has already
 	# been run (restoring the 8px/7px clamp turns READ-01 red with 40/40 silent cells and READ-03
 	# red with 68 labels below their floor).
-	"READ-01|sg|quarantine|script|tools/ci/gates/read_gate.sh"
+	"READ-01|sg|required|script|tools/ci/gates/read_gate.sh"
 	# STREAM-READ (docs/program.md P1.1, the owner's phone correction of 16.10): the promise is a
 	# picture drawn at a native large resolution that a viewer watches SMALL, so the measure is the
 	# effective font size after scaling - frame_px * (390 / frame_width). It runs last and windowed
