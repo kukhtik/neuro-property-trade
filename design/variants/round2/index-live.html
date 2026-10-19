@@ -1,11 +1,16 @@
-<!doctype html><html lang="ru"><meta charset="utf-8"><title>Б1 «кольцо во весь кадр» — три живых варианта</title>
+<!doctype html><html lang="ru"><meta charset="utf-8"><title>Б1 — три варианта, СНИМКИ (движения здесь нет)</title>
 <style>
  :root { color-scheme: dark; }
  body { margin:0; padding:24px; background:#0b0613; color:#f2eaff; font:15px/1.5 "Segoe UI", system-ui, sans-serif; }
  h1 { font-size:26px; margin:0 0 6px; }
  .sub { color:#b9a9d6; margin:0 0 20px; max-width:78ch; }
+ .warn { border:1px solid #ff6fae66; background:#ff6fae14; border-radius:10px; padding:14px 16px;
+         margin:0 0 22px; max-width:78ch; }
+ .warn b { color:#ff6fae; }
+ .warn ul { margin:8px 0 0 18px; }
+ .warn a { color:#5fe3ff; }
  .card { border:1px solid #2a1b3d; border-radius:14px; padding:18px; margin:0 0 22px; background:#120a1e; }
- header { display:flex; align-items:baseline; gap:12px; }
+ header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
  h2 { font-size:19px; margin:0; color:#ff6fae; }
  .file { color:#8f7fb0; font-size:12px; }
  .note { color:#cbbce6; margin:10px 0 12px; }
@@ -14,10 +19,19 @@
  th { color:#9d8cbb; font-weight:600; }
  img { width:100%; height:auto; border-radius:10px; border:1px solid #241636; display:block; }
 </style>
-<h1>Б1 «кольцо во весь кадр» — три модели, три живых варианта</h1>
-<p class="sub">Каждый сделан отдельным прогоном OpenDesign на своей модели, по одному заданию: «показывать, а не писать» + живые анимации на чистом CSS с выключателем. Числа — <b>мои</b> прогоны:
-чекер 22/22 у всех, заливка <code>measure_fill.py</code>, живость <code>liveness_probe.py</code> (объединение изменений за 5.6 с после оседания / наибольшее изменение одного пикселя в 0..765).
+<h1>Б1 «кольцо во весь кадр» — три варианта, СНИМКИ</h1>
+<p class="sub">Числа — <b>мои</b> прогоны: чекер 22/22 у всех, заливка <code>measure_fill.py</code>, живость
+<code>liveness_probe.py</code>. <b>На этой странице движения нет и быть не может</b> — ниже вшиты PNG-кадры.
 «Живёт» и «выключено» — обе меры обязательны: страница должна двигаться, но замирать при выключенных анимациях.</p>
+<div class="warn">
+  <b>Смотреть движение — по этим трём файлам (открываются в браузере двойным щелчком):</b>
+  <ul>
+    <li><a href="boardfirst-1-live-deepseek.html">boardfirst-1-live-deepseek.html</a> — 4.56 % площади</li>
+    <li><a href="boardfirst-1-live-spacebunny.html">boardfirst-1-live-spacebunny.html</a> — 4.47 % площади</li>
+    <li><a href="boardfirst-1-live-glm.html">boardfirst-1-live-glm.html</a> — 0.31 % площади, амплитуда 660</li>
+    <li><a href="index-live-play.html">index-live-play.html</a> — все три играют рядом, во фреймах</li>
+  </ul>
+</div>
 
   <section class="card">
     <header><h2>glm-5.3-flash</h2><span class="file">boardfirst-1-live-glm.html</span></header>
