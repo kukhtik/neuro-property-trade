@@ -228,9 +228,18 @@ button.on{border-color:var(--ac)}
 @keyframes pword{0%,77.938%{opacity:0}78%,96.688%{opacity:1}96.688%,100%{opacity:0}}
 /* ---------- выключатель анимаций без единой строки кода ---------- */
 .vcheck{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
-#still:checked ~ .ring,#still:checked ~ .ring *,
-#still:checked ~ .pveil,#still:checked ~ .pword{animation:none!important}
-body:has(#still:checked) *{animation:none!important}
+/* Селектор `*` не достаёт до ::before/::after, а три живых эффекта объявлены
+   именно там: wave (.cell::after), lot (.cell.c-lot::before), sweep (.well::after).
+   Поэтому в каждом из трёх мест глушения перечислены и элементы, и псевдоэлементы,
+   и duration/delay сброшены в 0 — иначе держится первый кадр, а не нейтральный. */
+#still:checked ~ *,
+#still:checked ~ * *,
+#still:checked ~ *::before,
+#still:checked ~ *::after,
+body:has(#still:checked) *,
+body:has(#still:checked) *::before,
+body:has(#still:checked) *::after{animation:none!important;animation-duration:0s!important;
+  animation-delay:0s!important;transition:none!important;transition-duration:0s!important}
 .vlab{display:inline-flex;align-items:center;gap:8px;font-size:14px;padding:5px 9px;
   background:var(--s2);border:1px solid var(--line);color:var(--tx);cursor:pointer;user-select:none}
 .vlab::before{content:"";width:12px;height:12px;box-shadow:inset 0 0 0 2px var(--hi);flex:none}
@@ -238,7 +247,9 @@ body:has(#still:checked) .vlab::before{box-shadow:inset 0 0 0 6px var(--mu)}
 .vlab::after{content:"Анимации: играют"}
 body:has(#still:checked) .vlab::after{content:"Анимации: остановлены · кадр держит состояние"}
 body:has(.vcheck:focus-visible) .vlab{outline:2px solid var(--hi);outline-offset:2px}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+@media (prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;animation-duration:0s!important;
+  animation-delay:0s!important;transition:none!important;transition-duration:0s!important}}
 /* ---------- кадр 2: телефон 390 x 844 ---------- */
 .frame.phone{width:390px;height:844px;display:flex;flex-direction:column;overflow:hidden;margin-top:18px}
 .pring{width:390px;height:430px;flex:none;display:flex;flex-direction:column;gap:2px}
