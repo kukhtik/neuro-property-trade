@@ -33,6 +33,8 @@ static func test_list() -> Array[String]:
 		"test_no_cell_is_ever_blank_across_sizes",
 		"test_house_counter_matches_houses",
 		"test_live_label_carries_the_computed_font_size",
+		"test_rectangular_cell_keeps_every_child_inside",
+		"test_ring_fills_the_frame_with_legal_cells",
 	]
 
 
@@ -221,4 +223,98 @@ static func test_live_label_carries_the_computed_font_size() -> String:
 		return "fonts_for() says %dpx but the live Label carries %dpx (the ladder is computed and ignored)" % [int(f["name"]), applied]
 	if applied < 11:
 		return "the live name label is %dpx, below the 11px floor" % applied
+	return ""
+
+
+static func test_rectangular_cell_keeps_every_child_inside() -> String:
+	# B1 «кольцо во весь кадр»: a tile is no longer square - a side cell is band-wide and tall
+	# (190x88 at 1600x1200) and a corner is 320x190. Every child must stay inside the rect, or the
+	# board leaks: the name would hang over the neighbouring cell and the band would sit outside.
+	var skin := SkinManager.new()
+	skin.load_skin()
+	var cases := [
+		{"w": 190.0, "h": 88.0, "side": "l", "label": "left cell 190x88"},
+		{"w": 104.0, "h": 190.0, "side": "b", "label": "bottom cell 104x190"},
+		{"w": 320.0, "h": 190.0, "side": "corner", "label": "corner 320x190"},
+	]
+	for cse in cases:
+		var w := float(cse["w"])
+		var h := float(cse["h"])
+		var tv: Control = TileView.new()
+		tv.setup(skin, 6, {"index": 6, "name": "Palm Row", "short": "Palm Row", "type": "property",
+			"group": "amber", "cost": 120}, w, str(cse["side"]), h)
+		tv.size = Vector2(w, h)
+		tv.apply({"owner": 1, "owner_name": "Хост", "houses": 2})
+		for ch in tv.get_children():
+			var ctl := ch as Control
+			if ctl == null or not ctl.visible:
+				continue
+			var r := Rect2(ctl.position, ctl.size)
+			if r.position.x < -0.5 or r.position.y < -0.5 \
+					or r.end.x > w + 0.5 or r.end.y > h + 0.5:
+				return "%s: a visible child occupies %s, outside the %sx%s cell" % [
+					str(cse["label"]), str(r), str(w), str(h)]
+	return ""
+
+
+static func test_ring_fills_the_frame_with_legal_cells() -> String:
+	# B1 «кольцо во весь кадр»: the ring is the frame, not a centred square. Four invariants, each a
+	# requirement rather than a preference:
+	#   R-17  every cell's short side >= 77px on every profile;
+	#   edges the ring touches all four sides of the frame (this is what R-1 "no empty frame" means);
+	#   cover no gaps between neighbouring cells and no cell outside the frame;
+	#   corner the four corners are WIDER than the band (they carry the glance layer).
+	var BoardScene := preload("res://visual/board_scene.gd")
+	for frame in [Vector2(1600, 1200), Vector2(1920, 1080), Vector2(1440, 900), Vector2(1280, 720)]:
+		var m: Dictionary = BoardScene.ring_metrics(frame)
+		var band: float = m["band"]
+		var corner: float = m["corner"]
+		var o0: Vector2 = m["origin"]
+		var ring0 := Vector2(float(m["ring_w"]), float(m["ring_h"]))
+		var rects: Array = []
+		for i in 40:
+			rects.append(BoardScene.tile_rect(i, m, frame))
+		var min_side := 1e9
+		var min_x := 1e9
+		var min_y := 1e9
+		var max_x := -1e9
+		var max_y := -1e9
+		for i in 40:
+			var r: Rect2 = rects[i]
+			min_side = minf(min_side, minf(r.size.x, r.size.y))
+			min_x = minf(min_x, r.position.x)
+			min_y = minf(min_y, r.position.y)
+			max_x = maxf(max_x, r.end.x)
+			max_y = maxf(max_y, r.end.y)
+			if r.position.x < o0.x - 0.5 or r.position.y < o0.y - 0.5 \
+					or r.end.x > o0.x + ring0.x + 0.5 or r.end.y > o0.y + ring0.y + 0.5:
+				return "on %s cell %d sits outside the ring rect: %s" % [str(frame), i, str(r)]
+		if min_side < BoardScene.MIN_CELL - 0.5:
+			return "on %s the smallest cell side is %.2fpx, below the %.0fpx floor" % [
+				str(frame), min_side, BoardScene.MIN_CELL]
+		# The ring fills ITS OWN rect. When the frame is too small for legal cells the ring is bigger
+		# than the frame and sits centred (R-18: the frame grows, the board never shrinks), so the
+		# comparison is against the ring rect, not against the frame.
+		var o: Vector2 = m["origin"]
+		var ring_w: float = m["ring_w"]
+		var ring_h: float = m["ring_h"]
+		if min_x > o.x + 0.5 or min_y > o.y + 0.5 \
+				or max_x < o.x + ring_w - 0.5 or max_y < o.y + ring_h - 0.5:
+			return "on %s the ring does not fill its rect: x %.1f..%.1f, y %.1f..%.1f (rect %.1f..%.1f, %.1f..%.1f)" % [
+				str(frame), min_x, max_x, min_y, max_y, o.x, o.x + ring_w, o.y, o.y + ring_h]
+		if ring_w <= frame.x + 0.5 and absf(o.x) > 0.5:
+			return "on %s the ring fits but is not flush with the frame (origin x %.1f)" % [str(frame), o.x]
+		if ring_h <= frame.y + 0.5 and absf(o.y) > 0.5:
+			return "on %s the ring fits but is not flush with the frame (origin y %.1f)" % [str(frame), o.y]
+		if corner <= band:
+			return "on %s the corner (%.1f) is not wider than the band (%.1f)" % [
+				str(frame), corner, band]
+		for i in 40:
+			for j in range(i + 1, 40):
+				var a: Rect2 = rects[i]
+				var b: Rect2 = rects[j]
+				var overlap := a.intersection(b)
+				if overlap.size.x > 1.0 and overlap.size.y > 1.0:
+					return "on %s cells %d and %d overlap by %.1fx%.1f" % [
+						str(frame), i, j, overlap.size.x, overlap.size.y]
 	return ""

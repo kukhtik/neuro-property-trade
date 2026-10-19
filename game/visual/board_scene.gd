@@ -31,6 +31,7 @@ func _dur(seconds: float) -> float:
 var _board: Array = []
 var _tiles: Array = []
 var _cell := 0.0
+var _band_px := 0.0
 var _selected := -1
 var _entries: Dictionary = {}       # index -> state dict handed to the tiles
 
@@ -201,19 +202,84 @@ func _is_corner(i: int) -> bool:
 
 
 func _layout() -> void:
-	var side_px: float = minf(size.x, size.y)
-	if side_px <= 1.0:
+	if size.x <= 1.0 or size.y <= 1.0:
 		return
-	_place_board(side_px)
+	_place_board()
 	_place_centre()
 
 
-func _place_board(side_px: float) -> void:
-	var cell: float = side_px / 11.0
-	var ox: float = (size.x - side_px) * 0.5
-	var oy: float = (size.y - side_px) * 0.5
-	var rebuild: bool = _tiles.is_empty() or absf(cell - _cell) > 0.5
-	_cell = cell
+## B1 «кольцо во весь кадр»: the ring fills the FRAME instead of a centred square. Two numbers set
+## the whole geometry, both taken from constraints rather than taste:
+##   * band  - the ring's thickness. 0.158 of the frame's height puts it at 190px on 1600x1200, which
+##             is what a 88px side cell needs to stay above R-17's 77px floor;
+##   * corner - the four corners are WIDER than they are thick (320x190), because they carry the
+##             glance layer: "БАНК ПАРКОВКИ $240" at 50px needs 557px on one line, 308px on two, and
+##             a square 11x11 ring at a 77px cell gives a corner at most 253px. That is the arithmetic
+##             from the accepted concept, not an aesthetic choice.
+const MIN_CELL := 77.0
+const CORNER_MIN_W := 300.0
+const BAND_FRACTION := 0.158
+
+
+static func ring_metrics(frame: Vector2) -> Dictionary:
+	var w := maxf(frame.x, 1.0)
+	var h := maxf(frame.y, 1.0)
+	# R-17 is a FLOOR, not a target: a cell may never go below 77px. When the frame is too short for
+	# a band plus nine legal cells, the RING grows past the frame and the camera windows it - that is
+	# R-18 ("if R-7 and R-17 conflict, the frame grows, the board does not shrink"). Measured: at
+	# 1280x720 a square 11x11 ring gives 65.45px cells, so this was already broken before B1.
+	var band: float = clampf(h * BAND_FRACTION, 88.0, maxf(88.0, (h - 9.0 * MIN_CELL) * 0.5))
+	var ring_h: float = maxf(h, 2.0 * band + 9.0 * MIN_CELL)
+	var ring_w: float = maxf(w, 2.0 * CORNER_MIN_W + 9.0 * MIN_CELL)
+	var corner: float = clampf(band * 1.68, CORNER_MIN_W, maxf(CORNER_MIN_W, (ring_w - 9.0 * MIN_CELL) * 0.5))
+	return {
+		"band": band,
+		"corner": corner,
+		"ring_w": ring_w,
+		"ring_h": ring_h,
+		"origin": Vector2((w - ring_w) * 0.5, (h - ring_h) * 0.5),
+		"step_x": (ring_w - 2.0 * corner) / 9.0,
+		"step_y": (ring_h - 2.0 * band) / 9.0,
+	}
+
+
+## The rect of ring cell `i` (classic order: GO bottom-right, anti-clockwise). Coordinates are in the
+## board's own space: `origin` is negative when the ring is larger than the frame.
+static func tile_rect(i: int, m: Dictionary, _frame: Vector2) -> Rect2:
+	var band: float = m["band"]
+	var corner: float = m["corner"]
+	var sx: float = m["step_x"]
+	var sy: float = m["step_y"]
+	var o: Vector2 = m.get("origin", Vector2.ZERO)
+	var w: float = m["ring_w"]
+	var h: float = m["ring_h"]
+	if i == 0:
+		return Rect2(o + Vector2(w - corner, h - band), Vector2(corner, band))
+	if i == 10:
+		return Rect2(o + Vector2(0, h - band), Vector2(corner, band))
+	if i == 20:
+		return Rect2(o + Vector2(0, 0), Vector2(corner, band))
+	if i == 30:
+		return Rect2(o + Vector2(w - corner, 0), Vector2(corner, band))
+	if i < 10:
+		return Rect2(o + Vector2(corner + float(9 - i) * sx, h - band), Vector2(sx, band))
+	if i < 20:
+		return Rect2(o + Vector2(0, h - band - float(i - 10) * sy), Vector2(band, sy))
+	if i < 30:
+		return Rect2(o + Vector2(corner + float(i - 21) * sx, 0), Vector2(sx, band))
+	# the right column runs between the two right corners: y starts at BAND, because a corner is
+	# corner-WIDE but only band-TALL (measured bug: starting at `corner` made cell 38 overlap cell 0
+	# by 189.6x37.7 on 1600x1200).
+	return Rect2(o + Vector2(w - band, band + float(i - 31) * sy), Vector2(band, sy))
+
+
+func _place_board() -> void:
+	var frame := size
+	var m := ring_metrics(frame)
+	var band: float = m["band"]
+	_cell = band                       # the design's reference unit: the band's thickness
+	var rebuild: bool = _tiles.is_empty() or absf(band - _band_px) > 0.5
+	_band_px = band
 	if rebuild:
 		for t in _tiles:
 			t.queue_free()
@@ -221,16 +287,21 @@ func _place_board(side_px: float) -> void:
 		for i in _board.size():
 			var tv = TileView.new()
 			var data: Dictionary = _board[i]
+			var r0: Rect2 = tile_rect(i, m, frame)
 			var ring_side: String = "corner" if _is_corner(i) else _ring_side(i)
 			add_child(tv)
-			tv.setup(_skin, i, data, cell, ring_side)
+			tv.setup(_skin, i, data, r0.size.x, ring_side, r0.size.y)
 			tv.pressed.connect(func(idx: int) -> void: tile_clicked.emit(idx))
 			_tiles.append(tv)
 	for i in _tiles.size():
-		var g: Vector2i = _grid_pos(i)
+		var r: Rect2 = tile_rect(i, m, frame)
 		var tv2 = _tiles[i]
-		tv2.position = Vector2(ox + g.x * cell, oy + g.y * cell)
-		tv2.size = Vector2(cell, cell)
+		tv2.position = r.position
+		tv2.size = r.size
+		# width/height change with the frame, and `setup` does not re-lay-out a built tile: without
+		# this the labels keep the widths of the PREVIOUS frame (measured: the ring kept 95px text
+		# boxes after the frame went to 1600x1200).
+		tv2.resize(r.size.x, r.size.y)
 	for pid in _tokens.keys():
 		var tok: Control = _tokens[pid]
 		var idx: int = int(_token_pos.get(pid, 0))
@@ -240,23 +311,26 @@ func _place_board(side_px: float) -> void:
 func _place_centre() -> void:
 	# R-13: the panno is given ONE rect - the ring's interior - and lays itself out from there.
 	# Nothing inside it is positioned by absolute coordinates derived from the screen size.
+	# B1: the interior is now the RECTANGLE inside the bands, not a square: at 1600x1200 it is
+	# 1221x821, which is why the centre can hold a hub plus four panels instead of a 9x9 hole.
 	if _panno == null:
 		return
-	var side_px: float = _cell * 11.0
-	var ox: float = (size.x - side_px) * 0.5 + _cell
-	var oy: float = (size.y - side_px) * 0.5 + _cell
-	var cw: float = _cell * 9.0
-	_panno.position = Vector2(ox, oy)
-	_panno.size = Vector2(cw, cw)
+	var m := ring_metrics(size)
+	var band: float = m["band"]
+	var o: Vector2 = m["origin"]
+	var inner := Rect2(o + Vector2(band, band),
+		Vector2(maxf(1.0, float(m["ring_w"]) - 2.0 * band), maxf(1.0, float(m["ring_h"]) - 2.0 * band)))
+	_panno.position = inner.position
+	_panno.size = inner.size
 	_panno.apply_scale(_cell)
-	# the dice keep the game's own art; only their size follows the cell, as before
-	var die_px: float = maxf(18.0, roundf(_cell * 0.42))
+	# the dice keep the game's own art; only their size follows the band, as before
+	var die_px: float = maxf(18.0, roundf(_cell * 0.34))
 	for d in _dice:
 		d.custom_minimum_size = Vector2(die_px, die_px)
-	_sum.add_theme_font_size_override("font_size", maxi(14, int(_cell * 0.42)))
-	_banner.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.24)))
-	_card_name.add_theme_font_size_override("font_size", maxi(12, int(_cell * 0.22)))
-	_card_price.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.20)))
+	_sum.add_theme_font_size_override("font_size", maxi(14, int(_cell * 0.34)))
+	_banner.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.20)))
+	_card_name.add_theme_font_size_override("font_size", maxi(12, int(_cell * 0.18)))
+	_card_price.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.16)))
 
 
 ## Watermark shows in the cold state only (proto renderCenter).
@@ -432,7 +506,8 @@ func _token_screen_pos(idx: int, pid: int, count: int) -> Vector2:
 	if _cell <= 0.0 or _tiles.is_empty():
 		return Vector2.ZERO
 	var i: int = clampi(idx, 0, _tiles.size() - 1)
-	var base: Vector2 = (_tiles[i] as Control).position + Vector2(_cell * 0.5, _cell * 0.5)
+	var tile: Control = _tiles[i]
+	var base: Vector2 = tile.position + tile.size * 0.5
 	var fan: float = 16.0
 	return base + Vector2((pid % 3 - 1) * fan, ((pid / 3) % 2 - 0.5) * fan) - Vector2(8, 8) * 0.5
 

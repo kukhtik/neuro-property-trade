@@ -36,6 +36,12 @@ const HOUSES_MIN := 10
 var index := 0
 var _skin: SkinManager
 var _cell := 64.0
+## B1 «кольцо во весь кадр»: a tile is NOT square any more. A side cell is band-wide and tall
+## (190x88 at 1600x1200), a corner is 320x190. `_w`/`_h` carry the rect; `_cell` stays the SHORT
+## side and keeps every existing metric (fonts, band, label step) anchored to it, so a square tile
+## behaves exactly as before.
+var _w := 64.0
+var _h := 64.0
 var _side := "b"           # which ring edge: "b" bottom, "l" left, "t" top, "r" right
 var _type := "property"
 var _group := ""
@@ -50,12 +56,18 @@ var _badge: Label
 var _houses_lbl: Label
 var _state: Panel
 var _mortgaged: Label
+## Set by `_layout_children`: whether this cell is tall enough for the house counter. `apply()` used
+## to decide it alone (`houses > 0 and _name.visible`), which is what pushed the counter out of a
+## short B1 cell.
+var _show_houses := true
 
 
-func setup(skin: SkinManager, idx: int, data: Dictionary, cell: float, side: String) -> void:
+func setup(skin: SkinManager, idx: int, data: Dictionary, cell: float, side: String, h: float = 0.0) -> void:
 	_skin = skin
 	index = idx
-	_cell = cell
+	_w = cell
+	_h = h if h > 0.0 else cell
+	_cell = minf(_w, _h)
 	_side = side
 	_type = str(data.get("type", "property"))
 	_group = str(data.get("group", ""))
@@ -64,6 +76,18 @@ func setup(skin: SkinManager, idx: int, data: Dictionary, cell: float, side: Str
 	if _face != null:
 		return   # reuse: only re-layout below
 	_build(data)
+	_layout_children()
+
+
+## Re-lay-out a BUILT tile for a new rect. `setup()` returns early when the widgets already exist
+## (`if _face != null: return`), so a frame change used to leave every label at the previous frame's
+## width. BoardScene calls this on every placement pass.
+func resize(w: float, h: float) -> void:
+	_w = w
+	_h = h if h > 0.0 else w
+	_cell = minf(_w, _h)
+	if _face == null:
+		return
 	_layout_children()
 
 
@@ -201,9 +225,9 @@ static func fonts_for(cell: float) -> Dictionary:
 
 
 func _layout_children() -> void:
-	var c := _cell
+	var c := _cell                      # the SHORT side drives every metric below
 	var pad := 2.0
-	var inner := Rect2(pad, pad, c - pad * 2.0, c - pad * 2.0)
+	var inner := Rect2(pad, pad, _w - pad * 2.0, _h - pad * 2.0)
 	# band thickness: full strip along the INNER edge
 	var bt: float = maxf(4.0, minf(c * 0.16, 13.0))
 	if _side == "corner":
@@ -252,23 +276,35 @@ func _layout_children() -> void:
 		_price.visible = false
 	else:
 		_price.visible = true
-	# the house counter rides the band as a value, so a 4.5px square is never the only signal
-	var houses_lbl_vis: bool = step < 3
-	_houses_lbl.visible = houses_lbl_vis
-	var half := text_rect.size.y * 0.5
-	_name.position = text_rect.position
-	_name.size = Vector2(text_rect.size.x, half)
-	_price.position = text_rect.position + Vector2(0, half)
-	_price.size = Vector2(text_rect.size.x, text_rect.size.y - half)
-	_houses_lbl.position = text_rect.position + Vector2(0, text_rect.size.y - float(HOUSES_MIN) - 1.0)
-	_houses_lbl.size = Vector2(text_rect.size.x, float(HOUSES_MIN) + 1.0)
+	# the house counter rides the band as a value, so a 4.5px square is never the only signal.
+	# B1: on a SHORT cell (a side band cell is 190x88 at 1600x1200) the counter used to be placed at
+	# a fixed offset from the bottom and its own minimum height pushed it past the cell edge
+	# (measured: y 75 + 23 = 98 in an 88px cell). So: reserve a strip only when it FITS, and let the
+	# name/price share what is left.
+	_houses_lbl.add_theme_font_size_override("font_size", HOUSES_MIN)
+	var houses_h: float = _houses_lbl.get_combined_minimum_size().y
+	var strip: float = minf(houses_h, text_rect.size.y * 0.35)
+	_show_houses = step < 3 and strip >= 8.0
+	if not _show_houses:
+		strip = 0.0
+	var body := Rect2(text_rect.position, Vector2(text_rect.size.x, maxf(0.0, text_rect.size.y - strip)))
+	var half := body.size.y * 0.5
+	_name.position = body.position
+	_name.size = Vector2(body.size.x, half)
+	_price.position = body.position + Vector2(0, half)
+	_price.size = Vector2(body.size.x, body.size.y - half)
+	_houses_lbl.position = body.position + Vector2(0, body.size.y)
+	_houses_lbl.size = Vector2(body.size.x, strip)
 	# houses ride the band centre
 	var house_w: float = minf(band.size.x - 4.0, 5.0 * 6.0 + 5.0)
 	_houses.position = band.position + Vector2((band.size.x - house_w) * 0.5, maxf(0.0, (band.size.y - 6.0) * 0.5))
-	# owner badge: bottom-left of the face, floor 12px (was 10 - "the badge is ~10px" in the map)
+	# owner badge: bottom-left of the face, floor 12px (was 10 - "the badge is ~10px" in the map).
+	# B1: a Label's height is clamped up to its font's minimum, so a 12px badge in an 88px cell
+	# reported 23px tall and hung 2px past the edge. Measure it, then anchor it to the bottom.
 	var bs: float = maxf(BADGE_MIN, c * 0.20)
-	_badge.position = inner.position + Vector2(1, inner.size.y - bs - 1)
-	_badge.size = Vector2(bs, bs)
+	var bh: float = maxf(bs, _badge.get_combined_minimum_size().y)
+	_badge.position = Vector2(inner.position.x + 1, inner.end.y - bh - 1)
+	_badge.size = Vector2(bs, bh)
 	_mortgaged.position = inner.position + Vector2(1, 1)
 
 
@@ -289,7 +325,7 @@ func apply(entry: Dictionary) -> void:
 		_houses.remove_child(c)
 		c.queue_free()
 	_houses.visible = houses > 0
-	_houses_lbl.visible = houses > 0 and _name.visible
+	_houses_lbl.visible = houses > 0 and _show_houses
 	_houses_lbl.text = ("×%d" % houses) if houses > 0 else ""
 	if houses > 0:
 		var n: int = 1 if houses >= 5 else mini(houses, 4)
