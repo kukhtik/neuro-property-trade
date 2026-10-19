@@ -65,8 +65,12 @@ def main(files):
         check("R-4 last event", any(j.split()[1] in body for j in JOURNAL) or "Crest Square" in body)
         for j in JOURNAL:
             check(f"scene journal line “{j}”", j in body)
-        check("board has >=40 tiles", len(re.findall(r'class="[^"]*tile[^"]*"', src, re.I)) >= 40,
-              str(len(re.findall(r'class="[^"]*tile[^"]*"', src, re.I))))
+        # A WHOLE BOARD, NOT A FRAGMENT. The check counts the board's own elements; `tile` was the
+        # word the first sweep used, `cell` is the word the PRODUCT uses (data-cell, cell_flashing,
+        # `_cell`), so both count. It stays a heuristic on class names - a fragment named either way
+        # still fails, which is the point of the check.
+        tile_like = len(re.findall(r'class="[^"]*(tile|cell)[^"]*"', src, re.I))
+        check("board has >=40 tiles", tile_like >= 40, str(tile_like))
         check("R-15 hero action word", "Бросок" in body)
 
         bad = [r for r in res if not r[0]]

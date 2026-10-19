@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1600, initial-scale=1">
+<title>NPT — макет второго круга: живость и боковое управление</title>
+<!--
+  Макет второго круга (round 2), задачи C и D из docs/specs/ui-redesign-round2.md.
+  СТАТИЧЕСКИЙ артефакт: инлайн SVG и CSS, без http(s), без клиентского скрипта, без эмодзи, слова вместо значков.
+  Кадры: основной 1600x1200 (контейнер #frame-1600 ровно 1600x1200), компакт 880x600, телефон 390x844.
+
+  Данные сцены взяты ДОСЛОВНО из design/variants/scene-data.md (имена, деньги, журнал, клетки, подписи).
+  Палитра — только game/assets/skins/neuro/skin.json. Тайминги — только design/tokens.json (motion).
+  Цены клеток — «classic set» (tokens.json, per_skin.default.color_new.group, note «values from the classic
+  set»); сверено со сценой: Cedar Ave — цена $100, аренда $6 (совпадает с classic lightblue).
+
+  Геометрия кадра 1600x1200: паддинг 12 · зазор 8 · шапка 56 · доки 280/380 · сцена 900x1112
+  (полоса зума 44 · доска 900 · консоль 96 · строка состояния 48).
+  Доска 900x900, паддинг 6, рамка 1, зазор 2  ==>  клетка (900-2-12-20)/11 = 78.7 px  (R-17: >= 77).
+  Кольцо — контейнер ровно с 40 клетками; центр кольца 9x9 клеток = 708.5 px — панно хода.
+  Разметка для машинного замера: data-region="top|seats|stage|board|center|console|journal|inspector".
+-->
+<style>
+:root{
+  /* skin neuro — единственный источник цвета */
+  --bg:#0b0613; --s1:#130b1f; --s2:#1b1230; --s3:#281b42; --line:#3b2a5e;
+  --text:#f7effd; --muted:#a896c8; --accent:#ff6fae; --on-accent:#2a0618; --accent2:#5fe3ff;
+  --money:#5fe3ff; --danger:#ff4d6d; --warn:#ffb020; --good:#2fa862;
+  --scrim:#0b0613b8; --glow:#ff6fae55; --ring-bg:#3b2a5e99;
+  --dice-bg:#f2f6fa; --dice-ink:#16191f;
+  --ev-money:#5cb85c; --ev-build:#c9a84c; --ev-danger:#d9534f; --ev-card:#9a86c9; --ev-text:#e8edf3; --ev-accent:#9fd0ff;
+  --board2:#101820; --board3:#22303c;
+  --p0:#ff6fae; --p1:#e8264f; --p2:#5fe3ff; --p3:#b6ff6b; --p4:#ffb020; --p5:#b36bff; --p6:#ffd166; --p7:#8f9bff;
+  --g-brown:#8b5a3c; --g-lightblue:#5bb8e8; --g-pink:#d85aa8; --g-orange:#ee8a2a;
+  --g-red:#d8363c; --g-yellow:#e8c61e; --g-green:#2fa862; --g-darkblue:#2e5fd8;
+  --ui:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,"JetBrains Mono",ui-monospace,Menlo,monospace;
+  /* design/tokens.json → shared.motion (skin.motion повторяет step/hop/pop/panel/card/dice_roll) */
+  --ease:cubic-bezier(.2,0,0,1);
+  --t-fast:.12s; --t-base:.19s; --t-slow:.32s;
+  --t-step:.19s; --t-hop:.32s; --t-pop:.5s; --t-panel:.3s; --t-card:2.8s; --t-dice:.85s;
+  /* шкалы скина: size 10/12/14/18/28, space 4/8/12/16/24, фаска 9, линия 1 */
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --chamfer:9px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg)}
+body{
+  width:1600px;height:1200px;overflow:auto;
+  font-family:var(--ui);font-size:14px;line-height:1.25;color:var(--text);
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums lining-nums}
+.t-value{white-space:nowrap}
+.t-para{white-space:normal;overflow-wrap:break-word}
+.cap{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.money{color:var(--money)}
+.muted{color:var(--muted)}
+
+/* ═══════════ КАДР 1: 1600x1200 ═══════════ */
+#frame-1600{
+  width:1600px;height:1200px;overflow:hidden;background:var(--bg);
+  display:grid;grid-template-columns:280px 900px 380px;grid-template-rows:56px 1112px;
+  gap:8px;padding:12px;
+}
+.panel{background:var(--s1);border:1px solid var(--line);min-height:0;min-width:0;overflow:hidden;
+  display:flex;flex-direction:column}
+.phead{flex:none;display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);
+  background:var(--s2)}
+.phead .t{font-size:18px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.phead .m{margin-left:auto;font-size:12px;color:var(--muted)}
+.pbody{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:12px}
+.rule{height:1px;background:var(--line);flex:none}
+
+/* шапка */
+.top{grid-column:1/4;grid-row:1;display:flex;align-items:center;gap:12px;padding:0 12px;
+  background:var(--s1);border:1px solid var(--line)}
+.brand{font-size:18px;font-weight:700;letter-spacing:.12em;white-space:nowrap}
+.brand b{color:var(--accent);font-weight:700}
+.chip{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px;flex:none;
+  background:var(--s3);border:1px solid var(--accent);border-radius:2px}
+.chip .who{font-size:22px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.chip .ph{font-size:22px;white-space:nowrap}
+.hs{display:flex;flex-direction:column;gap:2px;flex:none;padding-left:12px;border-left:1px solid var(--line)}
+.hs .v{font-size:22px;font-weight:700;line-height:1;white-space:nowrap}
+.hs .k{font-size:12px;color:var(--muted);letter-spacing:.06em;white-space:nowrap}
+.hctl{margin-left:auto;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.btn{font-family:var(--ui);font-size:14px;color:var(--text);background:var(--s3);border:1px solid var(--line);
+  border-radius:2px;height:32px;padding:0 12px;cursor:pointer;white-space:nowrap}
+.btn.hero{height:52px;padding:0 24px;background:var(--accent);color:var(--on-accent);border-color:var(--accent);
+  font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.btn.sec{height:40px;padding:0 14px;font-size:16px}
+.btn.small{height:28px;padding:0 10px;font-size:13px}
+
+/* левый док */
+.seat{background:var(--s2);border:1px solid var(--line);border-left:4px solid var(--pc);
+  padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.seat.active{border-color:var(--accent2);border-left-color:var(--pc);background:var(--s3)}
+.seat .r1{display:flex;align-items:baseline;gap:8px}
+.seat .nm{font-size:18px;font-weight:700;color:var(--pc)}
+.seat .cash{margin-left:auto;font-size:18px;font-weight:700}
+.seat .r2{display:flex;gap:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.seat .r2 b{font-weight:400;color:var(--text)}
+.seat .r3{font-size:13px;color:var(--muted)}
+.seat .r3 em{font-style:normal;color:var(--warn)}
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
+.groups div{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.groups i{width:12px;height:12px;flex:none;border:1px solid var(--line)}
+.sumline{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--muted)}
+.sumline b{font-size:18px;color:var(--text);font-weight:700}
+
+/* сцена */
+.stage{grid-column:2;grid-row:2;display:flex;flex-direction:column;gap:8px;min-height:0;min-width:0}
+.zoomstrip{flex:none;height:44px;display:flex;align-items:center;gap:12px;padding:0 12px;
+  background:var(--s1);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.zoomstrip b{color:var(--text);font-weight:400}
+.boardwrap{flex:none;height:900px;display:flex;align-items:center;justify-content:center}
+.board{width:900px;height:900px;background:var(--board2);border:1px solid var(--line);padding:6px;
+  display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px}
+.tile{background:var(--board2);border:1px solid var(--line);position:relative;overflow:hidden;
+  display:flex;flex-direction:column;padding:3px 4px;min-width:0;min-height:0}
+.tile.corner{background:var(--board3)}
+.tile.sel{border:2px solid var(--accent2)}
+.tile.mine{box-shadow:inset 0 0 0 2px var(--glow)}
+.tile.mort{background-image:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 7px)}
+.tile .tb{height:5px;flex:none;margin:-3px -4px 3px;background:var(--line)}
+.tile .tn{font-size:11px;line-height:1.05;color:var(--text);overflow:hidden;word-break:break-word}
+.tile .tp{font-size:10px;color:var(--muted);margin-top:auto;white-space:nowrap}
+.tile .to{position:absolute;left:0;right:0;bottom:0;height:15px;display:flex;align-items:center;
+  padding:0 4px;background:var(--pc);color:#0b0613;font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden}
+.tile .th{font-size:10px;color:var(--warn);white-space:nowrap}
+.tile .tk{position:absolute;right:3px;top:6px;display:flex;gap:2px;flex-direction:column}
+.tile .tk svg{width:15px;height:15px;display:block}
+.center{grid-area:2/2/11/11;background:var(--ring-bg);padding:6px;display:flex;flex-direction:column;gap:6px;
+  min-height:0;overflow:hidden}
+.zone{background:var(--s1);border:1px solid var(--line);padding:6px 12px;display:flex;flex-direction:column;
+  gap:4px;min-height:0;overflow:hidden}
+.z-roll{flex:22 1 0}
+.z-event{flex:28 1 0}
+.z-play{flex:30 1 0}
+.z-jrn{flex:20 1 0}
+.zlab{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);flex:none}
+.glance{font-size:50px;font-weight:700;line-height:1.05;color:var(--text)}
+.rollrow{display:flex;align-items:center;gap:20px;min-height:0;flex:1 1 auto}
+.dice{display:flex;gap:12px;flex:none}
+.dice svg{width:74px;height:74px;display:block}
+.sum{font-size:96px;font-weight:700;line-height:.85;color:var(--text)}
+.rollside{margin-left:auto;text-align:right;font-size:16px;color:var(--muted)}
+.rollside b{display:block;font-size:26px;color:var(--text)}
+.playrow{display:flex;align-items:baseline;gap:10px;font-size:16px;min-height:0}
+.playrow .dot{width:14px;height:14px;flex:none;border:1px solid var(--line)}
+.playrow .nm{font-weight:700}
+.playrow .cs{margin-left:auto;font-size:16px;font-weight:700}
+.console{flex:none;height:96px;display:flex;align-items:center;gap:12px;padding:0 12px;
+  background:var(--s1);border:1px solid var(--line)}
+.console .lead{display:flex;flex-direction:column;gap:2px}
+.console .lead .k{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.console .lead .v{font-size:18px}
+.console .acts{margin-left:auto;display:flex;align-items:center;gap:8px}
+.statusline{flex:none;height:48px;display:flex;align-items:center;gap:16px;padding:0 12px;
+  background:var(--s1);border:1px solid var(--line);font-size:16px}
+.statusline .st{margin-left:auto;display:flex;gap:16px;font-size:13px;color:var(--muted)}
+.statusline .st b{font-size:18px;color:var(--text)}
+
+/* правый док */
+.jrow{display:flex;gap:8px;font-size:14px;align-items:baseline}
+.jrow .jd{width:10px;height:10px;flex:none;border:1px solid var(--line)}
+.jrow .jt{flex:1 1 auto}
+.jrow .jc{flex:none;font-size:12px;color:var(--muted)}
+.ins{display:flex;flex-direction:column;gap:6px;background:var(--s2);border:1px solid var(--line);padding:8px 10px}
+.ins .in1{display:flex;align-items:baseline;gap:8px}
+.ins .nm{font-size:18px;font-weight:700}
+.ins .grp{margin-left:auto;font-size:13px;color:var(--muted)}
+.ins .kv{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:14px}
+.ins .kv b{font-weight:400;color:var(--muted)}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ═══════════ платы ниже кадра ═══════════ */
+.plate{width:1600px;padding:24px;border-top:8px solid var(--line);background:var(--bg)}
+.plate h2{font-size:28px;margin:0 0 4px;font-weight:700;letter-spacing:.02em}
+.plate .sub{font-size:14px;color:var(--muted);margin:0 0 16px;max-width:1200px}
+.plate h3{font-size:18px;margin:24px 0 8px;font-weight:700}
+table.tbl{width:100%;border-collapse:collapse;font-size:14px}
+table.tbl th,table.tbl td{border:1px solid var(--line);padding:8px 10px;vertical-align:top;text-align:left}
+table.tbl th{background:var(--s2);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+table.tbl td.ev{font-weight:700;white-space:nowrap}
+table.tbl td.dur{font-family:var(--mono);white-space:nowrap;color:var(--accent2)}
+table.tbl tr.off td{background:var(--s1)}
+
+/* storyboard */
+.sb{display:flex;flex-direction:column;gap:12px}
+.sbframe{display:flex;align-items:flex-start;gap:16px;background:var(--s1);border:1px solid var(--line);padding:12px}
+.sbmeta{width:300px;flex:none;display:flex;flex-direction:column;gap:4px}
+.sbmeta .t{font-size:18px;font-weight:700}
+.sbmeta .d{font-size:13px;color:var(--accent2);font-family:var(--mono)}
+.sbmeta .x{font-size:13px;color:var(--muted)}
+.sbstrip{display:flex;gap:2px;flex:none}
+.tl-tile{width:78.7px;height:78.7px;background:var(--board2);border:1px solid var(--line);position:relative;
+  overflow:hidden;display:flex;flex-direction:column;padding:3px 4px}
+.tl-tile.corner{background:var(--board3)}
+.tl-tile.hl{border:2px solid var(--accent2);background:var(--s2)}
+.tl-tile .tb{height:5px;flex:none;margin:-3px -4px 3px;background:var(--line)}
+.tl-tile .tn{font-size:11px;line-height:1.05}
+.tl-tile .tp{font-size:10px;color:var(--muted);margin-top:auto}
+.tl-tile .tk{position:absolute;right:4px;top:22px}
+.tl-tile .tk svg{width:22px;height:22px;display:block}
+.sbnote{flex:1 1 auto;font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.sbnote b{color:var(--text);font-weight:400}
+.arrow{color:var(--accent2);font-size:20px}
+
+/* боковое управление */
+.sides{display:flex;gap:24px;align-items:flex-start}
+.sidecol{display:flex;flex-direction:column;gap:8px}
+.sidecol .cap2{font-size:14px;color:var(--text);font-weight:700}
+.sidecol .cap3{font-size:13px;color:var(--muted);max-width:320px}
+.side{background:var(--s1);border:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.side.full{width:280px;height:1112px}
+.side.rail{width:48px;height:1112px;align-items:center;justify-content:center}
+.side.drawer{width:320px;height:1112px}
+.side.phone{width:342px;height:844px}
+.railword{writing-mode:vertical-rl;font-size:18px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  display:flex;align-items:center;gap:12px;white-space:nowrap}
+.railword .c{font-size:12px;font-weight:400;color:var(--muted);letter-spacing:.04em}
+.overlay{position:relative;width:900px;height:1112px;border:1px solid var(--line);overflow:hidden;background:var(--bg)}
+.overlay .behind{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.overlay .scrim{position:absolute;inset:0;background:var(--scrim)}
+.overlay .drawer{position:absolute;right:0;top:0;height:100%;width:320px;background:var(--s1);
+  border-left:1px solid var(--line);display:flex;flex-direction:column}
+
+/* кадры 880x600 и 390x844 */
+.frames{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+.compact{width:880px;height:600px;background:var(--bg);border:1px solid var(--line);overflow:hidden;
+  display:grid;grid-template-columns:48px 1fr 48px;grid-template-rows:56px 1fr;gap:8px;padding:12px}
+.compact .top{grid-column:1/4;grid-row:1}
+.mini-rail{display:flex;align-items:center;justify-content:center}
+.phone{width:390px;height:844px;background:var(--bg);border:1px solid var(--line);overflow:hidden;
+  display:flex;flex-direction:column;gap:8px;padding:12px}
+.phone .ptop{flex:none;height:56px;display:flex;align-items:center;gap:8px;padding:0 10px;
+  background:var(--s1);border:1px solid var(--line)}
+.phone .ptop .who{font-size:18px;font-weight:700;white-space:nowrap}
+.phone .ptop .ph{font-size:18px;white-space:nowrap}
+.phone .ptop .pp{margin-left:auto}
+.panno{background:var(--ring-bg);border:1px solid var(--line);padding:6px;display:flex;flex-direction:column;gap:6px}
+.pz{background:var(--s1);border:1px solid var(--line);padding:4px 8px;display:flex;flex-direction:column;gap:3px}
+.pz .lab{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.pz .big{font-size:22px;font-weight:700}
+.pz .mid{font-size:18px}
+.pz .row{display:flex;align-items:baseline;gap:8px;font-size:14px}
+.pz .row .cs{margin-left:auto;font-weight:700}
+.viewport{width:366px;height:300px;border:1px solid var(--line);overflow:hidden;position:relative;background:var(--board2)}
+.viewport .vpinner{position:absolute;left:-30px;top:-594px;width:900px;height:900px;padding:6px;
+  display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px}
+.phone .pacts{flex:none;display:flex;flex-direction:column;gap:6px;background:var(--s1);border:1px solid var(--line);padding:8px}
+.phone .pacts .st{font-size:14px;color:var(--muted)}
+.phone .pacts .r{display:flex;gap:8px;flex-wrap:wrap}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:14px;color:var(--muted);margin-top:12px}
+.legend b{color:var(--text);font-weight:400}
+.legend i{display:inline-block;width:12px;height:12px;margin-right:6px;border:1px solid var(--line);vertical-align:-1px}
+.tokrow{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.tokrow .it{display:flex;align-items:center;gap:6px}
+.tokrow svg{width:20px;height:20px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ КАДР 1: 1600x1200 ═══════════════════ -->
+<main class="frame" id="frame-1600">
+
+  <header class="top" data-region="top">
+    <div class="brand">NEURO <b>PROPERTY TRADE</b></div>
+    <div class="chip">
+      <span class="who">ХОД: Хост</span>
+      <span class="ph">ФАЗА: Начало хода</span>
+    </div>
+    <div class="hs"><span class="v num">7</span><span class="k">РАУНД</span></div>
+    <div class="hs"><span class="v num">$240</span><span class="k">БАНК ПАРКОВКИ</span></div>
+    <div class="hctl">
+      <button class="btn hero">Пауза</button>
+      <button class="btn">Настройки</button>
+      <button class="btn">Правила</button>
+      <button class="btn">Рестарт</button>
+      <button class="btn">Тема: Neuro</button>
+      <button class="btn">Язык: RU</button>
+    </div>
+  </header>
+
+  <aside class="panel dock-left" data-region="seats">
+    <div class="phead"><span class="t">ИГРОКИ</span><span class="m">4 места · за столом</span></div>
+    <div class="pbody">
+      <div class="seat active" style="--pc:var(--p0)">
+        <div class="r1"><span class="nm">Хост</span><span class="cash num">$1215</span></div>
+        <div class="r2"><span>драйвер: <b>LOCAL</b></span><span>фишка: <b>top_hat</b></span></div>
+        <div class="r2"><span>клетка: <b>6 Cedar Ave</b></span><span>владений: <b>2</b></span><span>домов: <b>0</b></span><span>залогов: <b>0</b></span></div>
+        <div class="r3">ваш ход</div>
+      </div>
+      <div class="seat" style="--pc:var(--p2)">
+        <div class="r1"><span class="nm">Neuro</span><span class="cash num">$980</span></div>
+        <div class="r2"><span>драйвер: <b>SDK</b></span><span>фишка: <b>cat</b></span></div>
+        <div class="r2"><span>клетка: <b>24 Harbor Drive</b></span><span>владений: <b>3</b></span><span>домов: <b>1</b></span><span>залогов: <b>0</b></span></div>
+        <div class="r3">ждёт своего хода</div>
+      </div>
+      <div class="seat" style="--pc:var(--p1)">
+        <div class="r1"><span class="nm">evil</span><span class="cash num">$640</span></div>
+        <div class="r2"><span>драйвер: <b>SDK</b></span><span>фишка: <b>ship</b></span></div>
+        <div class="r2"><span>клетка: <b>10 Jail</b></span><span>владений: <b>1</b></span><span>домов: <b>0</b></span><span>залогов: <b>1</b></span></div>
+        <div class="r3"><em>в тюрьме, попытка 2</em></div>
+      </div>
+      <div class="seat" style="--pc:var(--p3)">
+        <div class="r1"><span class="nm">Mira</span><span class="cash num">$1500</span></div>
+        <div class="r2"><span>драйвер: <b>ИИ «Магнат»</b></span><span>фишка: <b>race_car</b></span></div>
+        <div class="r2"><span>клетка: <b>33 Chest</b></span><span>владений: <b>2</b></span><span>домов: <b>0</b></span><span>залогов: <b>1</b></span></div>
+        <div class="r3">ждёт своего хода</div>
+      </div>
+
+      <div class="rule"></div>
+      <div class="cap">Группы цветов</div>
+      <div class="groups">
+        <div><i style="background:var(--g-brown)"></i>brown</div>
+        <div><i style="background:var(--g-lightblue)"></i>lightblue</div>
+        <div><i style="background:var(--g-pink)"></i>pink</div>
+        <div><i style="background:var(--g-orange)"></i>orange</div>
+        <div><i style="background:var(--g-red)"></i>red</div>
+        <div><i style="background:var(--g-yellow)"></i>yellow</div>
+        <div><i style="background:var(--g-green)"></i>green</div>
+        <div><i style="background:var(--g-darkblue)"></i>darkblue</div>
+      </div>
+      <div class="rule"></div>
+      <div class="sumline">наличные четырёх мест<b class="num">$4335</b></div>
+      <div class="sumline">в залоге<b class="num">2</b>клетки</div>
+    </div>
+  </aside>
+
+  <section class="stage" data-region="stage">
+    <div class="zoomstrip">
+      <span>Зум: <b>100 %</b></span><span>·</span>
+      <button class="btn small">Вписать кольцо</button>
+      <button class="btn small">Крупнее</button>
+      <button class="btn small">Мельче</button>
+      <span>·</span>
+      <span>Панели: <b>развёрнуты</b></span>
+      <span>·</span>
+      <span>Клетка: <b>78.7 px</b></span>
+    </div>
+
+    <div class="boardwrap">
+      <div class="board" data-region="board">
+
+        <div class="tile corner" style="grid-row:11;grid-column:11">
+          <span class="tb" style="background:var(--board3)"></span><span class="tn">Start</span><span class="tp">круг: +$200</span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:10">
+          <span class="tb" style="background:var(--g-brown)"></span><span class="tn">Sunset Blvd</span><span class="tp num">$60</span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:9">
+          <span class="tb" style="background:var(--ev-card)"></span><span class="tn">Chest</span><span class="tp">казна</span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:8;--pc:var(--p0)">
+          <span class="tb" style="background:var(--g-brown)"></span><span class="tn">Palm Row</span><span class="tp num">$60</span>
+          <span class="to">Хост</span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:7">
+          <span class="tb" style="background:var(--danger)"></span><span class="tn">Tax</span><span class="tp">налог</span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:6">
+          <span class="tb" style="background:var(--muted)"></span><span class="tn">Harbor Station</span><span class="tp num">$200</span>
+        </div>
+        <div class="tile mine" style="grid-row:11;grid-column:5;--pc:var(--p0)">
+          <span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Cedar Ave</span><span class="tp num">$100</span>
+          <span class="to">Хост</span>
+          <span class="tk">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg>
+          </span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:4">
+          <span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:3;--pc:var(--p2)">
+          <span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Elm Ave</span><span class="tp num">$100</span>
+          <span class="to">Neuro</span><span class="th">дома: 2</span>
+        </div>
+        <div class="tile" style="grid-row:11;grid-column:2;--pc:var(--p2)">
+          <span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Linden Ave</span><span class="tp num">$120</span>
+          <span class="to">Neuro</span>
+        </div>
+        <div class="tile corner" style="grid-row:11;grid-column:1;--pc:var(--p1)">
+          <span class="tb" style="background:var(--board3)"></span><span class="tn">Jail</span><span class="tp">тюрьма</span>
+          <span class="tk">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16 L20 16 L16 20 L8 20 Z" fill="var(--p1)"></path><rect x="11" y="5" width="2" height="11" fill="var(--p1)"></rect></svg>
+          </span>
+        </div>
+
+        <div class="tile mort" style="grid-row:10;grid-column:1;--pc:var(--p1)">
+          <span class="tb" style="background:var(--g-pink)"></span><span class="tn">Oak Street</span><span class="tp num">$140</span>
+          <span class="to">evil</span><span class="th">в залоге</span>
+        </div>
+        <div class="tile" style="grid-row:9;grid-column:1">
+          <span class="tb" style="background:var(--ev-accent)"></span><span class="tn">Tower Utilities</span><span class="tp num">$150</span>
+        </div>
+        <div class="tile" style="grid-row:8;grid-column:1">
+          <span class="tb" style="background:var(--g-pink)"></span><span class="tn">Maple Street</span><span class="tp num">$140</span>
+        </div>
+        <div class="tile" style="grid-row:7;grid-column:1">
+          <span class="tb" style="background:var(--g-pink)"></span><span class="tn">Birch Street</span><span class="tp num">$160</span>
+        </div>
+        <div class="tile" style="grid-row:6;grid-column:1">
+          <span class="tb" style="background:var(--muted)"></span><span class="tn">Central Station</span><span class="tp num">$200</span>
+        </div>
+        <div class="tile" style="grid-row:5;grid-column:1">
+          <span class="tb" style="background:var(--g-orange)"></span><span class="tn">Willow Way</span><span class="tp num">$180</span>
+        </div>
+        <div class="tile" style="grid-row:4;grid-column:1">
+          <span class="tb" style="background:var(--ev-card)"></span><span class="tn">Chest</span><span class="tp">казна</span>
+        </div>
+        <div class="tile" style="grid-row:3;grid-column:1">
+          <span class="tb" style="background:var(--g-orange)"></span><span class="tn">Aspen Way</span><span class="tp num">$180</span>
+        </div>
+        <div class="tile" style="grid-row:2;grid-column:1">
+          <span class="tb" style="background:var(--g-orange)"></span><span class="tn">Fir Way</span><span class="tp num">$200</span>
+        </div>
+        <div class="tile corner" style="grid-row:1;grid-column:1">
+          <span class="tb" style="background:var(--board3)"></span><span class="tn">Free Parking</span><span class="tp">банк парковки</span>
+        </div>
+
+        <div class="tile" style="grid-row:1;grid-column:2">
+          <span class="tb" style="background:var(--g-red)"></span><span class="tn">Lake Drive</span><span class="tp num">$220</span>
+        </div>
+        <div class="tile" style="grid-row:1;grid-column:3">
+          <span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span>
+        </div>
+        <div class="tile" style="grid-row:1;grid-column:4">
+          <span class="tb" style="background:var(--g-red)"></span><span class="tn">River Drive</span><span class="tp num">$220</span>
+        </div>
+        <div class="tile" style="grid-row:1;grid-column:5;--pc:var(--p2)">
+          <span class="tb" style="background:var(--g-red)"></span><span class="tn">Harbor Drive</span><span class="tp num">$240</span>
+          <span class="to">Neuro</span><span class="th">дома: 1</span>
+          <span class="tk">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="6" fill="var(--p2)"></circle><path d="M6 7 L9 4 L12 7 L15 4 L18 7 Z" fill="var(--p2)"></path></svg>
+          </span>
+        </div>
+        <div class="tile" style="grid-row:1;grid-column:6">
+          <span class="tb" style="background:var(--muted)"></span><span class="tn">West Station</span><span class="tp num">$200</span>
+        </div>
+        <div class="tile mort" style="grid-row:1;grid-column:7;--pc:var(--p3)">
+          <span class="tb" style="background:var(--g-yellow)"></span><span class="tn">Crest Point</span><span class="tp num">$260</span>
+          <span class="to">Mira</span><span class="th">в залоге</span>
+        </div>
+        <div class="tile" style="grid-row:1;grid-column:8;--pc:var(--p3)">
+          <span class="tb" style="background:var(--g-yellow)"></span><span class="tn">Crest Square</span><span class="tp num">$260</span>
+          <span class="to">Mira</span><span class="th">дома: 1</span>
+        </div>
+        <div class="tile" style="grid-row:1;grid-column:9">
+          <span class="tb" style="background:var(--ev-accent)"></span><span class="tn">Tower Water</span><span class="tp num">$150</span>
+        </div>
+        <div class="tile" style="grid-row:1;grid-column:10">
+          <span class="tb" style="background:var(--g-yellow)"></span><span class="tn">Crest Heights</span><span class="tp num">$280</span>
+        </div>
+        <div class="tile corner" style="grid-row:1;grid-column:11">
+          <span class="tb" style="background:var(--board3)"></span><span class="tn">Go To Jail</span><span class="tp">иди в тюрьму</span>
+        </div>
+
+        <div class="tile" style="grid-row:2;grid-column:11">
+          <span class="tb" style="background:var(--g-green)"></span><span class="tn">Garden Grove</span><span class="tp num">$300</span>
+        </div>
+        <div class="tile" style="grid-row:3;grid-column:11">
+          <span class="tb" style="background:var(--g-green)"></span><span class="tn">Garden Park</span><span class="tp num">$300</span>
+        </div>
+        <div class="tile" style="grid-row:4;grid-column:11">
+          <span class="tb" style="background:var(--ev-card)"></span><span class="tn">Chest</span><span class="tp">казна</span>
+        </div>
+        <div class="tile" style="grid-row:5;grid-column:11">
+          <span class="tb" style="background:var(--g-green)"></span><span class="tn">Garden Court</span><span class="tp num">$320</span>
+        </div>
+        <div class="tile" style="grid-row:6;grid-column:11">
+          <span class="tb" style="background:var(--muted)"></span><span class="tn">South Station</span><span class="tp num">$200</span>
+        </div>
+        <div class="tile" style="grid-row:7;grid-column:11">
+          <span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span>
+        </div>
+        <div class="tile" style="grid-row:8;grid-column:11;--pc:var(--p2)">
+          <span class="tb" style="background:var(--g-darkblue)"></span><span class="tn">Grand Avenue</span><span class="tp num">$350</span>
+          <span class="to">Neuro</span>
+        </div>
+        <div class="tile" style="grid-row:9;grid-column:11">
+          <span class="tb" style="background:var(--danger)"></span><span class="tn">Luxury Tax</span><span class="tp">налог</span>
+        </div>
+        <div class="tile" style="grid-row:10;grid-column:11">
+          <span class="tb" style="background:var(--g-darkblue)"></span><span class="tn">Grand Place</span><span class="tp num">$400</span>
+        </div>
+
+        <!-- центр кольца: панно хода (R-2, R-13, R-14) -->
+        <div class="center" data-region="center">
+
+          <div class="zone z-roll">
+            <div class="rollrow">
+              <div class="dice">
+                <svg viewBox="0 0 60 60" aria-hidden="true">
+                  <rect x="1" y="1" width="58" height="58" rx="8" fill="var(--dice-bg)" stroke="var(--dice-ink)" stroke-width="2"></rect>
+                  <circle cx="15" cy="15" r="5" fill="var(--dice-ink)"></circle>
+                  <circle cx="45" cy="15" r="5" fill="var(--dice-ink)"></circle>
+                  <circle cx="30" cy="30" r="5" fill="var(--dice-ink)"></circle>
+                  <circle cx="15" cy="45" r="5" fill="var(--dice-ink)"></circle>
+                  <circle cx="45" cy="45" r="5" fill="var(--dice-ink)"></circle>
+                </svg>
+                <svg viewBox="0 0 60 60" aria-hidden="true">
+                  <rect x="1" y="1" width="58" height="58" rx="8" fill="var(--dice-bg)" stroke="var(--dice-ink)" stroke-width="2"></rect>
+                  <circle cx="15" cy="15" r="5" fill="var(--dice-ink)"></circle>
+                  <circle cx="30" cy="30" r="5" fill="var(--dice-ink)"></circle>
+                  <circle cx="45" cy="45" r="5" fill="var(--dice-ink)"></circle>
+                </svg>
+              </div>
+              <div class="sum">8</div>
+              <div class="rollside">кубики<b>5 + 3</b>Хост бросает</div>
+            </div>
+          </div>
+
+          <div class="zone z-event">
+            <div class="zlab">Событие</div>
+            <div class="glance panno-turn" data-od-id="panno-turn">ХОД: Хост · ФАЗА: Начало хода</div>
+            <div class="glance panno-event-text" data-od-id="panno-event-text">Mira продаёт дом · Crest Square (27) · +$70</div>
+          </div>
+
+          <div class="zone z-play">
+            <div class="zlab">Игроки</div>
+            <div class="playrow" style="color:var(--p0)"><span class="dot" style="background:var(--p0)"></span><span class="nm">Хост</span><span class="muted">6 Cedar Ave · 2 владения</span><span class="cs num">$1215</span></div>
+            <div class="playrow" style="color:var(--p2)"><span class="dot" style="background:var(--p2)"></span><span class="nm">Neuro</span><span class="muted">24 Harbor Drive · 3 владения</span><span class="cs num">$980</span></div>
+            <div class="playrow" style="color:var(--p1)"><span class="dot" style="background:var(--p1)"></span><span class="nm">evil</span><span class="muted">10 Jail · 1 владение</span><span class="cs num">$640</span></div>
+            <div class="playrow" style="color:var(--p3)"><span class="dot" style="background:var(--p3)"></span><span class="nm">Mira</span><span class="muted">33 Chest · 2 владения</span><span class="cs num">$1500</span></div>
+          </div>
+
+          <div class="zone z-jrn">
+            <div class="zlab">ХОД СОБЫТИЙ</div>
+            <div class="glance panno-jrn-text" data-od-id="panno-jrn-text">evil попадает в тюрьму</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="console" data-region="console">
+      <div class="lead">
+        <span class="k">Действие</span>
+        <span class="v">Хост · ваш ход — выберите действие</span>
+      </div>
+      <div class="acts">
+        <button class="btn hero">Бросок</button>
+        <button class="btn sec">Купить $100</button>
+        <button class="btn sec">Отказ</button>
+        <button class="btn sec">Торг</button>
+        <button class="btn sec">Конец хода</button>
+      </div>
+    </div>
+
+    <div class="statusline">
+      <span>Хост · ваш ход — выберите действие</span>
+      <span class="st"><span>РАУНД <b class="num">7</b></span><span>БАНК ПАРКОВКИ <b class="num">$240</b></span><span>Клетка <b class="num">78.7 px</b></span></span>
+    </div>
+  </section>
+
+  <aside class="panel dock-right" data-region="journal">
+    <div class="phead"><span class="t">КЛЕТКА</span><span class="m">закреплено на клетке 6</span></div>
+    <div class="pbody">
+      <div class="ins">
+        <div class="in1"><span class="nm">Cedar Ave</span><span class="grp">группа lightblue</span></div>
+        <div class="kv"><span><b>цена</b> $100</span><span><b>аренда</b> $6</span><span><b>владелец:</b> Хост</span><span><b>группа</b> не собрана</span></div>
+        <div class="filters"><button class="btn small">Закрепить</button><button class="btn small">Закрыть</button></div>
+      </div>
+      <div class="rule"></div>
+      <div class="phead" style="border:0;padding:0;background:transparent"><span class="t">ХОД СОБЫТИЙ</span><span class="m">показано 4 из 132</span></div>
+      <div class="jrow"><span class="jd" style="background:var(--p3)"></span><span class="jt">Mira бросает 4+4</span><span class="jc">Бросок</span></div>
+      <div class="jrow"><span class="jd" style="background:var(--p3)"></span><span class="jt">Mira продаёт с клетки 27 (Crest Square)</span><span class="jc">Стройка</span></div>
+      <div class="jrow"><span class="jd" style="background:var(--p1)"></span><span class="jt">evil закладывает клетку 11 (Oak Street)</span><span class="jc">Деньги</span></div>
+      <div class="jrow"><span class="jd" style="background:var(--p1)"></span><span class="jt">evil попадает в тюрьму</span><span class="jc">Прочее</span></div>
+      <div class="rule"></div>
+      <div class="filters">
+        <button class="btn small">игрок: все</button>
+        <button class="btn small">тип: все</button>
+        <button class="btn small">только деньги</button>
+        <button class="btn small">экспорт .jsonl</button>
+      </div>
+    </div>
+  </aside>
+
+</main>
+
+<!-- ═══════════════════ ПЛАТА 1: ЖИВОСТЬ — РАСКАДРОВКА ОДНОГО СОБЫТИЯ ═══════════════════ -->
+<section class="plate" id="plate-live">
+  <h2>Живость: одно событие в четырёх кадрах по времени</h2>
+  <p class="sub">Событие «ход». Хост стоит на клетке 6 Cedar Ave, кубики дали 5 + 3 = 8, фишка идёт на клетку 14 Birch Street.
+    Шаг — <b>step 0.19 с</b> на клетку (design/tokens.json), дуга подъёма — <b>hop 0.32 с</b>, подсветка клетки — <b>base 0.19 с</b>,
+    ease <b>cubic-bezier(.2,0,0,1)</b>. Полный путь 8 шагов = 8 × 0.19 = <b>1.52 с</b>; на раскадровке показаны первые четыре кадра.
+    Это статическая раскадровка: кадры нарисованы отдельно, ни один из них не является живой анимацией.
+    Двигается положение фишки, порядок клеток и текст в журнале — смысл читается без звука и без цвета.</p>
+
+  <div class="sb">
+    <div class="sbframe">
+      <div class="sbmeta"><span class="t">Кадр 1</span><span class="d">t = 0.00 с</span><span class="x">Бросок показан. Фишка на клетке 6 Cedar Ave. Целевая клетка ещё не подсвечена.</span></div>
+      <div class="sbstrip">
+        <div class="tl-tile hl"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Cedar Ave</span><span class="tp num">$100</span>
+          <span class="tk"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg></span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Elm Ave</span><span class="tp num">$100</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Linden Ave</span><span class="tp num">$120</span></div>
+        <div class="tl-tile corner"><span class="tb" style="background:var(--board3)"></span><span class="tn">Jail</span><span class="tp">тюрьма</span></div>
+      </div>
+      <div class="sbnote"><span><b>Двигается:</b> ничего, это начало.</span><span><b>Видно:</b> сумма 8 цифрой, фишка на исходной клетке.</span><span><b>Длительность:</b> бросок 0.85 с уже отработал.</span></div>
+    </div>
+
+    <div class="sbframe">
+      <div class="sbmeta"><span class="t">Кадр 2</span><span class="d">t = 0.19 с</span><span class="x">Первый шаг сделан. Фишка на клетке 7 Fortune, клетка 7 подсвечена.</span></div>
+      <div class="sbstrip">
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Cedar Ave</span><span class="tp num">$100</span></div>
+        <div class="tl-tile hl"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span>
+          <span class="tk"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg></span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Elm Ave</span><span class="tp num">$100</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Linden Ave</span><span class="tp num">$120</span></div>
+        <div class="tl-tile corner"><span class="tb" style="background:var(--board3)"></span><span class="tn">Jail</span><span class="tp">тюрьма</span></div>
+      </div>
+      <div class="sbnote"><span><b>Двигается:</b> фишка, на одну клетку вперёд; подсветка переходит на клетку 7.</span><span><b>Длительность:</b> step 0.19 с.</span><span><b>Видно:</b> имя клетки, номер шага «1 из 8».</span></div>
+    </div>
+
+    <div class="sbframe">
+      <div class="sbmeta"><span class="t">Кадр 3</span><span class="d">t = 0.38 с</span><span class="x">Второй шаг. Фишка на клетке 8 Elm Ave — чужой клетке Neuro.</span></div>
+      <div class="sbstrip">
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Cedar Ave</span><span class="tp num">$100</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span></div>
+        <div class="tl-tile hl"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Elm Ave</span><span class="tp num">$100</span>
+          <span class="tk"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg></span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Linden Ave</span><span class="tp num">$120</span></div>
+        <div class="tl-tile corner"><span class="tb" style="background:var(--board3)"></span><span class="tn">Jail</span><span class="tp">тюрьма</span></div>
+      </div>
+      <div class="sbnote"><span><b>Двигается:</b> фишка; на чужой клетке вспыхивает полоса владельца.</span><span><b>Длительность:</b> step 0.19 с + glow slow 0.32 с.</span><span><b>Видно:</b> «Neuro», «дома: 2» словами, а не оттенком.</span></div>
+    </div>
+
+    <div class="sbframe">
+      <div class="sbmeta"><span class="t">Кадр 4</span><span class="d">t = 0.57 с</span><span class="x">Третий шаг. Фишка на клетке 9 Linden Ave. Осталось 5 шагов до 14 Birch Street.</span></div>
+      <div class="sbstrip">
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Cedar Ave</span><span class="tp num">$100</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Elm Ave</span><span class="tp num">$100</span></div>
+        <div class="tl-tile hl"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Linden Ave</span><span class="tp num">$120</span>
+          <span class="tk"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg></span></div>
+        <div class="tl-tile corner"><span class="tb" style="background:var(--board3)"></span><span class="tn">Jail</span><span class="tp">тюрьма</span></div>
+      </div>
+      <div class="sbnote"><span><b>Двигается:</b> фишка; счётчик «шаг 3 из 8» в панно.</span><span><b>Длительность:</b> step 0.19 с.</span><span><b>Видно:</b> путь показан порядком клеток, а не цветом.</span></div>
+    </div>
+
+    <div class="sbframe" style="border-color:var(--accent2)">
+      <div class="sbmeta"><span class="t">Анимации ВЫКЛЮЧЕНЫ</span><span class="d">t = сразу</span><span class="x">Тот же ход, переключатель «Анимации» выключен: ни одного промежуточного кадра, смысл остаётся целиком.</span></div>
+      <div class="sbstrip">
+        <div class="tl-tile hl" style="border-color:var(--accent2)"><span class="tb" style="background:var(--g-pink)"></span><span class="tn">Birch Street</span><span class="tp num">$160</span>
+          <span class="tk"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg></span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-pink)"></span><span class="tn">Maple Street</span><span class="tp num">$140</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--muted)"></span><span class="tn">Central Station</span><span class="tp num">$200</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--g-orange)"></span><span class="tn">Willow Way</span><span class="tp num">$180</span></div>
+        <div class="tl-tile"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Chest</span><span class="tp">казна</span></div>
+      </div>
+      <div class="sbnote">
+        <span><b>Фишка</b> стоит сразу на целевой клетке 14 Birch Street.</span>
+        <span><b>Клетка</b> обведена рамкой 2 px accent2 и подписана «Birch Street», «$160».</span>
+        <span><b>Текст</b> в журнале: «Хост идёт на Birch Street, шагов 8». Тот же смысл, статикой.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><b>Что двигается вообще:</b></span>
+    <span><i style="background:var(--p0)"></i>фишка места (step 0.19 / hop 0.32)</span>
+    <span><i style="background:var(--accent2)"></i>рамка клетки (base 0.19)</span>
+    <span><i style="background:var(--warn)"></i>число в панно (pop 0.5)</span>
+    <span><i style="background:var(--ev-card)"></i>карточка события (panel 0.3)</span>
+    <span><i style="background:var(--danger)"></i>залог и банкротство (slow 0.32)</span>
+  </div>
+</section>
+
+<!-- ═══════════════════ ПЛАТА 2: ТАБЛИЦА ЖИВОСТИ ═══════════════════ -->
+<section class="plate" id="plate-table">
+  <h2>Десять сильнейших событий: что двигается, сколько это длится, что остаётся при выключенных анимациях</h2>
+  <p class="sub">Порядок — по силе впечатления (задача C). События — из списка игры, <b>game/ui/core/event_adapter.gd</b>
+    (TYPE_MAP: 23 типа, VISIBLE: 25 видов). Длительности — только из <b>design/tokens.json</b> (shared.motion) и
+    <b>game/assets/skins/neuro/skin.json</b> (motion). Ни одной новой длительности не изобретено.
+    Каждая строка заменяема: переключатель «Анимации» в настройках выключает движение, а логика не меняется —
+    в правой колонке записано, чем смысл держится без движения.</p>
+
+  <table class="tbl">
+    <thead>
+      <tr><th style="width:34px">#</th><th style="width:200px">Событие (тип движка)</th><th style="width:420px">Что именно двигается</th><th style="width:190px">Длительность</th><th>Что видно при ВЫКЛЮЧЕННЫХ анимациях</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td class="ev">Ход<br><span class="muted">move, teleport</span></td>
+        <td>Фишка идёт по клеткам по одной; рамка подсветки переходит на текущую клетку; счётчик «шаг N из M» в панно.</td>
+        <td class="dur">step 0.19 с на клетку<br>hop 0.32 с на дугу<br>подсветка base 0.19 с</td>
+        <td>Фишка стоит сразу на целевой клетке. Рамка 2 px accent2 на ней. В журнале строка «Хост идёт на Birch Street, шагов 8». Порядок клеток на доске сам показывает путь.</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td class="ev">Бросок<br><span class="muted">roll</span></td>
+        <td>Две кости катятся, затем останавливаются на гранях; сумма выезжает в панно цифрой; строка журнала печатается.</td>
+        <td class="dur">dice_roll 0.85 с<br>сумма pop 0.5 с</td>
+        <td>Кости нарисованы сразу конечными гранями 5 и 3, сумма стоит цифрой <b>8</b> в зоне «Бросок». Строка «Хост бросает 5+3». Ничего не пропадает.</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td class="ev">Покупка<br><span class="muted">purchase</span></td>
+        <td>Карточка покупки выезжает в зону «Событие»; на клетке появляется полоса владельца; деньги места меняются на новое число.</td>
+        <td class="dur">карточка panel 0.3 с<br>полоса base 0.19 с<br>деньги slow 0.32 с</td>
+        <td>Клетка сразу с полосой владельца и подписью владельца словом; в зоне «Игроки» новое число денег; строка в журнале. Смысл — в тексте и в числе.</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td class="ev">Аренда<br><span class="muted">rent</span></td>
+        <td>Две суммы движутся навстречу: от плательщика к получателю; у обоих мест одновременно меняются числа денег.</td>
+        <td class="dur">деньги slow 0.32 с<br>вспышка base 0.19 с</td>
+        <td>В панно строка «Аренда: плательщик отдаёт получателю», оба баланса показаны новыми числами. Направление платежа читается словом, а не движением.</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td class="ev">Аукцион<br><span class="muted">aucstart, bid, pass, aucwin, aucnone</span></td>
+        <td>Ставка поднимается шагами; ушедшие из торга места гаснут по одному; победитель получает клетку.</td>
+        <td class="dur">шаг ставки base 0.19 с<br>итог pop 0.5 с</td>
+        <td>Показаны итоговая ставка, имя победителя и клетка словами; ушедшие места помечены «отказ». Клетка сразу с полосой победителя.</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td class="ev">Сделка<br><span class="muted">trdoffer, trade, trdno</span></td>
+        <td>Карточка сделки раскрывается; два списка клеток съезжаются друг к другу; две суммы встают напротив списков.</td>
+        <td class="dur">карточка panel 0.3 с<br>списки base 0.19 с</td>
+        <td>Текстовая карточка: кто даёт какие клетки и какую сумму, кто просит что в ответ. Всё читается списком, без движения.</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td class="ev">Стройка<br><span class="muted">build, sell</span></td>
+        <td>Дом вырастает на клетке; число домов в подписи клетки меняется; деньги места идут вниз.</td>
+        <td class="dur">дом pop 0.5 с<br>подсветка base 0.19 с</td>
+        <td>Дом нарисован сразу, подпись «дома: 3» словами, деньги новым числом, строка журнала. Место на клетке под подпись заложено заранее.</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td class="ev">Залог<br><span class="muted">mortgage, unmortgage</span></td>
+        <td>По клетке проходит штриховка; полоса владельца бледнеет; в инспекторе появляется строка «в залоге».</td>
+        <td class="dur">штриховка slow 0.32 с<br>подпись base 0.19 с</td>
+        <td>Клетка сразу заштрихована, в инспекторе написано «в залоге» и сколько получено. Смысл держится текстом, штриховка — второй признак.</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td class="ev">Банкротство<br><span class="muted">bankrupt</span></td>
+        <td>Фишка уходит с доски; карточка места гаснет; клетки переходят кредитору, полосы меняют цвет.</td>
+        <td class="dur">уход фишки slow 0.32 с<br>карточка места base 0.19 с</td>
+        <td>Место помечено словом «выбыл» и остаётся в списке; клетки сразу с полосами кредитора; строка журнала с суммой долга.</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td class="ev">Конец игры<br><span class="muted">winner</span></td>
+        <td>Баннер выезжает поверх кадра; кольцо гаснет; имя победителя и сумма встают крупно.</td>
+        <td class="dur">баннер panel 0.3 с<br>затухание slow 0.32 с</td>
+        <td>Баннер стоит сразу: имя победителя, сумма, кнопки «Заново» и «Настройки» словами. Кольцо остаётся видимым, не гаснет.</td>
+      </tr>
+      <tr class="off">
+        <td>—</td>
+        <td class="ev">Пауза<br><span class="muted">pause, resume</span></td>
+        <td>Поверх кадра проявляется затемнение; строка «Матч на паузе» встаёт по центру; кнопка меняется на «Продолжить».</td>
+        <td class="dur">scrim slow 0.32 с<br>строка base 0.19 с</td>
+        <td>Затемнение стоит сразу, строка «Матч на паузе» видна, кнопка подписана «Продолжить». Это одиннадцатое по списку задачи C, вне десятки сильнейших, но закрыто тем же правилом.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Как это выключается и подменяется, не трогая логику</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:260px">Токен движения</th><th style="width:120px">Значение</th><th style="width:300px">Где живёт</th><th>Что делает переключатель «Анимации»</th></tr></thead>
+    <tbody>
+      <tr><td class="ev">fast</td><td class="dur">0.12 с</td><td>design/tokens.json → shared.motion</td><td>наведение, нажатие: при выключении остаётся смена фона без плавности</td></tr>
+      <tr><td class="ev">base</td><td class="dur">0.19 с</td><td>design/tokens.json → shared.motion</td><td>подсветка клетки, появление строки: при выключении строка появляется сразу</td></tr>
+      <tr><td class="ev">slow</td><td class="dur">0.32 с</td><td>design/tokens.json → shared.motion</td><td>деньги, штриховка залога, затемнение: при выключении новое число стоит сразу</td></tr>
+      <tr><td class="ev">step</td><td class="dur">0.19 с</td><td>skin.json → motion.step</td><td>шаг фишки: при выключении фишка стоит на целевой клетке</td></tr>
+      <tr><td class="ev">hop</td><td class="dur">0.32 с</td><td>skin.json → motion.hop</td><td>дуга подъёма фишки: при выключении дуги нет, путь читается порядком клеток</td></tr>
+      <tr><td class="ev">pop</td><td class="dur">0.5 с</td><td>skin.json → motion.pop</td><td>появление числа и дома: при выключении они нарисованы сразу</td></tr>
+      <tr><td class="ev">panel</td><td class="dur">0.3 с</td><td>skin.json → motion.panel</td><td>выезд карточки: при выключении карточка стоит на месте</td></tr>
+      <tr><td class="ev">card</td><td class="dur">2.8 с</td><td>skin.json → motion.card</td><td>показ карты шанса: при выключении карта висит, пока её не закроют словом «Закрыть»</td></tr>
+      <tr><td class="ev">dice_roll</td><td class="dur">0.85 с</td><td>skin.json → motion.dice_roll</td><td>качение костей: при выключении кости сразу на гранях</td></tr>
+      <tr><td class="ev">ease</td><td class="dur">cubic-bezier(.2,0,0,1)</td><td>design/tokens.json → shared.motion</td><td>кривая у всех переходов одна; при выключении кривая не применяется вовсе</td></tr>
+    </tbody>
+  </table>
+  <p class="sub" style="margin-top:12px">Замена делается подстановкой значения токена, а не правкой логики: ни одно событие из event_adapter.gd не знает
+    о движении — движение читает адаптер событий и подставляет профиль. Выключенный профиль оставляет все пять фактов хода
+    (чей ход, фаза, кубики с суммой, наличные четырёх мест, последнее событие) на своих местах, потому что они живут в панно текстом.</p>
+</section>
+
+<!-- ═══════════════════ ПЛАТА 3: БОКОВОЕ УПРАВЛЕНИЕ ═══════════════════ -->
+<section class="plate" id="plate-side">
+  <h2>Боковое управление: сторона целиком, в трёх состояниях</h2>
+  <p class="sub">В кадре 1600x1200 сторона идёт от нижней кромки шапки до нижней кромки кадра — <b>1112 px</b>, а не половина стороны.
+    Кегль подписей — <b>18 px</b> (шкала скина size.l, уже сделано в продукте), счётчики — 13 px. Свёрнутая полоса — <b>48 px</b>
+    (design/tokens.json → ui_metrics.rail), drawer — <b>320 px</b> (ui_metrics.drawer), на телефоне — <b>342 px</b>, потому что 390 − 48 = 342.
+    Ни одно состояние не оставляет пустую полосу: у полосы есть слово, у drawer — заголовок и кнопка «Закрыть».</p>
+
+  <div class="sides">
+    <div class="sidecol">
+      <div class="cap2">1. Развёрнуто — 280 px</div>
+      <div class="side full">
+        <div class="phead"><span class="t">ИГРОКИ</span><span class="m">4 места</span></div>
+        <div class="pbody">
+          <div class="seat active" style="--pc:var(--p0)"><div class="r1"><span class="nm">Хост</span><span class="cash num">$1215</span></div><div class="r2"><span>LOCAL</span><span>top_hat</span></div><div class="r3">ваш ход</div></div>
+          <div class="seat" style="--pc:var(--p2)"><div class="r1"><span class="nm">Neuro</span><span class="cash num">$980</span></div><div class="r2"><span>SDK</span><span>cat</span></div><div class="r3">3 владения, 1 дом</div></div>
+          <div class="seat" style="--pc:var(--p1)"><div class="r1"><span class="nm">evil</span><span class="cash num">$640</span></div><div class="r2"><span>SDK</span><span>ship</span></div><div class="r3"><em>в тюрьме, попытка 2</em></div></div>
+          <div class="seat" style="--pc:var(--p3)"><div class="r1"><span class="nm">Mira</span><span class="cash num">$1500</span></div><div class="r2"><span>ИИ «Магнат»</span><span>race_car</span></div><div class="r3">2 владения, 1 залог</div></div>
+          <div class="rule"></div>
+          <div class="cap">Группы цветов</div>
+          <div class="groups">
+            <div><i style="background:var(--g-brown)"></i>brown</div><div><i style="background:var(--g-lightblue)"></i>lightblue</div>
+            <div><i style="background:var(--g-pink)"></i>pink</div><div><i style="background:var(--g-orange)"></i>orange</div>
+            <div><i style="background:var(--g-red)"></i>red</div><div><i style="background:var(--g-yellow)"></i>yellow</div>
+            <div><i style="background:var(--g-green)"></i>green</div><div><i style="background:var(--g-darkblue)"></i>darkblue</div>
+          </div>
+          <div class="rule"></div>
+          <div class="sumline">наличные четырёх мест<b class="num">$4335</b></div>
+          <button class="btn">Свернуть в полосу</button>
+        </div>
+      </div>
+      <div class="cap3">Подписи 18 px читаются на телефоне: 18 × 390 / 1600 = 4.4 px эффективных — это ниже пола R-7, поэтому в телефонном кадре та же панель открывается drawer-ом в масштабе телефона, где 18 px и есть 18 px.</div>
+    </div>
+
+    <div class="sidecol">
+      <div class="cap2">2. Полоса — 48 px</div>
+      <div class="side rail">
+        <div class="railword">ИГРОКИ<span class="c">4 места</span></div>
+      </div>
+      <div class="cap3">Полоса не пустая: вертикально стоит слово «ИГРОКИ» и счётчик «4 места». Ширина 48 px — из ui_metrics.rail, высота — вся сторона, 1112 px.</div>
+    </div>
+
+    <div class="sidecol">
+      <div class="cap2">3. Drawer — 320 px</div>
+      <div class="overlay">
+        <div class="behind">
+          <div style="width:900px;height:900px;background:var(--board2);border:1px solid var(--line);padding:6px;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px">
+            <div class="tile corner" style="grid-row:11;grid-column:11"><span class="tb" style="background:var(--board3)"></span><span class="tn">Start</span></div>
+            <div class="tile" style="grid-row:11;grid-column:10"><span class="tb" style="background:var(--g-brown)"></span><span class="tn">Sunset Blvd</span></div>
+            <div class="tile" style="grid-row:11;grid-column:9"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Chest</span></div>
+            <div class="tile" style="grid-row:11;grid-column:8"><span class="tb" style="background:var(--g-brown)"></span><span class="tn">Palm Row</span></div>
+            <div class="tile" style="grid-row:11;grid-column:7"><span class="tb" style="background:var(--danger)"></span><span class="tn">Tax</span></div>
+            <div class="tile" style="grid-row:11;grid-column:6"><span class="tb" style="background:var(--muted)"></span><span class="tn">Harbor Station</span></div>
+            <div class="tile" style="grid-row:11;grid-column:5"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Cedar Ave</span></div>
+            <div class="tile" style="grid-row:11;grid-column:4"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span></div>
+            <div class="tile" style="grid-row:11;grid-column:3"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Elm Ave</span></div>
+            <div class="tile" style="grid-row:11;grid-column:2"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Linden Ave</span></div>
+            <div class="tile corner" style="grid-row:11;grid-column:1"><span class="tb" style="background:var(--board3)"></span><span class="tn">Jail</span></div>
+            <div class="center" style="grid-area:2/2/11/11;background:var(--ring-bg);padding:6px;display:flex;flex-direction:column;gap:6px">
+              <div class="zone z-roll" style="flex:22 1 0"><div class="rollrow"><div class="sum">8</div><div class="rollside">кубики<b>5 + 3</b></div></div></div>
+              <div class="zone z-event" style="flex:28 1 0"><div class="zlab">Событие</div><div class="glance">ХОД: Хост · ФАЗА: Начало хода</div></div>
+              <div class="zone z-play" style="flex:30 1 0"><div class="zlab">Игроки</div><div class="playrow" style="color:var(--p0)"><span class="dot" style="background:var(--p0)"></span><span class="nm">Хост</span><span class="cs num">$1215</span></div><div class="playrow" style="color:var(--p2)"><span class="dot" style="background:var(--p2)"></span><span class="nm">Neuro</span><span class="cs num">$980</span></div><div class="playrow" style="color:var(--p1)"><span class="dot" style="background:var(--p1)"></span><span class="nm">evil</span><span class="cs num">$640</span></div><div class="playrow" style="color:var(--p3)"><span class="dot" style="background:var(--p3)"></span><span class="nm">Mira</span><span class="cs num">$1500</span></div></div>
+              <div class="zone z-jrn" style="flex:20 1 0"><div class="zlab">ХОД СОБЫТИЙ</div><div class="glance">evil попадает в тюрьму</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="scrim"></div>
+        <div class="drawer">
+          <div class="phead"><span class="t">КЛЕТКА</span><button class="btn small" style="margin-left:auto">Закрыть</button></div>
+          <div class="pbody">
+            <div class="ins">
+              <div class="in1"><span class="nm">Cedar Ave</span><span class="grp">группа lightblue</span></div>
+              <div class="kv"><span><b>цена</b> $100</span><span><b>аренда</b> $6</span><span><b>владелец:</b> Хост</span></div>
+            </div>
+            <div class="cap">ХОД СОБЫТИЙ</div>
+            <div class="jrow"><span class="jd" style="background:var(--p3)"></span><span class="jt">Mira бросает 4+4</span></div>
+            <div class="jrow"><span class="jd" style="background:var(--p3)"></span><span class="jt">Mira продаёт с клетки 27</span></div>
+            <div class="jrow"><span class="jd" style="background:var(--p1)"></span><span class="jt">evil закладывает клетку 11</span></div>
+            <div class="jrow"><span class="jd" style="background:var(--p1)"></span><span class="jt">evil попадает в тюрьму</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap3">Drawer 320 px наезжает поверх доски, под ним затемнение scrim. Доска не сжимается: клетка остаётся 78.7 px, потому что drawer — слой, а не колонка раскладки.</div>
+    </div>
+  </div>
+
+  <h3>Подписи на телефоне: тот же drawer в масштабе телефона</h3>
+  <div class="sides">
+    <div class="sidecol">
+      <div class="cap2">Drawer на телефоне — 342 px</div>
+      <div class="side phone">
+        <div class="phead"><span class="t">ИГРОКИ</span><button class="btn small" style="margin-left:auto">Закрыть</button></div>
+        <div class="pbody">
+          <div class="seat active" style="--pc:var(--p0)"><div class="r1"><span class="nm">Хост</span><span class="cash num">$1215</span></div><div class="r3">ваш ход · LOCAL · top_hat</div></div>
+          <div class="seat" style="--pc:var(--p2)"><div class="r1"><span class="nm">Neuro</span><span class="cash num">$980</span></div><div class="r3">SDK · cat · 3 владения</div></div>
+          <div class="seat" style="--pc:var(--p1)"><div class="r1"><span class="nm">evil</span><span class="cash num">$640</span></div><div class="r3"><em>в тюрьме, попытка 2</em></div></div>
+          <div class="seat" style="--pc:var(--p3)"><div class="r1"><span class="nm">Mira</span><span class="cash num">$1500</span></div><div class="r3">ИИ «Магнат» · race_car</div></div>
+          <div class="rule"></div>
+          <button class="btn">Закрыть панель</button>
+        </div>
+      </div>
+      <div class="cap3">В телефонном кадре шкала 1:1: 18 px на телефоне — это 18 px эффективных, порог R-7 (12 px) пройден с запасом 1.5 раза. Полоса 48 px здесь тоже настоящая: слово «ИГРОКИ» стоит вертикально, кегль 18 px.</div>
+    </div>
+    <div class="sidecol">
+      <div class="cap2">Полоса на телефоне — 48 px, 1:1</div>
+      <div class="side rail" style="height:520px">
+        <div class="railword">ИГРОКИ<span class="c">4 места</span></div>
+      </div>
+      <div class="cap3">Свёрнутая сторона остаётся дверью: слово видно, касание открывает drawer. Пустой полосы нет (R-15).</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ ПЛАТА 4: ШАПКА — 880x600 и 390x844 ═══════════════════ -->
+<section class="plate" id="plate-header">
+  <h2>Шапка: что обязано быть, что уезжает и куда</h2>
+  <p class="sub">Обязательное в шапке: <b>кто ходит</b> («ХОД: Хост»), <b>фаза</b> («ФАЗА: Начало хода»), <b>раунд</b> («РАУНД 7»),
+    <b>деньги каждого игрока</b> (четыре суммы), <b>кнопка паузы</b> («Пауза»). Убрано всё пустое и декоративное:
+    пустая плашка логотипа, дублирующие счётчики, значки без слов.
+    Деньги каждого игрока и банк парковки не исчезают ни на одном кадре: они переезжают в панно, в зону «Игроки» и в строку состояния
+    под доской — это R-12, ни одно требование не выполняется удалением.</p>
+
+  <div class="frames">
+    <div class="sidecol">
+      <div class="cap2">Компакт 880x600</div>
+      <div class="compact">
+        <header class="top">
+          <div class="brand" style="font-size:14px">NEURO PROPERTY TRADE</div>
+          <div class="chip" style="height:36px">
+            <span class="who" style="font-size:14px">ХОД: Хост</span>
+            <span class="ph" style="font-size:14px">ФАЗА: Начало хода</span>
+          </div>
+          <div class="hctl">
+            <button class="btn small">Пауза</button>
+            <button class="btn small">Настройки</button>
+            <button class="btn small">Правила</button>
+          </div>
+        </header>
+        <div class="mini-rail"><div class="railword" style="font-size:13px">ИГРОКИ<span class="c">4</span></div></div>
+        <section style="display:flex;flex-direction:column;gap:8px;min-width:0">
+          <div style="background:var(--s1);border:1px solid var(--line);padding:8px 10px;display:flex;gap:16px;font-size:13px;color:var(--muted)">
+            <span>Кубики <b class="num" style="color:var(--text)">5 + 3</b></span>
+            <span>Сумма <b class="num" style="color:var(--text)">8</b></span>
+            <span>РАУНД <b class="num" style="color:var(--text)">7</b></span>
+            <span>БАНК ПАРКОВКИ <b class="num" style="color:var(--text)">$240</b></span>
+          </div>
+          <div class="panno" style="flex:1 1 auto">
+            <div class="pz"><span class="lab">Ход и фаза</span><span class="mid">ХОД: Хост · ФАЗА: Начало хода</span></div>
+            <div class="pz"><span class="lab">Событие</span><span class="mid">Mira продаёт дом · Crest Square (27) · +$70</span></div>
+            <div class="pz"><span class="lab">Игроки · деньги всех четырёх мест</span>
+              <span class="row" style="color:var(--p0)"><span class="dot" style="background:var(--p0);width:10px;height:10px"></span>Хост<span class="cs num">$1215</span></span>
+              <span class="row" style="color:var(--p2)"><span class="dot" style="background:var(--p2);width:10px;height:10px"></span>Neuro<span class="cs num">$980</span></span>
+              <span class="row" style="color:var(--p1)"><span class="dot" style="background:var(--p1);width:10px;height:10px"></span>evil<span class="cs num">$640</span></span>
+              <span class="row" style="color:var(--p3)"><span class="dot" style="background:var(--p3);width:10px;height:10px"></span>Mira<span class="cs num">$1500</span></span>
+            </div>
+            <div class="pz"><span class="lab">ХОД СОБЫТИЙ</span><span class="mid">evil попадает в тюрьму</span></div>
+          </div>
+        </section>
+        <div class="mini-rail"><div class="railword" style="font-size:13px">КЛЕТКА<span class="c">6</span></div></div>
+      </div>
+      <div class="cap3">Читается с одного взгляда: чей ход, фаза, кубики с суммой, деньги четырёх мест, последнее событие.
+        Из шапки уезжают <b>раунд</b>, <b>банк парковки</b> и <b>деньги мест</b> — в полосу над панно и в зону «Игроки», не в пустоту.
+        Доки сжимаются в полосы 48 px (design/tokens.json → breakpoints.compact), доска при этом не сжимается: на 880 px ширины клетка выходит 64.5 px, и это единственный кадр, где R-17 не выполняется.</div>
+    </div>
+
+    <div class="sidecol">
+      <div class="cap2">Телефон 390x844</div>
+      <div class="phone">
+        <header class="ptop">
+          <span class="who">ХОД: Хост</span>
+          <span class="ph">ФАЗА: Начало хода</span>
+          <span class="pp"><button class="btn small">Пауза</button></span>
+        </header>
+        <div class="panno" style="flex:none">
+          <div class="pz"><span class="lab">Бросок</span><span class="row"><span>Кубики 5 + 3</span><span class="cs num" style="font-size:28px">8</span></span></div>
+          <div class="pz"><span class="lab">Событие</span><span class="mid">Mira продаёт дом · Crest Square (27) · +$70</span></div>
+          <div class="pz"><span class="lab">Игроки · деньги всех четырёх мест</span>
+            <span class="row" style="color:var(--p0)"><span class="dot" style="background:var(--p0);width:10px;height:10px"></span>Хост<span class="cs num">$1215</span></span>
+            <span class="row" style="color:var(--p2)"><span class="dot" style="background:var(--p2);width:10px;height:10px"></span>Neuro<span class="cs num">$980</span></span>
+            <span class="row" style="color:var(--p1)"><span class="dot" style="background:var(--p1);width:10px;height:10px"></span>evil<span class="cs num">$640</span></span>
+            <span class="row" style="color:var(--p3)"><span class="dot" style="background:var(--p3);width:10px;height:10px"></span>Mira<span class="cs num">$1500</span></span>
+          </div>
+          <div class="pz"><span class="lab">ХОД СОБЫТИЙ</span><span class="mid">evil попадает в тюрьму</span></div>
+        </div>
+        <div class="viewport">
+          <div class="vpinner">
+            <div class="tile corner" style="grid-row:11;grid-column:11"><span class="tb" style="background:var(--board3)"></span><span class="tn">Start</span><span class="tp">круг: +$200</span></div>
+            <div class="tile" style="grid-row:11;grid-column:10"><span class="tb" style="background:var(--g-brown)"></span><span class="tn">Sunset Blvd</span><span class="tp num">$60</span></div>
+            <div class="tile" style="grid-row:11;grid-column:9"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Chest</span><span class="tp">казна</span></div>
+            <div class="tile" style="grid-row:11;grid-column:8"><span class="tb" style="background:var(--g-brown)"></span><span class="tn">Palm Row</span><span class="tp num">$60</span></div>
+            <div class="tile" style="grid-row:11;grid-column:7"><span class="tb" style="background:var(--danger)"></span><span class="tn">Tax</span><span class="tp">налог</span></div>
+            <div class="tile" style="grid-row:11;grid-column:6"><span class="tb" style="background:var(--muted)"></span><span class="tn">Harbor Station</span><span class="tp num">$200</span></div>
+            <div class="tile mine" style="grid-row:11;grid-column:5;--pc:var(--p0)"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Cedar Ave</span><span class="tp num">$100</span><span class="to">Хост</span><span class="tk"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg></span></div>
+            <div class="tile" style="grid-row:11;grid-column:4"><span class="tb" style="background:var(--ev-card)"></span><span class="tn">Fortune</span><span class="tp">шанс</span></div>
+            <div class="tile" style="grid-row:11;grid-column:3"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Elm Ave</span><span class="tp num">$100</span></div>
+            <div class="tile" style="grid-row:11;grid-column:2"><span class="tb" style="background:var(--g-lightblue)"></span><span class="tn">Linden Ave</span><span class="tp num">$120</span></div>
+            <div class="tile corner" style="grid-row:11;grid-column:1"><span class="tb" style="background:var(--board3)"></span><span class="tn">Jail</span><span class="tp">тюрьма</span></div>
+            <div class="tile mort" style="grid-row:10;grid-column:1;--pc:var(--p1)"><span class="tb" style="background:var(--g-pink)"></span><span class="tn">Oak Street</span><span class="tp num">$140</span><span class="to">evil</span></div>
+            <div class="tile" style="grid-row:9;grid-column:1"><span class="tb" style="background:var(--ev-accent)"></span><span class="tn">Tower Utilities</span><span class="tp num">$150</span></div>
+            <div class="tile" style="grid-row:8;grid-column:1"><span class="tb" style="background:var(--g-pink)"></span><span class="tn">Maple Street</span><span class="tp num">$140</span></div>
+            <div class="tile" style="grid-row:7;grid-column:1"><span class="tb" style="background:var(--g-pink)"></span><span class="tn">Birch Street</span><span class="tp num">$160</span></div>
+          </div>
+        </div>
+        <div class="pacts">
+          <span class="st">Хост · ваш ход — выберите действие</span>
+          <div class="r">
+            <button class="btn hero" style="height:44px;font-size:18px">Бросок</button>
+            <button class="btn sec">Купить $100</button>
+            <button class="btn sec">Отказ</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap3">Шапка на телефоне держит ровно три вещи словами: кто ходит, фаза, пауза. Раунд, банк парковки и деньги четырёх мест
+        уезжают в панно — там кегль 18 px при шкале 1:1, это выше порога R-7 (12 px). Доска на телефоне не ужимается: она стоит в окне
+        просмотра 366 px при масштабе 100 %, клетка остаётся 78.7 px, видно четыре с половиной клетки, остальное — прокруткой.</div>
+    </div>
+  </div>
+
+  <h3>Что убрано из шапки и где это теперь смотреть</h3>
+  <table class="tbl">
+    <thead><tr><th style="width:340px">Убрано</th><th>Где это теперь смотреть (R-12)</th></tr></thead>
+    <tbody>
+      <tr><td class="ev">Пустая плашка логотипа</td><td>Слово «NEURO PROPERTY TRADE» встало в строку с подписью, отдельной плашки нет. Ничего не потеряно: имя приложения читается словом.</td></tr>
+      <tr><td class="ev">Дублирующий счётчик раунда</td><td>РАУНД 7 остался один раз: в шапке на 1600x1200 и в полосе над панно на 880x600. Второй экземпляр удалён как дубль.</td></tr>
+      <tr><td class="ev">Значки вместо слов</td><td>Кнопки «Настройки», «Правила», «Рестарт», «Тема: Neuro», «Язык: RU» — словами (R-9).</td></tr>
+      <tr><td class="ev">Деньги мест в шапке на компакте</td><td>В зоне «Игроки» панно и в строке состояния под доской: четыре суммы видны на всех трёх кадрах.</td></tr>
+      <tr><td class="ev">Банк парковки в шапке на телефоне</td><td>В полосе над панно, рядом с раундом. На 1600x1200 остаётся в шапке.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ═══════════════════ ПЛАТА 5: ЧТО ВИДНО БЕЗ АНИМАЦИЙ И ЗАМЕРЫ-ОПОРА ═══════════════════ -->
+<section class="plate" id="plate-off">
+  <h2>Один и тот же кадр с анимациями и без</h2>
+  <p class="sub">Слева — состояние сразу после броска при включённых анимациях: сумма в пути, фишка на исходной клетке.
+    Справа — то же состояние при выключенных анимациях: сумма стоит цифрой, фишка на целевой клетке, подсветка статична,
+    строка журнала уже напечатана. Пять фактов хода на месте в обоих случаях: чей ход, фаза, кубики с суммой,
+    наличные четырёх мест, последнее событие.</p>
+  <div class="frames">
+    <div class="sidecol">
+      <div class="cap2">Анимации включены, t = 0.00 с</div>
+      <div style="width:700px;height:300px;background:var(--bg);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;background:var(--s1);border:1px solid var(--line);padding:8px 10px">
+          <span class="chip" style="height:32px"><span class="who" style="font-size:14px">ХОД: Хост</span><span class="ph" style="font-size:14px">ФАЗА: Начало хода</span></span>
+          <span class="muted" style="font-size:13px">кубики 5 + 3</span>
+          <span class="num" style="font-size:24px;margin-left:auto">8</span>
+        </div>
+        <div style="display:flex;gap:8px;background:var(--s1);border:1px solid var(--line);padding:8px 10px;font-size:13px">
+          <span style="color:var(--p0)">Хост <b class="num">$1215</b></span>
+          <span style="color:var(--p2)">Neuro <b class="num">$980</b></span>
+          <span style="color:var(--p1)">evil <b class="num">$640</b></span>
+          <span style="color:var(--p3)">Mira <b class="num">$1500</b></span>
+        </div>
+        <div style="display:flex;gap:8px;flex:1 1 auto;align-items:flex-end">
+          <div style="width:120px;height:120px;background:var(--board2);border:1px solid var(--line);padding:4px;display:flex;flex-direction:column">
+            <span class="tb" style="display:block;height:5px;background:var(--g-lightblue);margin:-4px -4px 3px"></span>
+            <span style="font-size:12px">Cedar Ave</span>
+            <span class="muted" style="font-size:11px;margin-top:auto">фишка здесь</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px">
+            <span>сумма выезжает цифрой, pop 0.5 с</span>
+            <span>фишка пойдёт по клеткам, step 0.19 с</span>
+            <span>строка журнала печатается, base 0.19 с</span>
+          </div>
+        </div>
+      </div>
+      <div class="cap3">Промежуточные состояния существуют только как движение; ни одно из них не обязательно для понимания.</div>
+    </div>
+    <div class="sidecol">
+      <div class="cap2">Анимации выключены, t = сразу</div>
+      <div style="width:700px;height:300px;background:var(--bg);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;background:var(--s1);border:1px solid var(--line);padding:8px 10px">
+          <span class="chip" style="height:32px"><span class="who" style="font-size:14px">ХОД: Хост</span><span class="ph" style="font-size:14px">ФАЗА: Начало хода</span></span>
+          <span class="muted" style="font-size:13px">кубики 5 + 3</span>
+          <span class="num" style="font-size:24px;margin-left:auto">8</span>
+        </div>
+        <div style="display:flex;gap:8px;background:var(--s1);border:1px solid var(--line);padding:8px 10px;font-size:13px">
+          <span style="color:var(--p0)">Хост <b class="num">$1215</b></span>
+          <span style="color:var(--p2)">Neuro <b class="num">$980</b></span>
+          <span style="color:var(--p1)">evil <b class="num">$640</b></span>
+          <span style="color:var(--p3)">Mira <b class="num">$1500</b></span>
+        </div>
+        <div style="display:flex;gap:8px;flex:1 1 auto;align-items:flex-end">
+          <div style="width:120px;height:120px;background:var(--board2);border:2px solid var(--accent2);padding:4px;display:flex;flex-direction:column">
+            <span class="tb" style="display:block;height:5px;background:var(--g-pink);margin:-4px -4px 3px"></span>
+            <span style="font-size:12px">Birch Street</span>
+            <span class="muted" style="font-size:11px">$160</span>
+            <span class="muted" style="font-size:11px;margin-top:auto">фишка здесь</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px">
+            <span>сумма стоит цифрой <b style="color:var(--text)">8</b></span>
+            <span>фишка сразу на целевой клетке</span>
+            <span>журнал: «Хост идёт на Birch Street, шагов 8»</span>
+          </div>
+        </div>
+      </div>
+      <div class="cap3">Тот же смысл, ни одного промежуточного кадра. Переходы между раскладками мгновенны, подписи те же.</div>
+    </div>
+  </div>
+
+  <h3>Фишки мест: сколько их встаёт на клетку и как ужимаются</h3>
+  <div class="tokrow">
+    <span class="it"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="12" height="9" fill="var(--p0)"></rect><rect x="3" y="12" width="18" height="3" fill="var(--p0)"></rect></svg>Хост · top_hat · #ff6fae</span>
+    <span class="it"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="6" fill="var(--p2)"></circle><path d="M6 7 L9 4 L12 7 L15 4 L18 7 Z" fill="var(--p2)"></path></svg>Neuro · cat · #5fe3ff</span>
+    <span class="it"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16 L20 16 L16 20 L8 20 Z" fill="var(--p1)"></path><rect x="11" y="5" width="2" height="11" fill="var(--p1)"></rect></svg>evil · ship · #e8264f</span>
+    <span class="it"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="6" rx="3" fill="var(--p3)"></rect><circle cx="8" cy="18" r="2" fill="var(--p3)"></circle><circle cx="16" cy="18" r="2" fill="var(--p3)"></circle></svg>Mira · race_car · #b6ff6b</span>
+    <span>На клетке 78.7 px четыре фишки встают столбцом справа, по 15 px каждая; на телефоне фишка рисуется 22 px и столбец не нужен — видно четыре с половиной клетки.</span>
+  </div>
+</section>
+
+</body>
+</html>

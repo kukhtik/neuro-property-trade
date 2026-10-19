@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>NPT · второй круг · макет клетки и шапки</title>
+<style>
+:root{
+  --bg:#0b0613;--s1:#130b1f;--s2:#1b1230;--s3:#281b42;--line:#3b2a5e;
+  --tx:#f7effd;--mu:#a896c8;--ac:#ff6fae;--acx:#2a0618;--hi:#5fe3ff;
+  --money:#5fe3ff;--bad:#ff4d6d;--warn:#ffb020;--good:#2fa862;--ring:#3b2a5e99;
+  --dice-bg:#f2f6fa;--dice-ink:#16191f;
+  --g-brown:#8b5a3c;--g-lightblue:#5bb8e8;--g-pink:#d85aa8;--g-orange:#ee8a2a;
+  --g-red:#d8363c;--g-yellow:#e8c61e;--g-green:#2fa862;--g-darkblue:#2e5fd8;
+  --p0:#ff6fae;--p1:#e8264f;--p2:#5fe3ff;--p3:#b6ff6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);padding:24px 24px 64px;
+  font-family:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif}
+h1{font-size:20px;font-weight:700;margin:0 0 4px;letter-spacing:.02em}
+h2{font-size:16px;font-weight:700;margin:32px 0 8px;letter-spacing:.02em}
+p.note{font-size:13px;color:var(--mu);margin:0 0 12px;max-width:1180px;line-height:1.5}
+.page{display:flex;flex-direction:column;gap:8px;margin:0 0 24px}
+.cap-out{font-size:13px;color:var(--mu);letter-spacing:.04em}
+/* ============ frame 1: exactly 1600x1200 ============ */
+.frame{display:grid;
+  grid-template-columns:12px 280px 8px 969px 8px 311px 12px;
+  grid-template-rows:12px 68px 8px 969px 8px 123px 12px;
+  background:var(--bg);outline:1px solid var(--line)}
+.hdr{grid-column:2/7;grid-row:2;display:flex;align-items:center;gap:16px;
+  background:var(--s1);border:1px solid var(--line);padding:0 12px;overflow:hidden}
+.hdr .turn{font-size:50px;font-weight:700;letter-spacing:.01em;white-space:nowrap;
+  line-height:1;color:var(--tx)}
+.hdr .turn b{color:var(--ac)}
+.hdr .stat{font-size:28px;font-weight:700;white-space:nowrap;line-height:1}
+.hdr .stat.money{color:var(--money)}
+.hdr .ctrls{margin-left:auto;display:flex;gap:8px}
+button{font-family:inherit;font-size:16px;color:var(--tx);background:var(--s3);
+  border:1px solid var(--line);padding:10px 16px;cursor:pointer}
+button.hero{background:var(--ac);color:var(--acx);border-color:var(--ac);font-size:24px;font-weight:700}
+.dock{background:var(--s1);border:1px solid var(--line);padding:10px;display:flex;
+  flex-direction:column;gap:10px;overflow:hidden}
+.dock-l{grid-column:2;grid-row:4/7}
+.dock-r{grid-column:6;grid-row:4/7}
+.ptitle{font-size:13px;letter-spacing:.14em;color:var(--mu);font-weight:700}
+.seat{background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--pc);
+  padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.seat.act{border-color:var(--hi);background:var(--s3)}
+.seat .r1{display:flex;align-items:center;gap:8px}
+.seat .nm{font-size:20px;font-weight:700;color:var(--pc)}
+.seat .cash{margin-left:auto;font-size:20px;font-weight:700;color:var(--money)}
+.seat .r2{font-size:14px}
+.seat .r3{font-size:13px;color:var(--mu)}
+.seat .r4{font-size:13px;color:var(--mu)}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:6px 8px}
+.lg{display:flex;align-items:center;gap:6px}
+.lgc{width:38px;height:38px;flex:none;background:var(--s2);position:relative;
+  box-shadow:inset 0 0 0 1px var(--line);display:flex;flex-direction:column;gap:1px;padding:1px}
+.lgb{height:5px;flex:none;background:var(--line)}
+.lgn{height:4px;background:var(--tx);opacity:.55;width:70%}
+.lgp{height:3px;background:var(--money);width:45%;margin-top:auto}
+.lgc.lg-foe{box-shadow:inset 0 0 0 3px var(--p2)}
+.lgc.lg-mine{background:var(--s3);box-shadow:inset 0 0 0 3px var(--p0)}
+.lgc.lg-grp .lgb{background:var(--p3)}
+.lgc.lg-grp .lgb.grp{background:var(--p3);border-bottom:2px solid var(--g-yellow)}
+.lgc.lg-mort{background-image:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 6px)}
+.lgc.lg-mort .lgp{background:var(--mu);text-decoration:line-through}
+.lgh{display:flex;gap:1px;margin-top:auto}
+.lgh i{width:4px;height:4px;box-shadow:inset 0 0 0 1px var(--line)}
+.lgh i.on{background:var(--good);box-shadow:none}
+.lgh i.hot{width:12px;height:4px;background:var(--good)}
+.lgt1,.lgt2,.lgt3,.lgt4{display:flex;gap:1px;flex-wrap:wrap;justify-content:flex-end;
+  margin-top:auto;width:100%}
+.lgt1 i,.lgt2 i,.lgt3 i,.lgt4 i{background:var(--p0);border-radius:50%}
+.lgt1 i{width:11px;height:11px}
+.lgt2 i{width:8px;height:8px}
+.lgt3 i{width:6px;height:6px}
+.lgt4 i{width:5px;height:5px}
+.lgcap{font-size:11px;color:var(--mu);line-height:1.25}
+.card{background:var(--s2);border:1px solid var(--line);padding:10px;
+  display:flex;flex-direction:column;gap:6px}
+.card .t{font-size:20px;font-weight:700}
+.card .kv{display:flex;gap:8px;font-size:13px;color:var(--mu)}
+.card .kv b{color:var(--tx);font-weight:400}
+.jrn{display:flex;flex-direction:column;gap:6px}
+.jrn .ln{font-size:13px;line-height:1.35;color:var(--tx)}
+.jrn .ln.mu{color:var(--mu)}
+.jrn .cnt{font-size:12px;color:var(--mu)}
+.console{grid-column:4;grid-row:6;background:var(--s1);border:1px solid var(--line);
+  padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.console .status{font-size:18px}
+.console .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+/* ============ board ============ */
+.board{grid-column:4;grid-row:4;width:969px;height:969px;display:grid;
+  grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);gap:2px;
+  padding:6px;border:1px solid var(--line);background:var(--s2)}
+.cell{background:var(--s2);position:relative;overflow:hidden;padding:3px 4px 4px;
+  display:flex;flex-direction:column;box-shadow:inset 0 0 0 1px var(--line)}
+.cell.corner{background:var(--s3)}
+.cell .band{height:7px;flex:none;margin:-3px -4px 3px;background:var(--gc)}
+.cell .nm{font-size:17px;line-height:1.05;color:var(--tx);overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;word-break:break-word}
+.cell .pr{font-size:13.6px;color:var(--money);margin-top:auto;line-height:1.1}
+.cell .hs{display:flex;gap:2px;height:5px;margin-top:3px;flex:none}
+.cell .hs i{width:5px;height:5px;box-shadow:inset 0 0 0 1px var(--line)}
+.cell .hs i.on{background:var(--good);box-shadow:none}
+.cell .hs.hotel i{width:17px;height:5px;background:var(--good)}
+.cell.owned{box-shadow:inset 0 0 0 3px var(--pc)}
+.cell.mine{background:var(--s3)}
+.cell.mortgaged{background-image:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 7px)}
+.cell.mortgaged .nm{color:var(--mu)}
+.cell.mortgaged .pr{color:var(--mu);text-decoration:line-through}
+.cell.sel{outline:2px dashed var(--hi);outline-offset:-2px}
+.tks{position:absolute;right:3px;bottom:3px;display:flex;flex-wrap:wrap;gap:2px;
+  justify-content:flex-end}
+.tks.t1{width:29px}
+.tks.t2{width:46px}
+.tks.t3{width:55px}
+.tks.t4{width:31px}
+.tk{display:block;fill:currentColor}
+.tks.t1 .tk{width:29px;height:29px}
+.tks.t2 .tk{width:22px;height:22px}
+.tks.t3 .tk{width:17px;height:17px}
+.tks.t4 .tk{width:14.5px;height:14.5px}
+/* ============ panno in the ring (ratios 22/28/30/20, as turn_panno.gd) ============ */
+.center{grid-area:2/2/11/11;background:var(--ring);padding:8px;display:flex;
+  flex-direction:column;gap:4px;overflow:hidden}
+.zone{background:var(--s1);border:1px solid var(--line);padding:6px 12px;display:flex;
+  flex-direction:column;gap:4px;overflow:hidden;min-height:0}
+.z-roll{flex:22 1 0}
+.z-event{flex:28 1 0}
+.z-play{flex:30 1 0}
+.z-jrn{flex:20 1 0}
+.zcap{font-size:12px;letter-spacing:.12em;color:var(--mu);flex:none}
+.zline{font-weight:700;line-height:1.05;white-space:nowrap}
+.dice{display:flex;align-items:center;gap:12px;margin-top:auto}
+.die{width:36px;height:36px;flex:none}
+.sumtxt{font-size:36px;font-weight:700;color:var(--tx);white-space:nowrap;line-height:1.2}
+.sumtxt b{font-size:64px;color:var(--money)}
+.prow{display:flex;align-items:center;gap:10px;font-size:44px;font-weight:700;
+  line-height:1;white-space:nowrap;height:44px}
+.prow .chip{width:14px;height:14px;flex:none;background:var(--pc)}
+.prow .meta{font-size:14px;font-weight:400;color:var(--mu)}
+.prow .cash{margin-left:auto;color:var(--money)}
+/* ============ frame 2: phone 390x844 ============ */
+.frame.phone{display:flex;flex-direction:column;outline:1px solid var(--line);
+  background:var(--bg);overflow:hidden}
+.ph-hdr{height:132px;flex:none;background:var(--s1);border-bottom:1px solid var(--line);
+  display:flex;flex-direction:column;justify-content:center;gap:6px;padding:0 10px}
+.ph-hdr .r1{display:flex;gap:10px;font-size:18px;font-weight:700;line-height:1.1}
+.ph-hdr .r1 b{color:var(--ac)}
+.ph-hdr .r2{display:flex;align-items:center;gap:10px;font-size:13px;line-height:1.1}
+.ph-hdr .r2 .money{color:var(--money);font-weight:700}
+.ph-hdr .r2 button{font-size:13px;padding:6px 10px}
+.ph-hdr .r3{font-size:12px;color:var(--mu);line-height:1.3}
+.ph-hdr .r3 b{color:var(--tx);font-weight:400}
+.ph-view{height:400px;flex:none;position:relative;overflow:hidden;
+  border-bottom:1px solid var(--line)}
+.ph-cap{height:28px;display:flex;align-items:center;gap:8px;padding:0 10px;
+  background:var(--s1);font-size:12px;color:var(--mu);position:relative;z-index:2}
+.ph-cap button{font-size:12px;padding:3px 8px}
+.ph-win{position:absolute;left:0;top:28px;right:0;bottom:0;overflow:hidden}
+.ph-win .board{position:absolute;left:-355px;top:-597px}
+.ph-panno{height:220px;flex:none;background:var(--ring);padding:4px;display:grid;
+  grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px}
+.ph-panno .zone{padding:5px 8px;gap:3px}
+.ph-panno .zcap{font-size:12px;letter-spacing:.08em}
+.ph-panno .prow{font-size:12px;height:14px;gap:6px}
+.ph-panno .prow .chip{width:8px;height:8px}
+.ph-panno .prow .meta{display:none}
+.ph-panno .sumtxt{font-size:16px}
+.ph-panno .sumtxt b{font-size:22px}
+.ph-panno .die{width:20px;height:20px}
+.ph-panno .ev{font-size:12px;line-height:1.25}
+.ph-panno .ev.money{font-size:16px;font-weight:700;color:var(--money)}
+.ph-panno .zline{font-size:16px}
+.ph-con{height:92px;flex:none;background:var(--s1);border-top:1px solid var(--line);
+  padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.ph-con .status{font-size:12px;color:var(--mu)}
+.ph-con .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ph-con button{font-size:12px;padding:6px 10px}
+.ph-con button.hero{font-size:18px}
+/* ============ tables under the frames ============ */
+table{border-collapse:collapse;font-size:13px;max-width:1180px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--s2);color:var(--mu);font-weight:700}
+td b{color:var(--tx)}
+.ok{color:var(--good)}
+.no{color:var(--bad)}
+</style>
+</head>
+<body>
+<h1>Neuro Property Trade — второй круг: клетка доски и шапка</h1>
+<p class="note">Сцена «идёт матч, ход человека» (Хост, раунд 7, фаза «Начало хода», кубики 5 + 3 = 8),
+скин neuro. Данные и строки — дословно из design/variants/scene-data.md, цены — из game/data/board.json,
+палитра — из game/assets/skins/neuro/skin.json. Ни одного скрипта, ни одного внешнего ресурса.
+Слева внизу — легенда клетки: три состояния, дома 1–4, отель, залог, собранная чужая группа,
+ужимание фишек. Замеры — в mockup-board-measurements.md.</p>
+
+<div class="page">
+<div class="cap-out">Кадр 1 — 1600 × 1200 px (сетка 40×30 для R-1: паддинг 12, шапка 64, зазор 8, доска 969, зазор 8, консоль 127, паддинг 12; доки 280 и 311; клетка 85.0 px)</div>
+<div class="frame" data-frame="1600x1200" style="width:1600px;height:1200px">
+  <header class="hdr">
+    <span class="turn">ХОД: Хост · ФАЗА: Начало хода</span>
+    <span class="stat">РАУНД 7</span>
+    <span class="stat money">БАНК ПАРКОВКИ $240</span>
+    <span class="ctrls"><button type="button">Пауза</button><button type="button">Настройки</button></span>
+  </header>
+
+  <aside class="dock dock-l">
+    <div class="ptitle">ИГРОКИ</div>
+      <div class="seat act" style="--pc:var(--p0)"><div class="r1"><span class="nm">Хост</span><span class="cash">$1215</span></div><div class="r2">6 Cedar Ave</div><div class="r3">владений 2 · домов 0 · залогов 0</div><div class="r4">LOCAL · ваш ход</div></div>
+      <div class="seat" style="--pc:var(--p2)"><div class="r1"><span class="nm">Neuro</span><span class="cash">$980</span></div><div class="r2">24 Harbor Drive</div><div class="r3">владений 3 · домов 1 · залогов 0</div><div class="r4">SDK</div></div>
+      <div class="seat" style="--pc:var(--p1)"><div class="r1"><span class="nm">evil</span><span class="cash">$640</span></div><div class="r2">10 Jail</div><div class="r3">владений 1 · домов 0 · залогов 1</div><div class="r4">SDK · в тюрьме, попытка 2</div></div>
+      <div class="seat" style="--pc:var(--p3)"><div class="r1"><span class="nm">Mira</span><span class="cash">$1500</span></div><div class="r2">33 Chest</div><div class="r3">владений 2 · домов 0 · залогов 1</div><div class="r4">ИИ «Магнат»</div></div>
+    <div class="ptitle">ЛЕГЕНДА КЛЕТКИ</div>
+    <div class="legend">
+        <div class="lg"><span class="lgc lg-free"><span class="lgb"></span><span class="lgn"></span><span class="lgp"></span></span><span class="lgcap">пустая: только имя и цена</span></div>
+        <div class="lg"><span class="lgc lg-foe"><span class="lgb"></span><span class="lgn"></span><span class="lgp"></span></span><span class="lgcap">чужая: обводка 3 px цветом места</span></div>
+        <div class="lg"><span class="lgc lg-mine"><span class="lgb"></span><span class="lgn"></span><span class="lgp"></span></span><span class="lgcap">моя: корпус на ступень светлее</span></div>
+        <div class="lg"><span class="lgc lg-h1"><span class="lgb"></span><span class="lgn"></span><span class="lgh"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span></span><span class="lgcap">дома 1</span></div>
+        <div class="lg"><span class="lgc lg-h2"><span class="lgb"></span><span class="lgn"></span><span class="lgh"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span></span><span class="lgcap">дома 2</span></div>
+        <div class="lg"><span class="lgc lg-h3"><span class="lgb"></span><span class="lgn"></span><span class="lgh"><i class="on"></i><i class="on"></i><i class="on"></i><i class=""></i></span></span><span class="lgcap">дома 3</span></div>
+        <div class="lg"><span class="lgc lg-h4"><span class="lgb"></span><span class="lgn"></span><span class="lgh"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></span><span class="lgcap">дома 4</span></div>
+        <div class="lg"><span class="lgc lg-hotel"><span class="lgb"></span><span class="lgn"></span><span class="lgh"><i class="hot"></i></span></span><span class="lgcap">отель: один широкий блок</span></div>
+        <div class="lg"><span class="lgc lg-mort"><span class="lgb"></span><span class="lgn"></span><span class="lgp"></span></span><span class="lgcap">залог: штриховка и зачёркнутая цена</span></div>
+        <div class="lg"><span class="lgc lg-grp"><span class="lgb grp"></span><span class="lgn"></span><span class="lgp"></span></span><span class="lgcap">чужая группа собрана: полоса цветом владельца</span></div>
+        <div class="lg"><span class="lgc lg-t1"><span class="lgb"></span><span class="lgn"></span><span class="lgt1"><i></i></span></span><span class="lgcap">фишек 1: 29 px</span></div>
+        <div class="lg"><span class="lgc lg-t2"><span class="lgb"></span><span class="lgn"></span><span class="lgt2"><i></i><i></i></span></span><span class="lgcap">фишек 2: 22 px</span></div>
+        <div class="lg"><span class="lgc lg-t3"><span class="lgb"></span><span class="lgn"></span><span class="lgt3"><i></i><i></i><i></i></span></span><span class="lgcap">фишек 3: 17 px</span></div>
+        <div class="lg"><span class="lgc lg-t4"><span class="lgb"></span><span class="lgn"></span><span class="lgt4"><i></i><i></i><i></i><i></i></span></span><span class="lgcap">фишек 4: 14.5 px</span></div>
+    </div>
+  </aside>
+
+  <div class="board" data-region="board" data-cell-count="40">
+        <div class="cell corner" data-cell="0" style="grid-area:11/1"><span class="nm">Start</span></div>
+        <div class="cell" data-cell="1" style="grid-area:11/2;--gc:var(--g-brown)"><span class="band"></span><span class="nm">Sunset Blvd</span><span class="pr">$60</span></div>
+        <div class="cell" data-cell="2" style="grid-area:11/3"><span class="nm">Chest</span></div>
+        <div class="cell owned mine" data-cell="3" style="grid-area:11/4;--gc:var(--g-brown);--pc:var(--p0)"><span class="band"></span><span class="nm">Palm Row</span><span class="pr">$60</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" data-cell="4" style="grid-area:11/5"><span class="nm">Tax</span><span class="pr">$200</span></div>
+        <div class="cell" data-cell="5" style="grid-area:11/6"><span class="nm">Harbor Station</span><span class="pr">$200</span></div>
+        <div class="cell owned mine sel" data-cell="6" style="grid-area:11/7;--gc:var(--g-lightblue);--pc:var(--p0)"><span class="band"></span><span class="nm">Cedar Ave</span><span class="pr">$100</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Хост"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+        <div class="cell" data-cell="7" style="grid-area:11/8"><span class="nm">Fortune</span></div>
+        <div class="cell owned foe" data-cell="8" style="grid-area:11/9;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="band"></span><span class="nm">Elm Ave</span><span class="pr">$100</span><span class="hs" aria-label="домов 2"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell owned foe" data-cell="9" style="grid-area:11/10;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="band"></span><span class="nm">Linden Ave</span><span class="pr">$120</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell corner" data-cell="10" style="grid-area:11/11"><span class="nm">Jail</span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: evil"><path d="M2.6 14.2h18.8l-3 7H5.6z"/><path d="M11 3h2v11h-2z"/><path d="M13.4 4.2l6 3.9-6 3.1z"/></svg></span></div>
+        <div class="cell owned foe mortgaged" data-cell="11" style="grid-area:10/11;--gc:var(--g-pink);--pc:var(--p1)"><span class="band"></span><span class="nm">Oak Street</span><span class="pr">$140</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" data-cell="12" style="grid-area:9/11"><span class="nm">Tower Utilities</span><span class="pr">$150</span></div>
+        <div class="cell" data-cell="13" style="grid-area:8/11;--gc:var(--g-pink)"><span class="band"></span><span class="nm">Maple Street</span><span class="pr">$140</span></div>
+        <div class="cell" data-cell="14" style="grid-area:7/11;--gc:var(--g-pink)"><span class="band"></span><span class="nm">Birch Street</span><span class="pr">$160</span></div>
+        <div class="cell" data-cell="15" style="grid-area:6/11"><span class="nm">Central Station</span><span class="pr">$200</span></div>
+        <div class="cell" data-cell="16" style="grid-area:5/11;--gc:var(--g-orange)"><span class="band"></span><span class="nm">Willow Way</span><span class="pr">$180</span></div>
+        <div class="cell" data-cell="17" style="grid-area:4/11"><span class="nm">Chest</span></div>
+        <div class="cell" data-cell="18" style="grid-area:3/11;--gc:var(--g-orange)"><span class="band"></span><span class="nm">Aspen Way</span><span class="pr">$180</span></div>
+        <div class="cell" data-cell="19" style="grid-area:2/11;--gc:var(--g-orange)"><span class="band"></span><span class="nm">Fir Way</span><span class="pr">$200</span></div>
+        <div class="cell corner" data-cell="20" style="grid-area:1/11"><span class="nm">Free Parking</span></div>
+        <div class="cell" data-cell="21" style="grid-area:1/10;--gc:var(--g-red)"><span class="band"></span><span class="nm">Lake Drive</span><span class="pr">$220</span></div>
+        <div class="cell" data-cell="22" style="grid-area:1/9"><span class="nm">Fortune</span></div>
+        <div class="cell" data-cell="23" style="grid-area:1/8;--gc:var(--g-red)"><span class="band"></span><span class="nm">River Drive</span><span class="pr">$220</span></div>
+        <div class="cell" data-cell="24" style="grid-area:1/7;--gc:var(--g-red)"><span class="band"></span><span class="nm">Harbor Drive</span><span class="pr">$240</span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Neuro"><path d="M4.4 9.6 7 4l3 2.6h4L17 4l2.6 5.6V15a6 6 0 0 1-6 6h-3.2a6 6 0 0 1-6-6z"/></svg></span></div>
+        <div class="cell" data-cell="25" style="grid-area:1/6"><span class="nm">West Station</span><span class="pr">$200</span></div>
+        <div class="cell owned foe mortgaged" data-cell="26" style="grid-area:1/5;--gc:var(--g-yellow);--pc:var(--p3)"><span class="band"></span><span class="nm">Crest Point</span><span class="pr">$260</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell owned foe" data-cell="27" style="grid-area:1/4;--gc:var(--g-yellow);--pc:var(--p3)"><span class="band"></span><span class="nm">Crest Square</span><span class="pr">$260</span><span class="hs" aria-label="домов 1"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" data-cell="28" style="grid-area:1/3"><span class="nm">Tower Water</span><span class="pr">$150</span></div>
+        <div class="cell" data-cell="29" style="grid-area:1/2;--gc:var(--g-yellow)"><span class="band"></span><span class="nm">Crest Heights</span><span class="pr">$280</span></div>
+        <div class="cell corner" data-cell="30" style="grid-area:1/1"><span class="nm">Go To Jail</span></div>
+        <div class="cell" data-cell="31" style="grid-area:2/1;--gc:var(--g-green)"><span class="band"></span><span class="nm">Garden Grove</span><span class="pr">$300</span></div>
+        <div class="cell" data-cell="32" style="grid-area:3/1;--gc:var(--g-green)"><span class="band"></span><span class="nm">Garden Park</span><span class="pr">$300</span></div>
+        <div class="cell" data-cell="33" style="grid-area:4/1"><span class="nm">Chest</span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Mira"><path d="M2 16.4h20v-3.2l-3.6-.9-3-4.1H9.2l-3 4.1-4.2.9z"/><circle cx="7" cy="18.4" r="2.6"/><circle cx="17" cy="18.4" r="2.6"/></svg></span></div>
+        <div class="cell" data-cell="34" style="grid-area:5/1;--gc:var(--g-green)"><span class="band"></span><span class="nm">Garden Court</span><span class="pr">$320</span></div>
+        <div class="cell" data-cell="35" style="grid-area:6/1"><span class="nm">South Station</span><span class="pr">$200</span></div>
+        <div class="cell" data-cell="36" style="grid-area:7/1"><span class="nm">Fortune</span></div>
+        <div class="cell owned foe" data-cell="37" style="grid-area:8/1;--gc:var(--g-darkblue);--pc:var(--p2)"><span class="band"></span><span class="nm">Grand Avenue</span><span class="pr">$350</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" data-cell="38" style="grid-area:9/1"><span class="nm">Luxury Tax</span><span class="pr">$100</span></div>
+        <div class="cell" data-cell="39" style="grid-area:10/1;--gc:var(--g-darkblue)"><span class="band"></span><span class="nm">Grand Place</span><span class="pr">$400</span></div>
+    <div class="center" data-region="panno">
+      <div class="zone z-roll">
+        <span class="zcap">БРОСОК</span>
+        <span class="zline" style="font-size:50px">ХОД: Хост · НАЧАЛО ХОДА</span>
+        <div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 5"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 3"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><span class="sumtxt">5 + 3 = <b>8</b></span></div>
+      </div>
+      <div class="zone z-event">
+        <span class="zcap">СОБЫТИЕ</span>
+        <span class="zline" style="font-size:50px;color:var(--ac)">продажа дома · Mira</span>
+        <span class="zline" style="font-size:50px">Crest Square (27)</span>
+        <span class="zline" style="font-size:50px;color:var(--money)">+$70</span>
+      </div>
+      <div class="zone z-play">
+        <span class="zcap">ИГРОКИ</span>
+        <div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="meta">владений 2 · домов 0 · залогов 0</span><span class="cash">$1215</span></div>
+        <div class="prow" style="--pc:var(--p2)"><span class="chip"></span><span>Neuro</span><span class="meta">владений 3 · домов 1 · залогов 0</span><span class="cash">$980</span></div>
+        <div class="prow" style="--pc:var(--p1)"><span class="chip"></span><span>evil</span><span class="meta">владений 1 · домов 0 · залогов 1</span><span class="cash">$640</span></div>
+        <div class="prow" style="--pc:var(--p3)"><span class="chip"></span><span>Mira</span><span class="meta">владений 2 · домов 0 · залогов 1</span><span class="cash">$1500</span></div>
+      </div>
+      <div class="zone z-jrn">
+        <span class="zcap">ЖУРНАЛ</span>
+        <span class="zline" style="font-size:50px">evil попадает в тюрьму</span>
+        <span class="zline" style="font-size:30px;color:var(--mu)">evil закладывает клетку 11</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="console">
+    <span class="status">Хост · ваш ход — выберите действие</span>
+    <div class="acts">
+      <button class="hero" type="button">Бросок</button>
+      <button type="button">Купить $100</button>
+      <button type="button">Отказ</button>
+      <button type="button">Торг</button>
+      <button type="button">Конец хода</button>
+    </div>
+  </div>
+
+  <aside class="dock dock-r">
+    <div class="ptitle">КЛЕТКА</div>
+    <div class="card">
+      <span class="t">Cedar Ave</span>
+      <span class="kv">группа <b style="color:var(--g-lightblue)">lightblue</b></span>
+      <span class="kv">цена <b>$100</b></span>
+      <span class="kv">аренда <b>$6</b></span>
+      <span class="kv">владелец: <b>Хост</b></span>
+      <span class="kv">группа не собрана</span>
+      <div class="acts" style="display:flex;gap:8px;margin-top:4px">
+        <button type="button">Закрепить</button><button type="button">Закрыть</button>
+      </div>
+    </div>
+    <div class="ptitle">ХОД СОБЫТИЙ</div>
+    <div class="jrn">
+      <span class="ln">Mira бросает 4+4</span>
+      <span class="ln">Mira продаёт с клетки 27</span>
+      <span class="ln">evil закладывает клетку 11</span>
+      <span class="ln">evil попадает в тюрьму</span>
+      <span class="cnt">показано 4 из 132</span>
+      <span class="cnt">игрок: все · тип: все · только деньги</span>
+      <button type="button">экспорт .jsonl</button>
+    </div>
+  </aside>
+</div>
+</div>
+
+<div class="page">
+<div class="cap-out">Кадр 2 — 390 × 844 px (телефон: шапка 132, окно доски 400, полоса панно 220, консоль 92; доска НЕ сжата — 85.0 px на клетку, окно показывает 5 клеток из 11)</div>
+<div class="frame phone" data-frame="390x844" style="width:390px;height:844px">
+  <header class="ph-hdr">
+    <span class="r1"><b>ХОД: Хост</b><span>ФАЗА: Начало хода</span></span>
+    <span class="r2"><span>РАУНД 7</span><span class="money">БАНК ПАРКОВКИ $240</span>
+      <button type="button" style="margin-left:auto">Пауза</button>
+      <button type="button">Настройки</button></span>
+    <span class="r3"><b>Хост $1215</b> · <b>Neuro $980</b> · <b>evil $640</b> · <b>Mira $1500</b></span>
+  </header>
+  <div class="ph-view">
+    <div class="ph-cap">Доска 85 px на клетку · видно 5 клеток из 11
+      <button type="button" style="margin-left:auto">Ближе</button>
+      <button type="button">Целиком</button></div>
+    <div class="ph-win">
+      <div class="board" data-region="board-phone">
+        <div class="cell corner" style="grid-area:11/1"><span class="nm">Start</span></div>
+        <div class="cell" style="grid-area:11/2;--gc:var(--g-brown)"><span class="band"></span><span class="nm">Sunset Blvd</span><span class="pr">$60</span></div>
+        <div class="cell" style="grid-area:11/3"><span class="nm">Chest</span></div>
+        <div class="cell owned mine" style="grid-area:11/4;--gc:var(--g-brown);--pc:var(--p0)"><span class="band"></span><span class="nm">Palm Row</span><span class="pr">$60</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" style="grid-area:11/5"><span class="nm">Tax</span><span class="pr">$200</span></div>
+        <div class="cell" style="grid-area:11/6"><span class="nm">Harbor Station</span><span class="pr">$200</span></div>
+        <div class="cell owned mine sel" style="grid-area:11/7;--gc:var(--g-lightblue);--pc:var(--p0)"><span class="band"></span><span class="nm">Cedar Ave</span><span class="pr">$100</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Хост"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+        <div class="cell" style="grid-area:11/8"><span class="nm">Fortune</span></div>
+        <div class="cell owned foe" style="grid-area:11/9;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="band"></span><span class="nm">Elm Ave</span><span class="pr">$100</span><span class="hs" aria-label="домов 2"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell owned foe" style="grid-area:11/10;--gc:var(--g-lightblue);--pc:var(--p2)"><span class="band"></span><span class="nm">Linden Ave</span><span class="pr">$120</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell corner" style="grid-area:11/11"><span class="nm">Jail</span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: evil"><path d="M2.6 14.2h18.8l-3 7H5.6z"/><path d="M11 3h2v11h-2z"/><path d="M13.4 4.2l6 3.9-6 3.1z"/></svg></span></div>
+        <div class="cell owned foe mortgaged" style="grid-area:10/11;--gc:var(--g-pink);--pc:var(--p1)"><span class="band"></span><span class="nm">Oak Street</span><span class="pr">$140</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" style="grid-area:9/11"><span class="nm">Tower Utilities</span><span class="pr">$150</span></div>
+        <div class="cell" style="grid-area:8/11;--gc:var(--g-pink)"><span class="band"></span><span class="nm">Maple Street</span><span class="pr">$140</span></div>
+        <div class="cell" style="grid-area:7/11;--gc:var(--g-pink)"><span class="band"></span><span class="nm">Birch Street</span><span class="pr">$160</span></div>
+        <div class="cell" style="grid-area:6/11"><span class="nm">Central Station</span><span class="pr">$200</span></div>
+        <div class="cell" style="grid-area:5/11;--gc:var(--g-orange)"><span class="band"></span><span class="nm">Willow Way</span><span class="pr">$180</span></div>
+        <div class="cell" style="grid-area:4/11"><span class="nm">Chest</span></div>
+        <div class="cell" style="grid-area:3/11;--gc:var(--g-orange)"><span class="band"></span><span class="nm">Aspen Way</span><span class="pr">$180</span></div>
+        <div class="cell" style="grid-area:2/11;--gc:var(--g-orange)"><span class="band"></span><span class="nm">Fir Way</span><span class="pr">$200</span></div>
+        <div class="cell corner" style="grid-area:1/11"><span class="nm">Free Parking</span></div>
+        <div class="cell" style="grid-area:1/10;--gc:var(--g-red)"><span class="band"></span><span class="nm">Lake Drive</span><span class="pr">$220</span></div>
+        <div class="cell" style="grid-area:1/9"><span class="nm">Fortune</span></div>
+        <div class="cell" style="grid-area:1/8;--gc:var(--g-red)"><span class="band"></span><span class="nm">River Drive</span><span class="pr">$220</span></div>
+        <div class="cell" style="grid-area:1/7;--gc:var(--g-red)"><span class="band"></span><span class="nm">Harbor Drive</span><span class="pr">$240</span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Neuro"><path d="M4.4 9.6 7 4l3 2.6h4L17 4l2.6 5.6V15a6 6 0 0 1-6 6h-3.2a6 6 0 0 1-6-6z"/></svg></span></div>
+        <div class="cell" style="grid-area:1/6"><span class="nm">West Station</span><span class="pr">$200</span></div>
+        <div class="cell owned foe mortgaged" style="grid-area:1/5;--gc:var(--g-yellow);--pc:var(--p3)"><span class="band"></span><span class="nm">Crest Point</span><span class="pr">$260</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell owned foe" style="grid-area:1/4;--gc:var(--g-yellow);--pc:var(--p3)"><span class="band"></span><span class="nm">Crest Square</span><span class="pr">$260</span><span class="hs" aria-label="домов 1"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" style="grid-area:1/3"><span class="nm">Tower Water</span><span class="pr">$150</span></div>
+        <div class="cell" style="grid-area:1/2;--gc:var(--g-yellow)"><span class="band"></span><span class="nm">Crest Heights</span><span class="pr">$280</span></div>
+        <div class="cell corner" style="grid-area:1/1"><span class="nm">Go To Jail</span></div>
+        <div class="cell" style="grid-area:2/1;--gc:var(--g-green)"><span class="band"></span><span class="nm">Garden Grove</span><span class="pr">$300</span></div>
+        <div class="cell" style="grid-area:3/1;--gc:var(--g-green)"><span class="band"></span><span class="nm">Garden Park</span><span class="pr">$300</span></div>
+        <div class="cell" style="grid-area:4/1"><span class="nm">Chest</span><span class="tks t1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Mira"><path d="M2 16.4h20v-3.2l-3.6-.9-3-4.1H9.2l-3 4.1-4.2.9z"/><circle cx="7" cy="18.4" r="2.6"/><circle cx="17" cy="18.4" r="2.6"/></svg></span></div>
+        <div class="cell" style="grid-area:5/1;--gc:var(--g-green)"><span class="band"></span><span class="nm">Garden Court</span><span class="pr">$320</span></div>
+        <div class="cell" style="grid-area:6/1"><span class="nm">South Station</span><span class="pr">$200</span></div>
+        <div class="cell" style="grid-area:7/1"><span class="nm">Fortune</span></div>
+        <div class="cell owned foe" style="grid-area:8/1;--gc:var(--g-darkblue);--pc:var(--p2)"><span class="band"></span><span class="nm">Grand Avenue</span><span class="pr">$350</span><span class="hs" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+        <div class="cell" style="grid-area:9/1"><span class="nm">Luxury Tax</span><span class="pr">$100</span></div>
+        <div class="cell" style="grid-area:10/1;--gc:var(--g-darkblue)"><span class="band"></span><span class="nm">Grand Place</span><span class="pr">$400</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="ph-panno">
+    <div class="zone z-roll">
+      <span class="zcap">БРОСОК</span>
+      <span class="zline">ХОД: Хост</span>
+      <div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 5"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 3"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><span class="sumtxt">5 + 3 = <b>8</b></span></div>
+    </div>
+    <div class="zone z-event">
+      <span class="zcap">СОБЫТИЕ</span>
+      <span class="ev">продажа дома · Mira · Crest Square (27)</span>
+      <span class="ev money">+$70</span>
+    </div>
+    <div class="zone z-play">
+      <span class="zcap">ИГРОКИ</span>
+        <div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="meta">владений 2 · домов 0 · залогов 0</span><span class="cash">$1215</span></div>
+        <div class="prow" style="--pc:var(--p2)"><span class="chip"></span><span>Neuro</span><span class="meta">владений 3 · домов 1 · залогов 0</span><span class="cash">$980</span></div>
+        <div class="prow" style="--pc:var(--p1)"><span class="chip"></span><span>evil</span><span class="meta">владений 1 · домов 0 · залогов 1</span><span class="cash">$640</span></div>
+        <div class="prow" style="--pc:var(--p3)"><span class="chip"></span><span>Mira</span><span class="meta">владений 2 · домов 0 · залогов 1</span><span class="cash">$1500</span></div>
+    </div>
+    <div class="zone z-jrn">
+      <span class="zcap">ЖУРНАЛ</span>
+      <span class="ev">evil попадает в тюрьму</span>
+      <span class="ev" style="color:var(--mu)">evil закладывает клетку 11</span>
+    </div>
+  </div>
+  <div class="ph-con">
+    <span class="status">Хост · ваш ход — выберите действие</span>
+    <div class="acts">
+      <button class="hero" type="button">Бросок</button>
+      <button type="button">Купить $100</button>
+      <button type="button">Отказ</button>
+      <button type="button">Торг</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<h2>Что где живёт: шесть сведений клетки</h2>
+<table>
+<tr><th>Сведение</th><th>На клетке всегда</th><th>Чем показано на клетке</th><th>Где ещё (крупно, словами)</th></tr>
+<tr><td>имя</td><td class="ok">да</td><td>текст, 17 px при клетке 85 px (0.20 клетки)</td><td>инспектор «КЛЕТКА»: имя 20 px; журнал</td></tr>
+<tr><td>цена</td><td class="ok">да</td><td>текст, 13.6 px (0.16 клетки), цвет денег</td><td>инспектор: «цена $100»; кнопка «Купить $100»</td></tr>
+<tr><td>владелец</td><td class="ok">да</td><td>обводка 3 px цветом места; моя — ещё и корпус на ступень светлее</td><td>панорама «ИГРОКИ»: имя, деньги, владений; инспектор: «владелец: Хост»</td></tr>
+<tr><td>дома</td><td class="ok">да</td><td>рельс из 4 слотов 5 px; отель — один блок 17 px</td><td>инспектор «домов 2»; панорама «ИГРОКИ»: домов 1</td></tr>
+<tr><td>залог</td><td class="ok">да</td><td>штриховка 45° по всей клетке + зачёркнутая цена: 0 px площади</td><td>журнал «evil закладывает клетку 11»; инспектор словом</td></tr>
+<tr><td>фишка</td><td class="ok">да</td><td>фигура в правом нижнем углу: 29 / 22 / 17 / 14.5 px при 1–4</td><td>панорама «ИГРОКИ»: имя + клетка «6 Cedar Ave»; шапка «ХОД: Хост»</td></tr>
+</table>
+
+<h2>Шапка: обязательное и убранное</h2>
+<table>
+<tr><th>Элемент</th><th>Решение</th><th>Почему / где смотреть</th></tr>
+<tr><td>чей ход и фаза</td><td class="ok">остаётся, 50 px, одной строкой</td><td>50 px — предел полосы 56 px; это единственный кегль, который даёт 12 px на телефоне</td></tr>
+<tr><td>раунд</td><td class="ok">остаётся, 28 px</td><td>число, читается без цвета</td></tr>
+<tr><td>банк парковки</td><td class="ok">остаётся, 28 px</td><td>деньги, цвет денег</td></tr>
+<tr><td>Пауза</td><td class="ok">остаётся, словом</td><td>единственное управление, которое обязано быть в любой момент</td></tr>
+<tr><td>Настройки</td><td class="ok">остаётся, словом</td><td>дверь ко всему остальному</td></tr>
+<tr><td>деньги всех четырёх мест</td><td class="no">уезжает из шапки</td><td>измерено: 4×имя+деньги при 16–18 px = 1620–1746 px, полоса 1576 px. Живёт в панораме «ИГРОКИ» (45 px) и в шапке телефона (12 px, третья строка)</td></tr>
+<tr><td>«NEURO PROPERTY TRADE»</td><td class="no">убрано</td><td>декор: то же на титуле окна и в «Настройках»</td></tr>
+<tr><td>«Тема: Neuro» · «Язык: RU»</td><td class="no">убрано</td><td>статус, не действие: в «Настройках», раздел «Вид»</td></tr>
+<tr><td>«Рестарт» · «Правила» · «Панели»</td><td class="no">убрано</td><td>«Рестарт» и «Правила» — в «Настройках»; «Панели» — слово на самой сворачиваемой панели (R-9)</td></tr>
+</table>
+</body>
+</html>
