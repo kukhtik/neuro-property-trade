@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>NPT · второй круг · концепт 4 «числа-герои»</title>
+<style>
+:root{
+  --bg:#0b0613;--s1:#130b1f;--s2:#1b1230;--s3:#281b42;--line:#3b2a5e;
+  --tx:#f7effd;--mu:#a896c8;--ac:#ff6fae;--acx:#2a0618;--hi:#5fe3ff;
+  --money:#5fe3ff;--bad:#ff4d6d;--warn:#ffb020;--good:#2fa862;--ring:#3b2a5e99;
+  --dice-bg:#f2f6fa;--dice-ink:#16191f;--bb2:#101820;--bb3:#22303c;
+  --g-brown:#8b5a3c;--g-lightblue:#5bb8e8;--g-pink:#d85aa8;--g-orange:#ee8a2a;
+  --g-red:#d8363c;--g-yellow:#e8c61e;--g-green:#2fa862;--g-darkblue:#2e5fd8;
+  --p0:#ff6fae;--p1:#e8264f;--p2:#5fe3ff;--p3:#b6ff6b;
+  --step:88px;   /* шаг клетки: 88 в кадре 1600, 77 / 85 / 95 в замерах */
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);padding:0 24px 64px;
+  font-family:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif}
+h1{font-size:20px;font-weight:700;margin:0 0 4px;letter-spacing:.02em}
+h2{font-size:17px;font-weight:700;margin:36px 0 8px;letter-spacing:.02em}
+h3{font-size:15px;font-weight:700;margin:22px 0 6px}
+p.note{font-size:13px;color:var(--mu);margin:0 0 12px;max-width:1240px;line-height:1.55}
+p.note b{color:var(--tx)}
+.cap-out{font-size:13px;color:var(--mu);letter-spacing:.03em;margin:18px 0 8px}
+button{font-family:inherit;font-size:15px;color:var(--tx);background:var(--s3);
+  border:1px solid var(--line);padding:8px 14px;cursor:pointer}
+button.hero{background:var(--ac);color:var(--acx);border-color:var(--ac);font-weight:700}
+table{border-collapse:collapse;font-size:13px;max-width:1520px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--s2);color:var(--mu);font-weight:700}
+td.dur{color:var(--hi);white-space:nowrap}
+td.num,span.num{font-variant-numeric:tabular-nums}
+td.ev{font-weight:700}
+.ok{color:var(--good)}.no{color:var(--bad)}.mu{color:var(--mu)}
+/* ═══════════════ КЛЕТКА: ОДНА АНАТОМИЯ НА ВСЕ ЧЕТЫРЕ СТОРОНЫ ═══════════════ */
+.cell{position:relative;z-index:1;overflow:hidden;background:var(--bb2);
+  box-shadow:inset 0 0 0 1px var(--line)}
+.cell.mine{background:var(--bb3)}
+.cell .g{position:absolute;background:var(--gc,transparent)}
+.cell .e{position:absolute;background:var(--ec,transparent)}
+.cell .k{position:absolute;width:14px;height:14px;box-shadow:inset 0 0 0 1px var(--line)}
+.cell .k.f{background:var(--ec)}
+.cell .k.m{background:var(--ec);box-shadow:inset 0 0 0 2px var(--ac)}
+.cell .k.mo{background-image:repeating-linear-gradient(45deg,var(--mu) 0 1px,transparent 1px 4px)}
+.cell .n{position:absolute;left:calc(var(--step) * 0.08);right:calc(var(--step) * 0.08);top:28px;text-align:right;
+  font-size:calc(var(--step) * 0.39);font-weight:800;line-height:1;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:var(--tx)}
+.cell .n i{font-style:normal;font-size:.5em;font-weight:700;color:var(--mu);
+  vertical-align:.16em;margin-right:1px}
+.cell .h{position:absolute;left:18px;top:9px;display:flex;gap:2px}
+.cell .h b{width:9px;height:9px;box-shadow:inset 0 0 0 1px var(--line)}
+.cell .h b.on{background:var(--good);box-shadow:none}
+.cell .h b.hot{width:36px;background:var(--good);box-shadow:inset 0 0 0 2px var(--warn)}
+.cell .t{position:absolute;left:18px;bottom:9px;display:flex;gap:2px;align-items:center}
+.cell .t svg{display:block;fill:currentColor;width:16px;height:16px}
+.cell .t2 svg{width:13px;height:13px}
+.cell .t3 svg{width:10px;height:10px}
+.cell .t4 svg{width:8px;height:8px}
+.cell.mort{background-image:repeating-linear-gradient(45deg,var(--line) 0 1px,transparent 1px 6px)}
+.cell.mort .n{color:var(--mu);text-decoration:line-through}
+.cell.mort .g{background-image:repeating-linear-gradient(45deg,var(--mu) 0 1px,transparent 1px 4px)}
+.cell.grp .g{box-shadow:inset 0 -2px 0 0 var(--ec)}
+/* сторона клетки задаёт положение двух кромок и уголка; содержимое стоит на месте */
+.cell.s-b .g{left:0;right:0;bottom:0;height:6px}
+.cell.s-b .e{left:0;right:0;top:0;height:3px}
+.cell.s-b .k{top:0;right:0}
+.cell.s-r .g{top:0;bottom:0;right:0;width:6px}
+.cell.s-r .e{top:0;bottom:0;left:0;width:3px}
+.cell.s-r .k{top:0;left:0}
+.cell.s-t .g{left:0;right:0;top:0;height:6px}
+.cell.s-t .e{left:0;right:0;bottom:0;height:3px}
+.cell.s-t .k{bottom:0;left:0}
+.cell.s-l .g{top:0;bottom:0;left:0;width:6px}
+.cell.s-l .e{top:0;bottom:0;right:0;width:3px}
+.cell.s-l .k{bottom:0;right:0}
+/* клетка без цены: герой — слово на том же месте и тем же приёмом */
+.cell.cn .n{top:26px;text-align:left;font-size:calc(var(--step) * 0.23);font-weight:700;
+  line-height:1.05;white-space:normal;letter-spacing:0}
+.cell .sub{position:absolute;left:8px;right:8px;bottom:10px;font-size:11px;color:var(--mu);
+  line-height:1.15;font-variant-numeric:tabular-nums}
+/* ═══════════════ КАДР 1600×1200 ═══════════════ */
+.frame{display:grid;background:var(--bg);outline:1px solid var(--line);margin-left:-24px;
+  grid-template-columns:12px 300px 8px 1000px 8px 260px 12px;
+  grid-template-rows:12px 64px 8px 1000px 8px 96px 12px}
+.hdr{grid-column:2/7;grid-row:2;display:flex;align-items:center;gap:16px;
+  background:var(--s1);border:1px solid var(--line);padding:0 12px;overflow:hidden}
+.hdr .turn{font-size:50px;font-weight:800;line-height:1;white-space:nowrap;letter-spacing:.01em}
+.hdr .turn b{color:var(--ac)}
+.hdr .rnd{font-size:50px;font-weight:800;white-space:nowrap;line-height:1}
+.hdr .pot{font-size:50px;font-weight:800;white-space:nowrap;line-height:1;color:var(--money);
+  font-variant-numeric:tabular-nums;margin-left:auto}
+.dock{background:var(--s1);border:1px solid var(--line);padding:10px;display:flex;
+  flex-direction:column;gap:8px;overflow:hidden}
+.dock-l{grid-column:2;grid-row:4/7}
+.dock-r{grid-column:6;grid-row:4/7}
+.ptitle{font-size:12px;letter-spacing:.14em;color:var(--mu);font-weight:700;flex:none}
+.seat{background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--pc);
+  padding:6px 8px;display:flex;flex-direction:column;gap:3px;flex:none}
+.seat.act{border-color:var(--hi);background:var(--s3)}
+.seat .r1{display:flex;align-items:center;gap:7px}
+.seat .nm{font-size:26px;font-weight:800;color:var(--pc);line-height:1}
+.seat .tk{width:18px;height:18px;fill:var(--pc);flex:none;margin-left:auto}
+.seat .cash{font-size:50px;font-weight:800;line-height:1;color:var(--money);
+  font-variant-numeric:tabular-nums;text-align:right}
+.seat .r3{font-size:12px;color:var(--mu);line-height:1.3}
+.board{grid-column:4;grid-row:4;width:1000px;height:1000px;padding:5px;border:1px solid var(--line);
+  background:var(--s2);display:grid;
+  grid-template-columns:repeat(11,88px);grid-template-rows:repeat(11,88px);gap:2px}
+.panno{grid-area:2/2/11/11;margin:-1px;position:relative;z-index:0;background:var(--ring);
+  padding:6px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.zone{background:var(--s1);border:1px solid var(--line);padding:5px 10px;display:flex;
+  flex-direction:column;gap:3px;overflow:hidden;min-height:0}
+.z-roll{flex:30 1 0}.z-ev{flex:27 1 0}.z-seat{flex:49 1 0}.z-jrn{flex:30 1 0}.z-hint{flex:16 1 0}
+.zcap{font-size:12px;letter-spacing:.12em;color:var(--mu);flex:none}
+.zg{font-size:50px;font-weight:800;line-height:1;white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.zg.s{font-weight:400;font-size:30px;color:var(--mu)}
+.dice{display:flex;align-items:center;gap:10px;margin-top:auto}
+.die{width:34px;height:34px;flex:none}
+.sum{font-size:40px;font-weight:800;white-space:nowrap;line-height:1.6;
+  font-variant-numeric:tabular-nums}
+.sum b{font-size:64px;line-height:1;color:var(--money)}
+.prow{display:flex;align-items:center;gap:9px;font-size:50px;font-weight:800;line-height:1;
+  white-space:nowrap;height:50px;font-variant-numeric:tabular-nums}
+.prow .chip{width:13px;height:13px;flex:none;background:var(--pc)}
+.prow .cash{margin-left:auto;color:var(--money)}
+.prow .tk{width:20px;height:20px;fill:var(--pc);flex:none}
+.prow .meta{font-size:13px;font-weight:400;color:var(--mu)}
+.jrn{display:flex;flex-direction:column;gap:4px}
+.jrn .ln{font-size:13px;line-height:1.35}
+.jrn .ln.mu{color:var(--mu)}
+.console{grid-column:4;grid-row:6;background:var(--s1);border:1px solid var(--line);
+  padding:8px 12px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.console .status{font-size:17px}
+.console .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.console .acts button{font-size:13px;padding:6px 10px}
+.console .acts button.hero{font-size:22px;padding:6px 22px}
+.leg{display:flex;flex-direction:column;gap:5px}
+.legrow{display:flex;align-items:center;gap:8px}
+.legcap{font-size:11px;color:var(--mu);line-height:1.25}
+.sw{width:13px;height:13px;flex:none;background:var(--pc,transparent);box-shadow:inset 0 0 0 1px var(--line)}
+.pano{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1 1 auto;min-height:0;overflow:hidden}
+.pcol{display:flex;flex-direction:column;gap:1px}
+.prow2{display:flex;gap:4px;align-items:center;font-size:11px;line-height:1.3;white-space:nowrap}
+.prow2 i{font-style:normal;color:var(--mu);width:15px;text-align:right;
+  font-variant-numeric:tabular-nums;flex:none}
+.prow2 u{width:7px;height:7px;flex:none;background:var(--oc,transparent)}
+.prow2 b{font-weight:400;overflow:hidden}
+.prow2 em{margin-left:auto;font-style:normal;color:var(--money);font-variant-numeric:tabular-nums}
+/* ═══════════════ КАДР 390×844 ═══════════════ */
+.frame.ph{display:flex;flex-direction:column;gap:6px;padding:8px;overflow:hidden;
+  width:390px;height:844px;outline:1px solid var(--line)}
+.ph-hdr{flex:none;height:112px;background:var(--s1);border:1px solid var(--line);
+  padding:6px 8px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.ph-hdr .r1{display:flex;gap:10px;font-size:20px;font-weight:800;line-height:1.1;white-space:nowrap}
+.ph-hdr .r1 b{color:var(--ac)}
+.ph-hdr .r2{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.1;
+  font-variant-numeric:tabular-nums}
+.ph-hdr .r2 .money{color:var(--money);font-weight:700}
+.ph-hdr .r2 button{font-size:12px;padding:3px 7px}
+.ph-hdr .r3{font-size:13px;color:var(--mu);line-height:1.3;white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.ph-hdr .r3 b{color:var(--tx);font-weight:700}
+.ph-ring{flex:none;width:374px;height:374px;border:1px solid var(--line);background:var(--s2);
+  padding:3px;display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);
+  gap:1px}
+.ph-panno{flex:none;height:202px;background:var(--ring);border:1px solid var(--line);padding:4px;
+  display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px}
+.ph-panno .zone{padding:3px 6px;gap:2px}
+.ph-panno .zcap{font-size:10px;letter-spacing:.06em}
+.ph-panno .zg{font-size:14px;font-weight:800;white-space:normal;line-height:1.15}
+.ph-panno .zg.s{font-size:12px;font-weight:400;color:var(--mu);white-space:normal;line-height:1.2}
+.ph-panno .prow{font-size:13px;height:16px;gap:6px;font-weight:700}
+.ph-panno .prow .chip{width:8px;height:8px}
+.ph-panno .prow .tk{width:11px;height:11px}
+.ph-panno .sum{font-size:14px}
+.ph-panno .sum b{font-size:22px;color:var(--money)}
+.ph-panno .die{width:16px;height:16px}
+.ph-con{flex:none;height:112px;background:var(--s1);border:1px solid var(--line);padding:6px 8px;
+  display:flex;flex-direction:column;gap:5px}
+.ph-con .status{font-size:13px;color:var(--mu)}
+.ph-con .acts{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.ph-con button{font-size:12px;padding:4px 8px}
+.ph-con button.hero{font-size:18px;padding:4px 16px}
+/* клетка на телефонном кольце: та же анатомия, доли шага */
+.phb .cell{--step:32.36px}
+.phb .cell .n{left:3px;right:3px;top:10px;letter-spacing:0}
+.phb .cell .n i{display:none}
+.phb .cell .k{width:6px;height:6px}
+.phb .cell .h{left:7px;top:4px;gap:1px}
+.phb .cell .h b{width:4px;height:4px}
+.phb .cell .h b.hot{width:15px}
+.phb .cell .t{left:7px;bottom:3px;gap:1px}
+.phb .cell .t svg{width:5px;height:5px}
+.phb .cell .sub{display:none}
+.phb .cell.cn .n{top:9px;font-size:7px}
+.phb .cell.s-b .g,.phb .cell.s-t .g{height:2px}
+.phb .cell.s-l .g,.phb .cell.s-r .g{width:2px}
+.phb .cell.s-b .e,.phb .cell.s-t .e{height:2px}
+.phb .cell.s-l .e,.phb .cell.s-r .e{width:2px}
+/* ═══════════════ РАСКАДРОВКИ ═══════════════ */
+.sbs{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1520px}
+.sb{background:var(--s1);border:1px solid var(--line);padding:10px;display:flex;
+  flex-direction:column;gap:8px}
+.sb h3{margin:0}
+.sb .sub{font-size:12px;color:var(--mu);line-height:1.45}
+.sbf{display:grid;grid-template-columns:104px 1fr;gap:8px;align-items:start}
+.sbf .t{font-size:12px;font-weight:700;color:var(--hi)}
+.sbf .d{display:block;font-size:11px;color:var(--mu);font-weight:400}
+.sbf .x{font-size:12px;color:var(--mu);line-height:1.4;margin-top:4px;display:block}
+.sbf .x b{color:var(--tx);font-weight:400}
+.sbf .x i{font-style:normal;color:var(--hi)}
+.strip{display:flex;gap:2px;flex:none}
+.cell.hl{box-shadow:inset 0 0 0 2px var(--hi)}
+.cell.hl2{box-shadow:inset 0 0 0 1px var(--line),inset 0 0 0 3px var(--hi)}
+.cell.dim{opacity:.45}
+.cell.win{box-shadow:inset 0 0 0 2px var(--ac)}
+.cell.ghost{opacity:.3}
+.strip .cell{width:88px;height:88px;flex:none}
+.pv{height:88px;background:var(--s1);border:1px solid var(--line);padding:4px 8px;display:flex;
+  flex-direction:column;gap:3px;overflow:hidden;flex:none;width:272px}
+.pv .zg{font-size:26px;font-weight:800}
+.pv .dice{margin-top:auto}
+.pv .die{width:24px;height:24px}
+.pv .sum{font-size:16px;font-weight:700}
+.pv .sum b{font-size:28px;color:var(--money)}
+.pv .zcap{font-size:11px}
+.pv .prow{font-size:16px;height:18px;font-weight:700}
+.pv .prow .chip{width:8px;height:8px}
+.pv .prow .tk{width:12px;height:12px}
+.lgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;max-width:1520px;margin:8px 0 4px}
+.lcell{background:var(--s1);border:1px solid var(--line);padding:8px;display:flex;
+  flex-direction:column;gap:6px;align-items:flex-start}
+.lcell .lt{font-size:13px;font-weight:700}
+.lcell .lx{font-size:11px;color:var(--mu);line-height:1.4}
+.tablerow{display:flex;gap:2px;flex:none;flex-wrap:wrap}
+.tablerow .cell{width:88px;height:88px;flex:none}
+</style>
+</head>
+<body>
+<div class="frame" data-frame="1600x1200" style="width:1600px;height:1200px">
+  <header class="hdr" data-region="top">
+    <span class="turn">ХОД: <b>Хост</b></span>
+    <span class="rnd">РАУНД 7</span>
+    <span class="pot">БАНК ПАРКОВКИ $240</span>
+  </header>
+  <aside class="dock dock-l" data-region="seats">
+    <span class="ptitle">ИГРОКИ</span>
+    <div class="seat act" style="--pc:var(--p0)">
+      <span class="r1"><span class="nm">Хост</span><span class="mu" style="font-size:12px">LOCAL</span>
+        <svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка Хост"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span>
+      <span class="cash">$1215</span>
+      <span class="r3">клетка 6 Cedar Ave · владений 2 · домов 0 · залогов 0 · ваш ход</span>
+    </div>
+    <div class="seat" style="--pc:var(--p2)">
+      <span class="r1"><span class="nm">Neuro</span><span class="mu" style="font-size:12px">SDK</span>
+        <svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка Neuro"><path d="M4.4 9.6 7 4l3 2.6h4L17 4l2.6 5.6V15a6 6 0 0 1-6 6h-3.2a6 6 0 0 1-6-6z"/></svg></span>
+      <span class="cash">$980</span>
+      <span class="r3">клетка 24 Harbor Drive · владений 3 · домов 1 · залогов 0</span>
+    </div>
+    <div class="seat" style="--pc:var(--p1)">
+      <span class="r1"><span class="nm">evil</span><span class="mu" style="font-size:12px">SDK</span>
+        <svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка evil"><path d="M3 15h18l-3 5H6z"/><path d="M11 3h2v12h-2z"/><path d="M13 4l6 4-6 3z"/></svg></span>
+      <span class="cash">$640</span>
+      <span class="r3">клетка 10 Jail · владений 1 · домов 0 · залогов 1 · в тюрьме, попытка 2</span>
+    </div>
+    <div class="seat" style="--pc:var(--p3)">
+      <span class="r1"><span class="nm">Mira</span><span class="mu" style="font-size:12px">ИИ «Магнат»</span>
+        <svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка Mira"><path d="M3 12h18l-2 6H5z"/><path d="M6 9h12v3H6z"/><circle cx="7.5" cy="19.5" r="1.6"/><circle cx="16.5" cy="19.5" r="1.6"/></svg></span>
+      <span class="cash">$1500</span>
+      <span class="r3">клетка 33 Chest · владений 2 · домов 0 · залогов 1</span>
+    </div>
+    <span class="ptitle" style="margin-top:2px">КРОМКА И УГОЛОК — ЧЕТЫРЕ СОСТОЯНИЯ</span>
+    <div class="leg">
+      <div class="legrow"><span class="sw"></span><span class="legcap">пустая — кромки нет, уголок только контуром</span></div>
+      <div class="legrow"><span class="sw" style="--pc:var(--p2)"></span><span class="legcap">чужая — кромка и уголок цветом места владельца</span></div>
+      <div class="legrow"><span class="sw" style="--pc:var(--p0)"></span><span class="legcap">моя — корпус светлее, уголок с обводкой accent</span></div>
+      <div class="legrow"><span class="sw" style="--pc:var(--mu)"></span><span class="legcap">залог — штриховка, число зачёркнуто, уголок заштрихован</span></div>
+      <span class="legcap">Все четыре нарисованы в натуральную величину ниже, под кадром.</span>
+    </div>
+    <span class="ptitle" style="margin-top:2px">ВИД И ДВИЖЕНИЕ</span>
+    <div class="jrn">
+      <span class="ln">Анимации: включены · темп: обычный</span>
+      <span class="ln mu">выключены: числа и кромки встают в конечное состояние сразу</span>
+      <span class="ln mu">цифра цены 34 px · кромка 3 px · уголок 14 px · дома 9 px</span>
+      <div class="acts" style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button">Настройки</button><button type="button">Правила</button>
+        <button type="button">Рестарт</button><button type="button">Тема: Neuro</button>
+        <button type="button">Язык: RU</button></div>
+    </div>
+  </aside>
+  <div class="board" data-region="board" data-cell-count="40">
+<div class="cell s-b cn" data-cell="0" data-name="Start" style="grid-area:11/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Старт</span><span class="sub">клетка 0 · круг начинается</span></div>
+<div class="cell s-b" data-cell="1" data-name="Sunset Blvd" style="grid-area:11/2;--gc:var(--g-brown)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-b cn" data-cell="2" data-name="Chest" style="grid-area:11/3"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span><span class="sub">клетка 2</span></div>
+<div class="cell s-b mine" data-cell="3" data-name="Palm Row" style="grid-area:11/4;--gc:var(--g-brown);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-b cn" data-cell="4" data-name="Tax" style="grid-area:11/5"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span><span class="sub">клетка 4</span></div>
+<div class="cell s-b" data-cell="5" data-name="Harbor Station" style="grid-area:11/6"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-b mine" data-cell="6" data-name="Cedar Ave" style="grid-area:11/7;--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b cn" data-cell="7" data-name="Fortune" style="grid-area:11/8"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b" data-cell="8" data-name="Elm Ave" style="grid-area:11/9;--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-b" data-cell="9" data-name="Linden Ave" style="grid-area:11/10;--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r cn" data-cell="10" data-name="Jail" style="grid-area:11/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Тюрьма</span><span class="sub">клетка 10 · попытка 2</span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка evil"><path d="M3 15h18l-3 5H6z"/><path d="M11 3h2v12h-2z"/><path d="M13 4l6 4-6 3z"/></svg></span></div>
+<div class="cell s-r mort" data-cell="11" data-name="Oak Street" style="grid-area:10/11;--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r" data-cell="12" data-name="Tower Utilities" style="grid-area:9/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>150</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r" data-cell="13" data-name="Maple Street" style="grid-area:8/11;--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r" data-cell="14" data-name="Birch Street" style="grid-area:7/11;--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r" data-cell="15" data-name="Central Station" style="grid-area:6/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r" data-cell="16" data-name="Willow Way" style="grid-area:5/11;--gc:var(--g-orange)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>180</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r cn" data-cell="17" data-name="Chest" style="grid-area:4/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span><span class="sub">клетка 17</span></div>
+<div class="cell s-r" data-cell="18" data-name="Aspen Way" style="grid-area:3/11;--gc:var(--g-orange)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>180</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-r" data-cell="19" data-name="Fir Way" style="grid-area:2/11;--gc:var(--g-orange)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-t cn" data-cell="20" data-name="Free Parking" style="grid-area:1/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Парковка</span><span class="sub">клетка 20 · банк $240</span></div>
+<div class="cell s-t" data-cell="21" data-name="Lake Drive" style="grid-area:1/10;--gc:var(--g-red)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>220</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-t cn" data-cell="22" data-name="Fortune" style="grid-area:1/9"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 22</span></div>
+<div class="cell s-t" data-cell="23" data-name="River Drive" style="grid-area:1/8;--gc:var(--g-red)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>220</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-t" data-cell="24" data-name="Harbor Drive" style="grid-area:1/7;--gc:var(--g-red);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>240</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Neuro"><path d="M4.4 9.6 7 4l3 2.6h4L17 4l2.6 5.6V15a6 6 0 0 1-6 6h-3.2a6 6 0 0 1-6-6z"/></svg></span></div>
+<div class="cell s-t" data-cell="25" data-name="West Station" style="grid-area:1/6"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-t mort" data-cell="26" data-name="Crest Point" style="grid-area:1/5;--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n"><i>$</i>260</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-t" data-cell="27" data-name="Crest Square" style="grid-area:1/4;--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>260</span><span class="h"><b class="on"></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-t" data-cell="28" data-name="Tower Water" style="grid-area:1/3"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>150</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-t" data-cell="29" data-name="Crest Heights" style="grid-area:1/2;--gc:var(--g-yellow)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>280</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-l cn" data-cell="30" data-name="Go To Jail" style="grid-area:1/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Идти в тюрьму</span><span class="sub">клетка 30</span></div>
+<div class="cell s-l" data-cell="31" data-name="Garden Grove" style="grid-area:2/1;--gc:var(--g-green)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>300</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-l" data-cell="32" data-name="Garden Park" style="grid-area:3/1;--gc:var(--g-green)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>300</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-l cn" data-cell="33" data-name="Chest" style="grid-area:4/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span><span class="sub">клетка 33</span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Mira"><path d="M3 12h18l-2 6H5z"/><path d="M6 9h12v3H6z"/><circle cx="7.5" cy="19.5" r="1.6"/><circle cx="16.5" cy="19.5" r="1.6"/></svg></span></div>
+<div class="cell s-l" data-cell="34" data-name="Garden Court" style="grid-area:5/1;--gc:var(--g-green)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>320</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-l" data-cell="35" data-name="South Station" style="grid-area:6/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-l cn" data-cell="36" data-name="Fortune" style="grid-area:7/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 36</span></div>
+<div class="cell s-l" data-cell="37" data-name="Grand Avenue" style="grid-area:8/1;--gc:var(--g-darkblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>350</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+<div class="cell s-l cn" data-cell="38" data-name="Luxury Tax" style="grid-area:9/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span><span class="sub">клетка 38</span></div>
+<div class="cell s-l" data-cell="39" data-name="Grand Place" style="grid-area:10/1;--gc:var(--g-darkblue)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>400</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"></span></div>
+  <div class="panno" data-region="panno">
+    <div class="zone z-roll">
+      <span class="zcap">БРОСОК</span>
+      <span class="zg">ФАЗА: Начало хода</span>
+      <div class="dice">
+        <svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 5"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg>
+        <svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 3"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="27" cy="27" r="3"/></g></svg>
+        <span class="sum">5 + 3 = <b>8</b></span>
+      </div>
+    </div>
+    <div class="zone z-ev">
+      <span class="zcap">СОБЫТИЕ</span>
+      <span class="zg">продажа дома · Mira</span>
+      <span class="zg">Crest Square (27) · +$70</span>
+    </div>
+    <div class="zone z-seat">
+      <span class="zcap">ИГРОКИ</span>
+      <div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="meta">ваш ход</span><span class="cash">$1215</span></div>
+      <div class="prow" style="--pc:var(--p2)"><span class="chip"></span><span>Neuro</span><span class="meta">домов 1</span><span class="cash">$980</span></div>
+      <div class="prow" style="--pc:var(--p1)"><span class="chip"></span><span>evil</span><span class="meta">в тюрьме</span><span class="cash">$640</span></div>
+      <div class="prow" style="--pc:var(--p3)"><span class="chip"></span><span>Mira</span><span class="meta">залогов 1</span><span class="cash">$1500</span></div>
+    </div>
+    <div class="zone z-jrn">
+      <span class="zcap">ЖУРНАЛ · 3 НОВЕЙШИХ ИЗ 132</span>
+      <span class="zg">evil попадает в тюрьму</span>
+      <span class="zg s">evil закладывает клетку 11</span>
+      <span class="zg s">Mira продаёт с клетки 27</span>
+    </div>
+    <div class="zone z-hint">
+      <span class="zcap">ПОДСКАЗКА · КЛЕТКА ПОД КУРСОРОМ</span>
+      <span class="zg">6 Cedar Ave · $100 · Хост</span>
+    </div>
+  </div>
+  </div>
+  <aside class="dock dock-r" data-region="inspector">
+    <span class="ptitle">КЛЕТКА</span>
+    <div class="seat" style="--pc:var(--g-lightblue);border-left-color:var(--g-lightblue)">
+      <span class="r1"><span class="nm" style="color:var(--tx);font-size:24px">Cedar Ave</span>
+        <span class="mu" style="font-size:12px">6</span></span>
+      <span class="r3">группа lightblue · цена $100 · аренда $6</span>
+      <span class="r3">владелец: Хост · группа не собрана · домов 0</span>
+    </div>
+    <div class="acts" style="display:flex;gap:6px">
+      <button type="button">Закрепить</button><button type="button">Закрыть</button></div>
+    <span class="ptitle" style="margin-top:4px">ПОДСКАЗКА · КЛЕТКА ПОД КУРСОРОМ</span>
+    <div class="seat" style="--pc:var(--p0)">
+      <span class="r1"><span class="nm" style="font-size:22px">Cedar Ave</span>
+        <span class="cash" style="font-size:28px">$100</span></span>
+      <span class="r3">клетка 6 · владелец Хост · читается без подписи: кромка p0 и светлый корпус</span>
+    </div>
+    <span class="ptitle" style="margin-top:4px">ЖУРНАЛ · показано 4 из 132</span>
+    <div class="jrn">
+      <span class="ln">evil попадает в тюрьму</span>
+      <span class="ln mu">evil закладывает клетку 11</span>
+      <span class="ln mu">Mira продаёт с клетки 27</span>
+      <span class="ln mu">Mira бросает 4+4</span>
+      <span class="ln mu">игрок: все · тип: все · только деньги</span>
+      <div class="acts" style="display:flex;gap:6px"><button type="button">экспорт .jsonl</button></div>
+    </div>
+    <span class="ptitle" style="margin-top:4px">ПАНОРАМА КОЛЬЦА · 40 ИМЁН</span>
+    <div class="pano">
+      <div class="pcol">
+        <span class="prow2"><i>0</i><u></u><b>Start</b><em>—</em></span>
+        <span class="prow2"><i>1</i><u></u><b>Sunset Blvd</b><em>$60</em></span>
+        <span class="prow2"><i>2</i><u></u><b>Chest</b><em>—</em></span>
+        <span class="prow2"><i>3</i><u style="--oc:var(--p0)"></u><b>Palm Row</b><em>$60</em></span>
+        <span class="prow2"><i>4</i><u></u><b>Tax</b><em>—</em></span>
+        <span class="prow2"><i>5</i><u></u><b>Harbor Station</b><em>$200</em></span>
+        <span class="prow2"><i>6</i><u style="--oc:var(--p0)"></u><b>Cedar Ave</b><em>$100</em></span>
+        <span class="prow2"><i>7</i><u></u><b>Fortune</b><em>—</em></span>
+        <span class="prow2"><i>8</i><u style="--oc:var(--p2)"></u><b>Elm Ave</b><em>$100</em></span>
+        <span class="prow2"><i>9</i><u style="--oc:var(--p2)"></u><b>Linden Ave</b><em>$120</em></span>
+        <span class="prow2"><i>10</i><u></u><b>Jail</b><em>—</em></span>
+        <span class="prow2"><i>11</i><u style="--oc:var(--p1)"></u><b>Oak Street</b><em>$140</em></span>
+        <span class="prow2"><i>12</i><u></u><b>Tower Utilities</b><em>$150</em></span>
+        <span class="prow2"><i>13</i><u></u><b>Maple Street</b><em>$140</em></span>
+        <span class="prow2"><i>14</i><u></u><b>Birch Street</b><em>$160</em></span>
+        <span class="prow2"><i>15</i><u></u><b>Central Station</b><em>$200</em></span>
+        <span class="prow2"><i>16</i><u></u><b>Willow Way</b><em>$180</em></span>
+        <span class="prow2"><i>17</i><u></u><b>Chest</b><em>—</em></span>
+        <span class="prow2"><i>18</i><u></u><b>Aspen Way</b><em>$180</em></span>
+        <span class="prow2"><i>19</i><u></u><b>Fir Way</b><em>$200</em></span>
+      </div>
+      <div class="pcol">
+        <span class="prow2"><i>20</i><u></u><b>Free Parking</b><em>—</em></span>
+        <span class="prow2"><i>21</i><u></u><b>Lake Drive</b><em>$220</em></span>
+        <span class="prow2"><i>22</i><u></u><b>Fortune</b><em>—</em></span>
+        <span class="prow2"><i>23</i><u></u><b>River Drive</b><em>$220</em></span>
+        <span class="prow2"><i>24</i><u style="--oc:var(--p2)"></u><b>Harbor Drive</b><em>$240</em></span>
+        <span class="prow2"><i>25</i><u></u><b>West Station</b><em>$200</em></span>
+        <span class="prow2"><i>26</i><u style="--oc:var(--p3)"></u><b>Crest Point</b><em>$260</em></span>
+        <span class="prow2"><i>27</i><u style="--oc:var(--p3)"></u><b>Crest Square</b><em>$260</em></span>
+        <span class="prow2"><i>28</i><u></u><b>Tower Water</b><em>$150</em></span>
+        <span class="prow2"><i>29</i><u></u><b>Crest Heights</b><em>$280</em></span>
+        <span class="prow2"><i>30</i><u></u><b>Go To Jail</b><em>—</em></span>
+        <span class="prow2"><i>31</i><u></u><b>Garden Grove</b><em>$300</em></span>
+        <span class="prow2"><i>32</i><u></u><b>Garden Park</b><em>$300</em></span>
+        <span class="prow2"><i>33</i><u></u><b>Chest</b><em>—</em></span>
+        <span class="prow2"><i>34</i><u></u><b>Garden Court</b><em>$320</em></span>
+        <span class="prow2"><i>35</i><u></u><b>South Station</b><em>$200</em></span>
+        <span class="prow2"><i>36</i><u></u><b>Fortune</b><em>—</em></span>
+        <span class="prow2"><i>37</i><u style="--oc:var(--p2)"></u><b>Grand Avenue</b><em>$350</em></span>
+        <span class="prow2"><i>38</i><u></u><b>Luxury Tax</b><em>—</em></span>
+        <span class="prow2"><i>39</i><u></u><b>Grand Place</b><em>$400</em></span>
+      </div>
+    </div>
+  </aside>
+  <div class="console" data-region="console">
+    <span class="status">Хост · ваш ход — выберите действие</span>
+    <div class="acts">
+      <button class="hero" type="button">Бросок</button>
+      <button type="button">Купить $100</button>
+      <button type="button">Отказ</button>
+      <button type="button">Торг</button>
+      <button type="button">Конец хода</button>
+    </div>
+  </div>
+</div>
+
+<div class="cap-out">Кадр 1 — ровно 1600 × 1200 px: паддинг 12, шапка 64, зазор 8, доска 1000, зазор 8, консоль 96, паддинг 12 ·
+доки 300 и 260 · клетка 88 × 88 · нутро кольца под панно 808 × 808 (+2 px нахлёста) · цифра цены 34 px · кромка 3 px · уголок 14 px</div>
+
+<div class="cap-out">Кадр 2 — ровно 390 × 844 px: паддинг 8, шапка 112, зазор 6, кольцо 374, зазор 6, панно 202, зазор 6, консоль 112, паддинг 8 ·
+кольцо показано <b>целиком, все 40 клеток</b>: шаг 32.36 px, цифра цены 12.6 px — на телефоне видно цены, а не имена</div>
+<div class="frame ph" data-frame="390x844" style="width:390px;height:844px">
+  <header class="ph-hdr">
+    <span class="r1"><b>ХОД: Хост</b><span>ФАЗА: Начало хода</span></span>
+    <span class="r2"><span>РАУНД 7</span><span class="money">БАНК ПАРКОВКИ $240</span>
+      <button type="button" style="margin-left:auto">Пауза</button><button type="button">Настройки</button></span>
+    <span class="r3"><b>Хост $1215</b> · <b>Neuro $980</b> · <b>evil $640</b> · <b>Mira $1500</b></span>
+  </header>
+  <div class="ph-ring phb" data-region="board-phone" data-cell-count="40">
+<div class="cell s-b cn" data-cell="0" style="grid-area:11/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Старт</span></div>
+<div class="cell s-b" data-cell="1" style="grid-area:11/2;--gc:var(--g-brown)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">60</span></div>
+<div class="cell s-b cn" data-cell="2" style="grid-area:11/3"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span></div>
+<div class="cell s-b mine" data-cell="3" style="grid-area:11/4;--gc:var(--g-brown);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n">60</span></div>
+<div class="cell s-b cn" data-cell="4" style="grid-area:11/5"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span></div>
+<div class="cell s-b" data-cell="5" style="grid-area:11/6"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">200</span></div>
+<div class="cell s-b mine" data-cell="6" style="grid-area:11/7;--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n">100</span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b cn" data-cell="7" style="grid-area:11/8"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span></div>
+<div class="cell s-b" data-cell="8" style="grid-area:11/9;--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n">100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+<div class="cell s-b" data-cell="9" style="grid-area:11/10;--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n">120</span></div>
+<div class="cell s-r cn" data-cell="10" style="grid-area:11/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Тюрьма</span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка evil"><path d="M3 15h18l-3 5H6z"/><path d="M11 3h2v12h-2z"/><path d="M13 4l6 4-6 3z"/></svg></span></div>
+<div class="cell s-r mort" data-cell="11" style="grid-area:10/11;--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n">140</span></div>
+<div class="cell s-r" data-cell="12" style="grid-area:9/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">150</span></div>
+<div class="cell s-r" data-cell="13" style="grid-area:8/11;--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">140</span></div>
+<div class="cell s-r" data-cell="14" style="grid-area:7/11;--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">160</span></div>
+<div class="cell s-r" data-cell="15" style="grid-area:6/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">200</span></div>
+<div class="cell s-r" data-cell="16" style="grid-area:5/11;--gc:var(--g-orange)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">180</span></div>
+<div class="cell s-r cn" data-cell="17" style="grid-area:4/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span></div>
+<div class="cell s-r" data-cell="18" style="grid-area:3/11;--gc:var(--g-orange)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">180</span></div>
+<div class="cell s-r" data-cell="19" style="grid-area:2/11;--gc:var(--g-orange)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">200</span></div>
+<div class="cell s-t cn" data-cell="20" style="grid-area:1/11"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Парковка</span></div>
+<div class="cell s-t" data-cell="21" style="grid-area:1/10;--gc:var(--g-red)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">220</span></div>
+<div class="cell s-t cn" data-cell="22" style="grid-area:1/9"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span></div>
+<div class="cell s-t" data-cell="23" style="grid-area:1/8;--gc:var(--g-red)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">220</span></div>
+<div class="cell s-t" data-cell="24" style="grid-area:1/7;--gc:var(--g-red);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n">240</span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Neuro"><path d="M4.4 9.6 7 4l3 2.6h4L17 4l2.6 5.6V15a6 6 0 0 1-6 6h-3.2a6 6 0 0 1-6-6z"/></svg></span></div>
+<div class="cell s-t" data-cell="25" style="grid-area:1/6"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">200</span></div>
+<div class="cell s-t mort" data-cell="26" style="grid-area:1/5;--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n">260</span></div>
+<div class="cell s-t" data-cell="27" style="grid-area:1/4;--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n">260</span><span class="h"><b class="on"></b><b></b><b></b><b></b></span></div>
+<div class="cell s-t" data-cell="28" style="grid-area:1/3"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">150</span></div>
+<div class="cell s-t" data-cell="29" style="grid-area:1/2;--gc:var(--g-yellow)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">280</span></div>
+<div class="cell s-l cn" data-cell="30" style="grid-area:1/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">В тюрьму</span></div>
+<div class="cell s-l" data-cell="31" style="grid-area:2/1;--gc:var(--g-green)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">300</span></div>
+<div class="cell s-l" data-cell="32" style="grid-area:3/1;--gc:var(--g-green)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">300</span></div>
+<div class="cell s-l cn" data-cell="33" style="grid-area:4/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Mira"><path d="M3 12h18l-2 6H5z"/><path d="M6 9h12v3H6z"/><circle cx="7.5" cy="19.5" r="1.6"/><circle cx="16.5" cy="19.5" r="1.6"/></svg></span></div>
+<div class="cell s-l" data-cell="34" style="grid-area:5/1;--gc:var(--g-green)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">320</span></div>
+<div class="cell s-l" data-cell="35" style="grid-area:6/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">200</span></div>
+<div class="cell s-l cn" data-cell="36" style="grid-area:7/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span></div>
+<div class="cell s-l" data-cell="37" style="grid-area:8/1;--gc:var(--g-darkblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n">350</span></div>
+<div class="cell s-l cn" data-cell="38" style="grid-area:9/1"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span></div>
+<div class="cell s-l" data-cell="39" style="grid-area:10/1;--gc:var(--g-darkblue)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">400</span></div>
+  </div>
+  <div class="ph-panno">
+    <div class="zone">
+      <span class="zcap">БРОСОК</span>
+      <div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 5"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 3"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="27" cy="27" r="3"/></g></svg>
+        <span class="sum">5 + 3 = <b>8</b></span></div>
+      <span class="zg s">цель: 14 Birch Street · шагов 8</span>
+    </div>
+    <div class="zone">
+      <span class="zcap">СОБЫТИЕ</span>
+      <span class="zg">продажа дома · Mira</span>
+      <span class="zg s">Crest Square (27) · +$70</span>
+      <span class="zg s">новейшее: evil попадает в тюрьму</span>
+    </div>
+    <div class="zone">
+      <span class="zcap">ИГРОКИ</span>
+      <div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="cash">$1215</span></div>
+      <div class="prow" style="--pc:var(--p2)"><span class="chip"></span><span>Neuro</span><span class="cash">$980</span></div>
+      <div class="prow" style="--pc:var(--p1)"><span class="chip"></span><span>evil</span><span class="cash">$640</span></div>
+      <div class="prow" style="--pc:var(--p3)"><span class="chip"></span><span>Mira</span><span class="cash">$1500</span></div>
+    </div>
+    <div class="zone">
+      <span class="zcap">ПОДСКАЗКА · ИМЯ КЛЕТКИ</span>
+      <span class="zg">6 Cedar Ave</span>
+      <span class="zg s">$100 · владелец Хост · группа lightblue</span>
+    </div>
+  </div>
+  <div class="ph-con">
+    <span class="status">Хост · ваш ход — выберите действие</span>
+    <div class="acts">
+      <button class="hero" type="button">Бросок</button>
+      <button type="button">Купить $100</button>
+      <button type="button">Отказ</button>
+      <button type="button">Торг</button>
+      <button type="button">Конец хода</button>
+    </div>
+  </div>
+</div>
+<h1>Neuro Property Trade — второй круг, концепт 4: «числа-герои»</h1>
+<p class="note">Клетка — не шкатулка и не полоса, а <b>поле таблицы чисел</b>. Главный элемент клетки — цифра
+цены: кегль <b>34 px</b> при шаге 88 px (superbold, табличные цифры, выключка вправо в поле шириной
+шаг − 16 px). Все числа кольца стоят в одном и том же поле клетки, поэтому кольцо читается
+<b>счётной таблицей</b>: нижняя и верхняя стороны — строки чисел, левая и правая — столбцы чисел.
+Состояние клетки несут <b>тонкая кромка</b> (3 px, внутренняя кромка, цвет владельца) и
+<b>уголок</b> (14 × 14, во внутренней кромке, на стороне, откуда приходит фишка): пустой — контур,
+чужой — заливка цветом места, мой — заливка с обводкой 2 px accent, залог — штриховка.
+Имя клетки на клетке <b>не написано</b>: оно живёт в инспекторе «КЛЕТКА», в подсказке под курсором
+и в «ПАНОРАМЕ КОЛЬЦА» — таблице из 40 имён справа (R-12: имя не потеряно, а переехало туда, где
+его видно целиком и крупно). Данные и строки — дословно из <b>design/variants/scene-data.md</b>,
+цены — из <b>game/data/board.json</b>, палитра — только из <b>game/assets/skins/neuro/skin.json</b>,
+длительности — из <b>design/tokens.json</b>. Ни скрипта, ни внешнего ресурса, ни значка-иконки.
+Замеры — в <b>concept-4-numbers-measurements.md</b>.</p>
+
+<h2>Кольцо как таблица чисел: нижняя сторона целиком, в натуральную величину</h2>
+<p class="note">Девять клеток 1…9 стоят подряд так, как они стоят на доске. Это не иллюстрация, а <b>та же
+разметка</b>, что в кадре: число у всех девяти — одно поле <b>left 8 · right 8</b>, выключка вправо,
+табличные цифры, поэтому ряд читается строкой таблицы. Кромка владельца (3 px) идёт по верхней,
+внутренней кромке; уголок стоит в правом верхнем углу — там, куда фишка входит, потому что нижняя
+сторона идёт слева направо. Пустая клетка — без кромки и с пустым уголком; моя (3 и 6) — корпус
+<b>board.bg3</b> на ступень светлее и уголок с обводкой accent; чужая (8 и 9) — кромка и уголок цветом
+места; дома (8 Elm Ave, 2 дома) — два заполненных слота из четырёх.</p>
+<div class="tablerow">
+  <div class="cell s-b" style="--gc:var(--g-brown)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+  <div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span><span class="sub">клетка 2</span></div>
+  <div class="cell s-b mine" style="--gc:var(--g-brown);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+  <div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span><span class="sub">клетка 4</span></div>
+  <div class="cell s-b" style="--gc:var(--g-brown)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+  <div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+  <div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+  <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+  <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div>
+<p class="note">Цифра <b>60 / 100 / 120 / 200</b> при кегле 34.3 px: замер ширины — «$100» 65.8 px, «$200» 69.8 px
+в поле 73.9 px (шаг × 0.84 = 88 × 0.84). Свободный запас 4.1 px. Клетка без цены («Казна», «Налог»,
+«Шанс») ставит на то же место <b>слово</b> тем же приёмом (жирное, выключка влево, кегль 20.2 px = шаг × 0.23) —
+таблица не рвётся: герой клетки всегда один, число или слово.</p>
+<h2>Шесть состояний клетки — в натуральную величину (88 × 88)</h2>
+<p class="note">Сначала — четыре состояния подряд, как они стоят на кольце (пустая · чужая · моя · залог),
+чтобы разницу было видно одним взглядом. Ни одно состояние не занимает площади: кромка идёт по уже
+существующей кромке клетки, уголок — по уже существующему углу, штриховка залога — фон, собранная
+группа — перестановка двух уже присутствующих цветов. Единственное, что меняет площадь, — <b>полоса
+группы</b> 6 px по наружной кромке: она есть у клеток с группой и её нет у станций, налогов, казны и шанса.</p>
+<div class="tablerow">
+  <div class="cell s-b" style="--gc:var(--g-brown)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+  <div class="cell s-b" style="--gc:var(--g-brown);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+  <div class="cell s-b mine" style="--gc:var(--g-brown);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+  <div class="cell s-b mort" style="--gc:var(--g-brown);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div>
+<p class="note">Слева направо: <b>пустая</b> (кромки нет, уголок контуром) · <b>чужая</b> (кромка и уголок цветом
+места p2) · <b>моя</b> (корпус board.bg3 светлее, уголок с обводкой accent) · <b>залог</b> (штриховка
+45° по корпусу и полосе, число зачёркнуто, уголок заштрихован). Имя не написано ни на одной из четырёх —
+именно это и есть требование «моя читается без подписи».</p>
+<div class="lgrid">
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+    <span class="lt">пустая</span>
+    <span class="lx">Кромки нет вовсе, уголок — контур 1 px цветом линии. Видны только число и полоса группы. Имени нет ни буквы.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+    <span class="lt">чужая</span>
+    <span class="lx">Кромка 3 px цветом места владельца по внутренней кромке и уголок, залитый тем же цветом. Тот же цвет стоит рядом с именем владельца в списке «ИГРОКИ».</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+    <span class="lt">моя — без подписи</span>
+    <span class="lx">Два признака: корпус board.bg3 на ступень светлее (в оттенках серого моя клетка светлее всех) и уголок с обводкой 2 px accent поверх заливки.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b mort" style="--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+    <span class="lt">залог — выведена из игры</span>
+    <span class="lx">Четыре признака, все формой: штриховка 45° по корпусу, штриховка по полосе группы, уголок заштрихован, число зачёркнуто и приглушено. Площади — 0 px.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b grp" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+    <span class="lt">чужая группа собрана</span>
+    <span class="lx">Полоса группы получает внутреннюю линию 2 px цвета владельца: рядом стоят цвет группы и цвет хозяина. Перестановка двух цветов, 0 px площади. Сейчас на доске собрана лишь у того, кто взял всю группу: в сцене таких нет (lightblue разделена 6 — Хост, 8 и 9 — Neuro).</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Казна</span><span class="sub">клетка 2</span></div>
+    <span class="lt">клетка без цены</span>
+    <span class="lx">Герой — слово на том же месте и тем же приёмом, что число: жирное, 20 px, выключка влево. Номер клетки — строкой 11 px внизу, чтобы таблица не теряла строку.</span>
+  </div>
+</div>
+
+<h2>Дома 1…4, отель и четыре фишки — тоже в натуральную величину</h2>
+<p class="note">Число домов — это число заполненных слотов из четырёх (9 × 9 px, 2 px зазор), они стоят на
+одном месте всегда и никогда не переносятся. Отель отличается <b>формой</b>, а не цветом: один слот
+36 × 9 px с обводкой warn. Фишки ужимаются 16 → 13 → 10 → 8 px; кто где стоит — читается цветом фигуры
+и списком «ИГРОКИ», где тот же цвет стоит у имени.</p>
+<div class="lgrid">
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b></b><b></b><b></b></span></div>
+    <span class="lt">1 дом</span><span class="lx">1 заполненный слот из 4.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+    <span class="lt">2 дома</span><span class="lx">Так стоит 8 Elm Ave в кадре.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></span></div>
+    <span class="lt">3 дома</span><span class="lx">Считается без подписи и без цвета: 3 из 4 слотов.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></span></div>
+    <span class="lt">4 дома</span><span class="lx">Все четыре слота заняты. Дальше — только отель.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="hot"></b></span></div>
+    <span class="lt">отель</span><span class="lx">Один широкий слот 36 × 9 с обводкой warn вместо четырёх узких: различие формой, читается и без цвета.</span>
+  </div>
+  <div class="lcell">
+    <div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t t4"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg><svg viewBox="0 0 24 24" role="img" aria-label="фишка Neuro" style="color:var(--p2)"><path d="M4.4 9.6 7 4l3 2.6h4L17 4l2.6 5.6V15a6 6 0 0 1-6 6h-3.2a6 6 0 0 1-6-6z"/></svg><svg viewBox="0 0 24 24" role="img" aria-label="фишка evil" style="color:var(--p1)"><path d="M3 15h18l-3 5H6z"/><path d="M11 3h2v12h-2z"/><path d="M13 4l6 4-6 3z"/></svg><svg viewBox="0 0 24 24" role="img" aria-label="фишка Mira" style="color:var(--p3)"><path d="M3 12h18l-2 6H5z"/><path d="M6 9h12v3H6z"/><circle cx="7.5" cy="19.5" r="1.6"/><circle cx="16.5" cy="19.5" r="1.6"/></svg></span></div>
+    <span class="lt">четыре фишки на клетке</span><span class="lx">Ужимаются 16 → 13 → 10 → 8 px, стоят у наружной кромки, число остаётся главным. Кто где стоит — по цвету фигуры и по списку «ИГРОКИ».</span>
+  </div>
+</div>
+<h2>Раскадровки: одиннадцать событий</h2>
+<p class="note">Статический макет не двигается, поэтому каждое событие показано раскадровкой: 3–6 кадров
+подряд, чтобы было видно, что происходит от начала к концу. Длительности — только из
+<b>design/tokens.json</b> (fast .12 / base .19 / slow .32 / card 2.8 / dice_roll .85) и
+<b>game/assets/skins/neuro/skin.json</b> (motion: step .19, hop .32, pop .5, panel .3, card 2.8,
+dice_roll .85), кривая — cubic-bezier(.2,0,0,1). Ни одной длительности не придумано. Последний кадр
+каждой раскадровки — «анимации выключены»: то, что видно, если движение не играть вовсе.</p>
+<div class="sbs">
+
+<section class="sb"><h3>1. Ход — число уезжает из клетки в клетку</h3>
+<span class="sub">Событие «ход»: Хост на 6 Cedar Ave, кубики 5 + 3 = 8, цель 14 Birch Street. Шаг — step 0.19 с на клетку, дуга — hop 0.32 с, подсветка кромки — base 0.19 с. Полный путь 8 × 0.19 = 1.52 с. Числа на клетках не перерисовываются: двигается только фишка и рамка подсветки, потому что число — свойство клетки, а не хода.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mine hl" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Бросок отработал:</b> 5 + 3 = 8 (dice_roll 0.85 с). Фишка стоит на 6 Cedar Ave, клетка 6 подсвечена кромкой accent2. В панно строка «ФАЗА: Начало хода» и сумма 8. Ход — 8 шагов до 14 Birch Street.</span></div></div>
+
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.19 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b cn hl2"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Шаг 1 из 8:</b> фишка на 7 Fortune. Рамка подсветки 2 px accent2 переехала на клетку 7 — base 0.19 с, дуга подъёма hop 0.32 с. Кромки у 7 нет: клетка ничья, и это видно без слов.</span></div></div>
+
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.38 с</span></span>
+<div><div class="strip">
+<div class="cell s-b cn" style="--gc:var(--g-lightblue)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b hl2" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Шаг 2 из 8:</b> 8 Elm Ave — чужая клетка (Neuro, 2 дома). Кромка 3 px цвета p2 и два заполненных слота уже стоят: владелец и число домов читаются без подписи. Число <b>100</b> не изменилось — оно не участвует в ходе.</span></div></div>
+
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 1.52 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b hl" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Приход:</b> 8 × 0.19 = 1.52 с на весь путь. Фишка на 14 Birch Street. Подсветка уходит за base 0.19 с, клетка остаётся с тем, чем живёт всегда: число, полоса группы, кромка владельца. Строка журнала — base 0.19 с.</span></div></div>
+
+<div class="sbf"><span class="t">Кадр 5<span class="d">t = 1.84 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-darkblue)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>400</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b cn hl"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Старт</span><span class="sub">клетка 0 · круг начинается</span></div>
+<div class="cell s-b" style="--gc:var(--g-brown)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>60</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Проход клетки 0:</b> клетка Start вспыхивает на slow 0.32 с, «БАНК ПАРКОВКИ $240» в шапке растёт на $200, сумма броска не меняется. Это единственная клетка кольца без числа — у неё герой слово, и оно стоит на том же месте, что числа у соседей.</span></div></div>
+
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b hl" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Ни одного промежуточного кадра:</b> фишка стоит сразу на 14 Birch Street, клетка обведена 2 px accent2, в журнале «Хост идёт на Birch Street, шагов 8». Путь читается порядком чисел на кольце — 140, 160, 200 — а не движением.</span></div></div>
+</section>
+
+<section class="sb"><h3>2. Бросок — цифры падают и встают</h3>
+<span class="sub">Единственное событие, которое не трогает ни одной клетки: движение целиком в панно. Длительность — dice_roll 0.85 с, сумма — pop 0.5 с, строка журнала — base 0.19 с. Сумма — тоже цифра-герой: 64 px, крупнее любой цифры на кольце.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="pv"><span class="zcap">БРОСОК</span><div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 1"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="18" cy="18" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 1"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="18" cy="18" r="3"/></g></svg><span class="sum">—</span></div></div>
+<span class="x"><b>Кости пущены:</b> dice_roll 0.85 с. Грани ещё не определены, сумма стоит прочерком. Ни одно число на кольце не шевелится.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.42 с</span></span>
+<div><div class="pv"><span class="zcap">БРОСОК</span><div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 6"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="9" cy="18" r="3"/><circle cx="27" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 2"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><span class="sum">—</span></div></div>
+<span class="x"><b>Качение:</b> грани мелькают раз в 0.06 с. Кольцо не перерисовывается: ни одна клетка не знает о броске.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.85 с</span></span>
+<div><div class="pv"><span class="zcap">БРОСОК</span><div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 5"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 3"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><span class="sum">5 + 3 = <b>—</b></span></div></div>
+<span class="x"><b>Кости встали:</b> 5 и 3. Это конец dice_roll — дальше только сумма.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 1.35 с</span></span>
+<div><div class="pv"><span class="zcap">БРОСОК</span><div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 5"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 3"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><span class="sum">5 + 3 = <b>8</b></span></div></div>
+<span class="x"><b>Сумма выезжает цифрой 64 px</b> за pop 0.5 с и остаётся стоять. Строка журнала печатается за base 0.19 с. С этого мгновения известна цель: 14 Birch Street.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="pv"><span class="zcap">БРОСОК</span><div class="dice"><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 5"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="27" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="9" cy="27" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><svg class="die" viewBox="0 0 36 36" role="img" aria-label="кость 3"><rect width="36" height="36" rx="6" fill="var(--dice-bg)"/><g fill="var(--dice-ink)"><circle cx="9" cy="9" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="27" cy="27" r="3"/></g></svg><span class="sum">5 + 3 = <b>8</b></span></div></div>
+<span class="x"><b>Кости нарисованы сразу гранями 5 и 3</b>, сумма стоит цифрой 8, строка «Хост бросает 5+3» в журнале. Ни мелькания, ни качения: смысл держится цифрой, а не движением.</span></div></div>
+</section>
+<section class="sb"><h3>3. Покупка — клетка получает кромку и уголок</h3>
+<span class="sub">Пример процесса: 5 Harbor Station, $200. Кромка владельца 3 px и уголок — единственные признаки собственности на клетке; число при этом не меняется (цена — свойство клетки, а не владельца). Карточка — panel 0.3 с, кромка — base 0.19 с, деньги — slow 0.32 с.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span><span class="sub">клетка 4</span></div>
+<div class="cell s-b hl2"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Фишка встала на 5 Harbor Station</b> ($200, свободна). Кромки нет, уголок пустой — это и есть признак «ничья». В панно выезжает карточка покупки: panel 0.3 с.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.30 с</span></span>
+<div><div class="pv"><span class="zcap">СОБЫТИЕ · ПОКУПКА</span><span class="zg">Harbor Station · $200</span><span class="zg s">Хост · владений станет 3</span><span class="zg s">кнопки: Купить $200 · Отказ · Торг</span></div>
+<span class="x"><b>Решение показано словом.</b> Клетка не меняется ни на пиксель, пока кнопка не нажата: до нажатия она обязана выглядеть ничьей для всех.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.49 с</span></span>
+<div><div class="strip">
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span><span class="sub">клетка 4</span></div>
+<div class="cell s-b hl2" style="--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Кромка владельца:</b> 3 px цвета p0 встают по внутренней кромке за base 0.19 с, уголок заливается тем же цветом. Клетка перестаёт быть ничьей — и это видно без единой буквы. Число <b>200</b> не шевельнулось.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 0.81 с</span></span>
+<div><div class="pv"><span class="zcap">ИГРОКИ</span><div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="cash">$1015</span></div><div class="prow" style="--pc:var(--p2)"><span class="chip"></span><span>Neuro</span><span class="cash">$980</span></div></div>
+<span class="x"><b>Деньги:</b> $1215 становится $1015 за slow 0.32 с — цифра едет, не мигает. Кромка p0 на клетке 5 теперь совпадает с цветом моего места в списке.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Налог</span><span class="sub">клетка 4</span></div>
+<div class="cell s-b" style="--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>200</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Клетка сразу с кромкой p0</b> и заполненным уголком, деньги — новым числом, в журнале строка покупки. Смысл держится кромкой и числом; ни одно требование не выполнено удалением.</span></div></div>
+</section>
+
+<section class="sb"><h3>4. Аренда — числа едут, клетка стоит</h3>
+<span class="sub">8 Elm Ave (Neuro, 2 дома) → аренда $60. Числа денег — slow 0.32 с, вспышка слотов домов — base 0.19 с. Собственность не меняется: ни одна кромка не переставляется. Направление платежа написано словом, а не движением.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b hl2" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Фишка встала на чужую клетку:</b> 8 Elm Ave, Neuro, 2 дома. Кромка p2 и два заполненных слота стоят с прошлого хода — клетка не перерисовывается под событие. Число 100 — цена клетки, не аренда.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.19 с</span></span>
+<div><div class="strip">
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b hl" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Слоты домов вспыхивают</b> за base 0.19 с: событие показывает, <i>за что</i> платит аренда. Число слотов — 2 из 4 — и есть ответ; ни цифры, ни подписи не нужно.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.51 с</span></span>
+<div><div class="pv"><span class="zcap">АРЕНДА</span><span class="zg">Хост → Neuro · $60</span><div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="cash">$1155</span></div><div class="prow" style="--pc:var(--p2)"><span class="chip"></span><span>Neuro</span><span class="cash">$1040</span></div></div>
+<span class="x"><b>Две суммы едут навстречу</b> за slow 0.32 с: у Хоста $1215 → $1155, у Neuro $980 → $1040. Оба числа стоят в одном столбце — деньги читаются как столбец таблицы.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 0.83 с</span></span>
+<div><div class="pv"><span class="zcap">ЖУРНАЛ</span><span class="zg">Хост платит Neuro $60</span><span class="zg s">новейшая строка · base 0.19 с</span></div>
+<span class="x"><b>Строка в журнале</b> называет плательщика, получателя и сумму словами. Направление платежа не приходится угадывать по движению — оно написано.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b hl" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Оба числа стоят новыми сразу</b>, в панно строка «Хост платит Neuro $60», клетка та же. Аренда не трогает доску: это событие про деньги, и оно живёт в числах панно.</span></div></div>
+</section>
+<section class="sb"><h3>5. Аукцион — ставка поднимается цифрой, клетка ждёт</h3>
+<span class="sub">Пример: 13 Maple Street, $140. Стартовая цена — $0, шаг ставки — base 0.19 с, отказ места — slow 0.32 с, итог — pop 0.5 с, кромка победителя — base 0.19 с. Клетка не меняется до молотка: во время торга она обязана выглядеть ничьей для всех четырёх.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="pv"><span class="zcap">АУКЦИОН · КЛЕТКА 13</span><span class="zg">Maple Street · цена $140</span><span class="zg s">текущая ставка: $0 · шаг $10</span><span class="zg s">Хост · Neuro · evil · Mira — все в торге</span></div>
+<span class="x"><b>Торг начат:</b> карточка выезжает за panel 0.3 с. На кольце ничего не меняется — ни кромки, ни уголка: собственность ещё не определена.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.19 с</span></span>
+<div><div class="pv"><span class="zcap">АУКЦИОН · СТАВКА</span><span class="zg">Хост: $60</span><span class="zg s">кнопки: СТАВКА · Отказ · ОПЛАТИТЬ $60</span></div>
+<span class="x"><b>Ставка поднялась на шаг</b> за base 0.19 с. Число ставки — 60 — стоит тем же приёмом, что числа на кольце: жирное, табличные цифры, выключка вправо.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.38 с</span></span>
+<div><div class="pv"><span class="zcap">АУКЦИОН · СТАВКА</span><span class="zg">Mira: $80</span><div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="cash">отказ</span></div><div class="prow" style="--pc:var(--p3)"><span class="chip"></span><span>Mira</span><span class="cash">$80</span></div></div>
+<span class="x"><b>Ушедшие гаснут по одному</b> за slow 0.32 с: карточка места тускнеет, но не исчезает — место остаётся в списке с суммой на руках. Ни один игрок не пропадает из интерфейса.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 0.70 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b hl2" style="--gc:var(--g-pink);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Молоток:</b> итог встаёт цифрой за pop 0.5 с, и только теперь клетка 13 получает кромку 3 px цвета p3 и залитый уголок — base 0.19 с. Цена <b>140</b> не изменилась: её заплатили, но она осталась ценой клетки.</span></div></div>
+<div class="sbf"><span class="t">Кадр 5<span class="d">t = 1.20 с</span></span>
+<div><div class="pv"><span class="zcap">ИТОГ АУКЦИОНА</span><span class="zg">Maple Street · Mira · $80</span><div class="prow" style="--pc:var(--p3)"><span class="chip"></span><span>Mira</span><span class="cash">$1420</span></div></div>
+<span class="x"><b>Собственность закреплена:</b> деньги Mira $1500 → $1420 за slow 0.32 с, в журнале строка «Mira покупает Maple Street за $80». Кромка p3 на клетке совпадает с цветом Mira в списке игроков.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Клетка сразу с кромкой p3</b>, в панно итог словами и цифрой, в журнале строка с суммой. Торг без движения — это список ставок и три кнопки со словами.</span></div></div>
+</section>
+
+<section class="sb"><h3>6. Сделка — две кромки меняются местами</h3>
+<span class="sub">Пример процесса: Хост отдаёт 6 Cedar Ave и $100, получает 8 Elm Ave и $200. Условия — panel 0.3 с, кромки — base 0.19 с на клетку, деньги — slow 0.32 с. Сделка — единственное событие, которое двигает собственность в обе стороны сразу.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>До сделки:</b> 6 Cedar Ave — моя (кромка p0, уголок с обводкой, светлый корпус), 8 Elm Ave — Neuro (кромка p2, два дома). Обе клетки несут одно и то же число 100 — и различаются только кромкой и уголком.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.30 с</span></span>
+<div><div class="pv"><span class="zcap">ТОРГ</span><span class="zg">Хост даёт: Cedar Ave + $100</span><span class="zg s">Хост просит: Elm Ave + $200</span><span class="zg s">кнопки: Сделка · Отказ</span></div>
+<span class="x"><b>Условия показаны списком</b> за panel 0.3 с: что даю, что прошу, чем доплачиваю. Пока сделка не принята, кольцо стоит без изменений.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.49 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b mine hl" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Кромки переехали:</b> 6 Cedar Ave получила кромку p2, 8 Elm Ave — кромку p0 и светлый корпус. По одному base 0.19 с на клетку. Дома остались на 8 — их не переносит ни одна сделка, они закреплены за клеткой, а не за владельцем.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 0.81 с</span></span>
+<div><div class="pv"><span class="zcap">ИГРОКИ</span><div class="prow" style="--pc:var(--p0)"><span class="chip"></span><span>Хост</span><span class="cash">$1315</span></div><div class="prow" style="--pc:var(--p2)"><span class="chip"></span><span>Neuro</span><span class="cash">$880</span></div></div>
+<span class="x"><b>Деньги едут</b> за slow 0.32 с: Хост $1215 → $1315 (получил $200, отдал $100), Neuro $980 → $880. Оба числа в одном столбце.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Кромки стоят на новых клетках сразу</b>, деньги — новыми числами, в журнале строка сделки с обоими предметами. Условия читаются списком, без движения.</span></div></div>
+</section>
+<section class="sb"><h3>7. Стройка — слоты загораются, отель меняет форму</h3>
+<span class="sub">Пример: 8 Elm Ave, 2 дома → 3 → 4 → отель. Каждый дом — pop 0.5 с, деньги — slow 0.32 с. Слоты живут на одном месте, их всегда четыре, и они никогда не переносятся — поэтому при 77 px видно ровно то же, что при 95: сколько слотов залито, столько домов.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b hl" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Дом строится на 8 Elm Ave:</b> залито два слота из четырёх. Слоты — единственное место на клетке, где живёт число домов, и оно читается без подписи и без цвета.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.50 с</span></span>
+<div><div class="strip">
+<div class="cell s-b hl" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b class="on"></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Третий дом встаёт</b> за pop 0.5 с: загорается третий слот. Деньги места идут вниз за slow 0.32 с. Ни число, ни кромка, ни уголок не сдвинулись — клетка не перекладывается под событие.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 1.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b hl" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b class="on"></b><b class="on"></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Четвёртый дом</b> за ещё один pop 0.5 с: заполнены все четыре слота. Клетка показывает «4 дома» без цифры и без подписи — только формой.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 1.50 с</span></span>
+<div><div class="strip">
+<div class="cell s-b hl" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="hot"></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Отель:</b> четыре узких слота заменяются одним широким 36 × 9 px с обводкой warn — pop 0.5 с. Отель отличается <i>формой</i>, а не цветом: читается и в оттенках серого, и с телефона, где слоты всего 4 px.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b hl" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="hot"></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Отель нарисован сразу</b>, в инспекторе «домов: отель», деньги — новым числом, строка в журнале. Место под широкий слот заложено в клетке заранее: вёрстка не прыгает ни на пиксель.</span></div></div>
+</section>
+
+<section class="sb"><h3>8. Залог и выкуп — штриховка проходит по числу</h3>
+<span class="sub">Пример: 11 Oak Street (evil, без домов). Штриховка — slow 0.32 с, зачёркивание числа — base 0.19 с, деньги — slow 0.32 с. Залог занимает 0 px площади клетки: это фон, зачёркивание и заштрихованный уголок.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Залог начинается:</b> 11 Oak Street — evil, домов нет. Кромка p1 стоит, число 140 стоит. В инспекторе появляется слово «в залоге» и сколько будет получено.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.32 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mort" style="--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Штриховка проходит по корпусу</b> за slow 0.32 с: штрих 1 px, шаг 6 px. Это фон — ни одного пикселя площади не занято, и ни одно число не сдвинулось с места.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.51 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mort" style="--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Число зачёркнуто и приглушено</b> за base 0.19 с, полоса группы тоже заштрихована, уголок — штриховка. Четыре признака, все формой: клетка читается «выведена из игры» и в оттенках серого.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 0.83 с</span></span>
+<div><div class="pv"><span class="zcap">ДЕНЬГИ</span><div class="prow" style="--pc:var(--p1)"><span class="chip"></span><span>evil</span><span class="cash">$710</span></div><span class="zg s">залог 11 Oak Street: +$70 · slow 0.32 с</span></div>
+<span class="x"><b>Число денег едет</b> $640 → $710 за slow 0.32 с. Залог виден и в числе на месте игрока, и в журнале строкой «evil закладывает клетку 11».</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b mort" style="--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k mo"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>160</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Клетка сразу заштрихована</b>, число зачёркнуто, в инспекторе написано «в залоге» и сколько получено, в журнале строка. Выкуп — то же событие в обратную сторону: штриховка уходит за slow 0.32 с, число и кромка возвращаются.</span></div></div>
+</section>
+<section class="sb"><h3>9. Банкротство — фишка уходит, кромки меняют цвет</h3>
+<span class="sub">Пример: evil не может заплатить $700. Карточка места гаснет — base 0.19 с, кромки должника уходят — slow 0.32 с, кромки кредитора приходят — base 0.19 с на клетку. Место не исчезает из интерфейса: оно помечается словом «выбыл» и остаётся в списке.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка evil" style="color:var(--p1)"><path d="M3 15h18l-3 5H6z"/><path d="M11 3h2v12h-2z"/><path d="M13 4l6 4-6 3z"/></svg></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Платёж не проходит:</b> у evil $640, к оплате $700. Клетки ещё в порядке: кромки p1 стоят, числа не тронуты. В панно карточка с суммой долга.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.32 с</span></span>
+<div><div class="strip">
+<div class="cell s-b dim" style="--gc:var(--g-pink);--ec:var(--p1)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b dim" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Карточка места гаснет</b> за base 0.19 с, клетки должника уходят в тень за slow 0.32 с. Это ещё не банкротство — это отказ в оплате, и он обратим.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.64 с</span></span>
+<div><div class="strip">
+<div class="cell s-b dim" style="--gc:var(--g-pink)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b dim" style="--gc:var(--g-lightblue)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Кромки уходят</b> за slow 0.32 с: клетки перестают называть хозяина. Пока идёт расчёт, ни одна из них не принадлежит никому — это честнее, чем перекрасить сразу. Числа при этом не меняются ни на пиксель.</span></div></div>
+<div class="sbf"><span class="t">Кадр 4<span class="d">t = 0.96 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-pink);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>140</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>120</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Клетки переходят кредитору:</b> кромки встают цветом p2 по одному base 0.19 с на клетку. Фишка evil уходит с кольца — клетка 10 Jail остаётся без фигуры, но с числом и словом «Тюрьма».</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="pv"><span class="zcap">ИГРОКИ</span><div class="prow" style="--pc:var(--p1)"><span class="chip"></span><span>evil</span><span class="cash">выбыл</span></div><span class="zg s">долг $700 · клетки 11 перешли Neuro</span></div>
+<span class="x"><b>Место помечено словом «выбыл»</b> и остаётся в списке игроков — R-12: ничего не исчезает из интерфейса. Клетки сразу с кромками кредитора, в журнале строка с суммой долга.</span></div></div>
+</section>
+
+<section class="sb"><h3>10. Конец игры — баннер поверх, кольцо остаётся</h3>
+<span class="sub">Баннер — panel 0.3 с, затухание кольца — slow 0.32 с, рамка клеток победителя — accent. Ни одна клетка не удаляется и ни одно число не гаснет: R-12.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>260</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>260</span><span class="h"><b class="on"></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-yellow)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>280</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Последний платёж прошёл:</b> у Mira $1500, у остальных меньше. Клетки стоят как стояли: победитель определяется не цветом кольца, а числом на месте игрока.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.30 с</span></span>
+<div><div class="strip">
+<div class="cell s-b win" style="--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>260</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b win" style="--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>260</span><span class="h"><b class="on"></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-yellow)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>280</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Баннер выезжает</b> поверх кадра за panel 0.3 с. Клетки победителя получают рамку 2 px accent — единственное место, где кольцо меняется под конец игры.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.62 с</span></span>
+<div><div class="pv"><span class="zcap">КОНЕЦ ИГРЫ</span><span class="zg">Победитель: Mira</span><span class="zg s">$1500 · владений 2 · домов 0</span><span class="zg s">кнопки: Заново · Настройки</span></div>
+<span class="x"><b>Итог держится текстом и числом:</b> имя, сумма, число владений. Кольцо гаснет на ступень за slow 0.32 с, но не исчезает — числа на клетках читаются и под затемнением.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="strip">
+<div class="cell s-b" style="--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>260</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-yellow);--ec:var(--p3)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>260</span><span class="h"><b class="on"></b><b></b><b></b><b></b></span></div>
+<div class="cell s-b" style="--gc:var(--g-yellow)"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n"><i>$</i>280</span><span class="h"><b></b><b></b><b></b><b></b></span></div>
+</div><span class="x"><b>Баннер стоит сразу</b>, кольцо не гаснет вовсе, все 40 чисел на месте и читаются. Итог держится текстом: имя, сумма, две кнопки со словами.</span></div></div>
+</section>
+
+<section class="sb"><h3>11. Пауза и продолжение — затемнение и одно слово</h3>
+<span class="sub">scrim — slow 0.32 с, строка — base 0.19 с. Числа под затемнением не перерисовываются: пауза не трогает состояние партии, она только гасит свет.</span>
+<div class="sbf"><span class="t">Кадр 1<span class="d">t = 0.00 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Пауза нажата:</b> затемнение проявляется за slow 0.32 с. Клетки не меняются — пауза не трогает состояние партии.</span></div></div>
+<div class="sbf"><span class="t">Кадр 2<span class="d">t = 0.32 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mine dim" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b cn dim"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b dim" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Строка «Матч на паузе»</b> встаёт по центру за base 0.19 с, кнопка меняется на «Продолжить». Числа под затемнением остаются читаемыми — на доску можно смотреть.</span></div></div>
+<div class="sbf"><span class="t">Кадр 3<span class="d">t = 0.19 с</span></span>
+<div><div class="strip">
+<div class="cell s-b mine" style="--gc:var(--g-lightblue);--ec:var(--p0)"><span class="g"></span><span class="e"></span><span class="k m"></span><span class="n"><i>$</i>100</span><span class="h"><b></b><b></b><b></b><b></b></span><span class="t"><svg viewBox="0 0 24 24" role="img" aria-label="фишка Хост" style="color:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div>
+<div class="cell s-b cn"><span class="g"></span><span class="e"></span><span class="k"></span><span class="n">Шанс</span><span class="sub">клетка 7</span></div>
+<div class="cell s-b" style="--gc:var(--g-lightblue);--ec:var(--p2)"><span class="g"></span><span class="e"></span><span class="k f"></span><span class="n"><i>$</i>100</span><span class="h"><b class="on"></b><b class="on"></b><b></b><b></b></span></div>
+</div><span class="x"><b>Продолжение:</b> затемнение уходит за slow 0.32 с, строка исчезает за base 0.19 с, кнопка снова «Пауза». Ни одного кадра партии не потеряно и ни одно число не пересчитано.</span></div></div>
+<div class="sbf"><span class="t">Анимации выключены<span class="d">t = сразу</span></span>
+<div><div class="pv"><span class="zcap">ПАУЗА</span><span class="zg">Матч на паузе</span><span class="zg s">затемнение и строка стоят сразу · кнопка «Продолжить»</span></div>
+<span class="x"><b>Затемнение и строка стоят сразу</b>, кнопка подписана «Продолжить». Пауза — одиннадцатое событие списка, и оно закрыто тем же правилом: смысл держится словом и числом, а не движением.</span></div></div>
+</section>
+
+</div>
+<h2>Событие → что двигается → длительность → что видно при выключенных анимациях</h2>
+<p class="note">Порядок — по приоритету задания. Переключатель «Анимации» живёт в блоке «ВИД И ДВИЖЕНИЕ» левого дока:
+он подменяет профиль движения, а не логику. Ни одно событие движка не знает о движении — и ни одно
+число на клетке не перерисовывается под событие: числа меняет только состояние партии.</p>
+<table>
+<thead><tr><th style="width:34px">#</th><th style="width:180px">Событие</th><th style="width:390px">Что двигается и меняется</th>
+<th style="width:190px">Длительность</th><th>Что видно при выключенных анимациях</th></tr></thead>
+<tbody>
+<tr><td>1</td><td class="ev">Ход<br><span class="mu">move, teleport</span></td><td>Фишка идёт по клеткам по одной; рамка 2 px accent2 переезжает с клетки на клетку; счётчик «шаг N из M» в панно. Числа не двигаются.</td><td class="dur">step 0.19 с на клетку<br>hop 0.32 с на дугу<br>подсветка base 0.19 с</td><td>Фишка стоит сразу на целевой клетке, рамка accent2 на ней, в журнале «Хост идёт на Birch Street, шагов 8». Путь читается порядком чисел на кольце.</td></tr>
+<tr><td>2</td><td class="ev">Бросок<br><span class="mu">roll</span></td><td>Две кости катятся, встают на гранях, сумма выезжает цифрой 64 px в панно, строка журнала печатается.</td><td class="dur">dice_roll 0.85 с<br>сумма pop 0.5 с<br>строка base 0.19 с</td><td>Кости нарисованы сразу гранями 5 и 3, сумма стоит цифрой 8, строка «Хост бросает 5+3». Кольцо не трогается вовсе.</td></tr>
+<tr><td>3</td><td class="ev">Покупка<br><span class="mu">purchase</span></td><td>Карточка покупки выезжает в панно; клетка получает кромку владельца 3 px и залитый уголок; деньги места меняются на новое число.</td><td class="dur">карточка panel 0.3 с<br>кромка base 0.19 с<br>деньги slow 0.32 с</td><td>Клетка сразу с кромкой владельца и залитым уголком, деньги — новым числом, в журнале строка покупки. Владелец читается цветом кромки.</td></tr>
+<tr><td>4</td><td class="ev">Аренда<br><span class="mu">rent</span></td><td>Слоты домов вспыхивают; две суммы едут навстречу друг другу; у обоих мест одновременно меняются числа.</td><td class="dur">вспышка base 0.19 с<br>деньги slow 0.32 с</td><td>В панно строка «Хост платит Neuro $60», оба числа стоят новыми. Направление платежа написано словом, а не движением.</td></tr>
+<tr><td>5</td><td class="ev">Аукцион<br><span class="mu">aucstart, bid, pass, aucwin, aucnone</span></td><td>Ставка поднимается шагами; ушедшие из торга места гаснут по одному; после молотка клетка получает кромку победителя.</td><td class="dur">шаг ставки base 0.19 с<br>отказ slow 0.32 с<br>итог pop 0.5 с<br>кромка base 0.19 с</td><td>Клетка сразу с кромкой победителя, в панно итог словами и цифрой, в журнале строка с суммой. Торг — список ставок и три кнопки со словами.</td></tr>
+<tr><td>6</td><td class="ev">Сделка<br><span class="mu">trade</span></td><td>Условия выезжают списком; две кромки меняются местами по одной клетке за шаг; деньги едут.</td><td class="dur">условия panel 0.3 с<br>кромка base 0.19 с<br>деньги slow 0.32 с</td><td>Кромки стоят на новых клетках сразу, деньги — новыми числами, в журнале строка сделки с обоими предметами.</td></tr>
+<tr><td>7</td><td class="ev">Стройка<br><span class="mu">build, sell_house</span></td><td>Загорается слот дома (2 → 3 → 4); четыре узких слота заменяются одним широким — отель; деньги идут вниз.</td><td class="dur">дом pop 0.5 с<br>отель pop 0.5 с<br>деньги slow 0.32 с</td><td>Отель нарисован сразу одним широким слотом, в инспекторе «домов: отель», в журнале строка стройки. Место под широкий слот заложено заранее.</td></tr>
+<tr><td>8</td><td class="ev">Залог и выкуп<br><span class="mu">mortgage, unmortgage</span></td><td>Штриховка 45° проходит по корпусу и по полосе группы; число зачёркивается и приглушается; уголок становится штриховкой; деньги едут.</td><td class="dur">штриховка slow 0.32 с<br>зачёркивание base 0.19 с<br>деньги slow 0.32 с</td><td>Клетка сразу заштрихована, число зачёркнуто, в инспекторе «в залоге», в журнале строка «evil закладывает клетку 11». Выкуп — то же в обратную сторону.</td></tr>
+<tr><td>9</td><td class="ev">Банкротство<br><span class="mu">bankrupt</span></td><td>Карточка места гаснет; кромки должника уходят; фишка уходит с кольца; кромки кредитора приходят по одной клетке за шаг.</td><td class="dur">карточка base 0.19 с<br>кромки уходят slow 0.32 с<br>кромки приходят base 0.19 с</td><td>Место помечено словом «выбыл» и остаётся в списке игроков; клетки сразу с кромками кредитора, в журнале строка с суммой долга. Ничего не исчезает.</td></tr>
+<tr><td>10</td><td class="ev">Конец игры<br><span class="mu">game_over</span></td><td>Баннер выезжает поверх; клетки победителя получают рамку accent; кольцо гаснет на ступень.</td><td class="dur">баннер panel 0.3 с<br>рамка base 0.19 с<br>затухание slow 0.32 с</td><td>Баннер стоит сразу, кольцо не гаснет, все 40 чисел на месте. Итог держится текстом: имя победителя, сумма, две кнопки.</td></tr>
+<tr><td>11</td><td class="ev">Пауза и продолжение<br><span class="mu">pause, resume</span></td><td>Затемнение проявляется; строка «Матч на паузе» встаёт по центру; кнопка меняется на «Продолжить».</td><td class="dur">scrim slow 0.32 с<br>строка base 0.19 с</td><td>Затемнение и строка стоят сразу, кнопка подписана «Продолжить». Числа под затемнением читаются — на доску можно смотреть.</td></tr>
+</tbody></table>
+
+<h3>Как это выключается и подменяется</h3>
+<table>
+<thead><tr><th style="width:150px">Токен</th><th style="width:170px">Значение</th><th style="width:260px">Где живёт</th>
+<th>Что делает переключатель «Анимации»</th></tr></thead>
+<tbody>
+<tr><td class="ev">fast</td><td class="dur">0.12 с</td><td class="mu">design/tokens.json → shared.motion</td><td>наведение и нажатие: при выключении остаётся смена фона без плавности</td></tr>
+<tr><td class="ev">base</td><td class="dur">0.19 с</td><td class="mu">design/tokens.json → shared.motion</td><td>кромка владельца, уголок, подсветка, строка журнала: при выключении всё встаёт сразу</td></tr>
+<tr><td class="ev">slow</td><td class="dur">0.32 с</td><td class="mu">design/tokens.json → shared.motion</td><td>деньги, штриховка залога, затемнение, затухание кольца: при выключении новое число и штриховка стоят сразу</td></tr>
+<tr><td class="ev">step</td><td class="dur">0.19 с</td><td class="mu">skin.json → motion.step</td><td>шаг фишки: при выключении фишка стоит на целевой клетке</td></tr>
+<tr><td class="ev">hop</td><td class="dur">0.32 с</td><td class="mu">skin.json → motion.hop</td><td>дуга подъёма фишки: при выключении дуги нет, путь читается порядком чисел</td></tr>
+<tr><td class="ev">pop</td><td class="dur">0.5 с</td><td class="mu">skin.json → motion.pop</td><td>появление числа и слота дома: при выключении нарисованы сразу</td></tr>
+<tr><td class="ev">panel</td><td class="dur">0.3 с</td><td class="mu">skin.json → motion.panel</td><td>выезд карточки и баннера: при выключении стоят на месте</td></tr>
+<tr><td class="ev">card</td><td class="dur">2.8 с</td><td class="mu">skin.json → motion.card</td><td>показ карты шанса: при выключении карта висит, пока её не закроют словом «Закрыть»</td></tr>
+<tr><td class="ev">dice_roll</td><td class="dur">0.85 с</td><td class="mu">skin.json → motion.dice_roll</td><td>качение костей: при выключении кости сразу на гранях</td></tr>
+<tr><td class="ev">ease</td><td class="dur">cubic-bezier(.2,0,0,1)</td><td class="mu">design/tokens.json → shared.motion</td><td>одна кривая у всех переходов; при выключении кривая не применяется</td></tr>
+</tbody></table>
+<h2>Что где живёт на клетке: сведение → как показано → сколько px при 77 / 85 / 95</h2>
+<p class="note">Единственное, что едет вместе с шагом клетки, — <b>кегль числа</b> (шаг × 0.39) и ширина его
+поля (шаг × 0.84). Всё остальное — <b>константы</b>: кромка 3 px, уголок 14 px, полоса группы 6 px,
+слот дома 9 px, фишки 16 / 13 / 10 / 8 px. Поэтому при 77 px видно ровно то же состояние, что при 95:
+меняется только размер цифры. Имя клетки занимает на клетке <b>0 px</b> — оно переехало в инспектор,
+подсказку и панораму (последняя колонка).</p>
+<table>
+<thead><tr><th style="width:130px">Сведение</th><th style="width:330px">Как показано на клетке</th>
+<th style="width:110px">при 77 px</th><th style="width:110px">при 85 px</th><th style="width:110px">при 95 px</th>
+<th>Где ещё, крупно и словами</th></tr></thead>
+<tbody>
+<tr><td><b>цена</b></td><td>Число, superbold 800, табличные цифры, выключка вправо в поле шаг × 0.84; кегль шаг × 0.39; знак `$` половинного кегля приглушён</td><td class="num">кегль 30.0<br>поле 64.7<br>«$200» 61.1</td><td class="num">кегль 33.2<br>поле 71.4<br>«$200» 67.4</td><td class="num">кегль 37.1<br>поле 79.8<br>«$200» 75.3</td><td class="mu">инспектор «цена $100» 13 px; подсказка «$100» 28 px; кнопка «Купить $100» 13 px; панорама, столбец цен 11 px</td></tr>
+<tr><td><b>имя клетки</b></td><td><b>не на клетке</b> — 0 px. Слово нельзя показать формой, поэтому оно уходит туда, где ему хватает места целиком</td><td class="num">0 px</td><td class="num">0 px</td><td class="num">0 px</td><td class="mu">инспектор «КЛЕТКА»: «Cedar Ave» 24 px; подсказка: «Cedar Ave» 22 px; «ПАНОРАМА КОЛЬЦА»: все 40 имён 11 px, две колонки; журнал: «Mira продаёт с клетки 27» 13 px</td></tr>
+<tr><td><b>владелец</b></td><td>Кромка 3 px цветом места по <i>внутренней</i> кромке, во всю длину стороны клетки; у ничейной кромки нет вовсе</td><td class="num">3 × 77 = 231 px²</td><td class="num">3 × 85 = 255 px²</td><td class="num">3 × 95 = 285 px²</td><td class="mu">список «ИГРОКИ»: цвет места у имени; инспектор «владелец: Хост»; подсказка «владелец Хост»</td></tr>
+<tr><td><b>моя клетка</b></td><td>Корпус board.bg3 (#22303c) вместо board.bg2 (#101820) — на ступень светлее; плюс уголок с обводкой 2 px accent</td><td class="num">ступень +2 px²</td><td class="num">то же</td><td class="num">то же</td><td class="mu">цвет моего места рядом с моим именем; строка «ваш ход» в списке игроков</td></tr>
+<tr><td><b>уголок (состояние)</b></td><td>14 × 14 во внутренней кромке, на стороне, откуда приходит фишка: контур · заливка · заливка с обводкой · штриховка</td><td class="num">14 px = 196 px²</td><td class="num">14 px = 196 px²</td><td class="num">14 px = 196 px²</td><td class="mu">инспектор словами: «владелец: Хост», «группа не собрана», «в залоге»</td></tr>
+<tr><td><b>группа</b></td><td>Полоса 6 px цветом группы по <i>наружной</i> кромке; у станций, налогов, казны и шанса её нет</td><td class="num">6 × 77 = 462 px²</td><td class="num">6 × 85 = 510 px²</td><td class="num">6 × 95 = 570 px²</td><td class="mu">инспектор «группа lightblue»; панорама — цветной квадрат у имени</td></tr>
+<tr><td><b>дома 1…4</b></td><td>Четыре слота 9 × 9 px с зазором 2 px, всегда на одном месте; залито столько, сколько домов</td><td class="num">4 × 81 = 324 px²</td><td class="num">4 × 81 = 324 px²</td><td class="num">4 × 81 = 324 px²</td><td class="mu">инспектор «домов 0»; список «ИГРОКИ»: «домов 1» у Neuro</td></tr>
+<tr><td><b>отель</b></td><td>Один слот 36 × 9 px с обводкой warn вместо четырёх узких — различие формой, не цветом</td><td class="num">36 × 9 = 324 px²</td><td class="num">то же</td><td class="num">то же</td><td class="mu">инспектор «домов: отель»; журнал «строит отель на 8 Elm Ave»</td></tr>
+<tr><td><b>залог</b></td><td>Штриховка 45° по корпусу и по полосе группы + число зачёркнуто и приглушено + уголок заштрихован</td><td class="num">0 px площади</td><td class="num">0 px</td><td class="num">0 px</td><td class="mu">журнал «evil закладывает клетку 11»; инспектор словом «в залоге»; деньги evil +$70</td></tr>
+<tr><td><b>группа собрана</b></td><td>Внутри полосы группы — линия 2 px цветом владельца: рядом стоят цвет группы и цвет хозяина</td><td class="num">0 px площади</td><td class="num">0 px</td><td class="num">0 px</td><td class="mu">список «ИГРОКИ»: «владений 3»; инспектор «группа не собрана»</td></tr>
+<tr><td><b>фишки 1…4</b></td><td>Фигуры места у наружной кромки, ужимаются 16 → 13 → 10 → 8 px; цвет фигуры = цвет места</td><td class="num">16/13/10/8</td><td class="num">то же</td><td class="num">то же</td><td class="mu">список «ИГРОКИ»: клетка 6 Cedar Ave, 24 Harbor Drive, 10 Jail, 33 Chest — названа словами</td></tr>
+<tr><td><b>клетка без цены</b></td><td>Слово на месте числа, тем же приёмом: жирное, выключка влево, кегль шаг × 0.23; номер клетки — строкой 11 px</td><td class="num">кегль 17.7</td><td class="num">кегль 19.6</td><td class="num">кегль 21.9</td><td class="mu">панорама: имя клетки и прочерк в столбце цен; инспектор при выборе</td></tr>
+</tbody></table>
+
+<h3>Что осталось текстом и что стало формой</h3>
+<table>
+<thead><tr><th style="width:200px">Сведение</th><th style="width:130px">Форма или текст</th><th>Почему так</th></tr></thead>
+<tbody>
+<tr><td>цена</td><td><b>текст, крупно</b></td><td>Цифра — герой клетки: 34.3 px против 13.6 px у сегодняшней клетки (доля 0.16 от 85). Формой цену не показать: она непрерывна, и её главное свойство — что её можно сравнить глазами. Все числа стоят в одном поле, поэтому сравнение идёт по столбцу, как в счётной таблице.</td></tr>
+<tr><td>имя клетки</td><td><b>текст, но не на клетке</b></td><td>Единственное, что нельзя показать формой. На клетке оно занимало 2 строки по 11 px — то есть треть площади ради того, что с телефона читалось как 2.7 px. Переехало в инспектор (24 px), подсказку (22 px) и панораму из 40 имён. R-12: имя не удалено, а живёт там, где его видно целиком.</td></tr>
+<tr><td>владелец</td><td>форма (кромка 3 px)</td><td>Цвет кромки читается после сжатия, цвет текста — нет. Кромка идёт во всю длину стороны: 231–285 px² против ~40 px² у подписи «Хост».</td></tr>
+<tr><td>моя клетка</td><td>форма (ступень корпуса + обводка уголка)</td><td>Требование «моя читается без подписи» выполняется светлотой и обводкой, а не цветом: в оттенках серого моя клетка светлее остальных.</td></tr>
+<tr><td>дома и отель</td><td>форма (слоты 9 px / 36 px)</td><td>Число домов — это число залитых слотов; отель отличается формой слота, а не цветом. Слоты стоят на одном месте при 77, 85 и 95.</td></tr>
+<tr><td>залог</td><td>форма (штриховка + зачёркивание)</td><td>Четыре признака, ни один не занимает площади. Читается и в оттенках серого, и в миниатюре.</td></tr>
+<tr><td>собранная группа</td><td>форма (линия 2 px внутри полосы)</td><td>Перестановка двух уже имеющихся цветов. 0 px площади, обратимо.</td></tr>
+<tr><td>фишка</td><td>форма (фигура 16–8 px)</td><td>Фишка — фигура места, а не орган управления: R-9 про кнопки, а не про фишки. Кто где стоит — цветом фигуры и строкой «клетка 6 Cedar Ave» в списке игроков.</td></tr>
+<tr><td>сумма броска</td><td>текст, крупнее всего</td><td>64 px в панно — самое крупное число интерфейса. Оно не на клетке, потому что бросок не принадлежит ни одной клетке.</td></tr>
+</tbody></table>
+
+<h3>Почему число-герой выигрывает у клетки с текстом</h3>
+<table>
+<thead><tr><th style="width:260px">Что</th><th style="width:300px">Клетка продукта сегодня (85 × 85)</th><th>Число-герой (88 × 88)</th></tr></thead>
+<tbody>
+<tr><td>кегль цены</td><td class="num">13.6 px (доля клетки 0.16)</td><td class="num"><b>34.3 px</b> (шаг × 0.39) — <b>+152 %</b></td></tr>
+<tr><td>строк текста на клетке</td><td class="num">5–6 (имя 2 строки, цена, владелец, дома, залог)</td><td class="num"><b>1</b> — только число; слово вместо числа у клеток без цены</td></tr>
+<tr><td>площадь под имя</td><td class="num">около 210 px² (2 строки × 11 px × ~9.5 px)</td><td class="num"><b>0 px²</b> — имя в инспекторе 24 px, подсказке 22 px, панораме</td></tr>
+<tr><td>владелец</td><td class="num">подпись 11 px (~40 px²)</td><td class="num">кромка 3 px во всю сторону (231–285 px²)</td></tr>
+<tr><td>дома при 77 px</td><td class="num">слот 4.6 px (доля клетки)</td><td class="num">слот 9 px — размер не зависит от шага</td></tr>
+<tr><td>читается с телефона</td><td class="num">2.4–3.2 px — нет</td><td class="num">кольцо целиком при 390 px: шаг 32.4 px, цифра <b>12.6 px</b> — да, все 40 цен сразу</td></tr>
+<tr><td>что сравнивается глазами</td><td class="num">текст разной длины на каждой клетке</td><td class="num">число в одном и том же поле — столбец счётной таблицы</td></tr>
+</tbody></table>
+ </body>
+</html>
