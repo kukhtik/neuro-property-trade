@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>NPT · второй круг · концепт Б1 «кольцо во весь кадр»</title>
+<style>
+:root{
+  --bg:#0b0613;--s1:#130b1f;--s2:#1b1230;--s3:#281b42;--line:#3b2a5e;
+  --tx:#f7effd;--mu:#a896c8;--ac:#ff6fae;--acx:#2a0618;--hi:#5fe3ff;
+  --money:#5fe3ff;--bad:#ff4d6d;--warn:#ffb020;--good:#2fa862;--ring:#3b2a5e99;
+  --scrim:#0b0613b8;--dice-bg:#f2f6fa;--dice-ink:#16191f;--b2:#101820;--b3:#22303c;
+  --g-brown:#8b5a3c;--g-lightblue:#5bb8e8;--g-pink:#d85aa8;--g-orange:#ee8a2a;
+  --g-red:#d8363c;--g-yellow:#e8c61e;--g-green:#2fa862;--g-darkblue:#2e5fd8;
+  --p0:#ff6fae;--p1:#e8264f;--p2:#5fe3ff;--p3:#b6ff6b;
+  --mx-fast:.12s;--mx-base:.19s;--mx-slow:.32s;--mx-pop:.5s;--mx-panel:.3s;
+  --mx-card:2.8s;--mx-roll:.85s;--mx-step:.19s;--mx-hop:.32s;--mx-C:16.26s
+}
+/* ================= ЖИВЫЕ АНИМАЦИИ (glm53) ================= */
+/* один круг из 11 событий: шкала C = 16.26 с = сумма
+   (ход 1.84 = step .19×8 + hop .32 · бросок .85 · покупка .99 = base+pop+panel ·
+   аренда 2.92 = fast+card · аукцион 3.12 = slow+card · сделка .49 = panel+step ·
+   стройка .69 = pop+base · залог .62 = slow+panel · банкротство 3.12 = slow+card ·
+   конец .82 = pop+slow · пауза .8 = panel+pop) */
+/* === выключатель: глушит ВСЁ движение, включая псевдоэлементы
+   (замер из files/prompt-live-fix.md: правила без ::before/::after оставляли 83 из 118 running) === */
+#still{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+#still:checked ~ *,#still:checked ~ *::before,#still:checked ~ *::after,
+#still:checked ~ * *::before,#still:checked ~ * *::after,
+body:has(#still:checked) *,body:has(#still:checked) *::before,
+body:has(#still:checked) *::after{
+  animation:none !important;animation-duration:0s !important;
+  transition:none !important;transition-duration:0s !important}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation:none !important;animation-duration:0s !important;
+    transition:none !important;transition-duration:0s !important}}
+/* метки-слова переключателя: «Анимации: вкл» / «Анимации: выкл» */
+.switch{cursor:pointer;user-select:none;pointer-events:auto}
+.swa-off{display:none}
+#still:checked ~ .frame .swa-on,#still:checked ~ main .swa-on{display:none}
+#still:checked ~ .frame .swa-off,#still:checked ~ main .swa-off{display:inline}
+#still:checked ~ .frame .switch,#still:checked ~ main .switch{border-color:var(--hi)}
+.switch:hover{border-color:var(--hi)}
+#still:focus-visible ~ .frame .switch,#still:focus-visible ~ main .switch{
+  outline:2px solid var(--ac);outline-offset:2px}
+.pacts .switch{font-size:10px;padding:3px 6px}
+/* === событие 1 ХОД: волна по кольцу — 40 клеток, окно 0—11.32% (1.84 с);
+   задержка клетки = ring-индекс × 0.046 с (расписание) === */
+[data-region="board"] .cell::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:var(--glow);opacity:0;z-index:3;animation:wave var(--mx-C) linear infinite}
+@keyframes wave{0%{opacity:.6}1.17%{opacity:0}100%{opacity:0}}
+[data-region="band-bottom"] .cell:nth-child(2)::after{animation-delay:.046s}
+[data-region="band-bottom"] .cell:nth-child(3)::after{animation-delay:.092s}
+[data-region="band-bottom"] .cell:nth-child(4)::after{animation-delay:.138s}
+[data-region="band-bottom"] .cell:nth-child(5)::after{animation-delay:.184s}
+[data-region="band-bottom"] .cell:nth-child(6)::after{animation-delay:.23s}
+[data-region="band-bottom"] .cell:nth-child(7)::after{animation-delay:.276s}
+[data-region="band-bottom"] .cell:nth-child(8)::after{animation-delay:.322s}
+[data-region="band-bottom"] .cell:nth-child(9)::after{animation-delay:.368s}
+[data-region="band-bottom"] .cell:nth-child(10)::after{animation-delay:.414s}
+[data-region="band-bottom"] .cell:nth-child(11)::after{animation-delay:.46s}
+[data-region="band-right"] .cell:nth-child(1)::after{animation-delay:.874s}
+[data-region="band-right"] .cell:nth-child(2)::after{animation-delay:.828s}
+[data-region="band-right"] .cell:nth-child(3)::after{animation-delay:.782s}
+[data-region="band-right"] .cell:nth-child(4)::after{animation-delay:.736s}
+[data-region="band-right"] .cell:nth-child(5)::after{animation-delay:.69s}
+[data-region="band-right"] .cell:nth-child(6)::after{animation-delay:.644s}
+[data-region="band-right"] .cell:nth-child(7)::after{animation-delay:.598s}
+[data-region="band-right"] .cell:nth-child(8)::after{animation-delay:.552s}
+[data-region="band-right"] .cell:nth-child(9)::after{animation-delay:.506s}
+[data-region="band-top"] .cell:nth-child(1)::after{animation-delay:1.38s}
+[data-region="band-top"] .cell:nth-child(2)::after{animation-delay:1.334s}
+[data-region="band-top"] .cell:nth-child(3)::after{animation-delay:1.288s}
+[data-region="band-top"] .cell:nth-child(4)::after{animation-delay:1.242s}
+[data-region="band-top"] .cell:nth-child(5)::after{animation-delay:1.196s}
+[data-region="band-top"] .cell:nth-child(6)::after{animation-delay:1.15s}
+[data-region="band-top"] .cell:nth-child(7)::after{animation-delay:1.104s}
+[data-region="band-top"] .cell:nth-child(8)::after{animation-delay:1.058s}
+[data-region="band-top"] .cell:nth-child(9)::after{animation-delay:1.012s}
+[data-region="band-top"] .cell:nth-child(10)::after{animation-delay:.966s}
+[data-region="band-top"] .cell:nth-child(11)::after{animation-delay:.92s}
+[data-region="band-left"] .cell:nth-child(1)::after{animation-delay:1.426s}
+[data-region="band-left"] .cell:nth-child(2)::after{animation-delay:1.472s}
+[data-region="band-left"] .cell:nth-child(3)::after{animation-delay:1.518s}
+[data-region="band-left"] .cell:nth-child(4)::after{animation-delay:1.564s}
+[data-region="band-left"] .cell:nth-child(5)::after{animation-delay:1.61s}
+[data-region="band-left"] .cell:nth-child(6)::after{animation-delay:1.656s}
+[data-region="band-left"] .cell:nth-child(7)::after{animation-delay:1.702s}
+[data-region="band-left"] .cell:nth-child(8)::after{animation-delay:1.748s}
+[data-region="band-left"] .cell:nth-child(9)::after{animation-delay:1.794s}
+/* герой готов к броску — дышит (pop 0.5, alternate) */
+button.hero{animation:pulse var(--mx-pop) ease-in-out infinite alternate}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.03)}}
+/* === событие 2 БРОСОК (окно 11.32—16.54% = dice_roll 0.85): кости падают,
+   сумма собирается цифрой — хаб кадра, фигура 2 и телефон === */
+.hub .die,.mhub .die,.phubc .die{animation:rollD var(--mx-C) linear infinite}
+.hub .hsum b,.mhub .hsum b,.phubc .hsum b{animation:sumP var(--mx-C) linear infinite}
+.mhub .tray{animation:trayF var(--mx-C) linear infinite}
+@keyframes rollD{0%{transform:translateY(0) rotate(0)}11.32%{transform:translateY(0) rotate(0)}12.2%{transform:translateY(-56px) rotate(-16deg)}13.9%{transform:translateY(-20px) rotate(8deg)}15%{transform:translateY(0) rotate(0)}100%{transform:translateY(0) rotate(0)}}
+@keyframes sumP{0%{opacity:1;transform:scale(1)}11.32%{opacity:1;transform:scale(1)}12.2%{opacity:0;transform:scale(.4)}13.47%{opacity:0;transform:scale(.4)}16.54%{opacity:1;transform:scale(1)}100%{opacity:1;transform:scale(1)}}
+@keyframes trayF{0%{opacity:.2;transform:scale(1)}11.32%{opacity:.2;transform:scale(1)}11.9%{opacity:1;transform:scale(1.08)}13.5%{opacity:1;transform:scale(1.08)}15%{opacity:.2;transform:scale(1)}100%{opacity:.2;transform:scale(1)}}
+/* === события 3—11: фигуры «одного круга», окна на шкале C (см. шапку блока) === */
+.fig-buy .cell.demo{animation:buyRing var(--mx-C) linear infinite}
+@keyframes buyRing{0%,16.54%{background:var(--b2);box-shadow:inset 0 0 0 1px var(--line)}17.71%,100%{background:var(--b3);box-shadow:inset 0 0 0 3.7px var(--p0)}}
+.fig-buy .m0{animation:buyA var(--mx-C) linear infinite}
+@keyframes buyA{0%,17.71%{opacity:1}17.91%,100%{opacity:0}}
+.fig-buy .m1{animation:buyB var(--mx-C) linear infinite}
+@keyframes buyB{0%,17.71%{opacity:0}17.91%{opacity:1;transform:scale(1.08)}18.9%,100%{opacity:1;transform:scale(1)}}
+.fig-buy .mline{animation:buyO var(--mx-C) linear infinite}
+@keyframes buyO{0%,20.05%{opacity:0}21.9%,100%{opacity:1}}
+.fig-rent .fcard{animation:rentIn var(--mx-C) linear infinite}
+@keyframes rentIn{0%,22.63%{opacity:0;transform:translateY(8px)}23.37%,100%{opacity:1;transform:translateY(0)}}
+.fig-rent .m0{animation:rentA var(--mx-C) linear infinite}
+@keyframes rentA{0%,23.2%{opacity:1}23.4%,100%{opacity:0}}
+.fig-rent .m1{animation:rentB var(--mx-C) linear infinite}
+@keyframes rentB{0%,23.2%{opacity:0}23.4%,100%{opacity:1}}
+.fig-auc .cell.demo{animation:aucRing var(--mx-C) linear infinite}
+@keyframes aucRing{0%,40.59%{box-shadow:inset 0 0 0 1px var(--line)}42.56%,100%{box-shadow:inset 0 0 0 3.7px var(--p3)}}
+.fig-auc .b0{animation:bidA var(--mx-C) linear infinite}
+@keyframes bidA{0%,40.59%{opacity:1}41.35%,100%{opacity:0}}
+.fig-auc .b1{animation:bidB var(--mx-C) linear infinite}
+@keyframes bidB{0%,40.59%{opacity:0}41.35%{opacity:1}42.15%,100%{opacity:0}}
+.fig-auc .b2{animation:bidC var(--mx-C) linear infinite}
+@keyframes bidC{0%,41.99%{opacity:0}42.15%,100%{opacity:1}}
+.fig-auc .fcard{animation:aucIn var(--mx-C) linear infinite}
+@keyframes aucIn{0%,42.56%{opacity:0;transform:translateY(8px)}43.3%,100%{opacity:1;transform:translateY(0)}}
+.fig-trade .cell.demo{animation:trRing var(--mx-C) linear infinite}
+@keyframes trRing{0%,59.78%{background:var(--b2);box-shadow:inset 0 0 0 3.7px var(--p2)}61.63%,100%{background:var(--b3);box-shadow:inset 0 0 0 3.7px var(--p0)}}
+.fig-trade .m0{animation:trA var(--mx-C) linear infinite}
+@keyframes trA{0%,62.4%{opacity:1}62.6%,100%{opacity:0}}
+.fig-trade .m1{animation:trB var(--mx-C) linear infinite}
+@keyframes trB{0%,62.4%{opacity:0}62.6%,100%{opacity:1}}
+.fig-build .rail i.hot{transform-origin:50% 100%;animation:buildH var(--mx-C) linear infinite}
+@keyframes buildH{0%,63.96%{transform:scaleY(0)}67.03%,100%{transform:scaleY(1)}}
+.fig-build .m0{animation:bldA var(--mx-C) linear infinite}
+@keyframes bldA{0%,63.76%{opacity:1}63.96%,100%{opacity:0}}
+.fig-build .m1{animation:bldB var(--mx-C) linear infinite}
+@keyframes bldB{0%,63.76%{opacity:0}63.96%,100%{opacity:1}}
+.fig-mort .hx{animation:mortH var(--mx-C) linear infinite}
+@keyframes mortH{0%,67.03%{opacity:1}67.23%,68.88%{opacity:0}70.85%,100%{opacity:1}}
+.fig-mort .m0{animation:mortA var(--mx-C) linear infinite}
+@keyframes mortA{0%,70.5%{opacity:1}70.7%,100%{opacity:0}}
+.fig-mort .m1{animation:mortB var(--mx-C) linear infinite}
+@keyframes mortB{0%,70.5%{opacity:0}70.7%,100%{opacity:1}}
+.fig-bank .cell.demo{animation:bankD var(--mx-C) linear infinite}
+@keyframes bankD{0%,70.85%{opacity:1}72.82%,100%{opacity:.42}}
+.fig-bank .fcard{animation:bankIn var(--mx-C) linear infinite}
+@keyframes bankIn{0%,72.82%{opacity:0;transform:translateY(8px)}73.56%,100%{opacity:1;transform:translateY(0)}}
+.fig-bank .m0{animation:bankA var(--mx-C) linear infinite}
+@keyframes bankA{0%,74.7%{opacity:1}74.9%,100%{opacity:0}}
+.fig-bank .m1{animation:bankB var(--mx-C) linear infinite}
+@keyframes bankB{0%,74.7%{opacity:0}74.9%,100%{opacity:1}}
+.fig-end .fcard{animation:endC var(--mx-C) linear infinite}
+@keyframes endC{0%,90.04%{opacity:0;transform:scale(.6)}93.11%,100%{opacity:1;transform:scale(1)}}
+.fig-pause .veil{animation:pauseV var(--mx-C) linear infinite}
+@keyframes pauseV{0%,95.08%{opacity:0}96.93%,100%{opacity:1}}
+.fig-pause .veil span{animation:pauseW var(--mx-C) linear infinite}
+@keyframes pauseW{0%,96.93%{opacity:0;transform:scale(.5)}100%{opacity:1;transform:scale(1)}}
+/* ================= элементы «показа» (движение, форма, число) ================= */
+.wlane{position:relative;overflow:hidden;width:max-content}
+.wtk{width:24px;height:24px;position:absolute;bottom:2px;left:0;transform:translateX(1296px);
+  animation:walk var(--mx-C) linear infinite}
+@keyframes walk{0%{transform:translateX(-44px);opacity:1}1.17%{transform:translateX(40px)}2.34%{transform:translateX(147px)}3.51%{transform:translateX(251px)}4.67%{transform:translateX(303px)}5.66%{transform:translateX(383px) translateY(-28px)}6.64%{transform:translateX(463px)}7.81%{transform:translateX(720px)}8.98%{transform:translateX(912px)}10.15%{transform:translateX(1104px)}11.32%{transform:translateX(1296px);opacity:1}12.2%{transform:translateX(1340px);opacity:0}97%{transform:translateX(1340px);opacity:0}98.5%{transform:translateX(-44px);opacity:0}100%{transform:translateX(-44px);opacity:1}}
+.mcash{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--line);
+  border-left:3px solid var(--pc);padding:2px 10px;width:300px}
+.mcash .mcn{font-size:16px;font-weight:700;color:var(--pc)}
+.mcv{margin-left:auto;position:relative;font-size:24px;font-weight:700;color:var(--money);line-height:1.2}
+.mcv .m0{opacity:0}
+.mcv .m1{position:absolute;right:0;top:0}
+.fcard{background:var(--s1);border:1px solid var(--line);padding:8px 12px;font-size:22px;
+  font-weight:700;width:max-content}
+.fcard small{display:block;font-weight:400;font-size:12px;color:var(--mu);margin-top:2px}
+.mline{font-size:14px;color:var(--mu)}
+.mbids{position:relative;width:130px;height:24px;align-self:center;flex:none}
+.mbids span{position:absolute;left:0;top:0;font-size:18px;font-weight:700;color:var(--hi)}
+.mbids .b1,.mbids .b2{opacity:0}
+/* слой штриховки залога в фигуре — анимируемый, потому отдельным элементом */
+.hx{position:absolute;inset:0;pointer-events:none;z-index:2;
+  background-image:repeating-linear-gradient(45deg,var(--line) 0 3px,transparent 3px 8px)}
+/* мини-формы строк мест и инспектора: рельс домов, штриховка залога, слоты группы
+   (легенда слов — в ряду ФОРМА КЛЕТКИ панели ЖУРНАЛ) */
+.srail{display:inline-flex;gap:2px;vertical-align:-1px;margin:0 2px}
+.srail i{width:5px;height:5px;box-shadow:inset 0 0 0 1px var(--line)}
+.srail i.on{background:var(--good);box-shadow:none}
+.shx{display:inline-block;width:11px;height:8px;margin-left:4px;vertical-align:-1px;
+  box-shadow:inset 0 0 0 1px var(--line)}
+.shx.on{background-image:repeating-linear-gradient(45deg,var(--line) 0 1px,transparent 1px 3px)}
+.gslots{display:inline-flex;gap:2px;vertical-align:-1px;margin:0 0 0 6px}
+.gslots i{width:9px;height:9px;box-shadow:inset 0 0 0 1px var(--line)}
+.gslots i.on{background:var(--g-lightblue);box-shadow:none}
+.gcnt{font-size:11px;color:var(--mu);margin-left:4px}
+/* шкала круга: 11 окон пропорционально длительностям */
+.tlbar{display:flex;width:100%;max-width:1560px;border:1px solid var(--line)}
+.tlseg{display:block;padding:4px 2px;font-size:12px;text-align:center;color:var(--tx);
+  background:var(--s2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  border-right:1px solid var(--line)}
+.tlseg:last-child{border-right:0}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);
+  font-family:"Segoe UI",-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif}
+button{font-family:inherit;color:var(--tx);background:var(--s3);border:1px solid var(--line);
+  font-size:16px;padding:8px 14px}
+button.hero{background:var(--ac);color:var(--acx);border-color:var(--ac);font-size:24px;font-weight:700}
+button.on{border-color:var(--ac)}
+.b-s{font-size:14px;padding:5px 9px}
+/* ---------- frame 1: the ring IS the frame, 1600 x 1200 ---------- */
+.frame{width:1600px;height:1200px;background:var(--bg);outline:1px solid var(--line);overflow:hidden}
+.ring{width:1600px;height:1200px;display:flex;flex-direction:column;gap:2px}
+.rband{height:190px;display:flex;gap:2px}
+.rmid{height:816px;display:flex;gap:2px}
+.rside{width:190px;display:flex;flex-direction:column;gap:2px}
+.rband .cell{flex:1 1 0;min-width:0;--s:104.44px}
+.rband .cell.corner{flex:0 0 320px;width:320px;--s:190px}
+.rside .cell{flex:1 1 0;min-height:0;--s:88.89px}
+/* ---------- the cell ---------- */
+.cell{position:relative;overflow:hidden;background:var(--b2);display:flex;flex-direction:column;
+  padding:calc(var(--s)*.035);--pc:var(--mu);--gl:var(--line);--s:104.44px;
+  box-shadow:inset 0 0 0 1px var(--line)}
+.cell.corner{background:var(--b3);padding:6px}
+.cell.mine{background:var(--b3);--gl:var(--pc)}
+.cell.foe,.cell.mine{box-shadow:inset 0 0 0 calc(var(--s)*.035) var(--pc)}
+.cell.mort{background-image:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 6px)}
+.cell.mort .nm{color:var(--mu)}
+.cell.mort .pr{color:var(--mu);text-decoration:line-through}
+.cell.mort.hatch-only .nm{color:var(--tx)}
+.cell.mort.hatch-only .pr{color:var(--money);text-decoration:none}
+.cell.dim{opacity:.42}
+.band{height:calc(var(--s)*.07);flex:none;display:flex;background:var(--gc);
+  margin:calc(var(--s)*-.035) calc(var(--s)*-.035) 0}
+.band i{flex:1}
+.nm{font-size:calc(var(--s)*.18);line-height:1.05;color:var(--tx);overflow:hidden;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;word-break:break-word}
+.pr{font-size:calc(var(--s)*.14);line-height:1.1;color:var(--money);white-space:nowrap}
+.rail{flex:none;height:calc(var(--s)*.07);display:flex;gap:calc(var(--s)*.013);
+  margin-top:calc(var(--s)*.02)}
+.rail i{width:calc(var(--s)*.07);height:100%;box-shadow:inset 0 0 0 1px var(--line)}
+.rail i.on{background:var(--good);box-shadow:none}
+.rail.hotel i.on{width:calc(var(--s)*.32)}
+.gnd{flex:1;min-height:0;position:relative;display:flex;align-items:flex-end;justify-content:flex-end;
+  gap:calc(var(--s)*.012);padding-bottom:1px}
+.gnd::after{content:"";position:absolute;left:calc(var(--s)*-.035);right:calc(var(--s)*-.035);
+  bottom:0;height:1px;background:var(--gl)}
+.tk{width:calc(var(--s)*.22);height:calc(var(--s)*.22);flex:none}
+/* ---------- the four corner screens ---------- */
+.cs{position:relative;height:100%;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.cname{position:absolute;top:0;left:2px;font-size:13px;letter-spacing:.08em;color:var(--mu)}
+.chero{font-size:50px;font-weight:700;line-height:.98;letter-spacing:-.01em;color:var(--tx)}
+.chero.turn{color:var(--ac)}
+.chero.money{color:var(--money)}
+.csub{font-size:15px;color:var(--mu)}
+/* ---------- the well inside the ring ---------- */
+.well{flex:1 1 auto;background:var(--ring);padding:6px;display:grid;
+  grid-template-rows:321px 150px 321px;gap:6px;overflow:hidden;min-height:0}
+.wrow{display:grid;gap:6px;overflow:hidden;min-height:0}
+.wrow.a{grid-template-columns:700px 498px}
+.wrow.c{grid-template-columns:560px 638px}
+.zone{background:var(--s1);border:1px solid var(--line);padding:10px 14px;display:flex;
+  flex-direction:column;gap:6px;overflow:hidden;min-height:0}
+.zone>*{flex:none}
+.zcap{font-size:13px;letter-spacing:.1em;color:var(--mu);font-weight:700;flex:none}
+.hubband{display:flex;justify-content:center;overflow:hidden;min-height:0}
+.hub{width:720px;background:var(--s2);border:1px solid var(--line);padding:10px 16px;display:flex;
+  align-items:center;gap:24px;position:relative}
+.hub .zcap{position:absolute;top:4px;left:8px}
+.hrow{display:flex;align-items:center;gap:12px;margin-top:8px}
+.die{width:48px;height:48px;flex:none}
+.tray{width:48px;height:48px;flex:none;border:1px solid var(--line);background:var(--dice-bg);
+  opacity:.18}
+.hplus{font-size:28px;color:var(--mu);font-weight:700}
+.hsum{font-size:44px;font-weight:700;color:var(--tx);white-space:pre;display:flex;
+  align-items:baseline;gap:8px}
+.hsum b{font-size:64px;color:var(--money);line-height:1.05}
+.hsum.dim{font-size:18px;color:var(--mu);font-weight:400}
+.hint{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.hint1{font-size:18px;color:var(--tx)}
+.hint2{font-size:14px;color:var(--mu)}
+.jhero{font-size:50px;font-weight:700;line-height:1.02;white-space:nowrap;overflow:hidden}
+.jlist{display:flex;flex-direction:column;gap:2px}
+.jl{font-size:20px;line-height:1.15}
+.jcnt{font-size:14px;color:var(--mu)}
+.jfoot{display:flex;align-items:center;gap:10px}
+.jflt{font-size:14px;color:var(--mu)}
+.lgrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:auto}
+.lg{display:flex;align-items:center;gap:6px}
+.lgc{width:30px;height:30px;flex:none;background:var(--s2);position:relative;
+  box-shadow:inset 0 0 0 1px var(--line);display:flex;flex-direction:column;padding:2px;gap:2px}
+.lgb{height:4px;flex:none;background:var(--line);display:flex}
+.lgb i{flex:1}
+.lgn{height:4px;background:var(--tx);opacity:.5;width:70%}
+.lgh{height:4px;display:flex;gap:1px}
+.lgh i{width:4px;background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.lgt{height:3px;width:45%;background:var(--money);margin-top:auto}
+.lgc.lg-foe{box-shadow:inset 0 0 0 3px var(--p2)}
+.lgc.lg-mine{background:var(--s3);box-shadow:inset 0 0 0 3px var(--p0)}
+.lgc.lg-h2 .lgh i:nth-child(1),.lgc.lg-h2 .lgh i:nth-child(2){background:var(--good);box-shadow:none}
+.lgc.lg-mort{background-image:repeating-linear-gradient(45deg,var(--line) 0 2px,transparent 2px 6px)}
+.lgcap{font-size:12px;color:var(--mu)}
+.ihero{font-size:28px;font-weight:700}
+.iline{font-size:17px}
+.ibtn{display:flex;gap:8px}
+.svc{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.seat{background:var(--s2);border:1px solid var(--line);border-left:3px solid var(--pc);
+  padding:1px 10px;display:flex;flex-direction:column;gap:0;flex:none}
+.seat.act{border-color:var(--hi);background:var(--s3)}
+.seat.dim{opacity:.42}
+.sr1{display:flex;align-items:center;gap:10px}
+.chip{width:14px;height:14px;flex:none;background:var(--pc)}
+.snm{font-size:24px;font-weight:700;color:var(--pc)}
+.scash{margin-left:auto;font-size:50px;font-weight:700;color:var(--money);line-height:1}
+.sr3{font-size:11px;line-height:1.1;color:var(--mu)}
+[data-region="seats"]{padding:8px 14px;gap:4px}
+.ehero{font-size:50px;font-weight:700;line-height:1.02}
+.con{margin-top:auto;display:flex;flex-direction:column;gap:6px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* ---------- frame 2: 390 x 844 ---------- */
+.frame.phone{width:390px;height:844px;display:flex;flex-direction:column;overflow:hidden}
+.pring{width:390px;height:430px;flex:none;display:flex;flex-direction:column;gap:2px}
+.pring .rband{height:70px;display:flex;gap:2px}
+.pring .rmid{height:286px;display:flex;gap:2px}
+.pring .rside{width:44px;display:flex;flex-direction:column;gap:2px}
+.pring .rband .cell{flex:1 1 0;min-width:0;--s:70px}
+.pring .rband .cell.corner{flex:0 0 90px;width:90px}
+.pring .rside .cell{flex:1 1 0;min-height:0;--s:44px}
+.pring .cell{padding:1px}
+.pring .cell.corner{padding:3px}
+.pring .nm,.pring .pr{display:none}
+.pring .cell.corner .cname,.pring .cell.corner .csub{display:none}
+.pring .cell.corner .chero{font-size:12px;line-height:1.05}
+.pring .cs{justify-content:center}
+.pwell{flex:1 1 auto;background:var(--ring);display:flex;align-items:center;
+  justify-content:center;padding:5px}
+.phubc{width:100%;background:var(--s2);border:1px solid var(--line);padding:4px 6px;
+  display:flex;flex-direction:column;gap:2px;position:relative}
+.phubc .die{width:22px;height:22px}
+.phubc .tray{width:22px;height:22px}
+.phubc .hplus{font-size:14px}
+.phubc .hsum{font-size:16px}
+.phubc .hsum b{font-size:30px}
+.phubc .hrow{gap:6px;margin-top:2px}
+.phubc .hint1{font-size:12px}
+.pzone{flex:none;background:var(--s1);border-bottom:1px solid var(--line);padding:4px 8px;
+  display:flex;flex-direction:column;gap:2px;overflow:hidden}
+.pzone-j{height:116px}
+.pzone-s{height:148px}
+.pzone-c{height:150px}
+.pjhero{font-size:14px;font-weight:700}
+.pjl{font-size:11px;color:var(--mu)}
+.pjcnt{font-size:10px;color:var(--mu)}
+.pseat{display:flex;align-items:center;gap:6px}
+.psnm{font-size:12px;font-weight:700;color:var(--pc)}
+.pscash{margin-left:auto;font-size:20px;font-weight:700;color:var(--money)}
+.pscl{font-size:10px;color:var(--mu)}
+.pih{font-size:13px;font-weight:700}
+.pil{font-size:10px;color:var(--mu)}
+.pacts{display:flex;flex-wrap:wrap;gap:4px}
+.pacts button{font-size:10px;padding:3px 6px}
+.pacts button.hero{font-size:16px;padding:4px 10px}
+/* ---------- the document below the frames ---------- */
+.doc{padding:24px 24px 64px;max-width:1620px}
+h1{font-size:22px;font-weight:700;margin:0 0 6px;letter-spacing:.02em}
+h2{font-size:17px;font-weight:700;margin:32px 0 8px;letter-spacing:.02em}
+h3{font-size:16px;font-weight:700;margin:0 0 4px}
+p.note{font-size:13px;color:var(--mu);margin:0 0 12px;max-width:1180px;line-height:1.5}
+table{border-collapse:collapse;font-size:13px;max-width:1560px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--s2);color:var(--mu);font-weight:700}
+td b{color:var(--tx)}
+.sb{margin:0 0 26px}
+.dur{font-size:13px;color:var(--mu);margin:0 0 10px;max-width:1180px;line-height:1.5}
+.dur b{color:var(--tx);font-weight:700}
+.strip{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+figure.fr{margin:0;background:var(--s1);border:1px solid var(--line);padding:8px;
+  display:flex;flex-direction:column;gap:6px;width:max-content}
+.frbody{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+figcaption{font-size:12px;color:var(--mu);line-height:1.35;max-width:400px}
+.cell.demo{flex:none;width:190px;height:88.89px;--s:88.89px}
+.cell.demo.tall{width:104.44px;height:190px;--s:104.44px}
+.mcs{width:320px;height:190px;flex:none;background:var(--b3);position:relative;display:flex;
+  flex-direction:column;justify-content:center;padding:6px;box-shadow:inset 0 0 0 1px var(--line);
+  overflow:hidden}
+.mcs .chero{font-size:50px}
+.mhub{width:720px;flex:none;background:var(--s2);border:1px solid var(--line);padding:10px 16px;
+  display:flex;align-items:center;gap:24px;position:relative}
+.mhub .die{width:48px;height:48px}
+.mhub .tray{width:48px;height:48px}
+.mhub .hrow{margin-top:8px}
+.mseat{width:560px}
+.mevent{background:var(--s1);border:1px solid var(--line);padding:10px 14px;display:flex;
+  flex-direction:column;gap:6px;width:638px}
+.mevent .ehero{font-size:50px}
+.minsp{background:var(--s1);border:1px solid var(--line);padding:10px 14px;display:flex;
+  flex-direction:column;gap:6px;width:498px}
+.macts{display:flex;gap:8px;flex-wrap:wrap;background:var(--s1);border:1px solid var(--line);
+  padding:8px 10px;max-width:520px}
+.mjl{font-size:20px;color:var(--tx);background:var(--s1);border:1px solid var(--line);
+  padding:6px 10px;display:block}
+.mjl.hero{font-size:50px;font-weight:700}
+.mgap{width:34px;height:88.89px;display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:2px;border-bottom:1px dashed var(--line)}
+.mgap .tk{width:20px;height:20px}
+.mrow{display:flex;gap:2px;align-items:flex-end}
+.mscrim{position:relative;display:flex;gap:2px}
+.mscrim .veil{position:absolute;left:0;top:0;right:0;bottom:0;background:var(--scrim);
+  display:flex;align-items:center;justify-content:center;z-index:3}
+.mscrim .veil span{background:var(--s2);border:1px solid var(--ac);font-size:20px;font-weight:700;
+  padding:8px 14px}
+</style>
+</head>
+<body>
+<input id="still" type="checkbox" aria-label="выключатель анимаций">
+<div class="frame" data-frame="1600x1200">
+<div class="ring" data-region="board">
+ <div class="rband" data-region="band-top"><div class="cell corner " data-corner="30"><div class="cs"><span class="cname">Go To Jail · угловой экран</span><span class="chero">РАУНД 7</span><span class="csub">игра идёт · пауз нет</span></div></div><div class="cell" style="--gc:var(--g-yellow);flex:1 1 0"><span class="band" style="--gc:var(--g-yellow)"><i></i><i></i><i></i></span><span class="nm">Crest Heights</span><span class="pr">$280</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Tower Water</span><span class="pr">$150</span></div><div class="cell foe" style="--gc:var(--g-yellow);--pc:var(--p3);flex:1 1 0"><span class="band" style="--gc:var(--g-yellow)"><i></i><i></i><i></i></span><span class="nm">Crest Square</span><span class="pr">$260</span><span class="rail" aria-label="домов 1"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell foe mort" style="--gc:var(--g-yellow);--pc:var(--p3);flex:1 1 0"><span class="band" style="--gc:var(--g-yellow)"><i></i><i></i><i></i></span><span class="nm">Crest Point</span><span class="pr">$260</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">West Station</span><span class="pr">$200</span></div><div class="cell" style="--gc:var(--g-red);flex:1 1 0"><span class="band" style="--gc:var(--g-red)"><i></i><i></i><i></i></span><span class="nm">Harbor Drive</span><span class="pr">$240</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="gnd n1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Neuro" style="fill:var(--p2)"><path d="M4 10.4l3.4-6.4 3.6 4.2h2l3.6-4.2L20 10.4V20H4z"/></svg></span></div><div class="cell" style="--gc:var(--g-red);flex:1 1 0"><span class="band" style="--gc:var(--g-red)"><i></i><i></i><i></i></span><span class="nm">River Drive</span><span class="pr">$220</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Fortune</span></div><div class="cell" style="--gc:var(--g-red);flex:1 1 0"><span class="band" style="--gc:var(--g-red)"><i></i><i></i><i></i></span><span class="nm">Lake Drive</span><span class="pr">$220</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell corner " data-corner="20"><div class="cs"><span class="cname">Free Parking · угловой экран</span><span class="chero money">БАНК ПАРКОВКИ $240</span><span class="csub">копилка парковки</span></div></div></div>
+ <div class="rmid">
+  <div class="rside" data-region="band-left"><div class="cell" style="--gc:var(--g-green);flex:1 1 0"><span class="band" style="--gc:var(--g-green)"><i></i><i></i><i></i></span><span class="nm">Garden Grove</span><span class="pr">$300</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="--gc:var(--g-green);flex:1 1 0"><span class="band" style="--gc:var(--g-green)"><i></i><i></i><i></i></span><span class="nm">Garden Park</span><span class="pr">$300</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Chest</span><span class="gnd n1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Mira" style="fill:var(--p3)"><path d="M2 14.6h20v2.8H2z"/><path d="M6 9.2h12l2.4 5.4H3.6z"/><circle cx="8" cy="17.6" r="1.8"/><circle cx="16" cy="17.6" r="1.8"/></svg></span></div><div class="cell" style="--gc:var(--g-green);flex:1 1 0"><span class="band" style="--gc:var(--g-green)"><i></i><i></i><i></i></span><span class="nm">Garden Court</span><span class="pr">$320</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">South Station</span><span class="pr">$200</span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Fortune</span></div><div class="cell foe" style="--gc:var(--g-darkblue);--pc:var(--p2);flex:1 1 0"><span class="band" style="--gc:var(--g-darkblue)"><i></i><i></i></span><span class="nm">Grand Avenue</span><span class="pr">$350</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--bad)"><i></i></span><span class="nm">Luxury Tax</span><span class="pr">$100</span></div><div class="cell" style="--gc:var(--g-darkblue);flex:1 1 0"><span class="band" style="--gc:var(--g-darkblue)"><i></i><i></i></span><span class="nm">Grand Place</span><span class="pr">$400</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div></div>
+  <div class="well" data-region="well">
+   <div class="wrow a">
+    <section class="zone" data-region="journal">
+     <span class="zcap">ХОД СОБЫТИЙ · новейшая строка крупно</span>
+     <span class="jhero">evil попадает в тюрьму</span>
+     <div class="jlist"><span class="jl">Mira бросает 4+4</span><span class="jl">Mira продаёт с клетки 27</span><span class="jl">evil закладывает клетку 11</span><span class="jl">evil попадает в тюрьму</span></div>
+     <span class="jcnt">показано 4 из 132</span>
+     <div class="jfoot"><span class="jflt">игрок: все · тип: все · только деньги</span><button type="button" class="b-s">экспорт .jsonl</button></div>
+     <span class="zcap">ФОРМА КЛЕТКИ</span>
+     <div class="lgrow"><span class="lg"><span class="lgc lg-free"><span class="lgb"><i></i><i></i><i></i></span><span class="lgn"></span><span class="lgh"><i></i><i></i><i></i><i></i></span><span class="lgt"></span></span><span class="lgcap">пустая: имя и цена</span></span><span class="lg"><span class="lgc lg-foe"><span class="lgb"><i></i><i></i><i></i></span><span class="lgn"></span><span class="lgh"><i></i><i></i><i></i><i></i></span><span class="lgt"></span></span><span class="lgcap">чужая: обводка</span></span><span class="lg"><span class="lgc lg-mine"><span class="lgb"><i></i><i></i><i></i></span><span class="lgn"></span><span class="lgh"><i></i><i></i><i></i><i></i></span><span class="lgt"></span></span><span class="lgcap">моя: корпус</span></span><span class="lg"><span class="lgc lg-h2"><span class="lgb"><i></i><i></i><i></i></span><span class="lgn"></span><span class="lgh"><i></i><i></i><i></i><i></i></span><span class="lgt"></span></span><span class="lgcap">дома: рельс</span></span><span class="lg"><span class="lgc lg-mort"><span class="lgb"><i></i><i></i><i></i></span><span class="lgn"></span><span class="lgh"><i></i><i></i><i></i><i></i></span><span class="lgt"></span></span><span class="lgcap">залог: штриховка</span></span></div>
+    </section>
+    <section class="zone" data-region="inspector">
+     <span class="zcap">КЛЕТКА · инспектор закреплён на клетке 6</span>
+     <span class="ihero">Cedar Ave</span>
+     <span class="iline">группа lightblue · цена $100 · аренда $6</span>
+     <span class="iline">владелец: Хост<span class="gslots" aria-label="группа lightblue: 1 из 3, собранность видно слотами"><i class="on"></i><i></i><i></i></span><span class="gcnt">1 из 3</span></span>
+     <span class="iline"><span class="srail" aria-label="домов 0"><i></i><i></i><i></i><i></i></span><span class="shx" aria-label="залога нет"></span></span>
+     <div class="ibtn"><button type="button" class="b-s">Закрепить</button><button type="button" class="b-s">Закрыть</button></div>
+     <div class="svc"><label class="b-s switch" for="still" data-od-id="anim-switch"><span class="swa-on">Анимации: вкл</span><span class="swa-off">Анимации: выкл</span></label><button type="button" class="b-s">Настройки</button><button type="button" class="b-s">Правила</button><button type="button" class="b-s">Рестарт</button><button type="button" class="b-s">Тема: Neuro</button><button type="button" class="b-s">Язык: RU</button><button type="button" class="b-s">Пауза</button></div>
+    </section>
+   </div>
+   <div class="hubband">
+    <div class="hub" data-region="hub">
+     <span class="zcap">NEURO PROPERTY TRADE · БРОСОК · узкий хаб</span>
+     <div class="hrow"><svg class="die" viewBox="0 0 48 48" role="img" aria-label="кость: 5"><rect x="1.5" y="1.5" width="45" height="45" rx="8" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><circle cx="13" cy="13" r="4.2" fill="#16191f"/><circle cx="35" cy="13" r="4.2" fill="#16191f"/><circle cx="24" cy="24" r="4.2" fill="#16191f"/><circle cx="13" cy="35" r="4.2" fill="#16191f"/><circle cx="35" cy="35" r="4.2" fill="#16191f"/></svg><span class="hplus">+</span><svg class="die" viewBox="0 0 48 48" role="img" aria-label="кость: 3"><rect x="1.5" y="1.5" width="45" height="45" rx="8" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><circle cx="13" cy="13" r="4.2" fill="#16191f"/><circle cx="24" cy="24" r="4.2" fill="#16191f"/><circle cx="35" cy="35" r="4.2" fill="#16191f"/></svg><span class="hsum">= <b class="sum">8</b></span></div>
+     <div class="hint"><span class="hint1">Хост · ваш ход — выберите действие</span><span class="hint2">выпало 5 + 3 = 8 · сумма цифрой</span></div>
+    </div>
+   </div>
+   <div class="wrow c">
+    <section class="zone" data-region="seats">
+     <span class="zcap">ИГРОКИ · наличные всех четырёх мест</span>
+     <div class="seat act" style="--pc:var(--p0)"><div class="sr1"><span class="chip"></span><span class="snm">Хост</span><span class="scash">$1215</span></div><div class="sr3">6 Cedar Ave · владений 2<span class="srail" aria-label="домов 0"><i></i><i></i><i></i><i></i></span><span class="shx" aria-label="залога нет"></span> · LOCAL · ваш ход</div></div><div class="seat" style="--pc:var(--p2)"><div class="sr1"><span class="chip"></span><span class="snm">Neuro</span><span class="scash">$980</span></div><div class="sr3">24 Harbor Drive · владений 3<span class="srail" aria-label="домов 1"><i class="on"></i><i></i><i></i><i></i></span><span class="shx" aria-label="залога нет"></span> · SDK</div></div><div class="seat" style="--pc:var(--p1)"><div class="sr1"><span class="chip"></span><span class="snm">evil</span><span class="scash">$640</span></div><div class="sr3">10 Jail · владений 1<span class="srail" aria-label="домов 0"><i></i><i></i><i></i><i></i></span><span class="shx on" aria-label="залогов 1"></span> · в тюрьме, попытка 2</div></div><div class="seat" style="--pc:var(--p3)"><div class="sr1"><span class="chip"></span><span class="snm">Mira</span><span class="scash">$1500</span></div><div class="sr3">33 Chest · владений 2<span class="srail" aria-label="домов 0"><i></i><i></i><i></i><i></i></span><span class="shx on" aria-label="залогов 1"></span> · ИИ «Магнат»</div></div>
+    </section>
+    <section class="zone" data-region="event">
+     <span class="zcap">ПОСЛЕДНЕЕ СОБЫТИЕ</span>
+     <span class="ehero">продажа дома · Mira · Crest Square · +$70</span>
+     <span class="iline">клетка 27 · тип: продажа дома · итог +$70</span>
+     <div class="con" data-region="console">
+      <span class="zcap">КОНСОЛЬ · один герой-экшен</span>
+      <div class="acts"><button type="button" class="hero">Бросок</button><button type="button">Купить $100</button><button type="button">Отказ</button><button type="button">Торг</button><button type="button">Конец хода</button></div>
+     </div>
+    </section>
+   </div>
+  </div>
+  <div class="rside" data-region="band-right"><div class="cell" style="--gc:var(--g-orange);flex:1 1 0"><span class="band" style="--gc:var(--g-orange)"><i></i><i></i><i></i></span><span class="nm">Fir Way</span><span class="pr">$200</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="--gc:var(--g-orange);flex:1 1 0"><span class="band" style="--gc:var(--g-orange)"><i></i><i></i><i></i></span><span class="nm">Aspen Way</span><span class="pr">$180</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Chest</span></div><div class="cell" style="--gc:var(--g-orange);flex:1 1 0"><span class="band" style="--gc:var(--g-orange)"><i></i><i></i><i></i></span><span class="nm">Willow Way</span><span class="pr">$180</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Central Station</span><span class="pr">$200</span></div><div class="cell" style="--gc:var(--g-pink);flex:1 1 0"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Birch Street</span><span class="pr">$160</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="--gc:var(--g-pink);flex:1 1 0"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Maple Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Tower Utilities</span><span class="pr">$150</span></div><div class="cell foe mort" style="--gc:var(--g-pink);--pc:var(--p1);flex:1 1 0"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Oak Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div></div>
+ </div>
+ <div class="rband" data-region="band-bottom"><div class="cell corner " data-corner="0"><div class="cs"><span class="cname">Start · угловой экран</span><span class="chero turn">ХОД: Хост</span><span class="csub">ваш ход · ждём бросок</span></div></div><div class="cell" style="--gc:var(--g-brown);flex:1 1 0"><span class="band" style="--gc:var(--g-brown)"><i></i><i></i></span><span class="nm">Sunset Blvd</span><span class="pr">$60</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Chest</span></div><div class="cell mine" style="--gc:var(--g-brown);--pc:var(--p0);flex:1 1 0"><span class="band" style="--gc:var(--g-brown)"><i></i><i></i></span><span class="nm">Palm Row</span><span class="pr">$60</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--bad)"><i></i></span><span class="nm">Tax</span><span class="pr">$200</span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Harbor Station</span><span class="pr">$200</span></div><div class="cell mine" style="--gc:var(--g-lightblue);--pc:var(--p0);flex:1 1 0"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Cedar Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="gnd n1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Хост" style="fill:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Fortune</span></div><div class="cell foe" style="--gc:var(--g-lightblue);--pc:var(--p2);flex:1 1 0"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Elm Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 2"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span></div><div class="cell foe" style="--gc:var(--g-lightblue);--pc:var(--p2);flex:1 1 0"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Linden Ave</span><span class="pr">$120</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell corner " data-corner="10"><div class="cs"><span class="cname">Jail · угловой экран</span><span class="chero">ФАЗА: Начало хода</span><span class="csub">ход человека</span></div></div></div>
+</div>
+</div>
+<main class="doc">
+<h1>NPT · второй круг · концепт Б1 «кольцо во весь кадр»</h1>
+<p class="note">Кольцо занимает кадр целиком: доска — это и есть рамка кадра, поля вокруг нет.
+Четыре угловые клетки шире остальных в 3.07 раза (320 px против 104.44 px) и работают эфирными
+экранами — на них живут четыре glance-роли: <b>чей ход</b> (Start), <b>фаза</b> (Jail),
+<b>банк парковки</b> (Free Parking), <b>круг</b> (Go To Jail). В центре — узкий хаб 720 × 150:
+кубики, сумма цифрой и подсказка, кегль в нём мелкий, потому что glance там больше не живёт.
+Палитра — только <b>game/assets/skins/neuro/skin.json</b>; слова вместо значков, без эмодзи,
+инлайн SVG/CSS, без script. Живой вариант: 11 событий играют по одной шкале
+16.26 с (сумма token-длительностей), события идут друг за другом по кругу; выключатель
+«Анимации» (панель КЛЕТКА и телефон) гасит всё движение, включая псевдоэлементы.</p>
+<h2>Кадр 1 — 1600 × 1200 px: боковая клетка 104.44 × 190 / 190 × 88.89, угол 320 × 190</h2>
+<h2>Кадр 2 — 390 × 844 px (телефон): кольцо 390 × 430 целиком, клетка 21.1 × 70 / 44 × 30</h2>
+<p class="note">На телефоне кольцо — карта: 40 клеток видны целиком, у клеток читаются полоса
+группы, обводка владельца, рельс домов и штриховка залога, но имени и цены на клетке нет —
+они в инспекторе и в журнале. Угловые экраны остаются эфирными: их четыре строки набраны
+12 px, то есть ровно на полу R-7 для телефона, а не сжатием кадра 1600 (0.24375 × 50 = 12.19 px).</p>
+<div class="frame phone" data-frame="390x844">
+<div class="pring" data-region="board-phone">
+ <div class="rband"><div class="cell corner pcorner" data-corner="30"><div class="cs"><span class="cname">Go To Jail · угловой экран</span><span class="chero">РАУНД 7</span><span class="csub">игра идёт · пауз нет</span></div></div><div class="cell" style="--gc:var(--g-yellow);flex:1 1 0"><span class="band" style="--gc:var(--g-yellow)"><i></i><i></i><i></i></span><span class="nm">Crest Heights</span><span class="pr">$280</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Tower Water</span><span class="pr">$150</span></div><div class="cell foe" style="--gc:var(--g-yellow);--pc:var(--p3);flex:1 1 0"><span class="band" style="--gc:var(--g-yellow)"><i></i><i></i><i></i></span><span class="nm">Crest Square</span><span class="pr">$260</span><span class="rail" aria-label="домов 1"><i class="on"></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell foe mort" style="--gc:var(--g-yellow);--pc:var(--p3);flex:1 1 0"><span class="band" style="--gc:var(--g-yellow)"><i></i><i></i><i></i></span><span class="nm">Crest Point</span><span class="pr">$260</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">West Station</span><span class="pr">$200</span></div><div class="cell" style="--gc:var(--g-red);flex:1 1 0"><span class="band" style="--gc:var(--g-red)"><i></i><i></i><i></i></span><span class="nm">Harbor Drive</span><span class="pr">$240</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="gnd n1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Neuro" style="fill:var(--p2)"><path d="M4 10.4l3.4-6.4 3.6 4.2h2l3.6-4.2L20 10.4V20H4z"/></svg></span></div><div class="cell" style="--gc:var(--g-red);flex:1 1 0"><span class="band" style="--gc:var(--g-red)"><i></i><i></i><i></i></span><span class="nm">River Drive</span><span class="pr">$220</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Fortune</span></div><div class="cell" style="--gc:var(--g-red);flex:1 1 0"><span class="band" style="--gc:var(--g-red)"><i></i><i></i><i></i></span><span class="nm">Lake Drive</span><span class="pr">$220</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell corner pcorner" data-corner="20"><div class="cs"><span class="cname">Free Parking · угловой экран</span><span class="chero money">БАНК ПАРКОВКИ $240</span><span class="csub">копилка парковки</span></div></div></div>
+ <div class="rmid"><div class="rside"><div class="cell" style="--gc:var(--g-green);flex:1 1 0"><span class="band" style="--gc:var(--g-green)"><i></i><i></i><i></i></span><span class="nm">Garden Grove</span><span class="pr">$300</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="--gc:var(--g-green);flex:1 1 0"><span class="band" style="--gc:var(--g-green)"><i></i><i></i><i></i></span><span class="nm">Garden Park</span><span class="pr">$300</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Chest</span><span class="gnd n1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Mira" style="fill:var(--p3)"><path d="M2 14.6h20v2.8H2z"/><path d="M6 9.2h12l2.4 5.4H3.6z"/><circle cx="8" cy="17.6" r="1.8"/><circle cx="16" cy="17.6" r="1.8"/></svg></span></div><div class="cell" style="--gc:var(--g-green);flex:1 1 0"><span class="band" style="--gc:var(--g-green)"><i></i><i></i><i></i></span><span class="nm">Garden Court</span><span class="pr">$320</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">South Station</span><span class="pr">$200</span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Fortune</span></div><div class="cell foe" style="--gc:var(--g-darkblue);--pc:var(--p2);flex:1 1 0"><span class="band" style="--gc:var(--g-darkblue)"><i></i><i></i></span><span class="nm">Grand Avenue</span><span class="pr">$350</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--bad)"><i></i></span><span class="nm">Luxury Tax</span><span class="pr">$100</span></div><div class="cell" style="--gc:var(--g-darkblue);flex:1 1 0"><span class="band" style="--gc:var(--g-darkblue)"><i></i><i></i></span><span class="nm">Grand Place</span><span class="pr">$400</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div></div>
+  <div class="pwell" data-region="hub-phone">
+   <div class="phubc"><span class="zcap">NEURO PROPERTY TRADE · БРОСОК · узкий хаб</span>
+    <div class="hrow"><svg class="die" viewBox="0 0 48 48" role="img" aria-label="кость: 5"><rect x="1.5" y="1.5" width="45" height="45" rx="8" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><circle cx="13" cy="13" r="4.2" fill="#16191f"/><circle cx="35" cy="13" r="4.2" fill="#16191f"/><circle cx="24" cy="24" r="4.2" fill="#16191f"/><circle cx="13" cy="35" r="4.2" fill="#16191f"/><circle cx="35" cy="35" r="4.2" fill="#16191f"/></svg><span class="hplus">+</span><svg class="die" viewBox="0 0 48 48" role="img" aria-label="кость: 3"><rect x="1.5" y="1.5" width="45" height="45" rx="8" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><circle cx="13" cy="13" r="4.2" fill="#16191f"/><circle cx="24" cy="24" r="4.2" fill="#16191f"/><circle cx="35" cy="35" r="4.2" fill="#16191f"/></svg><span class="hsum">= <b class="sum">8</b></span></div>
+    <span class="hint1">Хост · ваш ход — выберите действие</span></div>
+  </div>
+  <div class="rside"><div class="cell" style="--gc:var(--g-orange);flex:1 1 0"><span class="band" style="--gc:var(--g-orange)"><i></i><i></i><i></i></span><span class="nm">Fir Way</span><span class="pr">$200</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="--gc:var(--g-orange);flex:1 1 0"><span class="band" style="--gc:var(--g-orange)"><i></i><i></i><i></i></span><span class="nm">Aspen Way</span><span class="pr">$180</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Chest</span></div><div class="cell" style="--gc:var(--g-orange);flex:1 1 0"><span class="band" style="--gc:var(--g-orange)"><i></i><i></i><i></i></span><span class="nm">Willow Way</span><span class="pr">$180</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Central Station</span><span class="pr">$200</span></div><div class="cell" style="--gc:var(--g-pink);flex:1 1 0"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Birch Street</span><span class="pr">$160</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="--gc:var(--g-pink);flex:1 1 0"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Maple Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Tower Utilities</span><span class="pr">$150</span></div><div class="cell foe mort" style="--gc:var(--g-pink);--pc:var(--p1);flex:1 1 0"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Oak Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div></div></div>
+ <div class="rband"><div class="cell corner pcorner" data-corner="0"><div class="cs"><span class="cname">Start · угловой экран</span><span class="chero turn">ХОД: Хост</span><span class="csub">ваш ход · ждём бросок</span></div></div><div class="cell" style="--gc:var(--g-brown);flex:1 1 0"><span class="band" style="--gc:var(--g-brown)"><i></i><i></i></span><span class="nm">Sunset Blvd</span><span class="pr">$60</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Chest</span></div><div class="cell mine" style="--gc:var(--g-brown);--pc:var(--p0);flex:1 1 0"><span class="band" style="--gc:var(--g-brown)"><i></i><i></i></span><span class="nm">Palm Row</span><span class="pr">$60</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--bad)"><i></i></span><span class="nm">Tax</span><span class="pr">$200</span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Harbor Station</span><span class="pr">$200</span></div><div class="cell mine" style="--gc:var(--g-lightblue);--pc:var(--p0);flex:1 1 0"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Cedar Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span><span class="gnd n1"><svg class="tk" viewBox="0 0 24 24" role="img" aria-label="фишка: Хост" style="fill:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span></div><div class="cell" style="flex:1 1 0"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Fortune</span></div><div class="cell foe" style="--gc:var(--g-lightblue);--pc:var(--p2);flex:1 1 0"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Elm Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 2"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span></div><div class="cell foe" style="--gc:var(--g-lightblue);--pc:var(--p2);flex:1 1 0"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Linden Ave</span><span class="pr">$120</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div><div class="cell corner pcorner" data-corner="10"><div class="cs"><span class="cname">Jail · угловой экран</span><span class="chero">ФАЗА: Начало хода</span><span class="csub">ход человека</span></div></div></div>
+</div>
+<div class="pzone pzone-j">
+ <span class="zcap">ХОД СОБЫТИЙ · новейшая строка крупно</span>
+ <span class="pjhero">evil попадает в тюрьму</span>
+ <span class="pjl">Mira бросает 4+4</span><span class="pjl">Mira продаёт с клетки 27</span>
+ <span class="pjl">evil закладывает клетку 11</span>
+ <span class="pjcnt">показано 4 из 132 · игрок: все · тип: все</span>
+</div>
+<div class="pzone pzone-s"><span class="zcap">ИГРОКИ · наличные всех четырёх мест</span><div class="pseat" style="--pc:var(--p0)"><span class="chip"></span><span class="psnm">Хост</span><span class="pscash">$1215</span><span class="pscl">6 Cedar Ave</span></div><div class="pseat" style="--pc:var(--p2)"><span class="chip"></span><span class="psnm">Neuro</span><span class="pscash">$980</span><span class="pscl">24 Harbor Drive</span></div><div class="pseat" style="--pc:var(--p1)"><span class="chip"></span><span class="psnm">evil</span><span class="pscash">$640</span><span class="pscl">10 Jail</span></div><div class="pseat" style="--pc:var(--p3)"><span class="chip"></span><span class="psnm">Mira</span><span class="pscash">$1500</span><span class="pscl">33 Chest</span></div></div>
+<div class="pzone pzone-c">
+ <span class="zcap">КЛЕТКА · инспектор закреплён на клетке 6</span>
+ <span class="pih">Cedar Ave</span>
+ <span class="pil">группа lightblue · цена $100 · аренда $6 · владелец: Хост · группа не собрана</span>
+ <span class="zcap">КОНСОЛЬ · один герой-экшен</span>
+ <div class="pacts"><button type="button" class="hero">Бросок</button><button type="button">Купить $100</button><button type="button">Отказ</button><button type="button">Торг</button><button type="button">Конец хода</button><button type="button">Пауза</button><label class="switch" for="still" data-od-id="anim-switch-phone"><span class="swa-on">Анимации: вкл</span><span class="swa-off">Анимации: выкл</span></label></div>
+</div>
+</div>
+<h2>Один круг из 11 событий: они играют сами (16.26 с = сумма длительностей из tokens.json)</h2>
+<p class="note">Каждое событие — окно на общей шкале: фигуры ниже играют без единого нажатия,
+animation-delay = расписание, длительности — только из tokens.json (step .19, fast .12, base .19,
+slow .32, pop .5, panel .3, card 2.8, dice_roll .85); события идут друг за другом и повторяются
+по кругу. При выключенном движении (переключатель «Анимации» — панель КЛЕТКА и телефон, или
+prefers-reduced-motion) остаётся конечное состояние каждого события, 0 с. Числа аукциона, обмена,
+цена дома, залоговая выплата и исходы банкротства/конца — «пример»: этих чисел в scene-data.md нет;
+строки сцены везде дословно.</p>
+<div class="tlbar" data-od-id="events-timeline"><span class="tlseg" style="flex:1.84;border-left:4px solid var(--ac)">1</span><span class="tlseg" style="flex:.85;border-left:4px solid var(--hi)">2</span><span class="tlseg" style="flex:.99;border-left:4px solid var(--g-green)">3</span><span class="tlseg" style="flex:2.92;border-left:4px solid var(--g-red)">4</span><span class="tlseg" style="flex:3.12;border-left:4px solid var(--g-darkblue)">5</span><span class="tlseg" style="flex:.49;border-left:4px solid var(--g-yellow)">6</span><span class="tlseg" style="flex:.69;border-left:4px solid var(--g-lightblue)">7</span><span class="tlseg" style="flex:.62;border-left:4px solid var(--g-pink)">8</span><span class="tlseg" style="flex:3.12;border-left:4px solid var(--bad)">9</span><span class="tlseg" style="flex:.82;border-left:4px solid var(--warn)">10</span><span class="tlseg" style="flex:.8;border-left:4px solid var(--mu)">11</span></div>
+<p class="jflt" style="margin-top:4px">окна круга пропорционально длительности: 1 ход 1.84 (step .19×8 + hop .32) — волна по кольцу и 8 шагов фишки · 2 бросок .85 (dice_roll) · 3 покупка .99 (base+pop+panel) · 4 аренда 2.92 (fast+card) · 5 аукцион 3.12 (slow+card) · 6 сделка .49 (panel+step) · 7 стройка .69 (pop+base) · 8 залог .62 (slow+panel) · 9 банкротство 3.12 (slow+card) · 10 конец игры .82 (pop+slow) · 11 пауза .8 (panel+pop); сумма 16.26 с</p>
+<div class="strip">
+<figure class="fr live fig-walk" data-od-id="fig-turn"><div class="frbody wlane">
+ <div class="mrow" style="width:max-content">
+  <div class="cell demo tall" style="--gc:var(--hi)"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Fortune</span></div>
+  <div class="cell demo tall foe" style="--gc:var(--g-lightblue);--pc:var(--p2)"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Elm Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 2"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span></div>
+  <div class="cell demo tall foe" style="--gc:var(--g-lightblue);--pc:var(--p2)"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Linden Ave</span><span class="pr">$120</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+  <div class="mcs"><span class="cname">Jail · угловой экран</span><span class="chero">ФАЗА: Начало хода</span><span class="csub">игра идёт · пауз нет</span></div>
+  <div class="cell demo foe mort" style="--gc:var(--g-pink);--pc:var(--p1)"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Oak Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+  <div class="cell demo" style="--gc:var(--mu)"><span class="band" style="--gc:var(--mu)"><i></i></span><span class="nm">Tower Utilities</span><span class="pr">$150</span></div>
+  <div class="cell demo" style="--gc:var(--g-pink)"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Maple Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+  <div class="cell demo" style="--gc:var(--g-pink)"><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Birch Street</span><span class="pr">$160</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+  <span class="wtk" aria-label="фишка: Хост" data-od-id="fig-turn-token"><svg viewBox="0 0 24 24" role="img" style="width:24px;height:24px;fill:var(--p0)"><path d="M4.6 18.4h14.8v2.6H4.6z"/><path d="M8.6 3.6h6.8v14.8H8.6z"/></svg></span>
+ </div>
+</div><figcaption>ход — бросок уже показал 5 + 3 = 8: фишка Хоста идёт 8 шагов (клетка 6 → 14), на углу 10 прыжок; окно показывает шаги с 7 по 14. step 0.19 × 8 + hop 0.32 = 1.84 с (0—11.32%). При выключенных: фишка сразу стоит на клетке 14 (0 с); на кадре — волна по кольцу: ход перешёл.</figcaption></figure>
+<figure class="fr live fig-roll" data-od-id="fig-roll"><div class="frbody">
+ <div class="mhub"><span class="zcap">БРОСОК · кубики 5 и 3</span>
+  <div class="hrow"><span class="tray" aria-label="поднос"></span><svg class="die" viewBox="0 0 48 48" role="img" aria-label="кость: 5"><rect x="1.5" y="1.5" width="45" height="45" rx="8" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><circle cx="13" cy="13" r="4.2" fill="#16191f"/><circle cx="35" cy="13" r="4.2" fill="#16191f"/><circle cx="24" cy="24" r="4.2" fill="#16191f"/><circle cx="13" cy="35" r="4.2" fill="#16191f"/><circle cx="35" cy="35" r="4.2" fill="#16191f"/></svg><span class="hplus">+</span><svg class="die" viewBox="0 0 48 48" role="img" aria-label="кость: 3"><rect x="1.5" y="1.5" width="45" height="45" rx="8" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><circle cx="13" cy="13" r="4.2" fill="#16191f"/><circle cx="24" cy="24" r="4.2" fill="#16191f"/><circle cx="35" cy="35" r="4.2" fill="#16191f"/></svg><span class="hsum">= <b class="sum">8</b></span></div></div>
+</div><figcaption>бросок — кости падают на поднос из подложки, сумма 8 собирается цифрой; в хабе кадра тот же бросок. dice_roll 0.85 с (11.32—16.54%). При выключенных: сразу кости 5 и 3 и сумма 8 (0 с).</figcaption></figure>
+<figure class="fr live fig-buy" data-od-id="fig-buy"><div class="frbody">
+ <div class="cell demo tall mine" style="--gc:var(--g-lightblue);--pc:var(--p0)"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Cedar Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+ <div class="mcash" style="--pc:var(--p0)"><span class="mcn">Хост</span><span class="mcv"><span class="m0">$1215</span><span class="m1">$1115</span></span></div>
+ <span class="mline">владелец: Хост</span>
+</div><figcaption>покупка (пример: цена $100) — обводка владельца нарастает на Cedar Ave, наличные Хоста 1215 → 1115, строка владельца появляется. base 0.19 + pop 0.5 + panel 0.3 = 0.99 с (16.54—22.63%). При выключенных: клетка сразу с обводкой, наличные сразу $1115, владение видно.</figcaption></figure>
+<figure class="fr live fig-rent" data-od-id="fig-rent"><div class="frbody">
+ <div class="mcash" style="--pc:var(--p2)"><span class="mcn">Neuro</span><span class="mcv"><span class="m0">$980</span><span class="m1">$974</span></span></div>
+ <div class="mcash" style="--pc:var(--p0)"><span class="mcn">Хост</span><span class="mcv"><span class="m0">$1215</span><span class="m1">$1221</span></span></div>
+ <div class="fcard">ОПЛАТИТЬ $6</div>
+</div><figcaption>аренда — аренда $6 дословно из инспектора: Neuro попадает на Cedar Ave (владелец Хост) и платит; карточка «ОПЛАТИТЬ $6» держится как в продукте. fast 0.12 + card 2.8 = 2.92 с (22.63—40.59%). При выключенных: суммы сразу $974 и $1221, карточка стоит.</figcaption></figure>
+<figure class="fr live fig-auc" data-od-id="fig-auction"><div class="frbody">
+ <div class="mrow" style="width:max-content">
+  <div class="cell demo mine" style="--gc:var(--g-red);--pc:var(--p3)"><span class="band" style="--gc:var(--g-red)"><i></i><i></i><i></i></span><span class="nm">Lake Drive</span><span class="pr">$220</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+  <div class="mbids"><span class="b0">ставка 40</span><span class="b1">ставка 60</span><span class="b2">ставка 100</span></div>
+ </div>
+ <div class="fcard">СТАВКА $100<small>победа за Mira — пример: ставок в scene-data.md нет</small></div>
+</div><figcaption>аукцион (пример) — ставки тикают цифрой 40 → 60 → 100, клетка Lake Drive вспыхивает и получает обводку победителя; карточка «СТАВКА» держится 2.8 с. slow 0.32 + card 2.8 = 3.12 с (40.59—59.78%). При выключенных: сразу ставка 100 и обводка победителя.</figcaption></figure>
+<figure class="fr live fig-trade" data-od-id="fig-trade"><div class="frbody">
+ <div class="cell demo tall mine" style="--gc:var(--g-lightblue);--pc:var(--p0)"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Elm Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 2"><i class="on"></i><i class="on"></i><i class=""></i><i class=""></i></span></div>
+ <div class="mcash" style="--pc:var(--p0)"><span class="mcn">Хост</span><span class="mcv"><span class="m0">$1215</span><span class="m1">$995</span></span></div>
+ <div class="mcash" style="--pc:var(--p2)"><span class="mcn">Neuro</span><span class="mcv"><span class="m0">$980</span><span class="m1">$1200</span></span></div>
+</div><figcaption>сделка (пример: Neuro отдаёт Elm Ave Хосту за $220) — обводка владельца перекрашивается с Neuro на Хост, корпуса обмениваются, наличные меняются. panel 0.3 + step 0.19 = 0.49 с (59.78—62.79%). При выключенных: обе строки и обводка меняются одним кадром.</figcaption></figure>
+<figure class="fr live fig-build" data-od-id="fig-build"><div class="frbody">
+ <div class="cell demo tall foe" style="--gc:var(--g-lightblue);--pc:var(--p2)"><span class="band" style="--gc:var(--g-lightblue)"><i></i><i></i><i></i></span><span class="nm">Elm Ave</span><span class="pr">$100</span><span class="rail" aria-label="домов 2"><i class="on"></i><i class="on hot"></i><i class=""></i><i class=""></i></span></div>
+ <div class="mcash" style="--pc:var(--p2)"><span class="mcn">Neuro</span><span class="mcv"><span class="m0">$980</span><span class="m1">$930</span></span></div>
+</div><figcaption>стройка — второй дом вырастает на рельсе Elm Ave (в сцене на клетке 8 стоят 2 дома); наличные Neuro −$50 (house_cost клетки 8 — из раскадровки принятого макета). pop 0.5 + base 0.19 = 0.69 с (62.79—67.03%). При выключенных: рельс сразу с двумя домами (0 с).</figcaption></figure>
+<figure class="fr live fig-mort" data-od-id="fig-mortgage"><div class="frbody">
+ <div class="cell demo tall foe" style="--gc:var(--g-pink);--pc:var(--p1)"><span class="hx" aria-hidden="true"></span><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Oak Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+ <div class="mcash" style="--pc:var(--p1)"><span class="mcn">evil</span><span class="mcv"><span class="m0">$640</span><span class="m1">$710</span></span></div>
+</div><figcaption>залог — журнальная строка «evil закладывает клетку 11»: штриховка затекает на Oak Street, наличные +$70 (пример: половина цены $140). slow 0.32 + panel 0.3 = 0.62 с (67.03—70.85%). При выключенных: клетка сразу в штриховке — состояние сцены (0 с).</figcaption></figure>
+<figure class="fr live fig-bank" data-od-id="fig-bankruptcy"><div class="frbody">
+ <div class="cell demo tall dim" style="--gc:var(--g-pink);--pc:var(--p1)"><span class="hx" aria-hidden="true"></span><span class="band" style="--gc:var(--g-pink)"><i></i><i></i><i></i></span><span class="nm">Oak Street</span><span class="pr">$140</span><span class="rail" aria-label="домов 0"><i class=""></i><i class=""></i><i class=""></i><i class=""></i></span></div>
+ <div class="mcash" style="--pc:var(--p1)"><span class="mcn">evil</span><span class="mcv"><span class="m0">$640</span><span class="m1">$0</span></span></div>
+ <div class="fcard">банкротство<small>пример — в сцене банкротства нет: клетка гаснет, наличные 0</small></div>
+</div><figcaption>банкротство (пример) — клетка гаснет, наличные до 0, карточка события держится 2.8 с. slow 0.32 + card 2.8 = 3.12 с (70.85—90.04%). При выключенных: клетка сразу погашена, наличные 0.</figcaption></figure>
+<figure class="fr live fig-end" data-od-id="fig-game-end"><div class="frbody">
+ <div class="fcard">Игра завершена<small>пример — матч в этой сцене не завершён</small></div>
+</div><figcaption>конец игры (пример) — карточка итога вырастает в кадре. pop 0.5 + slow 0.32 = 0.82 с (90.04—95.08%). При выключенных: карточка сразу стоит.</figcaption></figure>
+<figure class="fr live fig-pause" data-od-id="fig-pause"><div class="frbody">
+ <div class="mscrim"><div class="cell demo" style="--gc:var(--hi)"><span class="band" style="--gc:var(--hi)"><i></i></span><span class="nm">Chest</span></div><span class="veil" data-od-id="fig-pause-veil"><span>Пауза</span></span></div>
+</div><figcaption>пауза — скрим со словом «Пауза» ложится поверх клетки; пауза — существующий пункт панели КЛЕТКА, а не особый режим. panel 0.3 + pop 0.5 = 0.8 с (95.08—100%). При выключенных: скрим сразу стоит.</figcaption></figure>
+</div>
+<p class="note">Таблица событий (длительность — из tokens.json или её явная сумма; окно — доля шкалы 16.26 с):</p>
+<table><thead><tr><th>событие</th><th>что двигается</th><th>длительность</th><th>что видно при выключенных анимациях</th></tr></thead><tbody>
+<tr><td>1. Ход</td><td>волна по 40 клеткам кадра + фишка Хоста 8 шагов (6 → 14, прыжок на углу 10)</td><td>step 0.19 × 8 + hop 0.32 = 1.84 с</td><td>фишка сразу на клетке 14; клетки без вспышки; 0 с</td></tr>
+<tr><td>2. Бросок</td><td>поднос вспыхивает, кости падают, сумма 8 вырастает — хаб кадра и фигура</td><td>dice_roll 0.85 с</td><td>кости 5 и 3 и сумма 8 сразу; 0 с</td></tr>
+<tr><td>3. Покупка</td><td>обводка владельца нарастает на Cedar Ave, наличные 1215 → 1115, строка владельца</td><td>base 0.19 + pop 0.5 + panel 0.3 = 0.99 с</td><td>клетка с обводкой, наличные $1115; 0 с</td></tr>
+<tr><td>4. Аренда</td><td>наличные Neuro 980 → 974 и Хоста 1215 → 1221, карточка «ОПЛАТИТЬ $6» (аренда $6 — из инспектора)</td><td>fast 0.12 + card 2.8 = 2.92 с</td><td>суммы и карточка стоят; 0 с</td></tr>
+<tr><td>5. Аукцион</td><td>ставки 40 → 60 → 100 (пример), вспышка и обводка на Lake Drive, карточка «СТАВКА $100»</td><td>slow 0.32 + card 2.8 = 3.12 с</td><td>ставка 100 и обводка победителя; 0 с</td></tr>
+<tr><td>6. Сделка</td><td>обводка Elm Ave меняет цвет владельца, наличные 1215 → 995 и 980 → 1200 (пример)</td><td>panel 0.3 + step 0.19 = 0.49 с</td><td>обводка Хоста, новые наличные; 0 с</td></tr>
+<tr><td>7. Стройка</td><td>второй дом вырастает на рельсе Elm Ave, наличные Neuro −$50 (house_cost)</td><td>pop 0.5 + base 0.19 = 0.69 с</td><td>рельс с двумя домами (как в сцене); 0 с</td></tr>
+<tr><td>8. Залог</td><td>штриховка затекает на Oak Street, наличные evil +$70 (пример)</td><td>slow 0.32 + panel 0.3 = 0.62 с</td><td>клетка в штриховке (как в сцене); 0 с</td></tr>
+<tr><td>9. Банкротство</td><td>клетка гаснет (opacity 0.42), наличные до 0, карточка (пример)</td><td>slow 0.32 + card 2.8 = 3.12 с</td><td>клетка погашена, наличные 0; 0 с</td></tr>
+<tr><td>10. Конец игры</td><td>карточка итога вырастает (пример — матч не завершён)</td><td>pop 0.5 + slow 0.32 = 0.82 с</td><td>карточка стоит; 0 с</td></tr>
+<tr><td>11. Пауза</td><td>скрим со словом «Пауза» ложится на клетку</td><td>panel 0.3 + pop 0.5 = 0.8 с</td><td>скрим стоит; 0 с</td></tr>
+</tbody></table><h2>Сколько площади отдано доске и за счёт чего</h2>
+<p class="note">Первый набор (концепт 1 «форма вместо текста») держал кольцо 969 × 969 и два дока
+по бокам. Здесь кольцо растянуто на весь кадр, доки убраны, их функции переехали в нутро кольца,
+а нутро поделено между узким хабом и четырьмя панелями. Числа — расчёт по раскладке; замер
+рендера — в файле <b>boardfirst-1-fullring-measurements.md</b>.</p>
+<table><thead><tr><th>область</th><th>первый набор, концепт 1</th><th>Б1 «кольцо во весь кадр»</th></tr></thead><tbody><tr><td>кольцо (bbox доски)</td><td>969 × 969 = 938 961 px² — 48.9 % кадра</td><td>1600 × 1200 = 1 920 000 px² — 100 % кадра</td></tr><tr><td>клетки кольца (40 шт.)</td><td>40 × 85 × 85 = 289 000 px² — 15.1 %</td><td>18 × 19 844 + 18 × 16 889 + 4 × 60 800 = 904 399 px² — 47.1 %</td></tr><tr><td>одна боковая клетка</td><td>85 × 85 = 7 225 px²</td><td>104.44 × 190 = 19 844 / 190 × 88.89 = 16 889 px²</td></tr><tr><td>угловая клетка</td><td>угол = боковая: 7 225 px²</td><td>320 × 190 = 60 800 px² — 8.4 × боковой клетки</td></tr><tr><td>нутро кольца</td><td>792.8 × 792.8 = 628 500 px² — 32.7 % кадра</td><td>1216 × 816 = 992 256 px² — 51.7 % кадра</td></tr><tr><td>узкий хаб</td><td>не было: панно 4 зоны на всё нутро</td><td>720 × 150 = 108 000 px² — 5.6 % кадра, 10.9 % нутра</td></tr><tr><td>боковые доки</td><td>280 × 1085 + 311 × 1085 = 641 235 px² — 33.4 % кадра</td><td>0 px² — функции переехали внутрь кольца</td></tr></tbody></table>
+<h2>Как это выключается и подменяется</h2>
+<p class="note">Живой выключатель: чек-бокс <b>#still</b> — первый элемент body. Три слоя правила
+с !important: селектор от соседей <b>#still:checked ~ *</b>, дубль через <b>body:has(#still:checked) *</b>
+и <b>@media (prefers-reduced-motion:reduce) *</b> — каждый перечисляет <b>*,*::before,*::after</b>
+и ставит animation:none, animation-duration:0s, transition:none, transition-duration:0s: селектор
+из «звёздочки» до псевдоэлементов не доставал (замер 118 → 83 running из files/prompt-live-fix.md),
+поэтому псевдоэлементы перечислены явно. При выключенном движении остаётся конечное состояние
+каждого события — 0 с; проверка покрытий — в таблице ниже и в b1-live-glm53.md.</p>
+</main>
+</body>
+</html>

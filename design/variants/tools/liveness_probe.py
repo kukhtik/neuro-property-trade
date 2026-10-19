@@ -41,9 +41,14 @@ KILL = ("*,*::before,*::after{animation:none !important;transition:none !importa
 
 
 def union_pct(shots):
-    """Share of pixels that change at all across the window (per pixel: max-min over the shots)."""
+    """Two readings of the same window:
+      union - share of pixels that change at all (per pixel: max-min over the shots);
+      spread - the LARGEST single-pixel change anywhere, in 0..255.
+    Union alone misses a slow loop: boardfirst-1-live-glm runs 85 animations of 16.26s, so in a
+    2.4s window almost no pixel crosses the threshold and the page read as STATIC while it moves."""
     imgs = [Image.open(p).convert("RGB").load() for p in shots]
     n = 0
+    biggest = 0
     for y in range(0, H, 2):          # every other row is enough for a share
         for x in range(0, W, 2):
             lo = hi = imgs[0][x, y]
@@ -53,9 +58,12 @@ def union_pct(shots):
                     lo = c
                 if c > hi:
                     hi = c
-            if abs(hi[0] - lo[0]) + abs(hi[1] - lo[1]) + abs(hi[2] - lo[2]) > 24:
+            d = abs(hi[0] - lo[0]) + abs(hi[1] - lo[1]) + abs(hi[2] - lo[2])
+            if d > 24:
                 n += 1
-    return 100.0 * n / ((W // 2) * (H // 2))
+            if d > biggest:
+                biggest = d
+    return 100.0 * n / ((W // 2) * (H // 2)), biggest
 
 
 def settle(page):
@@ -94,6 +102,7 @@ def main(argv):
     opt = dict(args)
     live_min = float(opt.get("--live-min", 0.5))
     off_max = float(opt.get("--off-max", 0.05))
+    spread_min = int(opt.get("--spread-min", 40))
     gate = float(opt.get("--gate", 0.8))
     if not files:
         print(__doc__)
@@ -113,10 +122,11 @@ def main(argv):
             page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
             page.goto(Path(f).absolute().as_uri(), wait_until="load")
             settle(page)
-            s = shoot(page, out / name, "live", gate)
-            live_union = union_pct(s)
-            live_ok = live_union >= live_min
-            print(f"LIVE union={live_union:.2f}% verdict={'PASS' if live_ok else 'STATIC'}")
+            s = shoot(page, out / name, "live", gate, count=8)
+            live_union, live_spread = union_pct(s)
+            live_ok = live_union >= live_min or live_spread >= spread_min
+            print(f"LIVE union={live_union:.2f}% max_spread={live_spread} "
+                  f"verdict={'PASS' if live_ok else 'STATIC'}")
             page.close()
 
             page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1,
@@ -124,10 +134,11 @@ def main(argv):
             page.goto(Path(f).absolute().as_uri(), wait_until="load")
             page.add_style_tag(content=KILL)
             settle(page)
-            s = shoot(page, out / f"{name}-off", "off", gate)
-            off_union = union_pct(s)
+            s = shoot(page, out / f"{name}-off", "off", gate, count=4)
+            off_union, off_spread = union_pct(s)
             off_ok = off_union <= off_max
-            print(f"OFF  union={off_union:.2f}% verdict={'PASS' if off_ok else 'MOVING-WHEN-OFF'}")
+            print(f"OFF  union={off_union:.2f}% max_spread={off_spread} "
+                  f"verdict={'PASS' if off_ok else 'MOVING-WHEN-OFF'}")
             page.close()
 
             passed = live_ok and off_ok
