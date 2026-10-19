@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><title>Б1 — три живых варианта (играют здесь)</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:20px; background:#0b0613; color:#f2eaff;
+         font:15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  h1 { font-size:24px; margin:0 0 6px; }
+  p.sub { color:#b9a9d6; margin:0 0 18px; max-width:76ch; }
+  .row { display:flex; gap:16px; flex-wrap:wrap; }
+  .pane { border:1px solid #2a1b3d; border-radius:12px; background:#120a1e; padding:10px;
+          flex:1 1 420px; }
+  .pane h2 { font-size:15px; margin:0 0 8px; color:#ff6fae; }
+  .stage { position:relative; width:100%; aspect-ratio:4/3; overflow:hidden;
+           border:1px solid #241636; border-radius:8px; background:#0b0613; }
+  iframe { position:absolute; top:0; left:0; width:1600px; height:1200px; border:0;
+           transform-origin:top left; }
+  .hint { color:#8f7fb0; font-size:12px; margin:8px 0 0; }
+</style>
+<h1>Б1 «кольцо во весь кадр» — три варианта играют прямо здесь</h1>
+<p class="sub">Каждый кадр — настоящий файл варианта во фрейме, а не снимок. Если движение видно —
+живость подтверждена на твоём экране. Если все три неподвижны, значит просмотрщик гасит CSS-анимации
+(тогда смотри видеофайлы или открой <code>.html</code> двойным щелчком в браузере — там они двигаются).
+Числа живости — из моих замеров: широта изменений за 5.6 с и наибольшее изменение одного пикселя.</p>
+<div class="row" id="row"></div>
+<p class="hint">Масштаб каждого кадра подобран под ширину панели; оригиналы — 1600×1200.</p>
+<script>
+  // Скрипт здесь только для удобства чтения списка; сами варианты живут на CSS.
+  const items = [
+    ["deepseek v4.1 flash — 4.56 % площади, шкала 22 с", "boardfirst-1-live-deepseek.html"],
+    ["space-bunny — 4.47 % площади, свет по кольцу", "boardfirst-1-live-spacebunny.html"],
+    ["glm-5.3-flash — 0.31 % площади, амплитуда 660", "boardfirst-1-live-glm.html"],
+  ];
+  const row = document.getElementById("row");
+  for (const [title, file] of items) {
+    const pane = document.createElement("section");
+    pane.className = "pane";
+    pane.innerHTML = `<h2>${title}</h2><div class="stage"><iframe src="${file}" loading="eager"></iframe></div>`;
+    row.appendChild(pane);
+  }
+  function fit() {
+    for (const stage of document.querySelectorAll(".stage")) {
+      const s = stage.clientWidth / 1600;
+      stage.querySelector("iframe").style.transform = `scale(${s})`;
+    }
+  }
+  addEventListener("resize", fit); fit();
+</script>
+</html>
