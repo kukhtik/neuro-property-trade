@@ -165,14 +165,22 @@ static func test_smallest_step_keeps_the_name_band_and_badge() -> String:
 			band = c as ColorRect
 	if band == null:
 		return "step 3 left the cell with no group band: nothing identifies it"
-	# and the owner badge must still be applied
+	# and the owner must still be SHOWN. 20.10: the owner is a FLAG in the owner's colour
+	# now, not the letter "N" in a badge - a letter is not a shape, and the owner asked
+	# for the facts to be shown as forms. The contract is the same: at the smallest step
+	# the cell still says WHO owns it.
 	tv.apply({"owner": 2, "owner_name": "Neuro", "owner_color": Color(0.5, 0.5, 0.9)})
-	var badge_visible := false
-	for c in tv.text_labels():
-		if c is Label and (c as Label).text == "N" and (c as Label).visible:
-			badge_visible = true
-	if not badge_visible:
-		return "step 3 dropped the owner badge"
+	var glyphs := tv.find_child("tile-glyphs", true, false)
+	if glyphs == null:
+		return "step 3 dropped the glyph layer"
+	if int(glyphs.get("owner_index")) != 2:
+		return "step 3 dropped the owner: the glyph layer carries owner %d" % [
+			int(glyphs.get("owner_index"))]
+	# and the flag must have a place to be drawn - a shape with no rect is no shape
+	var flag_rect: Rect2 = glyphs.get("owner_rect")
+	if flag_rect.size.x <= 0.0 or flag_rect.size.y <= 0.0:
+		return ("step 3 left the owner flag with no room (%.0fx%.0f) - a shape that cannot "
+			+ "be drawn is no shape") % [flag_rect.size.x, flag_rect.size.y]
 	return ""
 
 
@@ -191,25 +199,38 @@ static func test_no_cell_is_ever_blank_across_sizes() -> String:
 static func test_house_counter_matches_houses() -> String:
 	# D4: houses were 5x5px squares only. The counter is the readable signal; it must agree
 	# with `houses` exactly, including the hotel case (5).
+	#
+	# 20.10: the counter stopped being a WORD. The owner asked for the facts to be SHAPES
+	# ("не пиши, а показывай в дизайне"), and a cell that says "×3" next to a silhouette of
+	# three houses says the same thing twice - once as a form and once as a letter. The
+	# silhouettes in the glyph layer are now the ONLY carrier, so this test checks the
+	# SILHOUETTES: one per house, a hotel as its own shape, and nothing left on the cell
+	# when there are no houses.
 	var data := {"index": 6, "name": "Palm Row", "short": "Palm Row", "type": "property", "group": "amber"}
 	var tv := _tile(CELL_LIVE, data)
 	for n in [1, 3, 4, 5]:
 		tv.apply({"houses": n})
-		var lbl: Label = null
+		var glyphs := tv.find_child("tile-glyphs", true, false)
+		if glyphs == null:
+			return "no glyph layer on the tile for houses=%d" % n
+		if int(glyphs.get("houses")) != n:
+			return "the glyph layer carries %d houses, expected %d" % [
+				int(glyphs.get("houses")), n]
+		# the TEXT carrier is gone: the same fact twice is one too many
 		for c in tv.text_labels():
 			if c is Label and (c as Label).text.begins_with("×"):
-				lbl = c
-		if lbl == null:
-			return "no house counter on the tile for houses=%d" % n
-		if lbl.text != "×%d" % n:
-			return "houses=%d rendered as %s" % [n, lbl.text]
-		tv.apply({"houses": 0})
-		var gone := true
-		for c in tv.text_labels():
-			if c is Label and (c as Label).text.begins_with("×"):
-				gone = false
-		if not gone:
-			return "the house counter survives houses=0"
+				return ("the house counter TEXT is still drawn for houses=%d - the silhouettes "
+					+ "are the carrier now") % n
+	tv.apply({"houses": 0})
+	var glyphs0 := tv.find_child("tile-glyphs", true, false)
+	if glyphs0 != null and int(glyphs0.get("houses")) != 0:
+		return "the glyph layer still carries %d houses for houses=0" % int(glyphs0.get("houses"))
+	var gone := true
+	for c in tv.text_labels():
+		if c is Label and (c as Label).text.begins_with("×"):
+			gone = false
+	if not gone:
+		return "the house counter survives houses=0"
 	return ""
 
 

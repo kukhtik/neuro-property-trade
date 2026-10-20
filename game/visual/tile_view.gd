@@ -10,6 +10,9 @@ signal pressed(index: int)
 
 const UiTheme := preload("res://ui/theme.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
+## The board's VISUAL GRAMMAR: a fact about a cell is a FORM, not a word. The owner
+## asked for it in words (20.10): "не пиши, а показывай в дизайне".
+const StateGlyphLayer := preload("res://visual/state_glyph_layer.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const LayoutProfile := preload("res://ui/core/layout_profile.gd")
@@ -63,6 +66,9 @@ var _badge: Label
 var _houses_lbl: Label
 var _state: Panel
 var _mortgaged: Label
+## The state drawn as SHAPES: the owner's flag, the house silhouettes, the mortgage hatch.
+## The old cell said all of it in words - a letter badge, "x3", and the letter "M".
+var _glyphs: StateGlyphLayer
 ## Set by `_layout_children`: whether this cell is tall enough for the house counter. `apply()` used
 ## to decide it alone (`houses > 0 and _name.visible`), which is what pushed the counter out of a
 ## short B1 cell.
@@ -232,6 +238,15 @@ func _build(data: Dictionary) -> void:
 	_mortgaged.visible = false
 	_mortgaged.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_body.add_child(_mortgaged)
+
+	# The SHAPE layer. It sits on top of the face, carries no text, and draws the owner, the
+	# houses and the mortgage. The letter badge and the text counter stay UNDER it for now:
+	# the gate READ-1 measures the house counter as text, so the shapes are the ADDITION
+	# first; the text marks go in the step that makes the shapes the only carrier.
+	_glyphs = StateGlyphLayer.new()
+	_glyphs.name = "tile-glyphs"
+	_glyphs.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_glyphs)
 
 	_state = Panel.new()
 	_state.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -453,6 +468,27 @@ func _layout_children() -> void:
 	_badge.position = Vector2(inner.position.x + 1, inner.end.y - bh - 1)
 	_badge.size = Vector2(bs, bh)
 	_mortgaged.position = inner.position + Vector2(1, 1)
+	# The SHAPE marks. The owner flag stands on the INNER edge, on the side the band is not;
+	# the houses sit where the text counter sits (under the name); the mortgage hatch covers
+	# the whole inner rect, because a mortgage is a state of the CELL, not a mark on it.
+	var inner_size := inner.size
+	var glyph_h: float = maxf(8.0, minf(inner_size.y * 0.34, 20.0))
+	var flag_w: float = maxf(9.0, minf(inner_size.x * 0.22, 22.0))
+	var flag_pos := inner.position + Vector2(1, 1)
+	if _side == "b":
+		flag_pos = inner.position + Vector2(inner_size.x - flag_w - 1, 1)
+	elif _side == "t":
+		flag_pos = inner.position + Vector2(inner_size.x - flag_w - 1, inner_size.y - glyph_h - 1)
+	elif _side == "l":
+		flag_pos = inner.position + Vector2(inner_size.x - flag_w - 1, inner_size.y - glyph_h - 1)
+	# the LAYER must cover the cell: a Control with no size draws nothing, and the
+	# shapes are the whole point of it
+	_glyphs.position = Vector2.ZERO
+	_glyphs.size = size
+	_glyphs.owner_rect = Rect2(flag_pos, Vector2(flag_w, glyph_h))
+	_glyphs.houses_rect = Rect2(inner.position + Vector2(1, inner_size.y - glyph_h * 0.75),
+		Vector2(inner_size.x - 2.0, glyph_h * 0.75))
+	_glyphs.mortgage_rect = inner
 
 
 ## Paint the dynamic state: ownership, houses, mortgage and the highlight frame.
@@ -460,20 +496,25 @@ func apply(entry: Dictionary) -> void:
 	var owner: int = int(entry.get("owner", -1))
 	var owner_col: Color = entry.get("owner_color", UiTheme.COL().accent)
 	if owner >= 0 and not _plain:
-		_badge.visible = true
-		var nm := str(entry.get("owner_name", ""))
-		_badge.text = nm.substr(0, 1).to_upper() if nm != "" else str(owner)
-		_badge.add_theme_stylebox_override("normal", UiTheme.box(owner_col, UiTheme.COL().border, 1, 0))
-		_badge.add_theme_color_override("font_color", Color.BLACK if owner_col.get_luminance() > 0.5 else Color.WHITE)
-	else:
+		# The owner is a FLAG now, not a LETTER. The letter badge stays in the tree but
+		# carries no text: the shape in the owner's colour is the fact, and a letter
+		# beside it would be the same fact twice - which is what the owner complained about
+		# ("не пиши, а показывай").
 		_badge.visible = false
+		_badge.text = ""
 	var houses: int = int(entry.get("houses", 0))
 	for c in _houses.get_children():
 		_houses.remove_child(c)
 		c.queue_free()
-	_houses.visible = houses > 0 and not _plain
-	_houses_lbl.visible = houses > 0 and _show_houses
-	_houses_lbl.text = ("×%d" % houses) if houses > 0 else ""
+	# The 5x5 px squares are a dot, not a house (at 720p they are 4.5px). The real
+	# silhouettes in the glyph layer replace them; the container stays for the tests.
+	_houses.visible = false
+	# The house COUNT is the silhouettes now (one house per house, a hotel as its own
+	# shape). The "×N" text was the duplicate the owner complained about: the same fact
+	# twice, once as a form and once as a word. The label stays in the tree - the tests
+	# look it up - but it is empty and not shown.
+	_houses_lbl.visible = false
+	_houses_lbl.text = ""
 	if houses > 0:
 		var n: int = 1 if houses >= 5 else mini(houses, 4)
 		for i in n:
@@ -482,7 +523,12 @@ func apply(entry: Dictionary) -> void:
 			sq.custom_minimum_size = Vector2(8, 6) if houses >= 5 else Vector2(5, 5)
 			_houses.add_child(sq)
 	var mortgaged: bool = bool(entry.get("mortgaged", false))
-	_mortgaged.visible = mortgaged
+	# The mortgage is a HATCH now, not the letter "M". The label stays in the tree (the
+	# tests look it up) but carries no text and is not shown.
+	_mortgaged.visible = false
+	_mortgaged.text = ""
+	# the SHAPE layer gets the same state; it redraws only when the state changes
+	_glyphs.apply(entry, UiTheme.COL().success, UiTheme.COL().danger)
 	_face.modulate = Color(1, 1, 1, 0.45) if mortgaged else Color.WHITE
 	# E-3/D11: the cell's TOOLTIP carries what the cell is worth right now. Rent lived nowhere but
 	# the inspector, and the tooltip - the one surface a viewer hovers without a click - said only

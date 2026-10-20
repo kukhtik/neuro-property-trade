@@ -111,6 +111,10 @@ GATES=(
 	# phone-sized WINDOW (it does not - the layout measures 817px wide), and the
 	# product declares MIN_WIDTH = 880 and means it.
 	"PROBES|hg|required|script|tools/ci/gates/probes_gate.sh"
+	# STATE-GLYPHS: the board says a fact about a cell with a SHAPE, not with a word
+	# (R-21..R-26 - the owner's 'не пиши, а показывай в дизайне'). The probe measures PLAIN
+	# cells, so every pixel it counts is a shape and not the text the shapes replace.
+	"STATE-GLYPHS|hg|required|script|tools/ci/gates/state_glyphs_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph
