@@ -2,80 +2,80 @@
   "games": [
     {
       "action_histogram": {
-        "build_house": 10,
+        "build_house": 11,
         "buy": 28,
-        "pay": 9,
-        "roll": 203
+        "pay": 11,
+        "roll": 250
       },
       "end_reason": "ply_cap",
       "file": "g10000.jsonl",
-      "fingerprint": "ff0b30d59cc3868eb91ffb91338bd58851092cba5ece30072e2a778e38ec412e",
+      "fingerprint": "0714466243a950ca7efd1f18b8f3acd8e44b75f8d8515ea4f7186567cbdfe390",
       "game": "g10000",
-      "plies": 250,
+      "plies": 300,
       "seed": 10000,
       "winner": ""
     },
     {
       "action_histogram": {
         "buy": 28,
-        "pay": 5,
-        "roll": 217
+        "pay": 6,
+        "roll": 266
       },
       "end_reason": "ply_cap",
       "file": "g10001.jsonl",
-      "fingerprint": "4798cf35d4d3a5dcbc9f342e53c101a213171f0620d798d7dc23c77cdb810ffd",
+      "fingerprint": "09df8b3d20b316928fbb03b1b7df703e212238451569cd07e6788cd75d2be275",
       "game": "g10001",
-      "plies": 250,
+      "plies": 300,
       "seed": 10001,
       "winner": ""
     },
     {
       "action_histogram": {
         "bid": 56,
-        "build_house": 11,
+        "build_house": 24,
         "buy": 23,
         "pass": 19,
         "pay": 4,
-        "roll": 137
+        "roll": 151
       },
-      "end_reason": "ply_cap",
+      "end_reason": "END_GAME",
       "file": "g10002.jsonl",
-      "fingerprint": "8919d98f4038f6ff6ae566b08e4125da50576a4cc83488d250b8e51bacf7e629",
+      "fingerprint": "b107d0a57a7ecd66ce8afcf142b83ebd482c81f70f985545e2405291c0c32ad1",
       "game": "g10002",
-      "plies": 250,
+      "plies": 277,
       "seed": 10002,
-      "winner": ""
+      "winner": "Neuro"
     },
     {
       "action_histogram": {
         "bid": 31,
-        "build_house": 37,
+        "build_house": 38,
         "buy": 25,
         "pass": 12,
         "pay": 4,
-        "roll": 141
+        "roll": 143
       },
-      "end_reason": "ply_cap",
+      "end_reason": "END_GAME",
       "file": "g10003.jsonl",
-      "fingerprint": "5c4ee28d90cb0b1e7fa5b58e9cc679a6f149c46d8a4f28d390c7b62f38a5a4d5",
+      "fingerprint": "abedd6fe7d596ebfb05d9cef4c13b8ebd3551684642a867fbe66225b7a4100a4",
       "game": "g10003",
-      "plies": 250,
+      "plies": 253,
       "seed": 10003,
-      "winner": ""
+      "winner": "Ada"
     },
     {
       "action_histogram": {
         "bid": 11,
         "buy": 27,
         "pass": 4,
-        "pay": 6,
-        "roll": 202
+        "pay": 10,
+        "roll": 248
       },
       "end_reason": "ply_cap",
       "file": "g10004.jsonl",
-      "fingerprint": "cfd5162a2ff10f892baa88155f5caee822ace39aae950e34305ad50b05e78c3e",
+      "fingerprint": "d25503e140a61d58cb6c3dccbc907f2dfdbf200666ef24bfdbbfaec8b93251c0",
       "game": "g10004",
-      "plies": 250,
+      "plies": 300,
       "seed": 10004,
       "winner": ""
     },
@@ -90,7 +90,7 @@
       },
       "end_reason": "END_GAME",
       "file": "g10005.jsonl",
-      "fingerprint": "5efa201979c4d0287fd74b03555028d93754de919a99561e671925afef52ee4d",
+      "fingerprint": "2043c80cf94cee9597ad23002a46d4357abfcbd3a7e7a38840c3ccf342f88d8e",
       "game": "g10005",
       "plies": 230,
       "seed": 10005,
@@ -98,16 +98,16 @@
     },
     {
       "action_histogram": {
-        "build_house": 15,
+        "build_house": 35,
         "buy": 28,
-        "pay": 5,
-        "roll": 202
+        "pay": 6,
+        "roll": 231
       },
       "end_reason": "ply_cap",
       "file": "g10006.jsonl",
-      "fingerprint": "047d6f3548ff87b95eff803b5b2f5cbf1392ddad25d49b84f987ffeaa5df27f6",
+      "fingerprint": "d327e772abf141acd80f9847f329b47bd1ab1df246a1952e3716bd8d43f9f930",
       "game": "g10006",
-      "plies": 250,
+      "plies": 300,
       "seed": 10006,
       "winner": ""
     },
@@ -122,7 +122,7 @@
       },
       "end_reason": "END_GAME",
       "file": "g10007.jsonl",
-      "fingerprint": "ac5744c755b960e1438d6b17a2423dc30b7966f469f18c104ffd51fadcd56cb8",
+      "fingerprint": "6d803f9fc109b8a0db6c19e285ddf8f366c65a727206706e23dda58c2c3168e9",
       "game": "g10007",
       "plies": 193,
       "seed": 10007,
@@ -134,27 +134,27 @@
         "buy": 27,
         "pass": 4,
         "pay": 5,
-        "roll": 203
+        "roll": 253
       },
       "end_reason": "ply_cap",
       "file": "g10008.jsonl",
-      "fingerprint": "fe000dba36bc3666a027445705fc4709a997c373a0e83f759c1de4205d67f0cd",
+      "fingerprint": "fde9d928a3696c556e917d1d360ab53dde729edd2eec5c24681e1c9a9274273a",
       "game": "g10008",
-      "plies": 250,
+      "plies": 300,
       "seed": 10008,
       "winner": ""
     },
     {
       "action_histogram": {
         "buy": 28,
-        "pay": 4,
-        "roll": 218
+        "pay": 5,
+        "roll": 267
       },
       "end_reason": "ply_cap",
       "file": "g10009.jsonl",
-      "fingerprint": "9daddc42d455924d422d07f3a727ca7625ec05695dc570a2516eafcbd73eb3fd",
+      "fingerprint": "e9e5825e41b19129d07dd22d46f09ec8a523a35bca4c60282ec9ac29a1c50182",
       "game": "g10009",
-      "plies": 250,
+      "plies": 300,
       "seed": 10009,
       "winner": ""
     },
@@ -167,11 +167,27 @@
       },
       "end_reason": "END_GAME",
       "file": "g10010.jsonl",
-      "fingerprint": "0e67410baf4a016b9e1e0190f4bb761ef83e9607d4219f24b55e1cfa65d371c2",
+      "fingerprint": "d91bb4c1a2c55ce3fba9970fcb6ab43a75f55f75fe43739cce23c5e7d422ae25",
       "game": "g10010",
       "plies": 132,
       "seed": 10010,
       "winner": "Ada"
+    },
+    {
+      "action_histogram": {
+        "bid": 11,
+        "buy": 27,
+        "pass": 4,
+        "pay": 6,
+        "roll": 252
+      },
+      "end_reason": "ply_cap",
+      "file": "g10011.jsonl",
+      "fingerprint": "d991333711022d6751b5148efeb39a964c97eea6ac88efafd1e147747215323c",
+      "game": "g10011",
+      "plies": 300,
+      "seed": 10011,
+      "winner": ""
     }
   ],
   "generated_by": "res://tools/corpus.gd",
@@ -180,21 +196,21 @@
   "schema": 1,
   "totals": {
     "actions": {
-      "bid": 141,
-      "build_house": 133,
-      "buy": 300,
-      "pass": 49,
-      "pay": 48,
-      "roll": 1884
+      "bid": 152,
+      "build_house": 168,
+      "buy": 327,
+      "pass": 53,
+      "pay": 63,
+      "roll": 2422
     },
-    "avg_plies": 232.272727272727,
-    "calls": 2555,
-    "games": 11,
+    "avg_plies": 265.416666666667,
+    "calls": 3185,
+    "games": 12,
     "phases": {
-      "AUCTION": 177,
-      "PURCHASE_WAIT": 313,
-      "TURN_START": 2065
+      "AUCTION": 191,
+      "PURCHASE_WAIT": 341,
+      "TURN_START": 2653
     },
-    "plies": 2555
+    "plies": 3185
   }
 }
