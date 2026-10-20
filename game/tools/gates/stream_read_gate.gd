@@ -48,10 +48,18 @@ const GLANCE_SET := [
 	{"node": "panno-turn", "role": "whose turn + what is happening (the panno)"},
 	{"node": "panno-event-text", "role": "what just happened (the panno)"},
 	{"node": "panno-jrn-text", "role": "the newest journal line (the panno)"},
-	{"node": "turn-name", "role": "whose turn (the header)"},
-	{"node": "turn-phase", "role": "what is happening (the header)"},
-	{"node": "top-round", "role": "the round (the header)"},
-	{"node": "top-pot", "role": "the money (parking pot, the header)"},
+	# B1 moved these four facts OUT of the header into the four corner screens (the corners are the
+	# only place with room for a 50px line). The screens are judged here; the header keeps carrying
+	# the same facts as a control strip and is reported as context (see NOT_JUDGED below) - a
+	# duplicate at 13px is not the glance layer any more.
+	{"node": "glance-turn", "role": "whose turn (the Start corner screen)"},
+	{"node": "glance-phase", "role": "the phase (the Jail corner screen)"},
+	{"node": "glance-bank", "role": "the parking bank (the Parking corner screen)"},
+	{"node": "glance-round", "role": "the round (the Go-to-jail corner screen)"},
+	{"node": "turn-name", "role": "whose turn (the header, context)", "context": true},
+	{"node": "turn-phase", "role": "what is happening (the header, context)", "context": true},
+	{"node": "top-round", "role": "the round (the header, context)", "context": true},
+	{"node": "top-pot", "role": "the money (the header, context)", "context": true},
 	# THE DOCK'S JOURNAL IS MEASURED ONLY WHEN IT IS DRAWN. At every frame narrower than 2000px the
 	# app runs compact and hides the right dock, so jrn-title/jrn-text exist as nodes nobody sees -
 	# the gate used to hand them the verdict and describe a picture that was not on screen (measured:
@@ -222,6 +230,12 @@ func _measure() -> void:
 		var px := float(node.get_theme_font_size("font_size"))
 		var eff: float = px * (PHONE_WIDTH / float(FRAME.x))
 		var drawn: bool = node.is_visible_in_tree()
+		if bool(spec.get("context", false)):
+			_rows.append({"node": spec["node"], "role": spec["role"], "px": px, "eff": eff,
+				"found": true, "visible": drawn, "context": true})
+			print("STREAM-READ ROW %s=%s px=%.0f effective_on_phone=%.1f - CONTEXT (the glance layer lives in the corner screens in B1)"
+				% [spec["node"], spec["role"], px, eff])
+			continue
 		if bool(spec.get("drawn_only", false)) and not drawn:
 			_rows.append({"node": spec["node"], "role": spec["role"], "px": px, "eff": eff, "found": true, "visible": false})
 			print("STREAM-READ ROW %s=%s px=%.0f NOT DRAWN in this frame (compact: the dock is folded) - not judged"

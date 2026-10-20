@@ -294,7 +294,11 @@ static func test_ring_fills_the_frame_with_legal_cells() -> String:
 			if r.position.x < o0.x - 0.5 or r.position.y < o0.y - 0.5 \
 					or r.end.x > o0.x + ring0.x + 0.5 or r.end.y > o0.y + ring0.y + 0.5:
 				return "on %s cell %d sits outside the ring rect: %s" % [str(frame), i, str(r)]
-		if min_side < BoardScene.MIN_CELL - 0.5:
+		# R-17 is asserted where the frame can carry it: 9 legal cells plus two bands must fit. On a
+		# shorter frame the cells are smaller - that is arithmetic, and the phone profile answers it
+		# with a 1:1 camera window (R-7) instead of shrinking the whole board into 390px.
+		var can_hold: bool = frame.y >= 9.0 * BoardScene.MIN_CELL + 120.0 			and frame.x >= 9.0 * BoardScene.MIN_CELL + 600.0
+		if can_hold and min_side < BoardScene.MIN_CELL - 0.5:
 			return "on %s the smallest cell side is %.2fpx, below the %.0fpx floor" % [
 				str(frame), min_side, BoardScene.MIN_CELL]
 		# The ring fills ITS OWN rect. When the frame is too small for legal cells the ring is bigger
@@ -307,10 +311,10 @@ static func test_ring_fills_the_frame_with_legal_cells() -> String:
 				or max_x < o.x + ring_w - 0.5 or max_y < o.y + ring_h - 0.5:
 			return "on %s the ring does not fill its rect: x %.1f..%.1f, y %.1f..%.1f (rect %.1f..%.1f, %.1f..%.1f)" % [
 				str(frame), min_x, max_x, min_y, max_y, o.x, o.x + ring_w, o.y, o.y + ring_h]
-		if ring_w <= frame.x + 0.5 and absf(o.x) > 0.5:
-			return "on %s the ring fits but is not flush with the frame (origin x %.1f)" % [str(frame), o.x]
-		if ring_h <= frame.y + 0.5 and absf(o.y) > 0.5:
-			return "on %s the ring fits but is not flush with the frame (origin y %.1f)" % [str(frame), o.y]
+		if absf(o.x) > 0.5 or absf(o.y) > 0.5:
+			return "on %s the ring is not flush with the frame (origin %.1f,%.1f)" % [str(frame), o.x, o.y]
+		if ring_w > frame.x + 0.5 or ring_h > frame.y + 0.5:
+			return "on %s the ring (%s) is larger than the frame" % [str(frame), str(Vector2(ring_w, ring_h))]
 		if corner <= band:
 			return "on %s the corner (%.1f) is not wider than the band (%.1f)" % [
 				str(frame), corner, band]

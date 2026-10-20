@@ -129,10 +129,12 @@ func set_plain(on: bool) -> void:
 
 
 ## Write the glance line into a corner screen. `px` is the font BoardScene computed from the band.
-func set_screen(text: String, px: int) -> void:
+func set_screen(text: String, px: int, kind: String = "") -> void:
 	_screen_text = text
 	if _screen == null:
 		return
+	if kind != "":
+		_screen.name = "glance-" + kind     # the gate finds the role by name, not by position
 	_screen.text = text
 	_screen.add_theme_font_size_override("font_size", maxi(10, px))
 	_layout_children()
@@ -167,7 +169,17 @@ func _build(data: Dictionary) -> void:
 	_name = UiTheme.label(str(data.get("short", data.get("name", ""))), 10, UiTheme.COL().text)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# WRAP, not cut: with the larger business-cell fonts (owner, 19.10) "Sunset Blvd" needs 118px in a
+	# 98px box - the ellipsis hid the difference between a wide font and a narrow cell. Two lines fit
+	# the 190px-tall cells; `clip_text` keeps the minimum from exploding (the screen-label trap).
+	# FIT, don't cut (owner, 19.10: "никаких многоточий или неровных переносов, умещай и думай как
+	# сделать красиво"). The name is ONE line whose FONT follows the word: `_fit_px` walks down from
+	# the cap until the whole word fits the box, and never goes below the legibility floor. The
+	# overrun behaviour stays NO_TRIMMING as a last resort - with the fit in place it never fires,
+	# and if it ever did, a visible overflow would be a bug report instead of a silent ellipsis.
 	_name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_name.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	_name.custom_minimum_size = Vector2.ZERO
 	# OVERRUN_TRIM_ELLIPSIS rather than clip_text: a clipped label silently loses its last
 	# letters (the reader sees "Harbor S"), an ellipsis says "there is more" and the tooltip
 	# below carries the whole name.
@@ -228,6 +240,15 @@ func _build(data: Dictionary) -> void:
 	_screen.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_screen.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_screen.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# CLIP, or the minimum size wins: a Label with wrapping computes its minimum HEIGHT from the
+	# width it had at that moment. Measured on the live tree: the four screens reported 555..989px
+	# tall inside 190px cells and covered the board, because their minimum had been computed while
+	# the width was still small. `clip_text` collapses the minimum to one line and lets the assigned
+	# rect rule.
+	# Two lines MAX, and the break is written in the string itself (the phase key carries a
+	# hard newline), so a corner never rag-wraps: the value sits on its own line under its label.
+	_screen.max_lines_visible = 2
+	_screen.custom_minimum_size = Vector2.ZERO
 	_screen.visible = false
 	_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_body.add_child(_screen)
@@ -285,6 +306,23 @@ static func fonts_for(cell: float) -> Dictionary:
 		"badge": maxf(BADGE_MIN, cell * 0.20),
 		"houses": HOUSES_MIN,
 	}
+
+
+## The largest font size in [lo, hi] at which `text` fits `w` x `h` on one line.
+## Used instead of ellipsis/wrapping: a cell must show its whole word, and the type must be as large
+## as that word allows. Returns `lo` when even the floor does not fit - the caller then has a real
+## problem worth seeing (an overflow), not one hidden behind three dots.
+func _fit_px(text: String, w: float, h: float, lo: int, hi: int) -> int:
+	if text.strip_edges() == "" or w <= 1.0 or h <= 1.0:
+		return hi
+	var font: Font = _name.get_theme_font("font")
+	var px: int = hi
+	while px > lo:
+		var need := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
+		if need.x <= w and need.y <= h:
+			return px
+		px -= 1
+	return lo
 
 
 func _layout_children() -> void:
@@ -371,11 +409,17 @@ func _layout_children() -> void:
 	if not _show_houses:
 		strip = 0.0
 	var body := Rect2(text_rect.position, Vector2(text_rect.size.x, maxf(0.0, text_rect.size.y - strip)))
-	var half := body.size.y * 0.5
+	var name_h2: float = body.size.y if _price.visible == false else body.size.y * 0.62
 	_name.position = body.position
-	_name.size = Vector2(body.size.x, half)
-	_price.position = body.position + Vector2(0, half)
-	_price.size = Vector2(body.size.x, body.size.y - half)
+	_name.size = Vector2(body.size.x, name_h2)
+	_price.position = body.position + Vector2(0, name_h2)
+	_price.size = Vector2(body.size.x, body.size.y - name_h2)
+	# the type follows the word (and the box), never the other way round
+	var f2 := fonts_for(c)
+	_name.add_theme_font_size_override("font_size",
+		_fit_px(_name.text, body.size.x, name_h2, NAME_MIN, int(f2["name"])))
+	_price.add_theme_font_size_override("font_size",
+		_fit_px(_price.text, body.size.x, maxf(4.0, body.size.y - name_h2), PRICE_MIN, int(f2["price"])))
 	_houses_lbl.position = body.position + Vector2(0, body.size.y)
 	_houses_lbl.size = Vector2(body.size.x, strip)
 	# houses ride the band centre

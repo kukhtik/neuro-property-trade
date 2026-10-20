@@ -214,17 +214,25 @@ func glance_font() -> int:
 	return int(maxf(14.0, float(ring_metrics(size)["band"]) * GLANCE_F))
 
 
+const GLANCE_ROLES := {0: "turn", 10: "phase", 20: "bank", 30: "round"}
+
+
 func _apply_glance() -> void:
 	var fs := glance_font()
 	for idx in GLANCE_IDX:
-		if idx < _tiles.size() and _glance_text.has(idx):
-			(_tiles[idx] as TileView).set_screen(str(_glance_text[idx]), fs)
+		# a corner is a screen from the FIRST frame, even before a projection arrives: with only its
+		# name it read as an empty 49 675px2 panel (PANEL-NOT-EMPTY, measured). The placeholder is a
+		# dash, not a guess at game state.
+		var txt := str(_glance_text.get(idx, "—"))
+		_glance_text[idx] = txt
+		if idx < _tiles.size():
+			(_tiles[idx] as TileView).set_screen(txt, fs, str(GLANCE_ROLES.get(idx, "")))
 
 
 func _set_glance(idx: int, text: String) -> void:
 	_glance_text[idx] = text
 	if idx < _tiles.size():
-		(_tiles[idx] as TileView).set_screen(text, glance_font())
+		(_tiles[idx] as TileView).set_screen(text, glance_font(), str(GLANCE_ROLES.get(idx, "")))
 
 
 ## The glance layer, straight from the projection (R-14: no game state is computed here).
@@ -272,20 +280,24 @@ const BAND_FRACTION := 0.158
 static func ring_metrics(frame: Vector2) -> Dictionary:
 	var w := maxf(frame.x, 1.0)
 	var h := maxf(frame.y, 1.0)
-	# R-17 is a FLOOR, not a target: a cell may never go below 77px. When the frame is too short for
-	# a band plus nine legal cells, the RING grows past the frame and the camera windows it - that is
-	# R-18 ("if R-7 and R-17 conflict, the frame grows, the board does not shrink"). Measured: at
-	# 1280x720 a square 11x11 ring gives 65.45px cells, so this was already broken before B1.
-	var band: float = clampf(h * BAND_FRACTION, 88.0, maxf(88.0, (h - 9.0 * MIN_CELL) * 0.5))
-	var ring_h: float = maxf(h, 2.0 * band + 9.0 * MIN_CELL)
-	var ring_w: float = maxf(w, 2.0 * CORNER_MIN_W + 9.0 * MIN_CELL)
+	# THE RING NEVER LEAVES THE FRAME. An earlier revision let it grow past a small frame ("R-18:
+	# the frame grows, the board does not shrink") - but the product's board is a Control inside a
+	# fixed window, so "growing" meant the bottom row was CUT OFF and the cells read as broken
+	# (measured at 1440x900: ring 977px inside a 900px board, corner faces hanging 51px below the
+	# window). The ring is the frame, always; on a short frame the cells get smaller than R-17's
+	# floor, which is arithmetic, and the phone profile answers it with a 1:1 camera window instead.
+	var band: float = clampf(h * BAND_FRACTION, 60.0, maxf(60.0, (h - 9.0 * MIN_CELL) * 0.5))
+	var ring_w: float = w
+	var ring_h: float = h
 	var corner: float = clampf(band * 1.68, CORNER_MIN_W, maxf(CORNER_MIN_W, (ring_w - 9.0 * MIN_CELL) * 0.5))
+	if corner * 2.0 > ring_w * 0.6:
+		corner = ring_w * 0.3
 	return {
 		"band": band,
 		"corner": corner,
 		"ring_w": ring_w,
 		"ring_h": ring_h,
-		"origin": Vector2((w - ring_w) * 0.5, (h - ring_h) * 0.5),
+		"origin": Vector2.ZERO,
 		"step_x": (ring_w - 2.0 * corner) / 9.0,
 		"step_y": (ring_h - 2.0 * band) / 9.0,
 	}

@@ -346,8 +346,10 @@ const D := {
 	# line is one fact at a time, words first, and the frame takes the value: a corner is 320x190 and
 	# a 50px line is 12.19px when the same frame is seen 390 wide.
 	"glance.turn":   {"ru": "ХОД: %s", "en": "TURN: %s"},
-	"glance.phase":  {"ru": "ФАЗА: %s", "en": "PHASE: %s"},
-	"glance.bank":   {"ru": "БАНК ПАРКОВКИ %s", "en": "PARKING BANK %s"},
+	"glance.phase":  {"ru": "ФАЗА:
+%s", "en": "PHASE:
+%s"},
+	"glance.bank":   {"ru": "БАНК %s", "en": "BANK %s"},
 	"glance.round":  {"ru": "РАУНД %s", "en": "ROUND %s"},
 	"panno.event":   {"ru": "СОБЫТИЕ", "en": "EVENT"},
 	"panno.players": {"ru": "ИГРОКИ", "en": "PLAYERS"},
