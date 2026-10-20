@@ -73,6 +73,10 @@ var _show_houses := true
 var _plain := false
 var _screen: Label
 var _screen_text := ""
+## The size the OWNER of this cell asked for (BoardScene, from the frame). The fit below always
+## starts from THIS, never from the current value: fitting from the current one made each layout
+## pass shrink the font further (measured: 50 -> 39px over two passes, a ratchet).
+var _screen_want := 20
 
 
 func setup(skin: SkinManager, idx: int, data: Dictionary, cell: float, side: String, h: float = 0.0) -> void:
@@ -136,7 +140,8 @@ func set_screen(text: String, px: int, kind: String = "") -> void:
 	if kind != "":
 		_screen.name = "glance-" + kind     # the gate finds the role by name, not by position
 	_screen.text = text
-	_screen.add_theme_font_size_override("font_size", maxi(10, px))
+	_screen_want = maxi(10, px)
+	_screen.add_theme_font_size_override("font_size", _screen_want)
 	_layout_children()
 
 
@@ -300,11 +305,15 @@ func _band_colour() -> Color:
 ## The bug this exists to prevent: `clampi(c*0.145, 8, 13)` on a 65px cell gave 9px, and the
 ## same cell at 60px gave 8px - a 40-cell ring where 32 names were unreadable.
 static func fonts_for(cell: float) -> Dictionary:
+	# The RATIO scales with the cell, the CAP must scale with the window: at 4K a cell is 140px, the
+	# ratio asks for 28px and a fixed cap of 26 would hold the name at a footnote size inside a huge
+	# cell (the same defect the owner sees in the header, fixed there by UiTheme.px).
+	var sc := UiTheme.ui_scale()
 	return {
-		"name": clampi(int(round(cell * NAME_RATIO)), NAME_MIN, NAME_MAX),
-		"price": clampi(int(round(cell * PRICE_RATIO)), PRICE_MIN, PRICE_MAX),
-		"badge": maxf(BADGE_MIN, cell * 0.20),
-		"houses": HOUSES_MIN,
+		"name": clampi(int(round(cell * NAME_RATIO)), int(NAME_MIN * sc), int(NAME_MAX * sc)),
+		"price": clampi(int(round(cell * PRICE_RATIO)), int(PRICE_MIN * sc), int(PRICE_MAX * sc)),
+		"badge": maxf(BADGE_MIN * sc, cell * 0.20),
+		"houses": int(HOUSES_MIN * sc),
 	}
 
 
@@ -318,8 +327,13 @@ func _fit_px(text: String, w: float, h: float, lo: int, hi: int) -> int:
 	var font: Font = _name.get_theme_font("font")
 	var px: int = hi
 	while px > lo:
-		var need := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
-		if need.x <= w and need.y <= h:
+		var widest := 0.0
+		var lines := text.split("
+")
+		for ln in lines:
+			widest = maxf(widest, font.get_string_size(ln, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x)
+		var tall: float = font.get_string_size("Ag", HORIZONTAL_ALIGNMENT_LEFT, -1, px).y * lines.size()
+		if widest <= w and tall <= h:
 			return px
 		px -= 1
 	return lo
@@ -387,6 +401,8 @@ func _layout_children() -> void:
 		_screen.visible = true
 		_screen.position = text_rect.position + Vector2(0, name_h)
 		_screen.size = Vector2(maxf(1.0, text_rect.size.x), maxf(1.0, text_rect.size.y - name_h))
+		_screen.add_theme_font_size_override("font_size",
+			_fit_px(_screen.text, text_rect.size.x, text_rect.size.y - name_h, 12, _screen_want))
 		_badge.position = Vector2(inner.position.x + 1, inner.position.y + 1)
 		_badge.size = Vector2(maxf(BADGE_MIN, c * 0.16), maxf(BADGE_MIN, _badge.get_combined_minimum_size().y))
 		return

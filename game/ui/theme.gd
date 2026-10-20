@@ -123,11 +123,51 @@ static func chamfer_panel(cut: String = "tr") -> Chamfer:
 ## stretches. A value inside an HBox that also stretches takes the free width and pushes
 ## its neighbours out of the row — money, badges, counters and hotkeys are values and must
 ## not do that. Prose goes through `label_wrap` below.
+## THE UI SCALE (owner, 19.10: "если что на всех этих размерах окна все элементы должны быть
+## читаемы"). Text used to be absolute px: 13px in the header at 1600x1200 and STILL 13px at 4K,
+## where the cells around it are four times as large - readable at one size, a footnote at another.
+## One factor, derived from the window's width against the design frame, and every font goes through
+## it. Clamped so a narrow window does not shrink text below legibility and 4K grows no further than
+## the layout can carry.
+const DESIGN_WIDTH := 1600.0
+const SCALE_MIN := 0.85
+const SCALE_MAX := 2.40
+static var _scale := 1.0
+
+
+static func set_ui_scale(w: float) -> void:
+	_scale = clampf(w / DESIGN_WIDTH, SCALE_MIN, SCALE_MAX)
+
+
+static func ui_scale() -> float:
+	return _scale
+
+
+## A font size in the design's own units, expressed for the current window.
+static func px(size: int) -> int:
+	return maxi(8, int(round(float(size) * _scale)))
+
+
+## Re-apply the scale to a whole built tree. Labels remember their design size in `design_px`, so a
+## resize does not need a rebuild - the same widget keeps its role and gets the window's size.
+static func rescale_tree(root: Node) -> void:
+	for ch in root.get_children():
+		if ch is Label and (ch as Label).has_meta("design_px"):
+			(ch as Label).add_theme_font_size_override("font_size", px(int((ch as Label).get_meta("design_px"))))
+		elif ch is Button:
+			var b := ch as Button
+			if b.has_meta("design_px"):
+				b.add_theme_font_size_override("font_size", px(int(b.get_meta("design_px"))))
+		rescale_tree(ch)
+
+
 static func label(text: String, size: int = -1, color: Color = Color.TRANSPARENT) -> Label:
 	var s := skin()
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", s.size("m", 14) if size < 0 else size)
+	var design: int = s.size("m", 14) if size < 0 else size
+	l.set_meta("design_px", design)
+	l.add_theme_font_size_override("font_size", px(design))
 	l.add_theme_color_override("font_color", s.color("text") if color.a <= 0.0 else color)
 	l.autowrap_mode = TextServer.AUTOWRAP_OFF
 	l.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN

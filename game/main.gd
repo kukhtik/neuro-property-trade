@@ -6,6 +6,7 @@ extends Node
 ## on WebGL / --spectator the panel is NOT created at all (is_host gate).
 
 const EngineScript := preload("res://core/engine.gd")
+const UiTheme := preload("res://ui/theme.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
 # the ONE home for the launch window size - see the note in `_ready`
@@ -60,6 +61,15 @@ var _remote_session
 ## One line, once: the client refuses to auto-play and says so (see `_on_remote_state`).
 var _awaited_logged := false
 
+## The window changed size: rescale the type instead of leaving 13px in a 4K frame.
+func _on_viewport_resized() -> void:
+	var w := float(get_viewport().get_visible_rect().size.x)
+	if w < 1.0:
+		return
+	UiTheme.set_ui_scale(w)
+	UiTheme.rescale_tree(self)
+
+
 func _ready() -> void:
 	# THE WINDOW SIZE IS A LEGIBILITY DECISION, NOT A PREFERENCE - and it has ONE HOME:
 	# `LayoutProfile.screen`. The shell used to hard-code 1440x900 here while `layout_profile.gd` and
@@ -76,6 +86,12 @@ func _ready() -> void:
 	# smaller window; this is only the size we ASK for.
 	var want: Vector2i = LayoutProfile.new().screen
 	DisplayServer.window_set_size(want)
+	# THE UI SCALE follows the WINDOW (owner, 19.10: "на всех этих размерах окна все элементы должны
+	# быть читаемы"). Text used to be absolute px, so at 4K the header stayed 13px while the cells grew
+	# fourfold. Set before the shell builds, and re-applied on every resize below.
+	UiTheme.set_ui_scale(float(want.x))
+	if not get_viewport().size_changed.is_connected(_on_viewport_resized):
+		get_viewport().size_changed.connect(_on_viewport_resized)
 	# A WINDOW MAY REFUSE THE REQUEST (the display can be smaller). Read back what we actually got
 	# rather than assuming: the phone-fit probe taught this with a root viewport stuck at 64x64, and
 	# every measurement taken afterwards described a window nobody had.
