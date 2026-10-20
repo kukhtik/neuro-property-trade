@@ -652,8 +652,14 @@ func _on_skin_requested(skin_id: String) -> void:
 	_game_view.restart_requested.connect(_on_restart_requested)
 	_game_view.settings_requested.connect(_open_overlay)
 	_game_view.skin_requested.connect(_on_skin_requested)
+	# The overlay was ALREADY subscribed in _ready() - the first connect happens there, where
+	# the overlay exists. Re-subscribing on every skin change made Godot print
+	# "Signal 'host_invite_requested' is already connected to given callable" once per switch
+	# (the gate runner did not see it: it fails on SCRIPT ERROR:, not on plain ERROR:).
+	# One subscription, guarded - the same shape as the other connects in this file.
 	if _overlay != null and _overlay.has_signal("host_invite_requested"):
-		_overlay.host_invite_requested.connect(_on_host_invite)
+		if not _overlay.host_invite_requested.is_connected(_on_host_invite):
+			_overlay.host_invite_requested.connect(_on_host_invite)
 	if old != null and is_instance_valid(old):
 		old.queue_free()
 	if _engine != null and _settings_cache != null:

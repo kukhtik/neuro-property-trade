@@ -57,7 +57,13 @@ func _validate_action(data: IncomingData, state: Dictionary) -> ExecutionResult:
 			msg += " Legal options: " + ", ".join(legal)
 		return ExecutionResult.failure(msg)
 	state["_events"] = result.get("events", [])
-	return ExecutionResult.success()
+	# BEST_PRACTICES.md, "Action Results": on success the message should describe the state
+	# that changed, so the model knows what her action did. An empty message is the one
+	# deviation from the published guidance this integration had.
+	var msg: String = ""
+	if _adapter != null and _adapter.has_method("success_message"):
+		msg = str(_adapter.success_message(result))
+	return ExecutionResult.success(msg)
 
 func _execute_action(state: Dictionary) -> void:
 	_adapter.emit_events(state.get("_events", []))

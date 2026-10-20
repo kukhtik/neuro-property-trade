@@ -23,6 +23,9 @@ static func test_list() -> Array[String]:
 		"test_decision_force_when_legal",
 		"test_decision_no_force_when_no_legal",
 		"test_decision_priority_low_ephemeral",
+		"test_success_message_describes_the_change",
+		"test_success_message_lists_next_legal_actions",
+		"test_success_message_empty_without_events",
 	]
 
 static func _make_engine(player_names: Array = ["Ada", "Bo"]) -> Dictionary:
@@ -260,4 +263,70 @@ static func test_decision_priority_low_ephemeral() -> String:
 		return "priority should be low, got %s" % d["priority"]
 	if not d["ephemeral_context"]:
 		return "ephemeral_context should be true for turn-based board dump"
+	return ""
+
+
+## BEST_PRACTICES.md, "Action Results": on success the result carries a message describing
+## the state that changed. Before this existed the adapter answered with an EMPTY message -
+## the one deviation from the published guidance. These tests pin that it is not empty any
+## more, and that it says what the model needs: what changed, and what she may do next.
+static func _make_result_message() -> Dictionary:
+	# The rule lives in a PURE module (`result_message.gd`), because the adapter itself is a Node
+	# that cannot be built headless - the SDK's `Websocket` autoload does not resolve in
+	# --script mode. A rule that must be tested cannot live there.
+	var M = load("res://sdk/result_message.gd")
+	return {"msg": M.new()}
+
+
+static func test_success_message_describes_the_change() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	var m = _make_result_message()["msg"]
+	var p = _make_projection()["proj"]
+	e._force_dice(1, 1, 0, false)   # sum 1 -> tile 1, a purchase decision
+	var res = e.submit_intent(0, "roll", {})
+	if not res.get("ok", false):
+		return "roll rejected: " + str(res.get("reason", ""))
+	var buy = e.submit_intent(0, "buy", {})
+	if not buy.get("ok", false):
+		return "buy rejected: " + str(buy.get("reason", ""))
+	var proj = p.for_player(e, 0)
+	var msg: String = str(m.build(e, proj, buy.get("events", [])))
+	if msg == "":
+		return "the success message must not be empty - BEST_PRACTICES.md asks for the state change"
+	if not msg.contains("bought"):
+		return "the success message should say what happened, got: " + msg
+	return ""
+
+
+static func test_success_message_lists_next_legal_actions() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	var m = _make_result_message()["msg"]
+	var p = _make_projection()["proj"]
+	e._force_dice(1, 1, 0, false)
+	var res = e.submit_intent(0, "roll", {})
+	var proj = p.for_player(e, 0)
+	var msg: String = str(m.build(e, proj, res.get("events", [])))
+	if not msg.contains("Now legal:"):
+		return "the success message should list the legal actions, got: " + msg
+	if not msg.contains("roll"):
+		return "after a roll the legal set must contain roll, got: " + msg
+	return ""
+
+
+static func test_success_message_empty_without_events() -> String:
+	var r = _make_engine()
+	var e = r["engine"]
+	var m = _make_result_message()["msg"]
+	var p = _make_projection()["proj"]
+	# A rejected intent carries no events - there is nothing to describe, and an empty
+	# message is the right answer (the FAILURE path carries the reason instead).
+	var res = e.submit_intent(1, "roll", {})   # not this player's turn
+	if res.get("ok", false):
+		return "this intent should have been rejected"
+	var proj = p.for_player(e, 0)
+	var msg: String = str(m.build(e, proj, res.get("events", [])))
+	if msg != "":
+		return "a result without events must not carry a success message, got: " + msg
 	return ""

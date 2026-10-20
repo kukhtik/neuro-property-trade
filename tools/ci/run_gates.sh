@@ -195,6 +195,18 @@ run_gate() {
 	# caught the INFORMATIVE line "0 SCRIPT ERROR" from the oracle's own verdict, which failed
 	# a perfectly green HG-01.
 	errs="$(grep -acE "SCRIPT ERROR:" "$log" || true)"
+	# PLAIN `ERROR:` is the OTHER channel Godot uses for runtime faults - and it was the one
+	# that carried a real product bug for days: main.gd connected `host_invite_requested`
+	# twice, so every skin switch printed
+	#   ERROR: Signal 'host_invite_requested' is already connected to given callable
+	# while 27 gates stayed green. The whitelist below is the noise that is NOT a defect:
+	# the vendor addon without its env var, Godot's own leak report at exit, and the
+	# negative tests that feed garbage to the JSON parser on purpose.
+	err_noise='NEURO_SDK_WS_URL environment variable is not set'
+	err_noise2='RID allocations of type'
+	err_noise3='resources still in use at exit'
+	err_noise4='Parse JSON failed'
+	plain_errs="$(grep -aE "^ERROR:" "$log" | grep -avE "$err_noise|$err_noise2|$err_noise3|$err_noise4" | head -3 || true)"
 	skip_line="$(grep -a "==> $id SKIPPED" "$log" | tail -1 || true)"
 	if [ -n "$fail_line" ]; then
 		verdict="fail"
@@ -202,6 +214,9 @@ run_gate() {
 	elif [ "${errs:-0}" -ne 0 ]; then
 		verdict="fail"
 		reason="SCRIPT ERROR in the gate output"
+	elif [ -n "$plain_errs" ]; then
+		verdict="fail"
+		reason="ERROR: in the gate output: $(printf '%s' "$plain_errs" | head -1 | cut -c1-160)"
 	elif [ -n "$pass_line" ]; then
 		verdict="pass"
 		reason=""

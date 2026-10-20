@@ -17,6 +17,9 @@ signal events_emitted(events: Array)
 
 const ProjectionScript := preload("res://sdk/projection.gd")
 const Renderer := preload("res://sdk/markdown_renderer.gd")
+## The success message of an action result (BEST_PRACTICES.md, "Action Results").
+## Pure and separate, because the adapter itself cannot be built headless.
+const ResultMessage := preload("res://sdk/result_message.gd")
 const DecisionController := preload("res://sdk/decision_controller.gd")
 const EngineAction := preload("res://sdk/engine_action.gd")
 
@@ -229,6 +232,18 @@ func _force_if_needed() -> void:
 		if action != null:
 			_window.add_action(action)
 	_window.register()
+
+## The SUCCESS MESSAGE for an action result. The rule lives in `result_message.gd` (pure, so
+## it can be tested headless); this is only the bridge to the engine and the projection.
+func success_message(result: Dictionary) -> String:
+	if engine == null:
+		return ""
+	var events: Array = result.get("events", [])
+	if events.is_empty():
+		return ""
+	var proj: Dictionary = _projection.for_player(engine, seat_pid)
+	return ResultMessage.new().build(engine, proj, events)
+
 
 ## Called by EngineAction._validate_action. Fail-closed: submit_intent is
 ## atomic — on ok:false it mutates nothing.
