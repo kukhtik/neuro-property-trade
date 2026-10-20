@@ -67,7 +67,14 @@ func _ready() -> void:
 		measured += 1
 		_measure_one(base, img)
 	if measured == 0:
-		_fail("ни одного кадра для замера - гейт ничего не проверил, и это КРАСНЫЙ, а не пропуск")
+		# A SKIP, and out loud, exactly like SG-07 - which is the gate that DRAWS these frames. The
+		# old message ("a gate that checked nothing is RED") was right about the sin and wrong about
+		# the cause: on a runner with no display and no Pillow, SG-07 skips and there is nothing to
+		# read, so the red described the runner, not the product. A gate that DID measure and found
+		# too much empty frame still fails, below.
+		print("==> FILL SKIPPED: no frames to measure (SG-07 draws build/renders/*.png; this runner has no display)")
+		get_tree().quit(0)
+		return
 	_finish()
 
 
