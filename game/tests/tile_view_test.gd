@@ -35,6 +35,7 @@ static func test_list() -> Array[String]:
 		"test_live_label_carries_the_computed_font_size",
 		"test_rectangular_cell_keeps_every_child_inside",
 		"test_ring_fills_the_frame_with_legal_cells",
+		"test_corner_screens_carry_the_glance_layer",
 	]
 
 
@@ -317,4 +318,51 @@ static func test_ring_fills_the_frame_with_legal_cells() -> String:
 				if overlap.size.x > 1.0 and overlap.size.y > 1.0:
 					return "on %s cells %d and %d overlap by %.1fx%.1f" % [
 						str(frame), i, j, overlap.size.x, overlap.size.y]
+	return ""
+
+
+static func test_corner_screens_carry_the_glance_layer() -> String:
+	# B1: the four corners are SCREENS. R-7 needs the glance facts to survive a phone, and the whole
+	# reason the corners are wider than the band is this layer - so the test measures the built layer,
+	# not the constant: four labels exist, sit on the four corner rects, and carry the projection.
+	var BoardScene := preload("res://visual/board_scene.gd")
+	var bs: Control = BoardScene.new()
+	bs.size = Vector2(1600, 1200)
+	bs._build_glance()
+	bs._place_glance()
+	if bs._glance.size() != 4:
+		return "expected four corner screens, built %d" % bs._glance.size()
+	var m: Dictionary = BoardScene.ring_metrics(bs.size)
+	var band: float = m["band"]
+	var fs_wanted: int = int(maxf(14.0, band * BoardScene.GLANCE_F))
+	var eff: float = float(fs_wanted) * 390.0 / 1600.0
+	if eff < 12.0:
+		return "the corner glance font at a %.0fpx band is %dpx, which is %.2fpx on a 390 frame (floor 12)" % [
+			band, fs_wanted, eff]
+	for idx in BoardScene.GLANCE_IDX:
+		var l: Label = bs._glance[idx]
+		var r: Rect2 = BoardScene.tile_rect(idx, m, bs.size)
+		var cl := Rect2(l.position, l.size)
+		if not r.encloses(cl):
+			return "corner %d's screen %s is not inside its rect %s" % [idx, str(cl), str(r)]
+		if l.get_theme_font_size("font_size") != fs_wanted:
+			return "corner %d carries %dpx, the formula says %dpx" % [
+				idx, l.get_theme_font_size("font_size"), fs_wanted]
+	# the content comes from the projection
+	var proj := {
+		"turn_player": 0, "phase": "TURN_START", "parking_pot": 240, "round": 7,
+		"players": [{"index": 0, "name": "Хост"}],
+	}
+	bs._watermark = false
+	bs._sync_glance(proj, [], 0)
+	var want := {0: "ХОД", 10: "ФАЗА", 20: "БАНК ПАРКОВКИ", 30: "РАУНД"}
+	for idx in want.keys():
+		var text: String = (bs._glance[idx] as Label).text
+		if text.find(str(want[idx])) < 0:
+			return "corner %d reads %s; it must carry %s" % [idx, text, want[idx]]
+	if (bs._glance[0] as Label).text.find("Хост") < 0:
+		return "the turn corner does not name the seat: %s" % (bs._glance[0] as Label).text
+	if (bs._glance[20] as Label).text.find("$240") < 0:
+		return "the bank corner does not carry the pot: %s" % (bs._glance[20] as Label).text
+	bs.free()
 	return ""

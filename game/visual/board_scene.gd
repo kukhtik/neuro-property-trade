@@ -66,6 +66,11 @@ var _watermark := true
 ## zones; the widgets built below (watermark, dice tray, event banner, decision card) are hosted
 ## INSIDE its zones, so nothing in the centre is positioned by absolute coordinates any more.
 var _panno: Control
+## B1: the four corners are SCREENS. They carry the glance layer (who moves, phase, the parking bank,
+## the round) at a font that survives a phone, which is why the ring's corners are wider than its band.
+const GLANCE_IDX := [0, 10, 20, 30]
+const GLANCE_F := 0.264            # of the band: 50px at a 190px band -> eff 12.19 on a 390 frame
+var _glance: Dictionary = {}       # ring index -> Label
 var _last_line: Dictionary = {}          # the shell's finished journal line (R-14: not computed here)
 var _journal_tail: Array = []            # last N journal sentences, oldest first
 const JRN_TAIL := 3
@@ -78,6 +83,7 @@ func _ready() -> void:
 	_load_board()
 	resized.connect(_layout)
 	_build_centre()
+	_build_glance()
 	# The panno is created in `_build_centre()`, so the FIRST layout pass has to run after it:
 	# `resized` may already have fired while the board was entering the tree, and without this
 	# call the panno stayed at 0x0 for the whole session (measured: the ring's interior still read
@@ -201,6 +207,65 @@ func _is_corner(i: int) -> bool:
 	return i in [0, 10, 20, 30]
 
 
+## B1: four screens, one per corner. Built once, positioned with the ring, and kept ABOVE the tiles
+## (they are re-parented to the end of the child list on every placement pass).
+func _build_glance() -> void:
+	_glance.clear()
+	for idx in GLANCE_IDX:
+		var l := UiTheme.label("", 20, UiTheme.COL().text)
+		l.name = "glance-%d" % idx
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(l)
+		_glance[idx] = l
+
+
+func _place_glance() -> void:
+	if _glance.is_empty():
+		return
+	var m := ring_metrics(size)
+	var fs: int = int(maxf(14.0, float(m["band"]) * GLANCE_F))
+	for idx in GLANCE_IDX:
+		var l: Label = _glance[idx]
+		var r: Rect2 = tile_rect(idx, m, size)
+		var inset := 6.0
+		l.position = r.position + Vector2(inset, inset)
+		l.size = Vector2(maxf(1.0, r.size.x - inset * 2.0), maxf(1.0, r.size.y - inset * 2.0))
+		l.add_theme_font_size_override("font_size", fs)
+		move_child(l, get_child_count() - 1)
+
+
+func _set_glance(idx: int, text: String) -> void:
+	if _glance.has(idx):
+		(_glance[idx] as Label).text = text
+
+
+## The glance layer, straight from the projection (R-14: no game state is computed here).
+func _sync_glance(proj: Dictionary, seats: Array, _human_pid: int) -> void:
+	if _glance.is_empty():
+		return
+	var turn: int = int(proj.get("turn_player", proj.get("turn", -1)))
+	var turn_name := ""
+	for s in seats:
+		if int(s.pid) == turn:
+			turn_name = str(s.name)
+	if turn_name == "":
+		for p in (proj.get("players", []) as Array):
+			if int(p.get("index", -1)) == turn:
+				turn_name = str(p.get("name", ""))
+	var phase := str(proj.get("phase", ""))
+	var pot := int(proj.get("parking_pot", 0))
+	var rnd := int(proj.get("round", 1))
+	var cold := _watermark or turn < 0
+	_set_glance(0, I18n.t("top.cold") if cold else I18n.t("glance.turn", [turn_name]))
+	_set_glance(10, I18n.t("top.cold") if cold else I18n.t("glance.phase",
+		[I18n.t("phase." + phase) if phase != "" else "—"]))
+	_set_glance(20, I18n.t("glance.bank", ["$%d" % pot]))
+	_set_glance(30, I18n.t("glance.round", [str(rnd)]))
+
+
 func _layout() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
@@ -291,6 +356,9 @@ func _place_board() -> void:
 			var ring_side: String = "corner" if _is_corner(i) else _ring_side(i)
 			add_child(tv)
 			tv.setup(_skin, i, data, r0.size.x, ring_side, r0.size.y)
+			# a corner is a SCREEN, not a plot: its face stays (the band and the border carry the
+			# ring's rhythm) but its own name/price step aside for the glance line.
+			tv.set_plain(_is_corner(i))
 			tv.pressed.connect(func(idx: int) -> void: tile_clicked.emit(idx))
 			_tiles.append(tv)
 	for i in _tiles.size():
@@ -306,6 +374,7 @@ func _place_board() -> void:
 		var tok: Control = _tokens[pid]
 		var idx: int = int(_token_pos.get(pid, 0))
 		tok.position = _token_screen_pos(idx, int(pid), 4)
+	_place_glance()
 
 
 func _place_centre() -> void:
@@ -390,6 +459,7 @@ func sync(proj: Dictionary, seats: Array, human_pid: int) -> void:
 		_tiles[i].apply(entries.get(i, {}))
 	_sync_tokens(proj, seats)
 	_sync_centre(proj, seats, human_pid)
+	_sync_glance(proj, seats, human_pid)
 
 
 ## The shell hands over the SAME finished journal line it gives the toast and the feed, plus the

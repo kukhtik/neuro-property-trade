@@ -60,6 +60,9 @@ var _mortgaged: Label
 ## to decide it alone (`houses > 0 and _name.visible`), which is what pushed the counter out of a
 ## short B1 cell.
 var _show_houses := true
+## A corner is a SCREEN in B1: its face and border stay, its own name/price step aside for the
+## glance line that BoardScene draws on top of it.
+var _plain := false
 
 
 func setup(skin: SkinManager, idx: int, data: Dictionary, cell: float, side: String, h: float = 0.0) -> void:
@@ -86,6 +89,14 @@ func resize(w: float, h: float) -> void:
 	_w = w
 	_h = h if h > 0.0 else w
 	_cell = minf(_w, _h)
+	if _face == null:
+		return
+	_layout_children()
+
+
+## Turn the cell into a plain SCREEN (no name, no price, no houses, no owner badge).
+func set_plain(on: bool) -> void:
+	_plain = on
 	if _face == null:
 		return
 	_layout_children()
@@ -270,8 +281,8 @@ func _layout_children() -> void:
 	# cell tightens (the price hides at step 2, the house squares at step 1); identity stays.
 	# `label_step` no longer has a "hide the name" rung, and this line is what consumes that promise.
 	var step: int = LayoutProfile.label_step(c)
-	_name.visible = true
-	if step >= 2:
+	_name.visible = not _plain
+	if step >= 2 or _plain:
 		# the tightest legible ring: no price, the name still carries the cell
 		_price.visible = false
 	else:
@@ -284,7 +295,7 @@ func _layout_children() -> void:
 	_houses_lbl.add_theme_font_size_override("font_size", HOUSES_MIN)
 	var houses_h: float = _houses_lbl.get_combined_minimum_size().y
 	var strip: float = minf(houses_h, text_rect.size.y * 0.35)
-	_show_houses = step < 3 and strip >= 8.0
+	_show_houses = (not _plain) and step < 3 and strip >= 8.0
 	if not _show_houses:
 		strip = 0.0
 	var body := Rect2(text_rect.position, Vector2(text_rect.size.x, maxf(0.0, text_rect.size.y - strip)))
@@ -312,7 +323,7 @@ func _layout_children() -> void:
 func apply(entry: Dictionary) -> void:
 	var owner: int = int(entry.get("owner", -1))
 	var owner_col: Color = entry.get("owner_color", UiTheme.COL().accent)
-	if owner >= 0:
+	if owner >= 0 and not _plain:
 		_badge.visible = true
 		var nm := str(entry.get("owner_name", ""))
 		_badge.text = nm.substr(0, 1).to_upper() if nm != "" else str(owner)
@@ -324,7 +335,7 @@ func apply(entry: Dictionary) -> void:
 	for c in _houses.get_children():
 		_houses.remove_child(c)
 		c.queue_free()
-	_houses.visible = houses > 0
+	_houses.visible = houses > 0 and not _plain
 	_houses_lbl.visible = houses > 0 and _show_houses
 	_houses_lbl.text = ("×%d" % houses) if houses > 0 else ""
 	if houses > 0:

@@ -342,6 +342,13 @@ const D := {
 	# ---- turn panno (brief §4.1: the ring's centre carries the turn, not decoration) ----
 	# The four zone captions are WORDS (R-9: no glyphs, no abbreviations a player must guess).
 	"panno.roll":    {"ru": "БРОСОК", "en": "ROLL"},
+	# B1 «кольцо во весь кадр»: the four corners are SCREENS carrying the glance layer (R-7). Each
+	# line is one fact at a time, words first, and the frame takes the value: a corner is 320x190 and
+	# a 50px line is 12.19px when the same frame is seen 390 wide.
+	"glance.turn":   {"ru": "ХОД: %s", "en": "TURN: %s"},
+	"glance.phase":  {"ru": "ФАЗА: %s", "en": "PHASE: %s"},
+	"glance.bank":   {"ru": "БАНК ПАРКОВКИ %s", "en": "PARKING BANK %s"},
+	"glance.round":  {"ru": "РАУНД %s", "en": "ROUND %s"},
 	"panno.event":   {"ru": "СОБЫТИЕ", "en": "EVENT"},
 	"panno.players": {"ru": "ИГРОКИ", "en": "PLAYERS"},
 	"panno.journal": {"ru": "ЖУРНАЛ", "en": "LOG"},
