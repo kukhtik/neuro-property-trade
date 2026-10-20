@@ -67,7 +67,11 @@ run_probe() {
 	timeout 180 "$godot" --headless --path "$game_dir" "$scene" >"$log" 2>&1
 	local rc=$?
 	local errs
-	errs="$(grep -ac 'SCRIPT ERROR' "$log" 2>/dev/null || echo 0)"
+	# `grep -c` prints "0" AND exits 1 when there is no match, so `|| echo 0` used to
+	# append a SECOND "0" and the value became "0\n0" - every integer test on it then
+	# said "integer expression expected" and the count was never really compared.
+	errs="$(grep -ac 'SCRIPT ERROR' "$log" 2>/dev/null | head -1)"
+	errs="${errs:-0}"
 	report="$report
   $name: exit=$rc script_errors=$errs expect=$expect"
 	case "$expect" in
@@ -98,7 +102,8 @@ run_probe() {
 		touch)
 			# a control under the 28 px mouse floor is printed with a "SMALL " marker
 			local small
-			small="$(grep -ac 'SMALL ' "$log" 2>/dev/null || echo 0)"
+			small="$(grep -ac 'SMALL ' "$log" 2>/dev/null | head -1)"
+			small="${small:-0}"
 			if [ "$small" -eq 0 ]; then
 				echo "  touch: 0 controls under the 28px floor (good)"
 			else
@@ -108,13 +113,15 @@ run_probe() {
 		cell_step)
 			# cells that fell into the "narrower than 44px" step print their reason
 			local steps
-			steps="$(grep -ac 'step' "$log" 2>/dev/null || echo 0)"
+			steps="$(grep -ac 'step' "$log" 2>/dev/null | head -1)"
+			steps="${steps:-0}"
 			echo "  cell_step: $steps line(s) about the label step (see the log)"
 			;;
 		layout_density)
 			# the largest gap between content rows, per panel
 			local rows
-			rows="$(grep -aci 'gap' "$log" 2>/dev/null || echo 0)"
+			rows="$(grep -aci 'gap' "$log" 2>/dev/null | head -1)"
+			rows="${rows:-0}"
 			echo "  layout_density: $rows gap line(s) measured (see the log)"
 			;;
 		esac
