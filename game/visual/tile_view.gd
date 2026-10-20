@@ -60,9 +60,12 @@ var _mortgaged: Label
 ## to decide it alone (`houses > 0 and _name.visible`), which is what pushed the counter out of a
 ## short B1 cell.
 var _show_houses := true
-## A corner is a SCREEN in B1: its face and border stay, its own name/price step aside for the
-## glance line that BoardScene draws on top of it.
+## A corner is a SCREEN in B1: its face and border stay, its own price/houses/badge step aside for
+## the glance line that BoardScene writes into it. THE NAME STAYS - it is the cell's identifier
+## (READ-01) and R-12 forbids losing it; the screen line is what gets big.
 var _plain := false
+var _screen: Label
+var _screen_text := ""
 
 
 func setup(skin: SkinManager, idx: int, data: Dictionary, cell: float, side: String, h: float = 0.0) -> void:
@@ -94,11 +97,21 @@ func resize(w: float, h: float) -> void:
 	_layout_children()
 
 
-## Turn the cell into a plain SCREEN (no name, no price, no houses, no owner badge).
+## Turn the cell into a plain SCREEN (no price, no houses, no owner badge).
 func set_plain(on: bool) -> void:
 	_plain = on
 	if _face == null:
 		return
+	_layout_children()
+
+
+## Write the glance line into a corner screen. `px` is the font BoardScene computed from the band.
+func set_screen(text: String, px: int) -> void:
+	_screen_text = text
+	if _screen == null:
+		return
+	_screen.text = text
+	_screen.add_theme_font_size_override("font_size", maxi(10, px))
 	_layout_children()
 
 
@@ -179,6 +192,16 @@ func _build(data: Dictionary) -> void:
 	_state.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_state.visible = false
 	add_child(_state)
+
+	# B1: the corner SCREEN. One big line, written by BoardScene from the projection.
+	_screen = UiTheme.label("", 20, UiTheme.COL().text)
+	_screen.name = "tile-screen"
+	_screen.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_screen.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_screen.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_screen.visible = false
+	_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_screen)
 
 
 ## E-3: the hover tooltip - name, group, price and the rent the tile charges RIGHT NOW.
@@ -281,6 +304,23 @@ func _layout_children() -> void:
 	# cell tightens (the price hides at step 2, the house squares at step 1); identity stays.
 	# `label_step` no longer has a "hide the name" rung, and this line is what consumes that promise.
 	var step: int = LayoutProfile.label_step(c)
+	# SCREEN MODE (a B1 corner): the name stays as the cell's identifier (READ-01, R-12) and the
+	# glance line takes the rest at the big font BoardScene asked for.
+	if _screen_text != "":
+		var name_h: float = clampf(float(NAME_MIN) + 8.0, 0.0, text_rect.size.y * 0.32)
+		_name.visible = true
+		_name.position = text_rect.position
+		_name.size = Vector2(text_rect.size.x, name_h)
+		_price.visible = false
+		_houses_lbl.visible = false
+		_show_houses = false
+		_screen.visible = true
+		_screen.position = text_rect.position + Vector2(0, name_h)
+		_screen.size = Vector2(maxf(1.0, text_rect.size.x), maxf(1.0, text_rect.size.y - name_h))
+		_badge.position = Vector2(inner.position.x + 1, inner.position.y + 1)
+		_badge.size = Vector2(maxf(BADGE_MIN, c * 0.16), maxf(BADGE_MIN, _badge.get_combined_minimum_size().y))
+		return
+	_screen.visible = false
 	_name.visible = not _plain
 	if step >= 2 or _plain:
 		# the tightest legible ring: no price, the name still carries the cell

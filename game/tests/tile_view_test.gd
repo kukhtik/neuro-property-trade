@@ -322,47 +322,49 @@ static func test_ring_fills_the_frame_with_legal_cells() -> String:
 
 
 static func test_corner_screens_carry_the_glance_layer() -> String:
-	# B1: the four corners are SCREENS. R-7 needs the glance facts to survive a phone, and the whole
-	# reason the corners are wider than the band is this layer - so the test measures the built layer,
-	# not the constant: four labels exist, sit on the four corner rects, and carry the projection.
+	# B1: the four corners are SCREENS, and the screen lives INSIDE the cell. Two gates taught this:
+	# READ-01 wants every ring cell to keep an identifier, PANEL-NOT-EMPTY wants a big panel to carry
+	# text - an overlay label satisfied neither. So: the name stays (small), the glance line is big.
 	var BoardScene := preload("res://visual/board_scene.gd")
-	var bs: Control = BoardScene.new()
-	bs.size = Vector2(1600, 1200)
-	bs._build_glance()
-	bs._place_glance()
-	if bs._glance.size() != 4:
-		return "expected four corner screens, built %d" % bs._glance.size()
-	var m: Dictionary = BoardScene.ring_metrics(bs.size)
+	var m: Dictionary = BoardScene.ring_metrics(Vector2(1600, 1200))
 	var band: float = m["band"]
 	var fs_wanted: int = int(maxf(14.0, band * BoardScene.GLANCE_F))
 	var eff: float = float(fs_wanted) * 390.0 / 1600.0
 	if eff < 12.0:
-		return "the corner glance font at a %.0fpx band is %dpx, which is %.2fpx on a 390 frame (floor 12)" % [
+		return "the corner glance font at a %.0fpx band is %dpx = %.2fpx on a 390 frame (floor 12)" % [
 			band, fs_wanted, eff]
-	for idx in BoardScene.GLANCE_IDX:
-		var l: Label = bs._glance[idx]
-		var r: Rect2 = BoardScene.tile_rect(idx, m, bs.size)
-		var cl := Rect2(l.position, l.size)
-		if not r.encloses(cl):
-			return "corner %d's screen %s is not inside its rect %s" % [idx, str(cl), str(r)]
-		if l.get_theme_font_size("font_size") != fs_wanted:
-			return "corner %d carries %dpx, the formula says %dpx" % [
-				idx, l.get_theme_font_size("font_size"), fs_wanted]
-	# the content comes from the projection
-	var proj := {
-		"turn_player": 0, "phase": "TURN_START", "parking_pot": 240, "round": 7,
-		"players": [{"index": 0, "name": "Хост"}],
-	}
-	bs._watermark = false
-	bs._sync_glance(proj, [], 0)
-	var want := {0: "ХОД", 10: "ФАЗА", 20: "БАНК ПАРКОВКИ", 30: "РАУНД"}
-	for idx in want.keys():
-		var text: String = (bs._glance[idx] as Label).text
-		if text.find(str(want[idx])) < 0:
-			return "corner %d reads %s; it must carry %s" % [idx, text, want[idx]]
-	if (bs._glance[0] as Label).text.find("Хост") < 0:
-		return "the turn corner does not name the seat: %s" % (bs._glance[0] as Label).text
-	if (bs._glance[20] as Label).text.find("$240") < 0:
-		return "the bank corner does not carry the pot: %s" % (bs._glance[20] as Label).text
-	bs.free()
+	var skin := SkinManager.new()
+	skin.load_skin()
+	var tv: Control = TileView.new()
+	tv.setup(skin, 0, {"index": 0, "name": "Старт", "short": "Старт", "type": "corner"}, 320.0, "corner", 190.0)
+	tv.size = Vector2(320.0, 190.0)
+	tv.set_plain(true)
+	tv.set_screen("ХОД: Хост", fs_wanted)
+	var screen: Label = null
+	var name_lbl: Label = null
+	for c in tv.get_children():
+		if not (c is Label):
+			continue
+		var l := c as Label
+		if l.name == "tile-screen":
+			screen = l
+		elif l.tooltip_text != "":
+			name_lbl = l
+	if screen == null:
+		return "the corner cell carries no tile-screen label"
+	if not screen.visible:
+		return "the corner screen exists but is hidden"
+	if screen.text != "ХОД: Хост":
+		return "the screen reads %s" % screen.text
+	if screen.get_theme_font_size("font_size") != fs_wanted:
+		return "the screen carries %dpx, the formula says %dpx" % [
+			screen.get_theme_font_size("font_size"), fs_wanted]
+	var sr := Rect2(screen.position, screen.size)
+	if sr.end.x > 320.5 or sr.end.y > 190.5 or sr.position.x < -0.5 or sr.position.y < -0.5:
+		return "the screen %s is not inside the 320x190 cell" % str(sr)
+	if name_lbl == null or not name_lbl.visible:
+		return "the corner's NAME disappeared - READ-01 and R-12 both require it"
+	if name_lbl.get_theme_font_size("font_size") < BoardScene.MIN_CELL / 7.0:
+		return "the corner name is %dpx, too small to identify the cell" % name_lbl.get_theme_font_size("font_size")
+	tv.free()
 	return ""

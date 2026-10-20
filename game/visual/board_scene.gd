@@ -66,11 +66,6 @@ var _watermark := true
 ## zones; the widgets built below (watermark, dice tray, event banner, decision card) are hosted
 ## INSIDE its zones, so nothing in the centre is positioned by absolute coordinates any more.
 var _panno: Control
-## B1: the four corners are SCREENS. They carry the glance layer (who moves, phase, the parking bank,
-## the round) at a font that survives a phone, which is why the ring's corners are wider than its band.
-const GLANCE_IDX := [0, 10, 20, 30]
-const GLANCE_F := 0.264            # of the band: 50px at a 190px band -> eff 12.19 on a 390 frame
-var _glance: Dictionary = {}       # ring index -> Label
 var _last_line: Dictionary = {}          # the shell's finished journal line (R-14: not computed here)
 var _journal_tail: Array = []            # last N journal sentences, oldest first
 const JRN_TAIL := 3
@@ -83,7 +78,6 @@ func _ready() -> void:
 	_load_board()
 	resized.connect(_layout)
 	_build_centre()
-	_build_glance()
 	# The panno is created in `_build_centre()`, so the FIRST layout pass has to run after it:
 	# `resized` may already have fired while the board was entering the tree, and without this
 	# call the panno stayed at 0x0 for the whole session (measured: the ring's interior still read
@@ -207,45 +201,34 @@ func _is_corner(i: int) -> bool:
 	return i in [0, 10, 20, 30]
 
 
-## B1: four screens, one per corner. Built once, positioned with the ring, and kept ABOVE the tiles
-## (they are re-parented to the end of the child list on every placement pass).
-func _build_glance() -> void:
-	_glance.clear()
-	for idx in GLANCE_IDX:
-		var l := UiTheme.label("", 20, UiTheme.COL().text)
-		l.name = "glance-%d" % idx
-		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(l)
-		_glance[idx] = l
+## B1: four screens, one per corner. The line lives INSIDE the corner cell (not on an overlay):
+## READ-01 wants every ring cell to keep an identifier, PANEL-NOT-EMPTY wants a big panel to carry
+## text, and R-12 forbids dropping the name - so the cell shows its name (small) plus the glance line
+## (big). Measured: an overlay left four 296x161 panels with 0 lines and four cells without names.
+const GLANCE_IDX := [0, 10, 20, 30]
+const GLANCE_F := 0.264            # of the band: 50px at a 190px band -> eff 12.19 on a 390 frame
+var _glance_text: Dictionary = {}  # ring index -> the line last written (survives a ring rebuild)
 
 
-func _place_glance() -> void:
-	if _glance.is_empty():
-		return
-	var m := ring_metrics(size)
-	var fs: int = int(maxf(14.0, float(m["band"]) * GLANCE_F))
+func glance_font() -> int:
+	return int(maxf(14.0, float(ring_metrics(size)["band"]) * GLANCE_F))
+
+
+func _apply_glance() -> void:
+	var fs := glance_font()
 	for idx in GLANCE_IDX:
-		var l: Label = _glance[idx]
-		var r: Rect2 = tile_rect(idx, m, size)
-		var inset := 6.0
-		l.position = r.position + Vector2(inset, inset)
-		l.size = Vector2(maxf(1.0, r.size.x - inset * 2.0), maxf(1.0, r.size.y - inset * 2.0))
-		l.add_theme_font_size_override("font_size", fs)
-		move_child(l, get_child_count() - 1)
+		if idx < _tiles.size() and _glance_text.has(idx):
+			(_tiles[idx] as TileView).set_screen(str(_glance_text[idx]), fs)
 
 
 func _set_glance(idx: int, text: String) -> void:
-	if _glance.has(idx):
-		(_glance[idx] as Label).text = text
+	_glance_text[idx] = text
+	if idx < _tiles.size():
+		(_tiles[idx] as TileView).set_screen(text, glance_font())
 
 
 ## The glance layer, straight from the projection (R-14: no game state is computed here).
 func _sync_glance(proj: Dictionary, seats: Array, _human_pid: int) -> void:
-	if _glance.is_empty():
-		return
 	var turn: int = int(proj.get("turn_player", proj.get("turn", -1)))
 	var turn_name := ""
 	for s in seats:
@@ -374,7 +357,7 @@ func _place_board() -> void:
 		var tok: Control = _tokens[pid]
 		var idx: int = int(_token_pos.get(pid, 0))
 		tok.position = _token_screen_pos(idx, int(pid), 4)
-	_place_glance()
+	_apply_glance()
 
 
 func _place_centre() -> void:
