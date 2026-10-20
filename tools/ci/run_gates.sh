@@ -92,6 +92,14 @@ GATES=(
 	# never in the legal set at TURN_START, so a chat seat whose viewers went quiet held
 	# the turn FOREVER - the promise in that file's own header could not happen.
 	"CHAT-01|hg|required|script|tools/ci/gates/chat01_gate.sh"
+	# RANDY-01: the SDK seat against the OFFICIAL Neuro-API server (the "Randy" server
+	# in the upstream VedalAI/neuro-sdk repo). Our own mock was written by us, for us -
+	# it answers what our adapter needs, so it cannot catch a mismatch with the REAL
+	# protocol. Randy is upstream code and it picks a RANDOM action from the forced set,
+	# so the seat must cope with an action it did not expect. The server is not
+	# vendored: the gate fetches it into the scratch area, and if it is not there the
+	# gate SKIPS WITH A REASON (never a silent pass).
+	"RANDY-01|hg|required|script|tools/ci/gates/randy01_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph
