@@ -65,12 +65,19 @@ def main(files):
         check("R-4 last event", any(j.split()[1] in body for j in JOURNAL) or "Crest Square" in body)
         for j in JOURNAL:
             check(f"scene journal line “{j}”", j in body)
-        # A WHOLE BOARD, NOT A FRAGMENT. The check counts the board's own elements; `tile` was the
-        # word the first sweep used, `cell` is the word the PRODUCT uses (data-cell, cell_flashing,
-        # `_cell`), so both count. It stays a heuristic on class names - a fragment named either way
-        # still fails, which is the point of the check.
+        # A WHOLE BOARD, NOT A FRAGMENT. The check must count the board's OWN elements, and the
+        # name they carry is a convention, not a fact: the first sweep used `class="tile"`, the
+        # product uses `data-cell` (and `cell_flashing`, `_cell`), and concept A used
+        # `class="c corner" data-cell="0"`. Counting only the words "tile"/"cell" in a class
+        # string called a perfectly good 40-cell board a fragment, and the 19.10 sweep files -
+        # which the same check calls 22/22 - would also have failed it. So: an element counts
+        # as a board cell when it CARRIES the board's own marker (data-cell=), and that
+        # marker is what the product's own tests and probes look for. The class-name heuristic
+        # stays as a second way in, for a mockup that names its cells but marks them otherwise.
+        marked = len(re.findall(r'data-cell\s*=', src))
         tile_like = len(re.findall(r'class="[^"]*(tile|cell)[^"]*"', src, re.I))
-        check("board has >=40 tiles", tile_like >= 40, str(tile_like))
+        board_cells = max(marked, tile_like)
+        check("board has >=40 tiles", board_cells >= 40, f"marked={marked} class_named={tile_like}")
         check("R-15 hero action word", "Бросок" in body)
 
         bad = [r for r in res if not r[0]]
