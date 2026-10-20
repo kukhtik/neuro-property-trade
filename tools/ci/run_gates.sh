@@ -100,6 +100,11 @@ GATES=(
 	# vendored: the gate fetches it into the scratch area, and if it is not there the
 	# gate SKIPS WITH A REASON (never a silent pass).
 	"RANDY-01|hg|required|script|tools/ci/gates/randy01_gate.sh"
+	# DOC-NUMBERS: the docs must quote the numbers the product actually has. The test
+	# count moved 227 -> 270 -> 289 -> 292 -> 356 -> 383 -> 388 -> 395 -> 406 -> 411 ->
+	# 416 -> 421, and every doc that quoted one was edited BY HAND - so every one was
+	# wrong the moment the next test landed. infra.md said 227 while the oracle ran 421.
+	"DOC-NUMBERS|hg|required|script|tools/ci/gates/doc_numbers_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph
