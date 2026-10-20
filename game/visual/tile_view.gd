@@ -26,10 +26,15 @@ const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 ## the ring measured as blank because its text was too small to see, not because it was missing.
 ## (The camera's double-centring bug produced the same symptom from the other direction; both had to
 ## be fixed for the cells to read.)
-const NAME_MIN := 11
-const NAME_MAX := 20
-const PRICE_MIN := 9
-const PRICE_MAX := 16
+## Owner, 19.10: "поля бизнесов нужно немного переделать - увеличить шрифты". The ratios and the caps
+## below are what makes a business cell readable at the B1 band: 0.20/0.16 of the SHORT side gives
+## 17/14px on a 190x88 side cell and 21/17px on a 107x190 top cell - against 15/11 and 18/13 before.
+const NAME_MIN := 12
+const NAME_MAX := 26
+const NAME_RATIO := 0.20
+const PRICE_MIN := 10
+const PRICE_MAX := 20
+const PRICE_RATIO := 0.16
 const BADGE_MIN := 12.0
 const HOUSES_MIN := 10
 
@@ -275,8 +280,8 @@ func _band_colour() -> Color:
 ## same cell at 60px gave 8px - a 40-cell ring where 32 names were unreadable.
 static func fonts_for(cell: float) -> Dictionary:
 	return {
-		"name": clampi(int(cell * 0.17), NAME_MIN, NAME_MAX),
-		"price": clampi(int(cell * 0.13), PRICE_MIN, PRICE_MAX),
+		"name": clampi(int(round(cell * NAME_RATIO)), NAME_MIN, NAME_MAX),
+		"price": clampi(int(round(cell * PRICE_RATIO)), PRICE_MIN, PRICE_MAX),
 		"badge": maxf(BADGE_MIN, cell * 0.20),
 		"houses": HOUSES_MIN,
 	}
