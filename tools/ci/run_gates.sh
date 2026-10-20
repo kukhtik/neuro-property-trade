@@ -105,6 +105,12 @@ GATES=(
 	# 416 -> 421, and every doc that quoted one was edited BY HAND - so every one was
 	# wrong the moment the next test landed. infra.md said 227 while the oracle ran 421.
 	"DOC-NUMBERS|hg|required|script|tools/ci/gates/doc_numbers_gate.sh"
+	# PROBES: the five diagnostic probes that were never wired into anything. A
+	# measurement nobody re-runs is a measurement that silently stops being true.
+	# phone_fit is carried in QUARANTINE: it asks whether the layout fits a 390px
+	# phone-sized WINDOW (it does not - the layout measures 817px wide), and the
+	# product declares MIN_WIDTH = 880 and means it.
+	"PROBES|hg|required|script|tools/ci/gates/probes_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph
