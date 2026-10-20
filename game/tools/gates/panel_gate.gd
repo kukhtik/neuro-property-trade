@@ -55,7 +55,13 @@ func _process(_dt: float) -> void:
 func _walk(node: Node) -> void:
 	if node is Control:
 		var c := node as Control
-		if c.is_visible_in_tree() and _is_panel(c) and not _has_panel_child(c):
+		# A node on its way out is not part of the UI: `_place_board` rebuilds the ring when the band
+		# changes and queue_frees the old tiles, whose children are already gone - so a zombie tile
+		# measured as "a 53 250px panel carrying 0 lines" and turned PANEL-NOT-EMPTY red with a node
+		# a human can never see.
+		# `decor` marks a Panel that exists to draw (the owner border). It is not a container, so
+		# "carries no text" is not a defect for it - and every other panel still has to say something.
+		if not c.has_meta("decor") and not c.is_queued_for_deletion() and c.is_visible_in_tree() 				and _is_panel(c) and not _has_panel_child(c):
 			var area := c.size.x * c.size.y
 			if area > MIN_AREA:
 				var lines := _lines_in(c)
@@ -68,9 +74,9 @@ func _walk(node: Node) -> void:
 					if OS.get_environment("PANEL_DEBUG") != "":
 						# WHICH node is this? Without this the verdict names a Panel by an auto id
 						# (@Panel@1590) that appears nowhere in the source, and the fix becomes a guess.
-						print("PANEL DEBUG %s path=%s parent=%s grandparent=%s children=%s" % [
-							str(c.name), str(get_path_to(c)),
-							str(c.get_parent().name if c.get_parent() else "?"),
+						print("PANEL DEBUG %s class=%s script=%s path=%s parent=%s grandparent=%s children=%s" % [
+							str(c.name), c.get_class(), str(c.get_script().resource_path if c.get_script() != null else "-"), str(get_path_to(c)),
+							str("%s(%s)" % [c.get_parent().name if c.get_parent() else "?", (c.get_parent().get_script().resource_path if c.get_parent() and c.get_parent().get_script() else "-")]),
 							str(c.get_parent().get_parent().name if c.get_parent() and c.get_parent().get_parent() else "?"),
 							str(c.get_children().map(func(x): return str(x.name) + ":" + str(x.get_class())))])
 	for ch in node.get_children():

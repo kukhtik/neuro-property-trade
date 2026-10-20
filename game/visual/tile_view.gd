@@ -237,6 +237,10 @@ func _build(data: Dictionary) -> void:
 	_state.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_state.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_state.visible = false
+	# A DECORATION, not a container: this full-rect Panel draws the owner/mortgage BORDER and carries
+	# no text on purpose. PANEL-NOT-EMPTY flagged it as "a 53 250px panel with 0 lines" the moment a
+	# corner cell got an owner; the meta is how the gate tells a border from a silently empty panel.
+	_state.set_meta("decor", "owner-border")
 	add_child(_state)
 
 	# B1: the corner SCREEN. One big line, written by BoardScene from the projection.

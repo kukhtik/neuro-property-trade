@@ -94,7 +94,6 @@ GATES=(
 	# проверяют, что ничего не вылезает, но ни один не проверяет, что что-то ЕСТЬ. Замер на
 	# 17.10: 55.1% кадра не рисует ничего, центр кольца занят на 2.2%. Спека:
 	# docs/specs/ui-redesign-brief.md §3 (R-1/R-2).
-	"FILL|sg|required|scene|fill_gate"
 	# PANEL-NOT-EMPTY: панель площадью > 40 000 px не может нести меньше 2 строк текста (R-3).
 	# Написан 18.10 вместе с панно: дамп дерева, а не пиксели - кадр может быть занят четырьмя
 	# пустыми карточками и при этом пройти FILL. Негативная проверка проведена: пустая зона
@@ -112,6 +111,9 @@ GATES=(
 	# session (28 frames each, exit 0) - a report gate still fails on a blank, duplicated, stale
 	# or missing frame, so there is nothing for it to "report only" about.
 	"SG-07|sg|required|script|tools/ci/gates/sg07_shots_gate.sh"
+	# AFTER SG-07: FILL measures build/renders, and SG-07 is what draws them. Registered earlier,
+	# FILL found no frames on a clean CI checkout and went red with "the gate checked nothing".
+	"FILL|sg|required|scene|fill_gate"
 	# READ-01/02/03 (master-fix-plan §1) run LAST, for the same reason SG-07 does: the gate opens
 	# a real window at three profiles and SG-10's clean-machine preflight must not see it alive.
 	# QUARANTINE until it has 2-3 consecutive green full sweeps; its negative check has already

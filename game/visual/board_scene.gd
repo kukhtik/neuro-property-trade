@@ -268,8 +268,12 @@ func _sync_glance(proj: Dictionary, seats: Array, _human_pid: int) -> void:
 	var rnd := int(proj.get("round", 1))
 	var cold := _watermark or turn < 0
 	_set_glance(0, I18n.t("top.cold") if cold else I18n.t("glance.turn", [turn_name]))
-	_set_glance(10, I18n.t("top.cold") if cold else I18n.t("glance.phase",
-		[I18n.t("phase." + phase) if phase != "" else "—"]))
+	# THE CORNER HAS ONE WORD OF ROOM, and it is a SCREEN, not a paragraph: "Начало хода" at the R-7
+	# size needs 275px of a 296px corner and the fit then shrank the whole glance to 39px (STREAM-READ
+	# measured 9.5px on a phone). The first word is the phase; the full name stays in the panno.
+	var phase_word: String = I18n.t("phase." + phase) if phase != "" else "—"
+	var short_word: String = phase_word.split(" ")[0] if phase_word != "" else "—"
+	_set_glance(10, I18n.t("top.cold") if cold else I18n.t("glance.phase", [short_word]))
 	_set_glance(20, I18n.t("glance.bank", ["$%d" % pot]))
 	_set_glance(30, I18n.t("glance.round", [str(rnd)]))
 

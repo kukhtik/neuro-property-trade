@@ -345,7 +345,9 @@ const D := {
 	# B1 «кольцо во весь кадр»: the four corners are SCREENS carrying the glance layer (R-7). Each
 	# line is one fact at a time, words first, and the frame takes the value: a corner is 320x190 and
 	# a 50px line is 12.19px when the same frame is seen 390 wide.
-	"glance.turn":   {"ru": "ХОД: %s", "en": "TURN: %s"},
+	"glance.turn":   {"ru": "ХОД:
+%s", "en": "TURN:
+%s"},
 	"glance.phase":  {"ru": "ФАЗА:
 %s", "en": "PHASE:
 %s"},
