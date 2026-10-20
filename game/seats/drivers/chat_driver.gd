@@ -53,9 +53,32 @@ func act() -> void:
 		# would let the previous decision decide this one, so the box is emptied here.
 		_queue.clear()
 		_empty += 1
-		if _empty >= EMPTY_ROUNDS_BEFORE_PASS and legal.has("pass"):
+		# THE AUTO-PASS. It used to be guarded by `legal.has("pass")` - and "pass" is NOT
+		# in the legal set at TURN_START (the engine offers roll/build/sell/mortgage/trade
+		# there), so the guard was NEVER true and a chat seat whose viewers went quiet
+		# STALLED THE WHOLE MATCH: the promise in this file's own header ("the seat
+		# auto-passes") could not happen. The fix is to act on the decision the seat
+		# actually faces:
+		#   - TURN_START  -> "roll" is the only move that advances the turn, and the
+		#     engine accepts it; a quiet table rolls on.
+		#   - PURCHASE_WAIT / AUCTION -> "pass" is legal and is the way out.
+		# So: prefer "pass" when it is legal, otherwise "roll".
+		#
+		# AND: when the seat is NOT the one on the hook (an auction rotates the bidder
+		# through the other seats), the legal set is EMPTY. The counter must not be
+		# reset by that - it is the wait, not a new decision - so the auto-move is
+		# decided by the ENGINE'S PHASE, not by the legal set.
+		if _empty >= EMPTY_ROUNDS_BEFORE_PASS:
 			_empty = 0
-			submit("pass", {})
+			if legal.has("pass"):
+				submit("pass", {})
+			elif legal.has("roll"):
+				submit("roll", {})
+			else:
+				# Not our decision right now: an auction rotates the bidder through the
+				# other seats, and while we are not the bidder our legal set is EMPTY.
+				# Somebody else has the decision, so there is nothing to auto-move.
+				pass
 		return
 	_empty = 0
 	# best = action with the most votes; ties -> first enqueued of the leaders

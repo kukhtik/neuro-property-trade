@@ -14,8 +14,9 @@ intents; the engine validates and executes them; the AI can never corrupt state)
   Hasbro trademarks are NOT used: original name, street names, tokens and art.
 - Full control over game state → clean, reliable Neuro state-reads and action
   validation without reverse-engineering a commercial title.
-- Sits in the gap Vedal described as "intellectually challenging work" for the
-  community, after his internal AI started handling routine game-integration mods.
+- A board game is a good fit for the Neuro API: low actions per minute, a state that
+  can be described in text, and decisions (buy, bid, trade) worth arguing about. The
+  Neuro SDK lists board games among the ones that work well.
 
 ## Stack
 
@@ -86,9 +87,18 @@ NEURO_SDK_WS_URL=ws://127.0.0.1:8000 godot --path game
 ```
 
 The seat's adapter (`game/sdk/sdk_adapter.gd`) registers the action set, renders the board for the
-model and forces its legal actions; the engine still validates every intent. One SDK connection per
-process: a second `sdk:` slot falls back to the internal AI so the match stays playable. Proven
-end-to-end by `tools/ci/gates/hg08_sdk_seat_gate.sh`, which plays against a mock websocket server.
+model and forces its legal actions; the engine still validates every intent.
+
+**Several SDK seats can share one process.** A seat with its OWN endpoint gets its own
+connection (`sdk_endpoint` in the seat settings); a seat without one uses the shared
+`NEURO_SDK_WS_URL`, and only the FIRST such seat can use it — the rest play as the
+internal AI, and the journal says so out loud rather than silently downgrading. This is
+proven end to end by `tools/ci/gates/hg08_sdk_seat_gate.sh` (one seat against a mock
+websocket) and `tools/ci/multi_sdk_gate.sh` (TWO seats, two connections, one process).
+
+The endpoint variables used by the multi-seat tooling are `NPT_SDK_A` / `NPT_SDK_B`.
+They are a local extension of ours, not part of the SDK specification: the published
+protocol has one websocket per character.
 
 ## Status
 

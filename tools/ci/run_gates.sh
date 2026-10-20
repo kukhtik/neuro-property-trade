@@ -85,6 +85,13 @@ GATES=(
 	"SG-09|sg|required|scene|sg09_skins_gate"
 	"HG-13|hg|required|scene|hg13_hotkeys_timer_gate"
 	"HG-08|hg|required|script|tools/ci/gates/hg08_sdk_seat_gate.sh"
+	# CHAT-01: the Twitch chat seat (promise S2). Every piece existed - the bridge, the
+	# seat driver, the server entry, the engine validation - and NOTHING checked them
+	# together: `grep -c CHAT-01 tools/ci/run_gates.sh` was 0. Writing the tests found a
+	# real stall: the driver's auto-pass was guarded by `legal.has("pass")`, and "pass" is
+	# never in the legal set at TURN_START, so a chat seat whose viewers went quiet held
+	# the turn FOREVER - the promise in that file's own header could not happen.
+	"CHAT-01|hg|required|script|tools/ci/gates/chat01_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph

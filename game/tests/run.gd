@@ -35,6 +35,9 @@ func _init() -> void:
 		"res://tests/skin_manager_test.gd",
 		"res://tests/event_presenter_test.gd",
 		"res://tests/server_test.gd",
+		# CHAT-01: the Twitch chat seat (promise S2) had every piece and NO acceptance
+		# test - `grep -c CHAT-01 tools/ci/run_gates.sh` was 0.
+		"res://tests/chat_test.gd",
 		"res://tests/remote_driver_test.gd",
 		"res://tests/launch_params_test.gd",
 		"res://tests/network_handover_test.gd",
