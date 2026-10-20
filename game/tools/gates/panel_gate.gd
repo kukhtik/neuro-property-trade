@@ -65,6 +65,14 @@ func _walk(node: Node) -> void:
 				if lines < MIN_LINES:
 					_fails.append("%s %s area=%d px carries %d line(s) of text" % [
 						str(c.name), _rows[-1]["rect"], int(area), lines])
+					if OS.get_environment("PANEL_DEBUG") != "":
+						# WHICH node is this? Without this the verdict names a Panel by an auto id
+						# (@Panel@1590) that appears nowhere in the source, and the fix becomes a guess.
+						print("PANEL DEBUG %s path=%s parent=%s grandparent=%s children=%s" % [
+							str(c.name), str(get_path_to(c)),
+							str(c.get_parent().name if c.get_parent() else "?"),
+							str(c.get_parent().get_parent().name if c.get_parent() and c.get_parent().get_parent() else "?"),
+							str(c.get_children().map(func(x): return str(x.name) + ":" + str(x.get_class())))])
 	for ch in node.get_children():
 		_walk(ch)
 

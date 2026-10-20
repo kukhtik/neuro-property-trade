@@ -48,6 +48,8 @@ var _group := ""
 var _corner := false
 
 var _face: Panel
+## Text body inside the face: gives the face its lines and keeps tile-local coordinates.
+var _body: Control
 var _band: ColorRect
 var _name: Label
 var _price: Label
@@ -97,6 +99,22 @@ func resize(w: float, h: float) -> void:
 	_layout_children()
 
 
+## Every Label this cell renders, wherever it sits in the tree. The text moved INSIDE the face
+## (PANEL-NOT-EMPTY counts a panel's own subtree), so callers - tests and the gates - ask the cell
+## instead of walking `get_children()` and silently finding nothing.
+func text_labels() -> Array:
+	var out: Array = []
+	_collect_labels(self, out)
+	return out
+
+
+func _collect_labels(node: Node, out: Array) -> void:
+	for ch in node.get_children():
+		if ch is Label:
+			out.append(ch)
+		_collect_labels(ch, out)
+
+
 ## Turn the cell into a plain SCREEN (no price, no houses, no owner badge).
 func set_plain(on: bool) -> void:
 	_plain = on
@@ -127,6 +145,12 @@ func _build(data: Dictionary) -> void:
 		UiTheme.box(UiTheme.COL().panel_dark if _corner else UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_face)
+	# B1/PANEL-NOT-EMPTY: the cell's text lives INSIDE its face. As siblings the face carried 0 lines,
+	# which the gate rightly calls an empty 40 000px^2 panel; and `_body` sits at -inner.position so
+	# every position below keeps its tile-local coordinates.
+	_body = Control.new()
+	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_face.add_child(_body)
 
 	_band = ColorRect.new()
 	_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -148,19 +172,19 @@ func _build(data: Dictionary) -> void:
 	var full_name := str(data.get("name", ""))
 	if full_name != "":
 		_name.tooltip_text = full_name
-	add_child(_name)
+	_body.add_child(_name)
 
 	var cost: int = int(data.get("cost", 0))
 	_price = UiTheme.label(MoneyFmt.make("$").amount(cost) if cost > 0 else "", 8, UiTheme.COL().money)
 	_price.name = "tile-price"
 	_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_price.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_price)
+	_body.add_child(_price)
 
 	_houses = UiTheme.hbox(1)
 	_houses.visible = false
 	_houses.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_houses)
+	_body.add_child(_houses)
 
 	# READ-1/D4: the house squares are 5x5px (4.5px at 720p) - a 4.5px glyph is not a count. The
 	# textual "xN" rides next to them and is the signal the gate reads; the squares stay as the
@@ -170,7 +194,7 @@ func _build(data: Dictionary) -> void:
 	_houses_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_houses_lbl.visible = false
 	_houses_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_houses_lbl)
+	_body.add_child(_houses_lbl)
 
 	_badge = UiTheme.label("", 9, UiTheme.COL().text)
 	_badge.name = "tile-badge"
@@ -179,13 +203,13 @@ func _build(data: Dictionary) -> void:
 	_badge.clip_text = true
 	_badge.visible = false
 	_badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_badge)
+	_body.add_child(_badge)
 
 	_mortgaged = UiTheme.label("M", 9, UiTheme.COL().danger)
 	_mortgaged.name = "tile-mortgaged"
 	_mortgaged.visible = false
 	_mortgaged.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_mortgaged)
+	_body.add_child(_mortgaged)
 
 	_state = Panel.new()
 	_state.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -201,7 +225,7 @@ func _build(data: Dictionary) -> void:
 	_screen.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_screen.visible = false
 	_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_screen)
+	_body.add_child(_screen)
 
 
 ## E-3: the hover tooltip - name, group, price and the rent the tile charges RIGHT NOW.
@@ -269,6 +293,9 @@ func _layout_children() -> void:
 	# face occupies the padded rect
 	_face.position = inner.position
 	_face.size = inner.size
+	if _body != null:
+		_body.position = -inner.position
+		_body.size = inner.size
 	var band := Rect2()
 	match _side:
 		"b":   # bottom row → band on top (facing centre)

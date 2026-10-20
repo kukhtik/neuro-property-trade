@@ -94,7 +94,7 @@ static func _tile(cell: float, data: Dictionary) -> Control:
 
 
 static func _find(tv: Control, name_hint: String) -> Label:
-	for c in tv.get_children():
+	for c in tv.text_labels():
 		if c is Label:
 			var l := c as Label
 			# the tile's labels in build order: name, price, houses counter, badge, mortgaged
@@ -156,7 +156,7 @@ static func test_smallest_step_keeps_the_name_band_and_badge() -> String:
 		return "at cell %.0f the name label is visible but empty" % CELL_TINY
 	# the band must still be painted (the group colour)
 	var band: ColorRect = null
-	for c in tv.get_children():
+	for c in _all_controls(tv):
 		if c is ColorRect and (c as ColorRect).size.x > 0.0:
 			band = c as ColorRect
 	if band == null:
@@ -164,7 +164,7 @@ static func test_smallest_step_keeps_the_name_band_and_badge() -> String:
 	# and the owner badge must still be applied
 	tv.apply({"owner": 2, "owner_name": "Neuro", "owner_color": Color(0.5, 0.5, 0.9)})
 	var badge_visible := false
-	for c in tv.get_children():
+	for c in tv.text_labels():
 		if c is Label and (c as Label).text == "N" and (c as Label).visible:
 			badge_visible = true
 	if not badge_visible:
@@ -192,7 +192,7 @@ static func test_house_counter_matches_houses() -> String:
 	for n in [1, 3, 4, 5]:
 		tv.apply({"houses": n})
 		var lbl: Label = null
-		for c in tv.get_children():
+		for c in tv.text_labels():
 			if c is Label and (c as Label).text.begins_with("×"):
 				lbl = c
 		if lbl == null:
@@ -201,7 +201,7 @@ static func test_house_counter_matches_houses() -> String:
 			return "houses=%d rendered as %s" % [n, lbl.text]
 		tv.apply({"houses": 0})
 		var gone := true
-		for c in tv.get_children():
+		for c in tv.text_labels():
 			if c is Label and (c as Label).text.begins_with("×"):
 				gone = false
 		if not gone:
@@ -246,11 +246,11 @@ static func test_rectangular_cell_keeps_every_child_inside() -> String:
 			"group": "amber", "cost": 120}, w, str(cse["side"]), h)
 		tv.size = Vector2(w, h)
 		tv.apply({"owner": 1, "owner_name": "Хост", "houses": 2})
-		for ch in tv.get_children():
+		for ch in _all_controls(tv):
 			var ctl := ch as Control
 			if ctl == null or not ctl.visible:
 				continue
-			var r := Rect2(ctl.position, ctl.size)
+			var r := _rect_in(ctl, tv)
 			if r.position.x < -0.5 or r.position.y < -0.5 \
 					or r.end.x > w + 0.5 or r.end.y > h + 0.5:
 				return "%s: a visible child occupies %s, outside the %sx%s cell" % [
@@ -342,7 +342,7 @@ static func test_corner_screens_carry_the_glance_layer() -> String:
 	tv.set_screen("ХОД: Хост", fs_wanted)
 	var screen: Label = null
 	var name_lbl: Label = null
-	for c in tv.get_children():
+	for c in tv.text_labels():
 		if not (c is Label):
 			continue
 		var l := c as Label
@@ -368,3 +368,27 @@ static func test_corner_screens_carry_the_glance_layer() -> String:
 		return "the corner name is %dpx, too small to identify the cell" % name_lbl.get_theme_font_size("font_size")
 	tv.free()
 	return ""
+
+
+## Every Control under a node, at any depth: after the text moved inside the cell's face, checking
+## only direct children would silently skip every label.
+static func _all_controls(root: Node) -> Array:
+	var out: Array = []
+	for ch in root.get_children():
+		if ch is Control:
+			out.append(ch)
+		out.append_array(_all_controls(ch))
+	return out
+
+
+## A Control's rect expressed in `root`'s coordinates: children of the cell's text body live at
+## negative local positions by design (the body cancels the face's padding), so their own
+## `position` is not comparable with the cell's size.
+static func _rect_in(node: Control, root: Control) -> Rect2:
+	var pos := node.position
+	var n := node.get_parent()
+	while n != null and n != root:
+		if n is Control:
+			pos += (n as Control).position
+		n = n.get_parent()
+	return Rect2(pos, node.size)
