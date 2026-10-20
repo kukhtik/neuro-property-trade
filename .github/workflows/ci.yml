@@ -75,28 +75,13 @@ jobs:
       - name: Behavioral probes - every probe in game/tools
         run: tools/ci/run_probes.sh
 
-      # THE VISUAL HALF NEEDS ITS OWN TOOLCHAIN. SG-07 captures the shipping app and reads the
-      # frames (Godot + Pillow) and renders the mockup (playwright); FILL then measures those frames.
-      # Without them SG-07 skipped out loud, FILL found nothing to measure and went red claiming it
-      # had checked something - a red that described the runner, not the product. xvfb gives Godot a
-      # display to draw into.
-      - name: Visual toolchain - Pillow, playwright, a virtual display
-        run: |
-          python3 -m pip install --quiet --upgrade pip
-          python3 -m pip install --quiet pillow playwright
-          python3 -m playwright install --with-deps chromium
-          sudo apt-get install -y --no-install-recommends xvfb
-
       - name: Gates - functionality + structure (quarantine-aware, docs/restoration/gates.md)
         env:
           # the oracle above ran WITH the import pass; the gate re-runs it cheaply. Required
           # gates block; quarantine gates are reported in build/gates/report.html without
           # failing the build (the report is uploaded below).
           NPT_GATES_FAST: "1"
-        run: |
-          # xvfb-run gives every gate that opens a window something to draw on; gates that do not
-          # need it are unaffected.
-          xvfb-run -a --server-args="-screen 0 1920x1200x24" tools/ci/run_gates.sh --all
+        run: tools/ci/run_gates.sh --all
 
       - name: Design - the mockup vs the game (palette, dock widths, regions)
         run: |
