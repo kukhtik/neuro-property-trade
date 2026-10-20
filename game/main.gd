@@ -85,7 +85,13 @@ func _ready() -> void:
 	# blank. At 1200 tall the ring is 1048px and the names 14px. The layout adapts downward to any
 	# smaller window; this is only the size we ASK for.
 	var want: Vector2i = LayoutProfile.new().screen
-	DisplayServer.window_set_size(want)
+	# ONLY ASK FOR THE WINDOW WHEN THIS NODE IS THE SCENE. A probe hosts main by hand, sets the root
+	# to the size it wants to measure (1440x900), and then main used to ask the OS for 1600x1200 - in
+	# headless the OS refuses, the root drops to 0x0, and the shell reads a zero-width stage as "wide
+	# window": the docks came back at 1440 and v3_probe failed on exactly that.
+	var owns_window: bool = get_parent() == get_tree().root and get_tree().current_scene == self
+	if owns_window:
+		DisplayServer.window_set_size(want)
 	# THE UI SCALE follows the WINDOW (owner, 19.10: "на всех этих размерах окна все элементы должны
 	# быть читаемы"). Text used to be absolute px, so at 4K the header stayed 13px while the cells grew
 	# fourfold. Set before the shell builds, and re-applied on every resize below.
@@ -95,8 +101,8 @@ func _ready() -> void:
 	# A WINDOW MAY REFUSE THE REQUEST (the display can be smaller). Read back what we actually got
 	# rather than assuming: the phone-fit probe taught this with a root viewport stuck at 64x64, and
 	# every measurement taken afterwards described a window nobody had.
-	var got := DisplayServer.window_get_size()
-	if got.y < want.y:
+	var got: Vector2i = DisplayServer.window_get_size() if owns_window else get_viewport().get_visible_rect().size
+	if owns_window and got.y < want.y:
 		push_warning("window refused %s, got %s - the board will be smaller than its text wants" % [str(want), str(got)])
 
 	# The execution role is chosen at LAUNCH, never toggled in the UI

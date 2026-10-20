@@ -210,6 +210,13 @@ func _build() -> void:
 	_modals.auction_pass.connect(_on_auction_pass)
 
 	_apply_profile()
+	# THE SHELL FOLLOWS THE WINDOW. `_is_compact()` reads `size`, and `_ready` runs while the node is
+	# still 0x0 - a zero width reads as "wide window", so a probe (or a real resize) that gave the
+	# shell 1440x900 kept the 268/344 docks: v3_probe failed with "1440x900 is a rail profile but the
+	# docks are still shown (game view (1440, 900))". Re-apply on every resize instead of guessing
+	# once at build time.
+	if not resized.is_connected(_apply_profile):
+		resized.connect(_apply_profile)
 	# SG-08: one switch retranslates everything in place - no rebuild, no stale language
 	if not I18n.inst().locale_changed.is_connected(Callable(self, "_on_locale_changed")):
 		I18n.inst().locale_changed.connect(Callable(self, "_on_locale_changed"))
@@ -302,6 +309,16 @@ func set_panels_hidden(hidden: bool) -> void:
 
 ## The user's panel choice applied on top of the profile layout: the profile decides WHICH control
 ## represents the side panels (dock or rail); this decides whether it is shown at all.
+## A probe or gate asks THIS, not `find_child("seats")`: the compact rails carry a DRAWER that is
+## also named "seats", so a recursive search found the drawer and reported the dock as shown while
+## the dock was hidden - v3_probe failed on exactly that at 1440x900.
+func dock_shown(which: String) -> bool:
+	match which:
+		"seats": return _seats_panel != null and _seats_panel.visible
+		"rightcol": return _rightcol != null and _rightcol.visible
+	return false
+
+
 func _apply_panels_visibility() -> void:
 	var compact := _is_compact()
 	if _seats_panel != null:

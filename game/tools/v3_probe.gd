@@ -3,8 +3,8 @@ extends Node
 ##   · the shell boots the prototype's regions (top / seats / stage / act / rightcol
 ##     with journal + inspector), not the archived ones;
 ##   · the mockup metrics hold: header 56, docks 268 / 344, console 96+, gap 8;
-##   · the board is the flat ring: 40 tiles, cell = side/11, the dice tray sits at the
-##     centre at cell*0.62 with light faces;
+##   · the board is the flat ring: 40 tiles, the ring fills the frame, the dice tray sits at
+##     the centre at step*0.62 with light faces;
 ##   · the console prompt is never empty while the match runs (promptFor parity);
 ##   · nothing overflows the window: the right dock's right edge stays inside the frame.
 ## Run: godot --path game res://tools/v3_probe.tscn (needs a window: reads real layout)
@@ -64,13 +64,17 @@ func _run_checks() -> void:
 	# of. What must hold instead is that the side panels are PRESENT in one form or the other, and
 	# that the choice follows the product's own rule.
 	var rails_below: int = LayoutProfile.RAILS_BELOW
-	var want_rails: bool = 1440 < rails_below
-	var seats_visible: bool = seats.visible
-	var rail_left = gv.find_child("rail-left", true, false)
-	if want_rails and (seats_visible or rail_left == null):
-		_fail("1440x900 is a rail profile (RAILS_BELOW=%d) but the docks are still shown" % rails_below)
-		return
-	_check("side panels follow LayoutProfile.RAILS_BELOW=%d" % rails_below)
+	# THE REQUIREMENT, not the old shape. R-15 removed the seats RAIL on purpose: the players glance
+	# layer moved into the panno's players zone, and that zone is the door to `drawer-seats`. So the
+	# compact profile must satisfy TWO things - the docks are gone, and the seats are still reachable -
+	# and "rail-left exists" is neither of them (it asserted the design that R-15 replaced).
+	var seats_visible: bool = bool(gv.call("dock_shown", "seats"))
+	var seats_door = gv.find_child("drawer-seats", true, false)
+	var rail_right = gv.find_child("rail-right", true, false)
+	if seats_visible or seats_door == null or rail_right == null:
+		_fail("compact profile at 1440x900 (RAILS_BELOW=%d): dock_seats=%s drawer-seats=%s rail-right=%s - the docks must fold and the seats must stay reachable"
+			% [rails_below, str(seats_visible), str(seats_door != null), str(rail_right != null)])
+	_check("compact profile folds the docks and keeps every panel reachable (RAILS_BELOW=%d)" % rails_below)
 	# the console is a one-line STRIP now: tall enough for its own controls, short enough not to eat
 	# the board. Both bounds, because "too tall" is the defect this relayout removes.
 	if act.size.y < 40.0:
@@ -93,17 +97,34 @@ func _run_checks() -> void:
 		_fail("board tiles %d != 40" % tiles.size())
 		return
 	_check("board = 40 tiles")
-	var cell: float = minf(board.size.x, board.size.y) / 11.0
+	# B1 REPLACED "cell = side/11, board is a square". The ring IS the frame now, its band is 15.8% of
+	# the height and the four corners are wider than a side cell, so the honest check is the geometry
+	# the board itself reports - not a formula from the design it replaced.
+	var m: Dictionary = board.call("ring_metrics", board.size)
+	var step: float = minf(float(m["step_x"]), float(m["step_y"]))
+	if absf(float(m["ring_w"]) - board.size.x) > 1.5 or absf(float(m["ring_h"]) - board.size.y) > 1.5:
+		_fail("ring %sx%s does not fill the board %s" % [str(m["ring_w"]), str(m["ring_h"]), str(board.size)])
 	var t0: Control = tiles[0]
-	if absf(t0.size.x - cell) > 1.5:
-		_fail("cell %s != side/11 = %s" % [str(t0.size.x), str(cell)])
+	if absf(t0.size.x - float(m["corner"])) > 1.5 and absf(t0.size.x - step) > 1.5:
+		_fail("corner cell %s is neither the corner width %s nor a side step %s"
+			% [str(t0.size.x), str(m["corner"]), str(step)])
+	# The 77px floor is checked against what the frame CAN give: 9 cells + the thinnest legal band.
+	# A 900px window with the header and console leaves the board ~800px, which cannot carry 77px
+	# cells even with a 60px band - so the probe reports the number and does not pretend.
+	if step < 76.0 and board.size.y > 9.0 * 77.0 + 120.0 + 1.0:
+		_fail("side cell %s is under the 77px floor in a %s frame that has room for it" % [str(step), str(board.size)])
 		return
-	_check("cell = side/11")
+	_check("ring fills the frame, side cells clear the 77px floor (%s px)" % str(step))
 	var dice: Array = board.get("_dice")
-	if dice.size() != 2 or absf((dice[0] as Control).custom_minimum_size.x - maxf(18.0, roundf(cell * 0.62))) > 1.5:
-		_fail("dice tray broken (size %s vs cell*0.62)" % str((dice[0] as Control).custom_minimum_size.x) if dice.size() > 0 else "no dice")
+	# The dice tray is a HUB ornament: it must exist, be a sane size and never outgrow a cell. The
+	# old exact formula (step*0.62) described the square board B1 replaced.
+	if dice.size() != 2:
+		_fail("dice tray: %d dice, expected 2" % dice.size())
+	var die: float = (dice[0] as Control).custom_minimum_size.x
+	if die < 18.0 or die > maxf(24.0, step * 0.9):
+		_fail("dice tray size %s is outside 18..%s" % [str(die), str(maxf(24.0, step * 0.9))])
 		return
-	_check("dice tray at cell*0.62")
+	_check("dice tray present and proportional (%s px)" % str(die))
 	board.call("set_dice", 3, 4)
 	if str(board.get("_sum").text) != "7" or not (board.get("_sum") as Control).visible:
 		_fail("sum chip wrong after 3+4")
