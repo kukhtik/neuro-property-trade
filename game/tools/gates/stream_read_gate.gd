@@ -277,6 +277,11 @@ func _finish() -> void:
 			continue
 		if str(row["node"]) in BELOW_FLOOR_OK:
 			continue
+		# a CONTEXT row is measured and printed, never judged: after B1 the header carries the same
+		# facts as a control strip, at 13px, and judging it made the verdict name the header while the
+		# glance layer itself sat in the corner screens.
+		if bool(row.get("context", false)):
+			continue
 		judged += 1
 		if float(row["eff"]) < worst:
 			worst = float(row["eff"])
