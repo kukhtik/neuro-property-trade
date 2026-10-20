@@ -77,9 +77,9 @@ fixed interface → minimax-m2.7; execute-a-listed-schema → gemma4.
 
 ```bash
 tools/ci/fetch_godot.sh          # pinned Godot 4.7.2, sha512-verified
-tools/ci/run_tests.sh            # THE ORACLE: import + 388 tests + count floor + SCRIPT ERROR gate
+tools/ci/run_tests.sh            # THE ORACLE: import + 421 tests + count floor + SCRIPT ERROR gate
 tools/ci/run_probes.sh           # 3 behavioural probes
-tools/ci/run_gates.sh            # 21 required gates + 1 in quarantine; report in build/gates/
+tools/ci/run_gates.sh            # 27 required gates, none in quarantine; report in build/gates/
 python tools/ci/unused_symbols.py  # product code with no consumer (report)
 ```
 

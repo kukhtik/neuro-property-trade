@@ -96,15 +96,21 @@ The engine, seats, network host, admin console, visual layer and the UI overhaul
 Verified by the oracle, the probes and the gate program — all run in CI:
 
 ```bash
-tools/ci/run_tests.sh     # 388 headless tests (rules engine + the projection contract + UI core)
+tools/ci/run_tests.sh     # 421 headless tests (rules engine + the projection contract + UI core)
 tools/ci/run_probes.sh    # 3 behavioral probes (i18n, skin, v3 layout)
-tools/ci/run_gates.sh     # 21 required gates: functionality (HG) + interface (SG), report in build/gates/
+tools/ci/run_gates.sh     # 27 required gates: functionality (HG) + interface (SG), report in build/gates/
 ```
 
 Plus determinism (every recorded game replays to a byte-identical fingerprint), a regenerated
 decision corpus and seeded soaks, and a WebGL export that a real browser was driven through.
 `python tools/ci/unused_symbols.py` reports product code with no consumer (orphan symbols,
 unlistened signals, settings nobody applies).
+
+The board is one ring that IS the frame: at 1600x1200 the band is 190px, a cell is 91px and the
+four corner cells carry the glance layer (whose turn, phase, bank, round) at a size that still
+reads 12px when the frame is scaled to a 390px phone. Both requirements are functions of the
+frame, so the same layout holds from 1600x1200 to 4K; the one frame that cannot carry both is
+1920x1080 (16:9), and `docs/restoration/gates.md` shows the arithmetic.
 
 Roadmap and known gaps: `docs/program.md` (the single plan) + the current snapshot in
 `docs/restoration/`.
