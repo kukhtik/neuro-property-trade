@@ -247,7 +247,10 @@ func _read_board(board: Control, label: String) -> Dictionary:
 		var badge: Label = null
 		var band: ColorRect = null
 		var cell_font := 999
-		for c in (tv as Control).get_children():
+		# RECURSE, do not just look at direct children: the cell's text lives inside its face
+		# (`_body`, added for PANEL-NOT-EMPTY), and a direct-children scan silently found nothing -
+		# measured after that move: 40 of 40 cells reported as silent while every name was on screen.
+		for c in _labels_below(tv):
 			if c is Label:
 				var l := c as Label
 				var lname := str(l.name)
@@ -272,7 +275,8 @@ func _read_board(board: Control, label: String) -> Dictionary:
 						cell_font = mini(cell_font, fsz)
 						if fsz < floor:
 							_under.append("%s=%d<floor%d" % [lname, fsz, floor])
-			elif c is ColorRect and band == null:
+		for c in (tv as Control).get_children():
+			if c is ColorRect and band == null:
 				band = c as ColorRect
 		if cell_font < 999:
 			min_font = mini(min_font, cell_font)
@@ -530,3 +534,13 @@ func _given_seed() -> String:
 
 func echo_fail(id: String, reason: String) -> void:
 	print("==> %s FAILED: %s" % [id, reason])
+
+
+## Every Label under a tile, at any depth.
+static func _labels_below(node: Node) -> Array:
+	var out: Array = []
+	for ch in node.get_children():
+		if ch is Label:
+			out.append(ch)
+		out.append_array(_labels_below(ch))
+	return out
