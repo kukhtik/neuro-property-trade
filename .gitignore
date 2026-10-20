@@ -47,3 +47,6 @@ __pycache__/
 
 # Mockup renders: regenerated, never committed (design/tools/render_prototype.py --all)
 design/renders/
+
+# output of design/variants/tools/liveness_probe.py
+liveness/
