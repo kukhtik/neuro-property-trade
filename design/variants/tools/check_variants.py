@@ -42,6 +42,15 @@ def main(files):
         src = p.read_text(encoding="utf-8", errors="replace")
         body = re.sub(r"<style.*?</style>", "", src, flags=re.S | re.I)
         body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+        # The TEXT of the mockup, with the markup taken out. Without this, a mockup that
+        # emphasises part of a line - `<b>Mira</b> бросает 4+4` - cannot match a check that
+        # looks for the literal "Mira бросает 4+4", and a perfectly good journal line is
+        # reported missing. The 19.10 sweep files happened to put each line inside ONE
+        # span, so they never hit it; concept A puts the name in <b> and did.
+        # A tag is markup, not content: the check is about WHAT the screen says.
+        text = re.sub(r"<[^>]+>", " ", body)
+        text = re.sub(r"&nbsp;?", " ", text)
+        text = re.sub(r"\s+", " ", text)
         res = []
 
         def check(name, ok, detail=""):
@@ -54,17 +63,23 @@ def main(files):
               bool(re.search(r"width\s*:\s*1600px", src)) and bool(re.search(r"height\s*:\s*1200px", src)))
         glyphs = bad_glyphs(body)
         check("R-9/R-10 no icon glyphs", not glyphs, "".join(glyphs))
-        check("R-4 turn owner", "ХОД" in body.upper() or "ход" in body)
-        check("R-4 phase", "ФАЗА" in body.upper())
+        # the CONTENT checks read the TEXT, not the markup - see the note on `text` above
+        check("R-4 turn owner", "ХОД" in text.upper() or "ход" in text)
+        check("R-4 phase", "ФАЗА" in text.upper())
         check("R-4 dice 5+3 and sum 8",
-              ("5" in body and "3" in body) and bool(re.search(r">\s*8\s*<", body)))
+              ("5" in text and "3" in text) and bool(re.search(r">\s*8\s*<", body)))
         for c in CASH:
-            check(f"R-4 cash {c} visible", c in body)
+            # "$1215" - but a mockup may split the sign and the number into two elements
+            # (`<span>$</span><span>1215</span>`), which the tag-stripped text renders as
+            # "$ 1215". Both are the same amount on the screen.
+            amount = c.lstrip("$")
+            check(f"R-4 cash {c} visible",
+                  c in text or re.search(r"\$\s*" + re.escape(amount) + r"\b", text) is not None)
         for n in NAMES:
-            check(f"scene seat {n}", n in body)
-        check("R-4 last event", any(j.split()[1] in body for j in JOURNAL) or "Crest Square" in body)
+            check(f"scene seat {n}", n in text)
+        check("R-4 last event", any(j.split()[1] in text for j in JOURNAL) or "Crest Square" in text)
         for j in JOURNAL:
-            check(f"scene journal line “{j}”", j in body)
+            check(f"scene journal line “{j}”", j in text)
         # A WHOLE BOARD, NOT A FRAGMENT. The check must count the board's OWN elements, and the
         # name they carry is a convention, not a fact: the first sweep used `class="tile"`, the
         # product uses `data-cell` (and `cell_flashing`, `_cell`), and concept A used
