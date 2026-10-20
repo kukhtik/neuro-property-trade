@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neuro Property Trade — адаптивный кадр</title>
+<style>
+:root{
+  --bg:#0b0613;
+  --s1:#130b1f;
+  --s2:#1b1230;
+  --s3:#281b42;
+  --line:#3b2a5e;
+  --text:#f7effd;
+  --muted:#a896c8;
+  --accent:#ff6fae;
+  --on_accent:#2a0618;
+  --accent2:#5fe3ff;
+  --money:#5fe3ff;
+  --danger:#ff4d6d;
+  --warn:#ffb020;
+  --ring_bg:#3b2a5e99;
+  --dice_bg:#f2f6fa;
+  --dice_ink:#16191f;
+  --ev-money:#5cb85c;
+  --ev-build:#c9a84c;
+  --ev-danger:#d9534f;
+  --ev-card:#9a86c9;
+  --ev-accent:#9fd0ff;
+  --board-bg2:#101820;
+  --board-bg3:#22303c;
+  --p0:#ff6fae; --p1:#e8264f; --p2:#5fe3ff; --p3:#b6ff6b;
+  --p4:#ffb020; --p5:#b36bff;
+  --g-brown:#8b5a3c; --g-lightblue:#5bb8e8; --g-pink:#d85aa8; --g-orange:#ee8a2a;
+  --g-red:#d8363c; --g-yellow:#e8c61e; --g-green:#2fa862; --g-darkblue:#2e5fd8;
+  --gap:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--text);
+  font-family:"Segoe UI",Inter,"Helvetica Neue",Arial,sans-serif;}
+body{width:1600px;height:1200px;overflow:hidden;position:relative;
+  padding:16px;display:flex;flex-direction:column;gap:var(--gap);}
+
+/* ============ ГЛАВНЫЙ КАРКАС ============ */
+.stage{flex:1;display:grid;gap:var(--gap);
+  grid-template-columns:300px 1fr 330px;
+  grid-template-rows:auto 1fr;
+  grid-template-areas:
+   "top top top"
+   "left board right";
+  min-height:0;}
+
+/* ============ ШАПКА ============ */
+.hdr{grid-area:top;background:var(--s1);border:1px solid var(--line);
+  border-radius:14px;padding:12px 16px;display:flex;align-items:center;
+  gap:18px;flex-wrap:wrap;min-height:0;}
+.brand{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand .name{font-size:15px;letter-spacing:.16em;font-weight:700;white-space:nowrap}
+.brand .name b{color:var(--accent)}
+.brand .sub{font-size:11px;color:var(--muted);letter-spacing:.1em;white-space:nowrap}
+.hdr-facts{display:flex;align-items:stretch;gap:10px;flex:1;min-width:0}
+.fact{background:var(--s2);border:1px solid var(--line);border-radius:10px;
+  padding:6px 12px;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0}
+.fact .k{font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;white-space:nowrap}
+.fact .v{font-size:16px;font-weight:700;white-space:nowrap}
+.fact .v.em{color:var(--accent2)}
+.fact .v.hot{color:var(--accent)}
+.hdr-links{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.chip{font-size:12px;color:var(--muted);background:var(--s2);
+  border:1px solid var(--line);border-radius:999px;padding:6px 12px;white-space:nowrap}
+.chip b{color:var(--text);font-weight:600}
+
+/* ============ КУБИКИ ============ */
+.dice{display:flex;align-items:center;gap:10px;background:var(--s2);
+  border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+.die{width:34px;height:34px;background:var(--dice_bg);border-radius:7px;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+  padding:5px;gap:1px;box-shadow:0 2px 0 rgba(0,0,0,.5)}
+.die i{width:6px;height:6px;border-radius:50%;background:var(--dice-ink);display:block}
+.die .on{background:var(--dice-ink)}
+.die .off{background:transparent}
+.sum{font-size:26px;font-weight:800;color:var(--accent2);line-height:1;
+  padding:0 6px;letter-spacing:-.02em}
+.sum small{display:block;font-size:9px;letter-spacing:.14em;color:var(--muted);
+  font-weight:600;text-align:center;margin-top:3px}
+
+/* ============ ДОСКА ============ */
+.board-wrap{grid-area:board;background:var(--board-bg2);border:1px solid var(--line);
+  border-radius:16px;position:relative;padding:12px;display:flex;
+  align-items:center;justify-content:center;min-width:0;min-height:0;overflow:hidden}
+.board{position:relative;width:100%;height:100%;
+  display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);
+  gap:4px}
+.cell{position:relative;background:var(--s2);border:1px solid var(--line);
+  border-radius:7px;padding:4px 5px 3px;display:flex;flex-direction:column;
+  gap:2px;overflow:hidden;min-width:0;min-height:0}
+.cell .strip{height:4px;border-radius:3px;flex:0 0 auto}
+.cell .nm{font-size:9.5px;font-weight:600;line-height:1.05;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;flex:0 0 auto}
+.cell .pr{font-size:9px;color:var(--muted);white-space:nowrap;flex:0 0 auto}
+.cell .corner{position:absolute;right:3px;top:3px;display:flex;gap:2px}
+.cell .corner svg{width:11px;height:11px;display:block}
+.cell.special{background:var(--board-bg3)}
+.cell.special .nm{color:var(--accent2)}
+.cell.has{background:var(--s3)}
+.cell .own{position:absolute;left:0;bottom:0;height:4px;width:100%}
+.cell .badge{position:absolute;left:3px;bottom:3px;display:flex;gap:2px;align-items:flex-end}
+.cell .badge svg{width:12px;height:12px;display:block}
+.cell .badge svg.sm{width:10px;height:10px}
+.cell .moneytag{position:absolute;right:3px;bottom:2px;font-size:8.5px;font-weight:700;
+  color:var(--money)}
+.inner-ring{position:absolute;left:11%;right:11%;top:13%;bottom:13%;
+  border:2px dashed var(--ring_bg);border-radius:22px;
+  display:flex;align-items:center;justify-content:center;pointer-events:none;
+  background:radial-gradient(circle at 50% 45%,rgba(95,227,255,.07),rgba(11,6,19,0) 62%)}
+.ring-core{width:100%;max-width:640px;display:flex;flex-direction:column;gap:12px;
+  align-items:center;padding:10px}
+.ring-core .h1{font-size:13px;letter-spacing:.2em;color:var(--muted);font-weight:700;
+  text-align:center}
+.ring-core .h1 b{color:var(--text)}
+
+/* ============ ЛЕВАЯ КОЛОНКА ============ */
+.col{grid-area:left;display:flex;flex-direction:column;gap:var(--gap);min-height:0}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:14px;
+  padding:12px;display:flex;flex-direction:column;gap:9px;min-height:0}
+.card h3{font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;
+  font-weight:700;display:flex;align-items:center;gap:7px}
+.card h3 .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.card h3 .cnt{margin-left:auto;font-size:10px;color:var(--muted);letter-spacing:.06em;
+  background:var(--s2);border:1px solid var(--line);border-radius:999px;padding:2px 7px}
+
+/* игроки */
+.plist{display:flex;flex-direction:column;gap:8px}
+.pl{display:grid;grid-template-columns:8px 1fr auto;gap:9px;align-items:center;
+  background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;
+  position:relative}
+.pl .seat{width:8px;height:100%;min-height:38px;border-radius:4px;grid-row:1/3}
+.pl .who{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pl .nm{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl .meta{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.pl .cash{font-size:17px;font-weight:800;color:var(--money);white-space:nowrap;
+  text-align:right;letter-spacing:-.01em}
+.pl .cash small{display:block;font-size:9px;color:var(--muted);letter-spacing:.1em;
+  font-weight:600}
+.pl .tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.tag{font-size:9px;letter-spacing:.04em;border-radius:999px;padding:2px 6px;
+  border:1px solid var(--line);color:var(--muted);background:var(--s3);white-space:nowrap}
+.tag.live{border-color:var(--accent);color:var(--on_accent);background:var(--accent);
+  font-weight:700}
+.tag.jail{border-color:var(--danger);color:var(--danger)}
+.tag.mort{border-color:var(--warn);color:var(--warn)}
+.tag.house{border-color:var(--ev-build);color:var(--ev-build)}
+.tag.ai{border-color:var(--ev-accent);color:var(--ev-accent)}
+
+/* журнал */
+.log{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px}
+.loghead{display:flex;gap:6px;flex-wrap:wrap}
+.fbtn{font-size:10px;color:var(--muted);background:var(--s2);border:1px solid var(--line);
+  border-radius:999px;padding:3px 9px;white-space:nowrap}
+.fbtn b{color:var(--text);font-weight:600}
+.logrows{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:6px}
+.lrow{display:grid;grid-template-columns:16px 1fr;gap:8px;align-items:start;
+  background:var(--s2);border:1px solid var(--line);border-radius:9px;padding:7px 9px}
+.lrow .n{font-size:10px;color:var(--muted);font-weight:700;text-align:center;
+  background:var(--s3);border-radius:5px;padding:2px 0}
+.lrow .tx{font-size:11.5px;line-height:1.3;color:var(--text)}
+.lrow .tx em{font-style:normal;color:var(--muted)}
+.logfoot{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line);
+  padding-top:8px}
+.logfoot .cnt{font-size:11px;color:var(--muted);white-space:nowrap}
+.logfoot .cnt b{color:var(--text)}
+.exp{margin-left:auto;font-size:11px;color:var(--accent2);background:var(--s2);
+  border:1px solid var(--line);border-radius:8px;padding:4px 9px;white-space:nowrap}
+
+/* ============ ПРАВАЯ КОЛОНКА ============ */
+.col-r{grid-area:right;display:flex;flex-direction:column;gap:var(--gap);min-height:0}
+
+/* действие */
+.console-card{background:linear-gradient(160deg,var(--s2),var(--s1));
+  border:1px solid var(--accent);border-radius:14px;padding:12px;
+  display:flex;flex-direction:column;gap:10px}
+.console-card h3 .dot{background:var(--accent)}
+.state{font-size:12px;color:var(--muted);line-height:1.35}
+.state b{color:var(--text);font-weight:700}
+.hero{width:100%;border:none;border-radius:12px;padding:16px 12px;cursor:pointer;
+  background:linear-gradient(180deg,#ff8cc0,var(--accent));color:var(--on_accent);
+  font-size:19px;font-weight:800;letter-spacing:.04em;
+  box-shadow:0 6px 18px rgba(255,111,174,.28)}
+.hero small{display:block;font-size:10.5px;font-weight:600;letter-spacing:.08em;
+  opacity:.72;margin-top:3px}
+.secondary{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sbtn{font-size:12px;font-weight:600;color:var(--text);background:var(--s3);
+  border:1px solid var(--line);border-radius:9px;padding:9px 8px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbtn.primary{background:var(--s3);border-color:var(--accent2);color:var(--accent2)}
+.sbtn.ghost{color:var(--muted)}
+
+/* инспектор */
+.insp{display:grid;grid-template-columns:52px 1fr;gap:11px;align-items:start}
+.insp .big{width:52px;height:52px;border-radius:11px;background:var(--s3);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden}
+.insp .big svg{width:34px;height:34px}
+.insp .ttl{font-size:16px;font-weight:800;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.insp .grp{display:flex;align-items:center;gap:6px;margin-top:3px}
+.insp .grp i{width:12px;height:12px;border-radius:4px;display:block}
+.insp .grp span{font-size:11px;color:var(--muted)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;margin-top:2px}
+.kv .k{font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;
+  white-space:nowrap;align-self:center}
+.kv .v{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.insp-note{font-size:11px;color:var(--muted);line-height:1.35;background:var(--s2);
+  border:1px solid var(--line);border-left:3px solid var(--g-lightblue);
+  border-radius:8px;padding:7px 9px}
+.insp-btns{display:flex;gap:7px}
+.insp-btns .sbtn{flex:1}
+
+/* последнее событие */
+.evt{background:var(--s2);border:1px solid var(--line);border-radius:10px;
+  padding:9px 10px;display:grid;grid-template-columns:30px 1fr auto;gap:10px;align-items:center}
+.evt .ic{width:30px;height:30px;border-radius:8px;background:var(--s3);
+  display:flex;align-items:center;justify-content:center}
+.evt .ic svg{width:18px;height:18px}
+.evt .tt{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.evt .sub{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.evt .amt{font-size:15px;font-weight:800;color:var(--ev-money);white-space:nowrap}
+
+/* владения */
+.owns{display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.orow{display:grid;grid-template-columns:14px 1fr auto auto;gap:8px;align-items:center;
+  background:var(--s2);border:1px solid var(--line);border-radius:9px;padding:6px 9px}
+.orow .sq{width:14px;height:14px;border-radius:4px}
+.orow .nm{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.orow .fl{font-size:9.5px;color:var(--muted);white-space:nowrap}
+.orow .ic{display:flex;gap:3px;align-items:center}
+.orow .ic svg{width:13px;height:13px;display:block}
+
+/* ============ НИЗ ============ */
+.foot{background:var(--s1);border:1px solid var(--line);border-radius:12px;
+  padding:8px 14px;display:flex;align-items:center;gap:14px;font-size:11px;
+  color:var(--muted);flex-wrap:wrap}
+.foot b{color:var(--text);font-weight:600}
+.foot .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.bars{display:flex;gap:6px;align-items:center}
+.bars i{width:26px;height:8px;border-radius:3px;background:var(--s3);
+  border:1px solid var(--line);display:block}
+.bars i.on{background:var(--accent2);border-color:var(--accent2)}
+
+/* ============ АДАПТИВНОСТЬ ============ */
+@media (max-width:1180px){
+  body{width:1280px;height:900px}
+  .stage{grid-template-columns:260px 1fr 290px}
+}
+@media (max-width:960px){
+  body{width:880px;height:1200px;overflow:auto}
+  .stage{grid-template-columns:1fr;
+    grid-template-areas:"top" "board" "right" "left";
+    grid-template-rows:auto 640px auto auto}
+  .hdr-links{margin-left:0}
+}
+@media (max-width:600px){
+  body{width:390px;height:844px;padding:8px;gap:8px}
+  .stage{gap:8px;grid-template-rows:auto 430px auto auto}
+  .fact .v{font-size:14px}
+  .brand .name{font-size:13px}
+  .secondary{grid-template-columns:1fr 1fr}
+}
+
+/* ============ МАСШТАБИРОВАНИЕ ФРЕЙМА (для просмотра 4K→телефон) ============ */
+.frame-note{position:absolute;right:16px;bottom:16px;z-index:50}
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <!-- ================= ШАПКА ================= -->
+  <header class="hdr">
+    <div class="brand">
+      <div class="name">NEURO <b>PROPERTY TRADE</b></div>
+      <div class="sub">ЖИВОЙ ЭФИР · СЕДЬМОЙ РАУНД</div>
+    </div>
+
+    <div class="hdr-facts">
+      <div class="fact">
+        <span class="k">Ход</span>
+        <span class="v hot">Хост</span>
+      </div>
+      <div class="fact">
+        <span class="k">Фаза</span>
+        <span class="v">Начало хода</span>
+      </div>
+      <div class="fact">
+        <span class="k">Раунд</span>
+        <span class="v em">7</span>
+      </div>
+      <div class="fact">
+        <span class="k">Банк парковки</span>
+        <span class="v em">$240</span>
+      </div>
+
+      <div class="dice" role="group" aria-label="Кубики 5 и 3, сумма 8">
+        <div class="die" aria-hidden="true">
+          <i class="off"></i><i class="off"></i><i class="off"></i>
+          <i class="off"></i><i class="on"></i><i class="off"></i>
+          <i class="off"></i><i class="off"></i><i class="off"></i>
+        </div>
+        <div class="die" aria-hidden="true">
+          <i class="off"></i><i class="off"></i><i class="on"></i>
+          <i class="off"></i><i class="on"></i><i class="off"></i>
+          <i class="on"></i><i class="off"></i><i class="off"></i>
+        </div>
+        <div class="sum">8<small>СУММА</small></div>
+      </div>
+    </div>
+
+    <div class="hdr-links">
+      <span class="chip">Настройки</span>
+      <span class="chip">Правила</span>
+      <span class="chip">Рестарт</span>
+      <span class="chip">Тема: <b>Neuro</b></span>
+      <span class="chip">Язык: <b>RU</b></span>
+    </div>
+  </header>
+
+  <!-- ================= ЛЕВАЯ КОЛОНКА ================= -->
+  <div class="col">
+    <!-- ИГРОКИ -->
+    <section class="card" aria-label="Игроки">
+      <h3><span class="dot"></span>Игроки<span class="cnt">4 места</span></h3>
+      <div class="plist">
+
+        <div class="pl" style="--seat:#ff6fae">
+          <div class="seat" style="background:#ff6fae"></div>
+          <div class="who">
+            <span class="nm">Хост</span>
+            <span class="meta">клетка 6 Cedar Ave · 2 владения · 0 домов · 0 залогов</span>
+            <span class="tags"><span class="tag live">ваш ход</span><span class="tag">LOCAL</span></span>
+          </div>
+          <div class="cash">$1215<small>БАЛАНС</small></div>
+        </div>
+
+        <div class="pl">
+          <div class="seat" style="background:#e8264f"></div>
+          <div class="who">
+            <span class="nm">Neuro SDK</span>
+            <span class="meta">клетка 24 Harbor Drive · 3 владения · 1 дом · 0 залогов</span>
+            <span class="tags"><span class="tag">3 владения</span><span class="tag house">1 дом</span></span>
+          </div>
+          <div class="cash">$980<small>БАЛАНС</small></div>
+        </div>
+
+        <div class="pl">
+          <div class="seat" style="background:#5fe3ff"></div>
+          <div class="who">
+            <span class="nm">evil SDK</span>
+            <span class="meta">клетка 10 Jail · 1 владение · 0 домов · 1 залог</span>
+            <span class="tags"><span class="tag jail">в тюрьме, попытка 2</span><span class="tag mort">1 залог</span></span>
+          </div>
+          <div class="cash">$640<small>БАЛАНС</small></div>
+        </div>
+
+        <div class="pl">
+          <div class="seat" style="background:#b6ff6b"></div>
+          <div class="who">
+            <span class="nm">Mira ИИ</span>
+            <span class="meta">клетка 33 Chest · 2 владения · 0 домов · 1 залог</span>
+            <span class="tags"><span class="tag ai">ИИ</span><span class="tag mort">1 залог</span></span>
+          </div>
+          <div class="cash">$1500<small>БАЛАНС</small></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ЖУРНАЛ -->
+    <section class="card log" aria-label="Журнал событий">
+      <h3><span class="dot" style="background:var(--accent2)"></span>Журнал<span class="cnt">показано 4 из 132</span></h3>
+      <div class="loghead">
+        <span class="fbtn">игрок: <b>все</b></span>
+        <span class="fbtn">тип: <b>все</b></span>
+        <span class="fbtn">только <b>деньги</b></span>
+      </div>
+      <div class="logrows">
+        <div class="lrow"><span class="n">1</span><span class="tx">Mira бросает <em>4 + 4</em></span></div>
+        <div class="lrow"><span class="n">2</span><span class="tx">Mira продаёт с клетки 27 <em>Crest Square</em></span></div>
+        <div class="lrow"><span class="n">3</span><span class="tx">evil закладывает клетку 11 <em>Oak Street</em></span></div>
+        <div class="lrow"><span class="n">4</span><span class="tx">evil попадает в тюрьму</span></div>
+      </div>
+      <div class="logfoot">
+        <span class="cnt">Событий: <b>132</b> · страниц: <b>33</b></span>
+        <span class="exp">экспорт .jsonl</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= ДОСКА ================= -->
+  <section class="board-wrap" aria-label="Доска 40 клеток">
+    <div class="board" id="board">
+
+      <!-- ряд 1 -->
+      <div class="cell special" data-cell="0"><span class="strip" style="background:#ff6fae"></span><span class="nm">Start</span><span class="pr">+ $200</span></div>
+      <div class="cell has" data-cell="1"><span class="strip" style="background:#ff6fae"></span><span class="nm">Sunset Blvd</span><span class="pr">$100</span>
+        <span class="own" style="background:#ff6fae"></span></div>
+      <div class="cell special" data-cell="2"><span class="strip" style="background:#5fe3ff"></span><span class="nm">Chest</span><span class="pr">случайная карта</span></div>
+      <div class="cell has" data-cell="3"><span class="strip" style="background:#8b5a3c"></span><span class="nm">Palm Row</span><span class="pr">$60</span>
+        <span class="own" style="background:#ff6fae"></span></div>
+      <div class="cell special" data-cell="4"><span class="strip" style="background:#ffb020"></span><span class="nm">Tax</span><span class="pr">− $200</span></div>
+      <div class="cell special" data-cell="5"><span class="strip" style="background:#22303c"></span><span class="nm">Harbor Station</span><span class="pr">$200</span></div>
+      <div class="cell has" data-cell="6"><span class="strip" style="background:#5bb8e8"></span><span class="nm">Cedar Ave</span><span class="pr">$100</span>
+        <span class="own" style="background:#ff6fae"></span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="владелец Хост"><circle cx="12" cy="12" r="9" fill="#ff6fae" stroke="#0b0613" stroke-width="2"/></svg></span>
+      </div>
+      <div class="cell special" data-cell="7"><span class="strip" style="background:#ffb020"></span><span class="nm">Fortune</span><span class="pr">удача</span></div>
+      <div class="cell has" data-cell="8"><span class="strip" style="background:#8b5a3c"></span><span class="nm">Elm Ave</span><span class="pr">$80</span>
+        <span class="own" style="background:#e8264f"></span>
+        <span class="badge">
+          <svg viewBox="0 0 24 24" aria-label="два дома"><path d="M4 11L12 4l8 7v9H4z" fill="#c9a84c"/><rect x="10" y="14" width="4" height="6" fill="#0b0613"/></svg>
+          <svg viewBox="0 0 24 24" aria-label="второй дом"><path d="M4 11L12 4l8 7v9H4z" fill="#c9a84c"/><rect x="10" y="14" width="4" height="6" fill="#0b0613"/></svg>
+        </span>
+      </div>
+      <div class="cell has" data-cell="9"><span class="strip" style="background:#8b5a3c"></span><span class="nm">Linden Ave</span><span class="pr">$80</span>
+        <span class="own" style="background:#e8264f"></span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="владелец Neuro"><circle cx="12" cy="12" r="9" fill="#e8264f" stroke="#0b0613" stroke-width="2"/></svg></span>
+      </div>
+      <div class="cell special" data-cell="10"><span class="strip" style="background:#ff4d6d"></span><span class="nm">Jail</span><span class="pr">арест</span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="тюрьма"><rect x="4" y="10" width="16" height="10" rx="2" fill="none" stroke="#ff4d6d" stroke-width="2.4"/><path d="M8 10V7a4 4 0 018 0v3" fill="none" stroke="#ff4d6d" stroke-width="2.4"/></svg></span>
+      </div>
+
+      <!-- ряд 2 (левый столбец) -->
+      <div class="cell has" data-cell="11"><span class="strip" style="background:#e8c61e"></span><span class="nm">Oak Street</span><span class="pr">$110</span>
+        <span class="own" style="background:#5fe3ff"></span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="заложено"><rect x="3" y="3" width="18" height="18" fill="url(#hz)" opacity=".9"/></svg>
+          <svg viewBox="0 0 24 24" aria-label="владелец evil"><circle cx="12" cy="12" r="9" fill="#5fe3ff" stroke="#0b0613" stroke-width="2"/></svg></span>
+      </div>
+      <div class="cell special" data-cell="12"><span class="strip" style="background:#22303c"></span><span class="nm">Tower Utilities</span><span class="pr">$150</span></div>
+      <div class="cell" data-cell="13"><span class="strip" style="background:#d85aa8"></span><span class="nm">Maple Street</span><span class="pr">$120</span></div>
+      <div class="cell" data-cell="14"><span class="strip" style="background:#d85aa8"></span><span class="nm">Birch Street</span><span class="pr">$120</span></div>
+      <div class="cell special" data-cell="15"><span class="strip" style="background:#22303c"></span><span class="nm">Central Station</span><span class="pr">$200</span></div>
+      <div class="cell" data-cell="16"><span class="strip" style="background:#d85aa8"></span><span class="nm">Willow Way</span><span class="pr">$140</span></div>
+      <div class="cell special" data-cell="17"><span class="strip" style="background:#5fe3ff"></span><span class="nm">Chest</span><span class="pr">случайная карта</span></div>
+      <div class="cell" data-cell="18"><span class="strip" style="background:#d85aa8"></span><span class="nm">Aspen Way</span><span class="pr">$140</span></div>
+      <div class="cell" data-cell="19"><span class="strip" style="background:#d85aa8"></span><span class="nm">Fir Way</span><span class="pr">$160</span></div>
+      <div class="cell special" data-cell="20"><span class="strip" style="background:#ffb020"></span><span class="nm">Free Parking</span><span class="pr">банк $240</span>
+        <span class="moneytag">$240</span></div>
+
+      <!-- ряд 3 (левый столбец) -->
+      <div class="cell" data-cell="21"><span class="strip" style="background:#2fa862"></span><span class="nm">Lake Drive</span><span class="pr">$180</span></div>
+      <div class="cell special" data-cell="22"><span class="strip" style="background:#ffb020"></span><span class="nm">Fortune</span><span class="pr">удача</span></div>
+      <div class="cell" data-cell="23"><span class="strip" style="background:#2fa862"></span><span class="nm">River Drive</span><span class="pr">$180</span></div>
+      <div class="cell has" data-cell="24"><span class="strip" style="background:#5bb8e8"></span><span class="nm">Harbor Drive</span><span class="pr">$100</span>
+        <span class="own" style="background:#e8264f"></span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="владелец Neuro"><circle cx="12" cy="12" r="9" fill="#e8264f" stroke="#0b0613" stroke-width="2"/></svg></span>
+      </div>
+      <div class="cell special" data-cell="25"><span class="strip" style="background:#22303c"></span><span class="nm">West Station</span><span class="pr">$200</span></div>
+      <div class="cell has" data-cell="26"><span class="strip" style="background:#2e5fd8"></span><span class="nm">Crest Point</span><span class="pr">$120</span>
+        <span class="own" style="background:#b6ff6b"></span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="заложено"><rect x="3" y="3" width="18" height="18" fill="url(#hz)" opacity=".9"/></svg>
+          <svg viewBox="0 0 24 24" aria-label="владелец Mira"><circle cx="12" cy="12" r="9" fill="#b6ff6b" stroke="#0b0613" stroke-width="2"/></svg></span>
+      </div>
+      <div class="cell has" data-cell="27"><span class="strip" style="background:#2e5fd8"></span><span class="nm">Crest Square</span><span class="pr">$120</span>
+        <span class="own" style="background:#b6ff6b"></span>
+        <span class="badge">
+          <svg viewBox="0 0 24 24" aria-label="один дом"><path d="M4 11L12 4l8 7v9H4z" fill="#c9a84c"/><rect x="10" y="14" width="4" height="6" fill="#0b0613"/></svg>
+          <svg viewBox="0 0 24 24" aria-label="владелец Mira"><circle cx="12" cy="12" r="9" fill="#b6ff6b" stroke="#0b0613" stroke-width="2"/></svg></span>
+      </div>
+      <div class="cell special" data-cell="28"><span class="strip" style="background:#22303c"></span><span class="nm">Tower Water</span><span class="pr">$150</span></div>
+      <div class="cell" data-cell="29"><span class="strip" style="background:#2e5fd8"></span><span class="nm">Crest Heights</span><span class="pr">$140</span></div>
+      <div class="cell special" data-cell="30"><span class="strip" style="background:#ff4d6d"></span><span class="nm">Go To Jail</span><span class="pr">арест</span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="тюрьма"><rect x="4" y="10" width="16" height="10" rx="2" fill="none" stroke="#ff4d6d" stroke-width="2.4"/><path d="M8 10V7a4 4 0 018 0v3" fill="none" stroke="#ff4d6d" stroke-width="2.4"/></svg></span>
+      </div>
+
+      <!-- ряд 4 (левый столбец) -->
+      <div class="cell" data-cell="31"><span class="strip" style="background:#2fa862"></span><span class="nm">Garden Grove</span><span class="pr">$200</span></div>
+      <div class="cell" data-cell="32"><span class="strip" style="background:#2fa862"></span><span class="nm">Garden Park</span><span class="pr">$200</span></div>
+      <div class="cell special" data-cell="33"><span class="strip" style="background:#5fe3ff"></span><span class="nm">Chest</span><span class="pr">случайная карта</span></div>
+      <div class="cell" data-cell="34"><span class="strip" style="background:#2fa862"></span><span class="nm">Garden Court</span><span class="pr">$220</span></div>
+      <div class="cell special" data-cell="35"><span class="strip" style="background:#22303c"></span><span class="nm">South Station</span><span class="pr">$200</span></div>
+      <div class="cell special" data-cell="36"><span class="strip" style="background:#ffb020"></span><span class="nm">Fortune</span><span class="pr">удача</span></div>
+      <div class="cell has" data-cell="37"><span class="strip" style="background:#2e5fd8"></span><span class="nm">Grand Avenue</span><span class="pr">$240</span>
+        <span class="own" style="background:#e8264f"></span>
+        <span class="badge"><svg viewBox="0 0 24 24" aria-label="владелец Neuro"><circle cx="12" cy="12" r="9" fill="#e8264f" stroke="#0b0613" stroke-width="2"/></svg></span>
+      </div>
+      <div class="cell special" data-cell="38"><span class="strip" style="background:#ffb020"></span><span class="nm">Luxury Tax</span><span class="pr">− $100</span></div>
+      <div class="cell" data-cell="39"><span class="strip" style="background:#2e5fd8"></span><span class="nm">Grand Place</span><span class="pr">$260</span></div>
+
+    </div>
+  </section>
+
+  <!-- ================= ПРАВАЯ КОЛОНКА ================= -->
+  <div class="col-r">
+
+    <!-- КОНСОЛЬ ДЕЙСТВИЙ -->
+    <section class="console-card" aria-label="Управление ходом">
+      <h3><span class="dot"></span>Ход<span class="cnt">Хост</span></h3>
+      <div class="state"><b>Хост</b> · ваш ход — выберите действие.</div>
+      <button class="hero" type="button">Бросок<small>КУБИКИ УЖЕ БРОШЕНЫ · 5 + 3</small></button>
+      <div class="secondary">
+        <button class="sbtn primary" type="button">Купить $100</button>
+        <button class="sbtn" type="button">Отказ</button>
+        <button class="sbtn" type="button">Торг</button>
+        <button class="sbtn ghost" type="button">Конец хода</button>
+      </div>
+    </section>
+
+    <!-- ИНСПЕКТОР -->
+    <section class="card" aria-label="Инспектор клетки">
+      <h3><span class="dot" style="background:var(--accent2)"></span>Инспектор клетки<span class="cnt">закреплено · 6</span></h3>
+      <div class="insp">
+        <div class="big"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="#5bb8e8" opacity=".22" stroke="#5bb8e8" stroke-width="2"/><path d="M7 17l5-6 4 4 2-2" fill="none" stroke="#f7effd" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div>
+          <div class="ttl">Cedar Ave</div>
+          <div class="grp"><i style="background:#5bb8e8"></i><span>группа lightblue</span></div>
+        </div>
+      </div>
+      <div class="kv">
+        <span class="k">Цена</span><span class="v">$100</span>
+        <span class="k">Аренда</span><span class="v">$6</span>
+        <span class="k">Владелец</span><span class="v">Хост</span>
+      </div>
+      <div class="insp-note">Группа не собрана. Соседние клетки группы пока не у игрока — держим в уме Harbor Drive и Grand Avenue.</div>
+      <div class="insp-btns">
+        <button class="sbtn" type="button">Закрепить</button>
+        <button class="sbtn ghost" type="button">Закрыть</button>
+      </div>
+    </section>
+
+    <!-- ПОСЛЕДНЕЕ СОБЫТИЕ -->
+    <section class="card" aria-label="Последнее событие">
+      <h3><span class="dot" style="background:var(--ev-money)"></span>Последнее событие</h3>
+      <div class="evt">
+        <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11L12 4l8 7v9H4z" fill="#c9a84c"/><rect x="10" y="14" width="4" height="6" fill="#0b0613"/></svg></div>
+        <div>
+          <div class="tt">Продажа дома</div>
+          <div class="sub">Mira · Crest Square (27)</div>
+        </div>
+        <div class="amt">+$70</div>
+      </div>
+    </section>
+
+    <!-- ВЛАДЕНИЯ -->
+    <section class="card" style="flex:1;min-height:0" aria-label="Владения игроков">
+      <h3><span class="dot" style="background:var(--ev-build)"></span>Владения и застройка<span class="cnt">9 клеток</span></h3>
+      <div class="owns">
+        <div class="orow"><i class="sq" style="background:#8b5a3c"></i><span class="nm">3 Palm Row</span><span class="fl">$60 · свободна</span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#ff6fae" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#5bb8e8"></i><span class="nm">6 Cedar Ave</span><span class="fl">$100 · свободна</span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#ff6fae" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#8b5a3c"></i><span class="nm">8 Elm Ave</span><span class="fl">$80 · 2 дома</span><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 11L12 4l8 7v9H4z" fill="#c9a84c"/><rect x="10" y="14" width="4" height="6" fill="#0b0613"/></svg><svg viewBox="0 0 24 24"><path d="M4 11L12 4l8 7v9H4z" fill="#c9a84c"/><rect x="10" y="14" width="4" height="6" fill="#0b0613"/></svg><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#e8264f" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#8b5a3c"></i><span class="nm">9 Linden Ave</span><span class="fl">$80 · свободна</span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#e8264f" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#e8c61e"></i><span class="nm">11 Oak Street</span><span class="fl">$110 · в залоге</span><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="url(#hz)" opacity=".9"/></svg><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#5fe3ff" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#2e5fd8"></i><span class="nm">26 Crest Point</span><span class="fl">$120 · в залоге</span><span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" fill="url(#hz)" opacity=".9"/></svg><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#b6ff6b" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#2e5fd8"></i><span class="nm">27 Crest Square</span><span class="fl">$120 · 1 дом</span><span class="ic"><svg viewBox="0 0 24 24"><path d="M4 11L12 4l8 7v9H4z" fill="#c9a84c"/><rect x="10" y="14" width="4" height="6" fill="#0b0613"/></svg><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#b6ff6b" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#2e5fd8"></i><span class="nm">37 Grand Avenue</span><span class="fl">$240 · свободна</span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#e8264f" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+        <div class="orow"><i class="sq" style="background:#5bb8e8"></i><span class="nm">24 Harbor Drive</span><span class="fl">$100 · свободна</span><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#e8264f" stroke="#0b0613" stroke-width="2"/></svg></span></div>
+      </div>
+    </section>
+
+  </div>
+
+</div>
+
+<!-- ================= НИЗ ================= -->
+<footer class="foot">
+  <span>Раунд <b>7</b> · Ход <b>Хост</b> · Фаза <b>Начало хода</b> · Банк парковки <b>$240</b></span>
+  <span>Деньги всех игроков видны постоянно — без переключения ролей.</span>
+  <span class="sp">
+    <span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span>
+    <span>Кадр: <b>1600×1200</b> · один макет на все размеры</span>
+  </span>
+</footer>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="hz" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="6" fill="#ffb020" opacity=".28"/>
+      <rect width="3" height="6" fill="#ffb020" opacity=".85"/>
+    </pattern>
+  </defs>
+</svg>
+
+</body>
+</html>

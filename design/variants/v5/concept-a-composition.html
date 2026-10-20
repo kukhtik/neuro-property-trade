@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Neuro Property Trade — frame composition</title>
+<style>
+:root{
+  --bg:#0b0613; --s1:#130b1f; --s2:#1b1230; --s3:#281b42;
+  --line:#3b2a5e; --text:#f7effd; --muted:#a896c8;
+  --accent:#ff6fae; --on-accent:#2a0618; --accent2:#5fe3ff; --money:#5fe3ff;
+  --danger:#ff4d6d; --warn:#ffb020;
+  --ring-bg:#3b2a5e99; --dice-bg:#f2f6fa; --dice-ink:#16191f;
+  --ev-money:#5cb85c; --ev-build:#c9a84c; --ev-danger:#d9534f; --ev-card:#9a86c9; --ev-accent:#9fd0ff;
+  --board-bg2:#101820; --board-bg3:#22303c;
+  --seat0:#ff6fae; --seat1:#e8264f; --seat2:#5fe3ff; --seat3:#b6ff6b;
+  --brown:#8b5a3c; --lightblue:#5bb8e8; --pink:#d85aa8; --orange:#ee8a2a;
+  --red:#d8363c; --yellow:#e8c61e; --green:#2fa862; --darkblue:#2e5fd8;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1600px;height:1200px;overflow:hidden;background:var(--bg)}
+body{font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;color:var(--text)}
+.v{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p{white-space:normal;line-height:1.35}
+button{font-family:inherit;cursor:default}
+
+.board{
+  position:relative;width:1600px;height:1200px;padding:8px;
+  display:grid;
+  grid-template-columns:120px repeat(9,1fr) 120px;
+  grid-template-rows:120px repeat(9,1fr) 120px;
+  gap:5px;background:var(--bg);
+}
+
+.c{
+  position:relative;background:var(--s2);border:1px solid var(--line);
+  border-radius:2px;overflow:hidden;padding:13px 5px 7px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;
+}
+.c.corner{background:var(--s3);padding:8px}
+.c.sb{background:linear-gradient(180deg,var(--s2),var(--s1))}
+.c.st{background:linear-gradient(0deg,var(--s2),var(--s1))}
+.c.sl{background:linear-gradient(90deg,var(--s2),var(--s1))}
+.c.sr{background:linear-gradient(270deg,var(--s2),var(--s1))}
+.num{position:absolute;top:3px;left:5px;z-index:2;font-size:8px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.nm{position:relative;z-index:2;font-size:9.5px;font-weight:600;line-height:1.15;max-width:100%;letter-spacing:.01em}
+.ic{position:relative;z-index:2;height:15px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;color:var(--muted);opacity:.9}
+.ic svg{width:15px;height:15px}
+.corner .ic{height:24px;margin-bottom:5px}
+.corner .ic svg{width:24px;height:18px}
+.cname{position:relative;z-index:2;font-size:9.5px;font-weight:700;line-height:1.15;max-width:100%}
+.csub{position:relative;z-index:2;font-size:9px;color:var(--money);font-weight:700;margin-top:2px}
+.csub2{position:relative;z-index:2;font-size:7.5px;color:var(--muted);margin-top:1px;letter-spacing:.04em}
+
+.grp{position:absolute;z-index:1;background:var(--line)}
+.sb .grp{left:0;right:0;bottom:0;height:5px}
+.st .grp{left:0;right:0;top:0;height:5px}
+.sl .grp{top:0;bottom:0;left:0;width:5px}
+.sr .grp{top:0;bottom:0;right:0;width:5px}
+
+.own{position:absolute;z-index:3;background:var(--line)}
+.sb .own{left:0;right:0;top:0;height:6px}
+.st .own{left:0;right:0;bottom:0;height:6px}
+.sl .own{top:0;bottom:0;right:0;width:6px}
+.sr .own{top:0;bottom:0;left:0;width:6px}
+.own.free{background:transparent;border:1px dashed var(--line)}
+
+.mtg{position:absolute;inset:0;z-index:1;background:repeating-linear-gradient(45deg,rgba(255,77,109,.30) 0 2px,transparent 2px 8px)}
+
+.bld{position:absolute;z-index:4;display:flex;gap:2px;align-items:flex-end;color:var(--text);height:11px}
+.bld svg{width:9px;height:10px;filter:drop-shadow(0 0 1px rgba(11,6,19,.9))}
+.sb .bld{top:9px;right:6px}
+.st .bld{bottom:9px;right:6px}
+.sl .bld{right:12px;top:6px}
+.sr .bld{left:12px;top:6px}
+.corner .bld{display:none}
+
+.tok{position:absolute;z-index:5;width:15px;height:19px;right:5px;bottom:10px;filter:drop-shadow(0 1px 1px rgba(11,6,19,.9))}
+.corner .tok{right:7px;bottom:8px}
+.pinmark{position:absolute;z-index:6;top:3px;right:3px;width:8px;height:11px;color:var(--accent2)}
+.c.pinned{box-shadow:inset 0 0 0 2px var(--accent2),inset 0 0 26px rgba(95,227,255,.16)}
+
+.deck{
+  grid-area:2/2/11/11;margin:8px;padding:10px;
+  display:flex;flex-direction:column;gap:10px;
+  background:var(--s1);border:1px solid var(--line);border-radius:4px;
+  box-shadow:0 0 0 1px #0b0613,0 22px 46px rgba(11,6,19,.8);
+  min-width:0;min-height:0;
+}
+
+.hdr{height:40px;flex:0 0 auto;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.brand{font-size:12px;font-weight:800;letter-spacing:.18em;color:var(--text)}
+.hfacts{font-size:11px;color:var(--muted)}
+.hnav{margin-left:auto;font-size:10.5px;color:var(--muted)}
+
+.hero{height:168px;flex:0 0 auto;display:flex;background:var(--s2);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.turn{width:372px;flex:0 0 auto;padding:13px 16px;display:flex;flex-direction:column;gap:5px;border-left:4px solid var(--accent);border-right:1px solid var(--line);justify-content:center}
+.eyebrow{font-size:9px;letter-spacing:.22em;color:var(--muted);font-weight:700}
+.who{display:flex;align-items:center;gap:9px;margin-top:1px}
+.seatbig{width:13px;height:13px;background:var(--accent);border-radius:2px;flex:0 0 auto}
+.hname{font-size:32px;font-weight:800;line-height:1;letter-spacing:.01em}
+.phase{font-size:13px;color:var(--accent2);font-weight:600;margin-top:2px}
+.status{font-size:11px;color:var(--muted);max-width:322px;margin-top:2px}
+
+.dicezone{flex:1;display:flex;align-items:center;justify-content:center;gap:18px;min-width:0;padding:10px}
+.dcol{display:flex;flex-direction:column;align-items:center;gap:3px}
+.dcap{font-size:8px;letter-spacing:.18em;color:var(--muted)}
+.dwrap{display:flex;gap:10px}
+.dsep{width:1px;height:84px;background:var(--line)}
+.dsum{display:flex;flex-direction:column;align-items:center;gap:1px}
+.dsum .val{font-size:48px;line-height:1;font-weight:800;color:var(--money)}
+.dsum .cap{font-size:8px;letter-spacing:.2em;color:var(--muted)}
+
+.acts{width:470px;flex:0 0 auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;justify-content:center;border-left:1px solid var(--line)}
+.herobtn{height:62px;width:100%;border:none;border-radius:3px;background:var(--accent);color:var(--on-accent);font-size:22px;font-weight:800;letter-spacing:.05em;box-shadow:0 6px 18px rgba(255,111,174,.22)}
+.secs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.sbtn.off{opacity:.42}
+.sbtn{height:37px;border:1px solid var(--line);border-radius:3px;background:var(--s3);color:var(--text);font-size:10.5px;font-weight:600;padding:0 3px}
+.sbtn.buy{border-color:var(--accent2);color:var(--accent2)}
+
+.players{height:246px;flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;min-width:0}
+.pcard{position:relative;min-width:0;background:var(--s2);border:1px solid var(--line);border-top:3px solid var(--sc);border-radius:3px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;overflow:hidden}
+.pcard.active{background:var(--s3);box-shadow:inset 0 0 0 1px var(--accent)}
+.phead{display:flex;align-items:center;gap:6px;min-width:0}
+.pseat{width:8px;height:8px;border-radius:50%;background:var(--sc);flex:0 0 auto}
+.pname{font-size:15px;font-weight:700;line-height:1.1}
+.ptag{font-size:8px;letter-spacing:.14em;color:var(--muted);font-weight:600}
+.pbadge{margin-left:auto;flex:0 0 auto;font-size:8px;font-weight:700;color:var(--on-accent);background:var(--accent);padding:2px 6px;border-radius:2px;letter-spacing:.02em}
+.pmoney{display:flex;align-items:baseline;gap:2px;color:var(--money);margin-top:1px}
+.pmoney .cur{font-size:15px;font-weight:600}
+.pmoney .amt{font-size:29px;font-weight:800;line-height:1}
+.blabel{font-size:7.5px;letter-spacing:.18em;color:var(--muted);margin-top:-3px}
+.ppos{font-size:9.5px;color:var(--text)}
+.pjail{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--danger);font-weight:600}
+.pjail svg{width:10px;height:10px;flex:0 0 auto}
+.stats{display:flex;gap:9px;margin-top:3px}
+.stat{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sicons{display:flex;align-items:center;gap:2px;height:10px}
+.obar{width:10px;height:4px;border-radius:1px;background:var(--sc);display:inline-block}
+.hglyph{width:8px;height:9px;color:var(--text)}
+.mglyph{width:11px;height:8px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,rgba(255,77,109,.5) 0 1px,transparent 1px 3px);display:inline-block}
+.sl2{font-size:7px;letter-spacing:.08em;color:var(--muted)}
+.scnt{font-size:8px;font-weight:700;color:var(--text);margin-left:1px}
+.stat.zero .sicons{opacity:.4}
+.holdlabel{font-size:7.5px;letter-spacing:.17em;color:var(--muted);border-top:1px solid var(--line);padding-top:4px;margin-top:1px;font-weight:700}
+.holds{list-style:none;display:flex;flex-direction:column;gap:2px;min-height:0;overflow:hidden;flex:1;justify-content:space-evenly}
+.holds li{display:flex;align-items:center;gap:5px;min-width:0;min-height:14px}
+.hsw{width:7px;height:7px;border-radius:1px;flex:0 0 auto}
+.hnm{font-size:9.5px;color:var(--text);flex:1;min-width:0}
+.hh{width:11px;height:8px;flex:0 0 auto;border:1px solid var(--line);background:repeating-linear-gradient(45deg,rgba(255,77,109,.6) 0 1px,transparent 1px 3px)}
+.hpin{width:8px;height:11px;color:var(--accent2);flex:0 0 auto}
+.holds .hglyph{flex:0 0 auto}
+
+.bottom{flex:1;display:grid;grid-template-columns:630px 1fr 1fr;gap:10px;min-height:0}
+.panel{background:var(--s2);border:1px solid var(--line);border-radius:3px;padding:10px;display:flex;flex-direction:column;gap:6px;min-height:0;min-width:0;overflow:hidden}
+.jhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.ptitle{font-size:11px;letter-spacing:.16em;color:var(--muted);font-weight:700}
+.jcount{font-size:9px;color:var(--muted)}
+.filters{display:flex;align-items:center;gap:5px}
+.chip{font-size:9px;color:var(--text);background:var(--s3);border:1px solid var(--line);padding:3px 6px;border-radius:2px;line-height:1.1}
+.chip.on{color:var(--accent2);border-color:var(--accent2)}
+.jlist{display:flex;flex-direction:column;flex:1;min-height:0;position:relative}
+.jlist::before{content:"";position:absolute;left:6px;top:6px;bottom:6px;width:1px;background:var(--line);z-index:0}
+.jrow{display:grid;grid-template-columns:14px 1fr 30px;gap:8px;align-items:center;flex:1;min-height:0;padding:4px 0;border-bottom:1px solid var(--line)}
+.jrow:last-child{border-bottom:none}
+.jnode{position:relative;z-index:1;width:9px;height:9px;transform:rotate(45deg);border-radius:1px;background:var(--ev-card);justify-self:center}
+.jrow>*{position:relative;z-index:1}
+.jtxt{font-size:10.5px;color:var(--text);line-height:1.35}
+.jtxt b{font-weight:700;color:var(--text)}
+.jtxt .dim{color:var(--muted)}
+.jidx{font-size:8.5px;color:var(--muted);text-align:right}
+.jrow.new{background:linear-gradient(90deg,rgba(95,227,255,.10),transparent 70%);border-left:2px solid var(--accent2);padding-left:6px;margin-left:-8px;padding-right:8px}
+.jrow .jic{width:11px;height:11px;color:var(--muted);justify-self:center}
+.jfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding-top:6px}
+.jnote{font-size:8.5px;color:var(--muted)}
+.jexp{font-size:9px;color:var(--text);background:var(--s3);border:1px solid var(--line);border-radius:2px;padding:3px 8px;height:22px}
+
+.ihead{display:flex;align-items:center;gap:6px}
+.pinico{width:9px;height:12px;color:var(--accent2)}
+.iname{font-size:20px;font-weight:800;line-height:1.1}
+.igroup{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--muted)}
+.gsw{width:26px;height:8px;border-radius:1px;background:var(--lightblue);flex:0 0 auto}
+.ifacts{display:flex;gap:6px}
+.ifact{flex:1;min-width:0;background:var(--s3);border:1px solid var(--line);border-radius:2px;padding:4px 7px}
+.ifact .k{font-size:7.5px;letter-spacing:.14em;color:var(--muted)}
+.ifact .val{font-size:14px;font-weight:700;color:var(--money);line-height:1.2}
+.ownerblock{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:6px}
+.ownerrow{display:flex;align-items:center;gap:6px}
+.owbar{flex:1;height:7px;background:var(--accent);border-radius:1px}
+.owtok{width:11px;height:14px;color:var(--accent);flex:0 0 auto}
+.ownername{font-size:11px;font-weight:700}
+.gcap{font-size:8px;letter-spacing:.12em;color:var(--muted)}
+.gs{display:flex;gap:4px}
+.gslot{flex:1;min-width:0;height:34px;border:1px solid var(--line);border-radius:2px;background:var(--s3);position:relative;display:flex;align-items:flex-end;padding:3px 4px 3px}
+.gslot i{position:absolute;left:0;right:0;top:0;height:5px;display:block}
+.gslot span{font-size:7.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.legend{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:6px}
+.lg{display:flex;align-items:center;gap:7px;min-width:0}
+.lgbar{width:20px;height:5px;border-radius:1px;background:var(--muted);flex:0 0 auto}
+.lgm{width:16px;height:9px;border:1px solid var(--line);background:repeating-linear-gradient(45deg,rgba(255,77,109,.55) 0 1px,transparent 1px 3px);flex:0 0 auto}
+.lgmeeple{width:10px;height:13px;color:var(--accent2);flex:0 0 auto}
+.lgtxt{font-size:8.5px;color:var(--muted)}
+.ibtns{display:flex;gap:6px;margin-top:auto}
+.ibtn{flex:1;height:30px;border-radius:2px;font-size:10px;font-weight:700;border:1px solid var(--line);background:var(--s3);color:var(--text)}
+.ibtn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+
+.evcard{gap:6px;justify-content:space-between}
+.evtop{display:flex;align-items:center;justify-content:space-between}
+.evtypeico{width:16px;height:16px;color:var(--ev-money)}
+.evis{display:flex;align-items:center;gap:8px;height:44px;color:var(--ev-money);margin-top:2px}
+.evis .big{width:30px;height:30px}
+.evis .arr{width:26px;height:14px;color:var(--muted)}
+.evtype{font-size:15px;font-weight:700;line-height:1.1}
+.evbig{font-size:44px;font-weight:800;line-height:1;color:var(--ev-money);letter-spacing:.01em}
+.evrows{display:flex;flex-direction:column;gap:5px}
+.evrow{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);padding-top:5px;font-size:9.5px;gap:8px}
+.evrow .k{color:var(--muted);letter-spacing:.1em;font-size:8px}
+.evrow .val{color:var(--text);font-weight:600;text-align:right}
+.evrow .plus{color:var(--ev-money)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="s-house" viewBox="0 0 12 12"><path d="M6 .8 11.2 4.8v6.4H.8V4.8Z" fill="currentColor"/></symbol>
+  <symbol id="s-hotel" viewBox="0 0 18 12"><path d="M.8 11.2V4.4h4V2h4v2.4h4v6.8Z" fill="currentColor"/></symbol>
+  <symbol id="s-card" viewBox="0 0 12 16"><rect x="1" y="1" width="10" height="14" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.2 5h5.6M3.2 8h5.6M3.2 11h3.4" stroke="currentColor" stroke-width="1.1"/></symbol>
+  <symbol id="s-bars" viewBox="0 0 14 14"><path d="M1 1.4h12M1 12.6h12M3 2v10M6 2v10M9 2v10M12 2v10" stroke="currentColor" stroke-width="1.5" fill="none"/></symbol>
+  <symbol id="s-star" viewBox="0 0 14 14"><path d="M7 .6 8.6 5.4 13.4 7 8.6 8.6 7 13.4 5.4 8.6.6 7 5.4 5.4Z" fill="currentColor"/></symbol>
+  <symbol id="s-coin" viewBox="0 0 14 14"><circle cx="7" cy="7" r="6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M7 3.4v7.2M4.6 5.2h4.8M4.6 8.8h4.8" stroke="currentColor" stroke-width="1.1" fill="none"/></symbol>
+  <symbol id="s-station" viewBox="0 0 16 16"><path d="M1 6 8 1l7 5v1.4H1Z" fill="currentColor"/><path d="M3.4 8v5M8 8v5M12.6 8v5M1.6 13h12.8" stroke="currentColor" stroke-width="1.3" fill="none"/></symbol>
+  <symbol id="s-tower" viewBox="0 0 14 16"><path d="M7 1v14M4 4h6M2.6 15 7 4l4.4 11M1 15h12" stroke="currentColor" stroke-width="1.3" fill="none"/></symbol>
+  <symbol id="s-pin" viewBox="0 0 12 16"><path d="M6 1a4.4 4.4 0 0 1 4.4 4.4c0 3.2-4.4 9.6-4.4 9.6S1.6 8.6 1.6 5.4A4.4 4.4 0 0 1 6 1Z" fill="currentColor"/><circle cx="6" cy="5.4" r="1.6" fill="#0b0613"/></symbol>
+  <symbol id="s-meeple" viewBox="0 0 16 20"><path d="M8 1 14.4 6v6.4L8 19 1.6 12.4V6Z" fill="currentColor" stroke="#0b0613" stroke-width="1.2"/></symbol>
+  <symbol id="s-arrow" viewBox="0 0 16 12"><path d="M1.5 6h11M8.4 1.8 12.6 6l-4.2 4.2" stroke="currentColor" stroke-width="1.7" fill="none"/></symbol>
+  <symbol id="s-hatch" viewBox="0 0 12 10"><path d="M1 9 9 1M4 9l5-5" stroke="currentColor" stroke-width="1.4" fill="none"/></symbol>
+  <symbol id="s-dice" viewBox="0 0 16 16"><rect x="1" y="1" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="5" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="11" cy="11" r="1.3" fill="currentColor"/></symbol>
+</defs></svg>
+
+<main class="board">
+
+  <div class="c corner" data-cell="0" style="grid-area:11/11">
+    <span class="num v">0</span>
+    <span class="ic" style="color:var(--accent2)"><svg><use href="#s-arrow"/></svg></span>
+    <span class="cname v">Start</span>
+  </div>
+
+  <div class="c sb" data-cell="1" style="grid-area:11/10">
+    <span class="num v">1</span>
+    <span class="nm v">Sunset Blvd</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#8b5a3c"></span>
+  </div>
+
+  <div class="c sb" data-cell="2" style="grid-area:11/9">
+    <span class="num v">2</span>
+    <span class="ic" style="color:var(--ev-card)"><svg><use href="#s-card"/></svg></span>
+    <span class="nm v">Chest</span>
+  </div>
+
+  <div class="c sb" data-cell="3" style="grid-area:11/8">
+    <span class="num v">3</span>
+    <span class="nm v">Palm Row</span>
+    <span class="own" style="background:#ff6fae"></span>
+    <span class="grp" style="background:#8b5a3c"></span>
+  </div>
+
+  <div class="c sb" data-cell="4" style="grid-area:11/7">
+    <span class="num v">4</span>
+    <span class="ic"><svg><use href="#s-coin"/></svg></span>
+    <span class="nm v">Tax</span>
+  </div>
+
+  <div class="c sb" data-cell="5" style="grid-area:11/6">
+    <span class="num v">5</span>
+    <span class="ic"><svg><use href="#s-station"/></svg></span>
+    <span class="nm v">Harbor Station</span>
+  </div>
+
+  <div class="c sb pinned" data-cell="6" style="grid-area:11/5">
+    <span class="num v">6</span>
+    <span class="nm v">Cedar Ave</span>
+    <span class="own" style="background:#ff6fae"></span>
+    <span class="grp" style="background:#5bb8e8"></span>
+    <span class="tok" style="color:#ff6fae"><svg width="15" height="19" viewBox="0 0 16 20"><use href="#s-meeple"/></svg></span>
+    <svg class="pinmark"><use href="#s-pin"/></svg>
+  </div>
+
+  <div class="c sb" data-cell="7" style="grid-area:11/4">
+    <span class="num v">7</span>
+    <span class="ic" style="color:var(--ev-build)"><svg><use href="#s-star"/></svg></span>
+    <span class="nm v">Fortune</span>
+  </div>
+
+  <div class="c sb" data-cell="8" style="grid-area:11/3">
+    <span class="num v">8</span>
+    <span class="nm v">Elm Ave</span>
+    <span class="own" style="background:#e8264f"></span>
+    <span class="grp" style="background:#5bb8e8"></span>
+    <span class="bld"><svg><use href="#s-house"/></svg><svg><use href="#s-house"/></svg></span>
+  </div>
+
+  <div class="c sb" data-cell="9" style="grid-area:11/2">
+    <span class="num v">9</span>
+    <span class="nm v">Linden Ave</span>
+    <span class="own" style="background:#e8264f"></span>
+    <span class="grp" style="background:#5bb8e8"></span>
+  </div>
+
+  <div class="c corner" data-cell="10" style="grid-area:11/1">
+    <span class="num v">10</span>
+    <span class="ic" style="color:var(--danger)"><svg><use href="#s-bars"/></svg></span>
+    <span class="cname v">Jail</span>
+    <span class="tok" style="color:#5fe3ff"><svg width="15" height="19" viewBox="0 0 16 20"><use href="#s-meeple"/></svg></span>
+  </div>
+
+  <div class="c sl" data-cell="11" style="grid-area:10/1">
+    <span class="num v">11</span>
+    <span class="nm v">Oak Street</span>
+    <span class="own" style="background:#5fe3ff"></span>
+    <span class="grp" style="background:#d85aa8"></span>
+    <span class="mtg"></span>
+  </div>
+
+  <div class="c sl" data-cell="12" style="grid-area:9/1">
+    <span class="num v">12</span>
+    <span class="ic"><svg><use href="#s-tower"/></svg></span>
+    <span class="nm v">Tower Utilities</span>
+  </div>
+
+  <div class="c sl" data-cell="13" style="grid-area:8/1">
+    <span class="num v">13</span>
+    <span class="nm v">Maple Street</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#d85aa8"></span>
+  </div>
+
+  <div class="c sl" data-cell="14" style="grid-area:7/1">
+    <span class="num v">14</span>
+    <span class="nm v">Birch Street</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#d85aa8"></span>
+  </div>
+
+  <div class="c sl" data-cell="15" style="grid-area:6/1">
+    <span class="num v">15</span>
+    <span class="ic"><svg><use href="#s-station"/></svg></span>
+    <span class="nm v">Central Station</span>
+  </div>
+
+  <div class="c sl" data-cell="16" style="grid-area:5/1">
+    <span class="num v">16</span>
+    <span class="nm v">Willow Way</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#ee8a2a"></span>
+  </div>
+
+  <div class="c sl" data-cell="17" style="grid-area:4/1">
+    <span class="num v">17</span>
+    <span class="ic" style="color:var(--ev-card)"><svg><use href="#s-card"/></svg></span>
+    <span class="nm v">Chest</span>
+  </div>
+
+  <div class="c sl" data-cell="18" style="grid-area:3/1">
+    <span class="num v">18</span>
+    <span class="nm v">Aspen Way</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#ee8a2a"></span>
+  </div>
+
+  <div class="c sl" data-cell="19" style="grid-area:2/1">
+    <span class="num v">19</span>
+    <span class="nm v">Fir Way</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#ee8a2a"></span>
+  </div>
+
+  <div class="c corner" data-cell="20" style="grid-area:1/1">
+    <span class="num v">20</span>
+    <span class="ic" style="color:var(--money)"><svg><use href="#s-coin"/></svg></span>
+    <span class="cname v">Free Parking</span>
+    <span class="csub v">$240</span>
+    <span class="csub2 v">банк парковки</span>
+  </div>
+
+  <div class="c st" data-cell="21" style="grid-area:1/2">
+    <span class="num v">21</span>
+    <span class="nm v">Lake Drive</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#d8363c"></span>
+  </div>
+
+  <div class="c st" data-cell="22" style="grid-area:1/3">
+    <span class="num v">22</span>
+    <span class="ic" style="color:var(--ev-build)"><svg><use href="#s-star"/></svg></span>
+    <span class="nm v">Fortune</span>
+  </div>
+
+  <div class="c st" data-cell="23" style="grid-area:1/4">
+    <span class="num v">23</span>
+    <span class="nm v">River Drive</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#d8363c"></span>
+  </div>
+
+  <div class="c st" data-cell="24" style="grid-area:1/5">
+    <span class="num v">24</span>
+    <span class="nm v">Harbor Drive</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#d8363c"></span>
+    <span class="tok" style="color:#e8264f"><svg width="15" height="19" viewBox="0 0 16 20"><use href="#s-meeple"/></svg></span>
+  </div>
+
+  <div class="c st" data-cell="25" style="grid-area:1/6">
+    <span class="num v">25</span>
+    <span class="ic"><svg><use href="#s-station"/></svg></span>
+    <span class="nm v">West Station</span>
+  </div>
+
+  <div class="c st" data-cell="26" style="grid-area:1/7">
+    <span class="num v">26</span>
+    <span class="nm v">Crest Point</span>
+    <span class="own" style="background:#b6ff6b"></span>
+    <span class="grp" style="background:#e8c61e"></span>
+    <span class="mtg"></span>
+  </div>
+
+  <div class="c st" data-cell="27" style="grid-area:1/8">
+    <span class="num v">27</span>
+    <span class="nm v">Crest Square</span>
+    <span class="own" style="background:#b6ff6b"></span>
+    <span class="grp" style="background:#e8c61e"></span>
+    <span class="bld"><svg><use href="#s-house"/></svg></span>
+  </div>
+
+  <div class="c st" data-cell="28" style="grid-area:1/9">
+    <span class="num v">28</span>
+    <span class="ic"><svg><use href="#s-tower"/></svg></span>
+    <span class="nm v">Tower Water</span>
+  </div>
+
+  <div class="c st" data-cell="29" style="grid-area:1/10">
+    <span class="num v">29</span>
+    <span class="nm v">Crest Heights</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#e8c61e"></span>
+  </div>
+
+  <div class="c corner" data-cell="30" style="grid-area:1/11">
+    <span class="num v">30</span>
+    <span class="ic" style="color:var(--danger)"><svg><use href="#s-bars"/></svg></span>
+    <span class="cname v">Go To Jail</span>
+  </div>
+
+  <div class="c sr" data-cell="31" style="grid-area:2/11">
+    <span class="num v">31</span>
+    <span class="nm v">Garden Grove</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#2fa862"></span>
+  </div>
+
+  <div class="c sr" data-cell="32" style="grid-area:3/11">
+    <span class="num v">32</span>
+    <span class="nm v">Garden Park</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#2fa862"></span>
+  </div>
+
+  <div class="c sr" data-cell="33" style="grid-area:4/11">
+    <span class="num v">33</span>
+    <span class="ic" style="color:var(--ev-card)"><svg><use href="#s-card"/></svg></span>
+    <span class="nm v">Chest</span>
+    <span class="tok" style="color:#b6ff6b"><svg width="15" height="19" viewBox="0 0 16 20"><use href="#s-meeple"/></svg></span>
+  </div>
+
+  <div class="c sr" data-cell="34" style="grid-area:5/11">
+    <span class="num v">34</span>
+    <span class="nm v">Garden Court</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#2fa862"></span>
+  </div>
+
+  <div class="c sr" data-cell="35" style="grid-area:6/11">
+    <span class="num v">35</span>
+    <span class="ic"><svg><use href="#s-station"/></svg></span>
+    <span class="nm v">South Station</span>
+  </div>
+
+  <div class="c sr" data-cell="36" style="grid-area:7/11">
+    <span class="num v">36</span>
+    <span class="ic" style="color:var(--ev-build)"><svg><use href="#s-star"/></svg></span>
+    <span class="nm v">Fortune</span>
+  </div>
+
+  <div class="c sr" data-cell="37" style="grid-area:8/11">
+    <span class="num v">37</span>
+    <span class="nm v">Grand Avenue</span>
+    <span class="own" style="background:#e8264f"></span>
+    <span class="grp" style="background:#2e5fd8"></span>
+  </div>
+
+  <div class="c sr" data-cell="38" style="grid-area:9/11">
+    <span class="num v">38</span>
+    <span class="ic"><svg><use href="#s-coin"/></svg></span>
+    <span class="nm v">Luxury Tax</span>
+  </div>
+
+  <div class="c sr" data-cell="39" style="grid-area:10/11">
+    <span class="num v">39</span>
+    <span class="nm v">Grand Place</span>
+    <span class="own free"></span>
+    <span class="grp" style="background:#2e5fd8"></span>
+  </div>
+
+  <section class="deck">
+
+    <div class="hdr">
+      <div class="brand v">NEURO PROPERTY TRADE</div>
+      <div class="hfacts v">ХОД: Хост · ФАЗА: Начало хода · РАУНД 7 · БАНК ПАРКОВКИ $240</div>
+      <div class="hnav v">Настройки · Правила · Рестарт · Тема: Neuro · Язык: RU</div>
+    </div>
+
+    <div class="hero">
+      <div class="turn">
+        <div class="eyebrow v">ХОД</div>
+        <div class="who"><span class="seatbig"></span><span class="hname v">Хост</span></div>
+        <div class="phase v">Фаза: Начало хода</div>
+        <div class="status p">Хост · ваш ход — выберите действие.</div>
+      </div>
+      <div class="dicezone">
+        <div class="dcol">
+          <div class="dcap v">КУБИКИ</div>
+          <div class="dwrap">
+            <svg width="70" height="70" viewBox="0 0 70 70"><rect x="1.5" y="1.5" width="67" height="67" rx="12" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><g fill="#16191f"><circle cx="18" cy="18" r="6"/><circle cx="52" cy="18" r="6"/><circle cx="35" cy="35" r="6"/><circle cx="18" cy="52" r="6"/><circle cx="52" cy="52" r="6"/></g></svg>
+            <svg width="70" height="70" viewBox="0 0 70 70"><rect x="1.5" y="1.5" width="67" height="67" rx="12" fill="#f2f6fa" stroke="#16191f" stroke-width="2"/><g fill="#16191f"><circle cx="18" cy="18" r="6"/><circle cx="35" cy="35" r="6"/><circle cx="52" cy="52" r="6"/></g></svg>
+          </div>
+        </div>
+        <div class="dsep"></div>
+        <div class="dsum"><span class="val v">8</span><span class="cap v">СУММА</span></div>
+      </div>
+      <div class="acts">
+        <button class="herobtn v">Бросок</button>
+        <div class="secs">
+          <button class="sbtn buy v">Купить $100</button>
+          <button class="sbtn v">Отказ</button>
+          <button class="sbtn v">Торг</button>
+          <button class="sbtn off v">Ставка</button>
+          <button class="sbtn v">Конец хода</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="players">
+
+      <article class="pcard active" style="--sc:#ff6fae">
+        <div class="phead">
+          <span class="pseat"></span>
+          <span class="pname v">Хост</span>
+          <span class="ptag v">LOCAL</span>
+          <span class="pbadge v">ваш ход</span>
+        </div>
+        <div class="pmoney"><span class="cur v">$</span><span class="amt v">1215</span></div>
+        <div class="blabel v">БАЛАНС</div>
+        <div class="ppos v">на клетке 6 · Cedar Ave</div>
+        <div class="stats">
+          <div class="stat"><div class="sicons"><i class="obar"></i><i class="obar"></i><span class="scnt v">2</span></div><div class="sl2 v">владения</div></div>
+          <div class="stat zero"><div class="sicons"><svg class="hglyph"><use href="#s-house"/></svg><span class="scnt v">0</span></div><div class="sl2 v">дома</div></div>
+          <div class="stat zero"><div class="sicons"><i class="mglyph"></i><span class="scnt v">0</span></div><div class="sl2 v">залоги</div></div>
+        </div>
+        <div class="holdlabel v">ВЛАДЕНИЯ</div>
+        <ul class="holds">
+          <li><span class="hsw" style="background:#8b5a3c"></span><span class="hnm v">Palm Row</span></li>
+          <li><span class="hsw" style="background:#5bb8e8"></span><span class="hnm v">Cedar Ave</span><svg class="hpin"><use href="#s-pin"/></svg></li>
+        </ul>
+      </article>
+
+      <article class="pcard" style="--sc:#e8264f">
+        <div class="phead">
+          <span class="pseat"></span>
+          <span class="pname v">Neuro</span>
+          <span class="ptag v">SDK</span>
+        </div>
+        <div class="pmoney"><span class="cur v">$</span><span class="amt v">980</span></div>
+        <div class="blabel v">БАЛАНС</div>
+        <div class="ppos v">на клетке 24 · Harbor Drive</div>
+        <div class="stats">
+          <div class="stat"><div class="sicons"><i class="obar"></i><i class="obar"></i><i class="obar"></i><span class="scnt v">3</span></div><div class="sl2 v">владения</div></div>
+          <div class="stat"><div class="sicons"><svg class="hglyph"><use href="#s-house"/></svg><svg class="hglyph"><use href="#s-house"/></svg><span class="scnt v">2</span></div><div class="sl2 v">дома</div></div>
+          <div class="stat zero"><div class="sicons"><i class="mglyph"></i><span class="scnt v">0</span></div><div class="sl2 v">залоги</div></div>
+        </div>
+        <div class="holdlabel v">ВЛАДЕНИЯ</div>
+        <ul class="holds">
+          <li><span class="hsw" style="background:#5bb8e8"></span><span class="hnm v">Elm Ave</span><svg class="hglyph"><use href="#s-house"/></svg><svg class="hglyph"><use href="#s-house"/></svg></li>
+          <li><span class="hsw" style="background:#5bb8e8"></span><span class="hnm v">Linden Ave</span></li>
+          <li><span class="hsw" style="background:#2e5fd8"></span><span class="hnm v">Grand Avenue</span></li>
+        </ul>
+      </article>
+
+      <article class="pcard" style="--sc:#5fe3ff">
+        <div class="phead">
+          <span class="pseat"></span>
+          <span class="pname v">evil</span>
+          <span class="ptag v">SDK</span>
+        </div>
+        <div class="pmoney"><span class="cur v">$</span><span class="amt v">640</span></div>
+        <div class="blabel v">БАЛАНС</div>
+        <div class="ppos v">на клетке 10 · Jail</div>
+        <div class="pjail"><svg><use href="#s-bars"/></svg><span class="v">в тюрьме · попытка 2</span></div>
+        <div class="stats">
+          <div class="stat"><div class="sicons"><i class="obar"></i><span class="scnt v">1</span></div><div class="sl2 v">владения</div></div>
+          <div class="stat zero"><div class="sicons"><svg class="hglyph"><use href="#s-house"/></svg><span class="scnt v">0</span></div><div class="sl2 v">дома</div></div>
+          <div class="stat"><div class="sicons"><i class="mglyph"></i><span class="scnt v">1</span></div><div class="sl2 v">залоги</div></div>
+        </div>
+        <div class="holdlabel v">ВЛАДЕНИЯ</div>
+        <ul class="holds">
+          <li><span class="hsw" style="background:#d85aa8"></span><span class="hnm v">Oak Street</span><i class="hh"></i></li>
+        </ul>
+      </article>
+
+      <article class="pcard" style="--sc:#b6ff6b">
+        <div class="phead">
+          <span class="pseat"></span>
+          <span class="pname v">Mira</span>
+          <span class="ptag v">ИИ</span>
+        </div>
+        <div class="pmoney"><span class="cur v">$</span><span class="amt v">1500</span></div>
+        <div class="blabel v">БАЛАНС</div>
+        <div class="ppos v">на клетке 33 · Chest</div>
+        <div class="stats">
+          <div class="stat"><div class="sicons"><i class="obar"></i><i class="obar"></i><span class="scnt v">2</span></div><div class="sl2 v">владения</div></div>
+          <div class="stat"><div class="sicons"><svg class="hglyph"><use href="#s-house"/></svg><span class="scnt v">1</span></div><div class="sl2 v">дома</div></div>
+          <div class="stat"><div class="sicons"><i class="mglyph"></i><span class="scnt v">1</span></div><div class="sl2 v">залоги</div></div>
+        </div>
+        <div class="holdlabel v">ВЛАДЕНИЯ</div>
+        <ul class="holds">
+          <li><span class="hsw" style="background:#e8c61e"></span><span class="hnm v">Crest Point</span><i class="hh"></i></li>
+          <li><span class="hsw" style="background:#e8c61e"></span><span class="hnm v">Crest Square</span><svg class="hglyph"><use href="#s-house"/></svg></li>
+        </ul>
+      </article>
+
+    </div>
+
+    <div class="bottom">
+
+      <section class="panel">
+        <div class="jhead">
+          <span class="ptitle v">ЖУРНАЛ</span>
+          <span class="jcount v">показано 4 из 132</span>
+        </div>
+        <div class="filters">
+          <span class="chip v">игрок: все</span>
+          <span class="chip v">тип: все</span>
+          <span class="chip v">только деньги</span>
+        </div>
+        <div class="jlist">
+          <div class="jrow">
+            <span class="jnode" style="background:#9a86c9"></span>
+            <div class="p jtxt"><b>Mira</b> бросает 4+4</div>
+            <svg class="jic"><use href="#s-dice"/></svg>
+          </div>
+          <div class="jrow">
+            <span class="jnode" style="background:#5cb85c"></span>
+            <div class="p jtxt"><b>Mira</b> продаёт с клетки 27 <span class="dim">(Crest Square)</span></div>
+            <svg class="jic"><use href="#s-house"/></svg>
+          </div>
+          <div class="jrow">
+            <span class="jnode" style="background:#c9a84c"></span>
+            <div class="p jtxt"><b>evil</b> закладывает клетку 11 <span class="dim">(Oak Street)</span></div>
+            <svg class="jic"><use href="#s-hatch"/></svg>
+          </div>
+          <div class="jrow new">
+            <span class="jnode" style="background:#d9534f"></span>
+            <div class="p jtxt"><b>evil</b> попадает в тюрьму</div>
+            <svg class="jic" style="color:var(--danger)"><use href="#s-bars"/></svg>
+          </div>
+        </div>
+        <div class="jfoot">
+          <span class="jnote v">сверху вниз — от старых к новым</span>
+          <button class="jexp v">экспорт .jsonl</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="ihead">
+          <span class="ptitle v">ИНСПЕКТОР КЛЕТКИ</span>
+          <svg class="pinico"><use href="#s-pin"/></svg>
+          <span class="lgtxt v" style="margin-left:auto;color:var(--accent2)">закреплён</span>
+        </div>
+        <div class="iname v">Cedar Ave</div>
+        <div class="igroup"><span class="gsw"></span><span class="v">группа lightblue · клетка 6</span></div>
+        <div class="ifacts">
+          <div class="ifact"><div class="k v">ЦЕНА</div><div class="val v">$100</div></div>
+          <div class="ifact"><div class="k v">АРЕНДА</div><div class="val v">$6</div></div>
+        </div>
+        <div class="ownerblock">
+          <div class="ownerrow">
+            <span class="ownername v">Хост</span>
+            <span class="owbar"></span>
+            <svg class="owtok"><use href="#s-meeple"/></svg>
+          </div>
+          <div class="gcap v">ГРУППА НЕ СОБРАНА</div>
+          <div class="gs">
+            <div class="gslot"><i style="background:#ff6fae"></i><span class="v">Cedar</span></div>
+            <div class="gslot"><i style="background:#e8264f"></i><span class="v">Elm</span></div>
+            <div class="gslot"><i style="background:#e8264f"></i><span class="v">Linden</span></div>
+          </div>
+        </div>
+        <div class="legend">
+          <div class="gcap v">ОБОЗНАЧЕНИЯ</div>
+          <div class="lg"><span class="lgbar"></span><span class="lgtxt v">полоса — владелец клетки</span></div>
+          <div class="lg"><svg class="hglyph"><use href="#s-house"/></svg><span class="lgtxt v">силуэт — дом или отель</span></div>
+          <div class="lg"><i class="lgm"></i><span class="lgtxt v">штриховка — залог</span></div>
+          <div class="lg"><svg class="lgmeeple"><use href="#s-meeple"/></svg><span class="lgtxt v">фишка — место игрока</span></div>
+        </div>
+        <div class="ibtns">
+          <button class="ibtn primary v">Закрепить</button>
+          <button class="ibtn v">Закрыть</button>
+        </div>
+      </section>
+
+      <section class="panel evcard">
+        <div class="evtop">
+          <span class="ptitle v">ПОСЛЕДНЕЕ СОБЫТИЕ</span>
+          <svg class="evtypeico"><use href="#s-house"/></svg>
+        </div>
+        <div class="evis">
+          <svg class="big"><use href="#s-house"/></svg>
+          <svg class="arr"><use href="#s-arrow"/></svg>
+          <svg class="big" style="color:var(--money)"><use href="#s-coin"/></svg>
+        </div>
+        <div class="evtype v">продажа дома</div>
+        <div class="evbig v">+$70</div>
+        <div class="evrows">
+          <div class="evrow"><span class="k v">ТИП</span><span class="val v">продажа дома</span></div>
+          <div class="evrow"><span class="k v">ИГРОК</span><span class="val v">Mira</span></div>
+          <div class="evrow"><span class="k v">КЛЕТКА</span><span class="val v">Crest Square (27)</span></div>
+          <div class="evrow"><span class="k v">ИТОГ</span><span class="val plus v">+$70</span></div>
+        </div>
+      </section>
+
+    </div>
+  </section>
+
+</main>
+</body>
+</html>
