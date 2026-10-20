@@ -33,8 +33,12 @@ const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 
 ## The frame the stream is drawn at. 1920x1080 is the floor the owner named; the gate measures it
 ## and reports the phone width used, so the number cannot be read without its arithmetic.
-const FRAME := Vector2i(1920, 1080)
-const FRAME_LABEL := "1920x1080"
+## The frame follows the WINDOW (owner, 19.10: "кадр должен подстраиваться под размер окна,
+## разброс от 1600x1200 до 4K"), so this gate measures the frame it is TOLD to measure:
+## NPT_FRAME=1600x1200 (the spec frame), 2560x1440, 1920x1080 (16:9 - the one that cannot hold
+## both requirements, see docs/restoration/gates.md). Default keeps the old behaviour.
+var FRAME := Vector2i(1600, 1200)
+var FRAME_LABEL := "1600x1200"
 ## The phone the viewer holds - a CSS-px width, the same the rule in LayoutProfile is derived at.
 const PHONE_WIDTH := LayoutProfile.PHONE_CSS_WIDTH
 ## The floor for "understood from one glance" on the phone. READ FROM THE RULE'S ONE HOME
@@ -102,6 +106,12 @@ const WATCHDOG_MS := 300000
 
 
 func _ready() -> void:
+	var env := OS.get_environment("NPT_FRAME")
+	if env != "":
+		var parts := env.split("x")
+		if parts.size() == 2:
+			FRAME = Vector2i(int(parts[0]), int(parts[1]))
+			FRAME_LABEL = env
 	DisplayServer.window_set_size(FRAME)
 	get_tree().root.size = FRAME
 	for a in OS.get_cmdline_user_args():

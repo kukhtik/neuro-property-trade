@@ -40,11 +40,11 @@ const JOURNAL_ROWS := 3
 const FS_CAPTION := 0.155
 const FS_VALUE := 0.270
 const FS_SUM := 0.520
-const FS_EVENT := 0.250
-const FS_JRN := 0.190
+const FS_EVENT := 0.270
+const FS_JRN := 0.270
 ## The turn/phase line under the dice is a GLANCE value (R-7): at an 80px cell it must clear 20px,
 ## so it cannot be a caption-sized 0.19 ratio - it measured 15px and the panno test refused it.
-const FS_META := 0.260
+const FS_META := 0.270
 
 var _built := false
 var _cell := 64.0

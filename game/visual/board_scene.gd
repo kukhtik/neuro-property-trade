@@ -14,6 +14,7 @@ const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const TurnPanno := preload("res://ui/components/turn_panno.gd")
+const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 
 var _skin: SkinManager
 ## See SkinManager.set_animations: the settings sheet's "Анимации" row used to be inert. The shell
@@ -211,7 +212,23 @@ var _glance_text: Dictionary = {}  # ring index -> the line last written (surviv
 
 
 func glance_font() -> int:
-	return int(maxf(14.0, float(ring_metrics(size)["band"]) * GLANCE_F))
+	# R-7 is a function of the FRAME, so the font is too: at 390px wide the glance must read 12px,
+	# which in this frame means 12 * w / 390 (50px at 1600, 79px at 2560, 118px at 3840). The band
+	# caps it: a corner is 1.68 bands wide, and a line taller than a third of the band would break
+	# the corner's own rhythm - so on a frame that cannot carry both (1920x1080) the font is what
+	# fits, and STREAM-READ says so with the arithmetic.
+	# The requirement is about the FRAME a viewer sees, not about the board Control inside it: at
+	# 1600x1200 the board is ~1300 wide once the docks are in, and measuring that width asked for a
+	# 41px glance instead of 49 (measured: 47px -> 11.5 on the phone, a 3px miss).
+	var frame_w: float = size.x
+	if is_inside_tree():
+		var vp := get_viewport_rect().size
+		if vp.x > 1.0:
+			frame_w = vp.x
+	var need: int = int(ceil(LayoutProfile.GLANCE_MIN_PHONE_PX * maxf(frame_w, 1.0)
+		/ LayoutProfile.PHONE_CSS_WIDTH))
+	var band := float(ring_metrics(size)["band"])
+	return clampi(need, 14, maxi(14, int(band * 0.30)))
 
 
 const GLANCE_ROLES := {0: "turn", 10: "phase", 20: "bank", 30: "round"}
@@ -280,13 +297,20 @@ const BAND_FRACTION := 0.158
 static func ring_metrics(frame: Vector2) -> Dictionary:
 	var w := maxf(frame.x, 1.0)
 	var h := maxf(frame.y, 1.0)
-	# THE RING NEVER LEAVES THE FRAME. An earlier revision let it grow past a small frame ("R-18:
-	# the frame grows, the board does not shrink") - but the product's board is a Control inside a
-	# fixed window, so "growing" meant the bottom row was CUT OFF and the cells read as broken
-	# (measured at 1440x900: ring 977px inside a 900px board, corner faces hanging 51px below the
-	# window). The ring is the frame, always; on a short frame the cells get smaller than R-17's
-	# floor, which is arithmetic, and the phone profile answers it with a 1:1 camera window instead.
-	var band: float = clampf(h * BAND_FRACTION, 60.0, maxf(60.0, (h - 9.0 * MIN_CELL) * 0.5))
+	# THE FRAME ADAPTS (owner, 19.10: "кадр должен подстраиваться под размер окна, разброс от
+	# 1600x1200 до 4K"). Both requirements are therefore functions of the frame, not constants:
+	#   R-7  the glance must read at 390px wide, so it needs 12 * w / 390 px in THIS frame;
+	#        with glance = 0.264 * band, the band it wants is (12*w/390) / 0.264;
+	#   R-17 a cell is never below 77px, so the band can never exceed (h - 9*77) / 2.
+	# The thicker of the two wins, and when the cell floor a negative room (a 16:9 1080p frame) the
+	# CELLS win: the board is the product, the glance degrades to whatever still fits and the gate
+	# says so with the arithmetic. Measured: 1600x1200 -> band 190, 2560x1440 -> 298, 3840x2160 ->
+	# 447 (glance 49 / 79 / 118px); 1920x1080 can only give band 193.5 -> glance 51 (10.4px
+	# effective) because 1141px of ring does not fit in 1080.
+	var need_glance: float = LayoutProfile.GLANCE_MIN_PHONE_PX * w / LayoutProfile.PHONE_CSS_WIDTH
+	var band_for_glance: float = need_glance / GLANCE_F
+	var band_cap: float = (h - 9.0 * MIN_CELL) * 0.5
+	var band: float = clampf(maxf(h * BAND_FRACTION, band_for_glance), 60.0, maxf(60.0, band_cap))
 	var ring_w: float = w
 	var ring_h: float = h
 	var corner: float = clampf(band * 1.68, CORNER_MIN_W, maxf(CORNER_MIN_W, (ring_w - 9.0 * MIN_CELL) * 0.5))
@@ -386,7 +410,11 @@ func _place_centre() -> void:
 		Vector2(maxf(1.0, float(m["ring_w"]) - 2.0 * band), maxf(1.0, float(m["ring_h"]) - 2.0 * band)))
 	_panno.position = inner.position
 	_panno.size = inner.size
-	_panno.apply_scale(_cell)
+	# The panno's own glance roles (who moves, the event, the journal) must clear the same R-7 floor,
+	# and its VALUE ratio is 0.270: passing the band as the reference gave 48px where the frame needs
+	# 49 (measured 11.7 on the phone). The reference is whichever is larger - the band, or the frame's
+	# requirement expressed in panno units.
+	_panno.apply_scale(maxf(_cell, float(glance_font()) / 0.270))
 	# the dice keep the game's own art; only their size follows the band, as before
 	var die_px: float = maxf(18.0, roundf(_cell * 0.34))
 	for d in _dice:

@@ -125,7 +125,7 @@ GATES=(
 	# glance labels sit at 10-13px, which is 2.0-2.6px on a phone against a 12px floor. That red is
 	# the real state of the S3 promise, not a gate defect - its both-direction check has been run
 	# (floor 1.5 -> PASSED, floor 12 -> FAILED naming turn-phase). Promote with the font work.
-	"STREAM-READ|sg|quarantine|script|tools/ci/gates/stream_read_gate.sh"
+	"STREAM-READ|sg|required|script|tools/ci/gates/stream_read_gate.sh"
 )
 
 
