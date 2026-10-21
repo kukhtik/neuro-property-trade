@@ -193,18 +193,28 @@ func _build() -> void:
 	_rightcol.name = "rightcol"
 	_rightcol.custom_minimum_size.x = DOCK_R
 	_rightcol.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_child(_rightcol)
+	# THE ORDER IS THE WHOLE THING. The right column's children go in HERE, BEFORE the
+	# column itself joins `body`.
+	#
+	# `_rightcol` joins `body` a few lines below, and `body` is still adding children of
+	# its own at that moment: adding to a column whose parent is busy is refused ("Parent
+	# node is busy") and the refusal PRINTS an ERROR, which the gate runner counts - one
+	# busy parent took twenty gates down at once.
+	#
+	# Filling the column BEFORE it joins `body` avoids that: neither the column nor its
+	# children are in the tree yet, so there is no busy parent to refuse us. And it must be
+	# IMMEDIATE, not deferred: the gates call `_on_events` and look for the journal in the
+	# SAME frame, and a deferred fill has not happened by then.
 	_toasts = ToastList.new()
 	_toasts.name = "toast"
-	_rightcol.add_child(_toasts)
 	_journal = JournalPanel.new()
 	_journal.name = "journal"
 	_journal.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_rightcol.add_child(_journal)
 	_inspector = TileInspector.new()
 	_inspector.name = "inspector"
 	_inspector.action_requested.connect(Callable(self, "_on_inspector_action"))
-	_rightcol.add_child(_inspector)
+	_fill_right_column()
+	body.add_child(_rightcol)
 	# The tile card moves INTO the ring, into the panno's inspector slot: concept A puts
 	# it in the lower belt beside the journal, and the right column was 344px - 14.5 % of
 	# the 1600 frame - of the screen that was NOT the board. The card keeps its own
@@ -360,6 +370,42 @@ func dock_shown(which: String) -> bool:
 func _on_seats_requested() -> void:
 	if _is_compact():
 		_open_drawer("seats")
+
+
+## Put the right column's children in, once the tree has settled.
+## Put the right column's children in, before the column joins `body`.
+##
+## A widget that is NOT in the tree has no parent to leave, so it must be ADDED; one
+## that is elsewhere must be REPARENTED (`add_child` on a widget that already has a
+## parent is refused: "already has a parent"). Both refusals PRINT an ERROR, and the
+## gate runner counts every ordinary `ERROR:` as a failure.
+func _fill_right_column() -> void:
+	if _rightcol == null or _toasts == null:
+		return
+	# "Is it already in THIS column?" - not "is its parent null". The panel may have a
+	# different parent (the drawer's slot, say), and adding it again is refused with
+	# "already has a parent" - which is an ERROR the gate runner counts.
+	# `reparent`, not `add_child`: a widget that already has a parent is refused by
+	# `add_child` ("already has a parent"), and the journal may be in the drawer's slot
+	# when the column is filled.
+	_fill(_toasts)
+	_fill(_journal)
+	_fill(_inspector)
+
+
+## Put a widget into the right column, whatever state it is in.
+##
+## A widget that is NOT in the tree has no parent to leave, so it must be ADDED; one
+## that is elsewhere must be REPARENTED (`add_child` on a widget that already has a
+## parent is refused: "already has a parent"). Both refusals PRINT an ERROR, and the
+## gate runner counts every ordinary `ERROR:` as a failure.
+func _fill(w: Control) -> void:
+	if w == null or w.get_parent() == _rightcol:
+		return
+	if w.get_parent() == null:
+		_rightcol.add_child(w)
+	else:
+		w.reparent(_rightcol, false)
 
 
 func _apply_panels_visibility() -> void:
@@ -599,6 +645,11 @@ func _open_drawer(which: String) -> void:
 		return
 	match which:
 		"seats":
+			# The drawer BORROWS the seat cards. The board must be told they are out
+			# of the ring, or its pending placement pulls them straight back and the
+			# drawer opens empty - a region the gate could not find at all.
+			if _board != null and _board.has_method("release"):
+				_board.call("release", "players")
 			(d as DrawerPanel).put(_seats_panel)
 		"journal":
 			(d as DrawerPanel).put(_journal)
@@ -625,11 +676,14 @@ func _close_drawer(which: String) -> void:
 					_board.call("host_players", c)
 					(c as Control).visible = true
 				else:
-					_body_row.add_child(c)
+					c.reparent(_body_row, false)
 					_body_row.move_child(c, 0)
 					(c as Control).visible = not _is_compact()
 			"journal":
-				_rightcol.add_child(c)
+				# The drawer BORROWS the panel, and `take()` leaves it in the tree - so putting
+				# it back is a REPARENT. `add_child` on a widget that already has a parent is
+				# refused ("already has a parent") and the refusal prints an ERROR.
+				c.reparent(_rightcol, false)
 				_rightcol.move_child(c, 1)
 			"inspector":
 				# same rule as the seat cards: the tile card lives in the ring's lower belt now, so
@@ -638,7 +692,7 @@ func _close_drawer(which: String) -> void:
 					_board.call("host_inspector", c)
 					(c as Control).visible = true
 				else:
-					_rightcol.add_child(c)
+					c.reparent(_rightcol, false)
 					_rightcol.move_child(c, 2)
 	(d as Control).visible = false
 

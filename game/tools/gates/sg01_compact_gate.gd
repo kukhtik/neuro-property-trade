@@ -192,8 +192,12 @@ func _check_metrics(gv) -> void:
 	var act = gv.find_child("act", true, false)
 	if top != null and absf((top as Control).size.y - 56.0) > 2.0:
 		_fail("1440x900: header height %s != 56" % str((top as Control).size.y))
-	elif seats != null and absf((seats as Control).size.x - 268.0) > 2.0:
-		_fail("1440x900: left dock %s != 268" % str((seats as Control).size.x))
+	elif seats != null and not _seats_in_ring(gv):
+		# The seat cards are inside the ring (track 1, step 2), so there is no left dock
+		# to measure. If they ever move back out, the dock must keep the 268px of the
+		# design - so the check asks WHERE the panel lives before it measures it.
+		if absf((seats as Control).size.x - 268.0) > 2.0:
+			_fail("1440x900: left dock %s != 268" % str((seats as Control).size.x))
 	elif rightcol != null and absf((rightcol as Control).size.x - 344.0) > 2.0:
 		_fail("1440x900: right dock %s != 344" % str((rightcol as Control).size.x))
 	# THE CONSOLE IS A STRIP, NOT A PANEL (owner's relayout, 16.10 evening). This check used to
@@ -221,6 +225,21 @@ func _report() -> void:
 	else:
 		print("==> SG-01 FAILED: %s (%d total)" % [_fails[0], _fails.size()])
 		get_tree().quit(1)
+
+
+## Are the seat cards inside the RING? The panno is the ring's interior panel; a panel
+## that is its descendant is in the ring, and one that is not is still in a dock.
+func _seats_in_ring(gv: Node) -> bool:
+	var panno := gv.find_child("panno-root", true, false)
+	var seats := gv.find_child("seats", true, false)
+	if panno == null or seats == null:
+		return false
+	var n: Node = (seats as Node).get_parent()
+	while n != null:
+		if n == panno:
+			return true
+		n = n.get_parent()
+	return false
 
 
 func _fail(msg: String) -> void:

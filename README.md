@@ -108,7 +108,7 @@ Verified by the oracle, the probes and the gate program — all run in CI:
 ```bash
 tools/ci/run_tests.sh     # 431 headless tests (rules engine + the projection contract + UI core)
 tools/ci/run_probes.sh    # 3 behavioral probes (i18n, skin, v3 layout)
-tools/ci/run_gates.sh     # 34 required gates: functionality (HG) + interface (SG), report in build/gates/
+tools/ci/run_gates.sh     # 37 required gates: functionality (HG) + interface (SG), report in build/gates/
 ```
 
 Plus determinism (every recorded game replays to a byte-identical fingerprint), a regenerated

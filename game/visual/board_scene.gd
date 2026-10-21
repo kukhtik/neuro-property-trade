@@ -164,9 +164,11 @@ func _build_centre() -> void:
 	add_child(_panno)
 	_panno.build()
 	_panno.seats_requested.connect(func() -> void: seats_requested.emit())
-	# the shell may have asked for a widget before this _ready ran - place every retained one now.
+	# The shell may have asked for a widget before this _ready ran - place every retained one.
+	# DEFERRED, for the same reason as `_host`: an eager attempt while a parent is busy
+	# is refused by Godot and PRINTS an ERROR, which the gate runner counts as a failure.
 	for which in _hosted.keys():
-		_place_hosted(str(which))
+		_retry_host.call_deferred(str(which))
 	var roll_col: VBoxContainer = _panno.zone_box("roll")
 	var ev_col: VBoxContainer = _panno.zone_box("event")
 	if roll_col != null:
@@ -213,13 +215,14 @@ func host_players(panel: Control) -> bool:
 func _host(which: String, widget: Control) -> bool:
 	if widget == null or not is_instance_valid(widget):
 		return false
+	# Handing the widget back CANCELS a release: the shell wants it in the ring again.
 	_hosted[which] = widget
-	if _place_hosted(which):
-		return true
-	# The move did not take: the widget's current parent was BUSY adding children, and
-	# Godot refuses a reparent then ("Parent node is busy adding/removing children").
-	# That is not a failure to report - it is a moment to wait for. The board already
-	# retains the widget; now it also retries once the tree has settled.
+	# THE MOVE IS DEFERRED, NEVER ATTEMPTED EAGERLY. Godot refuses a reparent while the
+	# widget's parent is busy adding children, and it PRINTS an ERROR when it refuses:
+	# "Parent node is busy adding/removing children". The first version of this code tried
+	# the move straight away and retried afterwards - and the gate runner, which catches
+	# ordinary `ERROR:` lines, failed TWENTY gates over that one refused reparent. A
+	# refused move is not a defect to be reported; it is a moment to wait for.
 	_retry_host.call_deferred(which)
 	return false
 
@@ -239,6 +242,16 @@ func _retry_host(which: String, attempt: int = 0) -> void:
 	_retry_host.call_deferred(which, attempt + 1)
 
 
+## Release a widget the shell has deliberately moved elsewhere (into a drawer).
+##
+## The seat cards are handed to the drawer on a compact profile, and the drawer BORROWS
+## them: it is the same widget, in another place. Without this the board's pending retry
+## pulled it straight back into the ring, and the drawer opened empty - a region the
+## gate could not find at all.
+func release(which: String) -> void:
+	_hosted.erase(which)
+
+
 ## Put a retained widget into the panno's slot, if the slot is there yet.
 func _place_hosted(which: String) -> bool:
 	var w = _hosted.get(which)
@@ -246,6 +259,12 @@ func _place_hosted(which: String) -> bool:
 		_hosted.erase(which)
 		return false
 	if _panno == null:
+		return false
+	# A WIDGET THAT IS NOT IN THE TREE YET CANNOT BE REPARENTED. The shell builds the
+	# panels and hands them over in the same frame, and some of them are added to their
+	# column on the next one. Reparenting a widget that has no parent yet is refused by
+	# Godot, and the refusal PRINTS an ERROR the gate runner counts.
+	if not (w as Control).is_inside_tree():
 		return false
 	var slot: VBoxContainer = null
 	match which:

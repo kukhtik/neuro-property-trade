@@ -64,11 +64,17 @@ func put(c: Control) -> void:
 	c.visible = true
 
 
-## Hand the content back (removed from the drawer, not freed).
+## Hand the content back (moved out of the drawer, not freed).
+##
+## The widget stays IN THE TREE: `remove_child` took it out entirely, and the caller
+## then had nowhere to put it - the board had already released it, so the panel ended
+## up with no parent at all and the gate could not find the region at all. A borrow
+## must not make the thing disappear: the drawer SLOTS the widget elsewhere and the
+## caller decides where it goes next.
 func take() -> Control:
 	for ch in _slot.get_children():
 		if ch is Control:
-			_slot.remove_child(ch)
+			ch.reparent(get_parent(), false)
 			return ch
 	return null
 
