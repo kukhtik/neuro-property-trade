@@ -115,6 +115,10 @@ GATES=(
 	# (R-21..R-26 - the owner's 'не пиши, а показывай в дизайне'). The probe measures PLAIN
 	# cells, so every pixel it counts is a shape and not the text the shapes replace.
 	"STATE-GLYPHS|hg|required|script|tools/ci/gates/state_glyphs_gate.sh"
+	# PANNO-BELTS: the ring's centre is TWO BELTS (the seats across the top, and
+	# roll | journal | event below) - concept A's composition. In a stack of four
+	# full-width bands the eye meets three bands before it reaches the journal.
+	"PANNO-BELTS|hg|required|script|tools/ci/gates/panno_belts_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph

@@ -32,7 +32,23 @@ signal seats_requested
 
 ## Zone order is the reading order from the brief and must not be shuffled: heights are ratios of
 ## the panno's height, so they scale with the board instead of being fixed pixels.
+## THE COMPOSITION (concept A, docs/specs/ui-redesign-v5-composition.md).
+##
+## The ring's interior is TWO BELTS, not a stack of four zones:
+##   the upper belt  - the four seats, side by side
+##   the lower belt  - three columns: roll | journal | event
+##
+## WHY, in one line: the hero action and the thing it acts on must be read together, and
+## in a stack the eye meets four full-width bands before it gets to the journal.
 const ZONE_KEYS: Array = ["roll", "event", "players", "journal"]
+## The two belts share the interior 30/70: the seats need a fixed band (four cards
+## side by side, each with a name, a chip and a balance), the lower belt takes the rest.
+const BELT_TOP_RATIO := 30.0
+const BELT_BOTTOM_RATIO := 70.0
+## Within the lower belt: the roll column (the hero) and the event column share the
+## left, the journal the right. A stretch ratio only says how the REMAINING space is
+## shared - measured, the stack never squeezed anything (the journal holds 3 lines and
+## does not grow), so these ratios are about PROPORTION, not about survival.
 const RATIOS: Array = [22.0, 28.0, 30.0, 20.0]
 const PLAYER_ROWS := 4
 const JOURNAL_ROWS := 3
@@ -52,6 +68,12 @@ var _cold := false
 
 var _root: VBoxContainer
 var _zones: Array = []
+## The two belts: the upper one holds the seats, the lower one the roll | journal | event
+## columns. They are named because the gates and the probes look them up.
+var _belt_top: HBoxContainer
+var _belt_bottom: HBoxContainer
+var _belt_col_left: VBoxContainer
+var _belt_col_right: VBoxContainer
 var _caps: Array = []
 var _font_nodes: Array = []      # [{node: Control, ratio: float}]
 
@@ -88,6 +110,46 @@ func build() -> void:
 	add_child(_root)
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	# TWO BELTS, not a stack of four (concept A, docs/specs/ui-redesign-v5-composition.md).
+	# The upper belt is the four seats; the lower belt is three columns:
+	# roll | journal | event. The order is the READING order, and the order is why:
+	# "Бросок" is the hero action and it must be the FIRST thing the eye lands on, and
+	# the event and the journal are two views of the same turn, so they belong together.
+	# In the old stack the eye met roll, then event, then players, then journal - the
+	# hero and the thing it acts on were separated by two zones.
+	_belt_top = HBoxContainer.new()
+	_belt_top.name = "panno-belt-top"
+	_belt_top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_belt_top.add_theme_constant_override("separation", 4)
+	_belt_top.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_belt_top.size_flags_stretch_ratio = float(BELT_TOP_RATIO)
+	_root.add_child(_belt_top)
+	_belt_bottom = HBoxContainer.new()
+	_belt_bottom.name = "panno-belt-bottom"
+	_belt_bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_belt_bottom.add_theme_constant_override("separation", 4)
+	_belt_bottom.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_belt_bottom.size_flags_stretch_ratio = float(BELT_BOTTOM_RATIO)
+	_root.add_child(_belt_bottom)
+	# the lower belt's two columns: the narrow one (hero + event) and the wide one
+	# (the journal). The split is 1fr / 1.4fr - the journal carries longer lines.
+	_belt_col_left = VBoxContainer.new()
+	_belt_col_left.name = "panno-col-left"
+	_belt_col_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_belt_col_left.add_theme_constant_override("separation", 4)
+	_belt_col_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_belt_col_left.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_belt_col_left.size_flags_stretch_ratio = 1.0
+	_belt_bottom.add_child(_belt_col_left)
+	_belt_col_right = VBoxContainer.new()
+	_belt_col_right.name = "panno-col-right"
+	_belt_col_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_belt_col_right.add_theme_constant_override("separation", 4)
+	_belt_col_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_belt_col_right.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_belt_col_right.size_flags_stretch_ratio = 1.4
+	_belt_bottom.add_child(_belt_col_right)
+
 	for i in ZONE_KEYS.size():
 		var zone := PanelContainer.new()
 		zone.name = "zone-" + str(ZONE_KEYS[i])
@@ -97,7 +159,21 @@ func build() -> void:
 		zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		zone.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		zone.size_flags_stretch_ratio = float(RATIOS[i])
-		_root.add_child(zone)
+		# WHERE a zone lives:
+		#   players  - the whole upper belt
+		#   roll     - the upper half of the lower belt's LEFT column
+		#   event    - the lower half of the lower belt's LEFT column
+		#   journal  - the lower belt's RIGHT column
+		# So the lower belt has TWO columns: a narrow one with the hero and the event
+		# stacked, and a wide one with the journal. The hero action is the first thing in
+		# the left column, at the top-left of the reading order.
+		if str(ZONE_KEYS[i]) == "players":
+			_belt_top.add_child(zone)
+		else:
+			if str(ZONE_KEYS[i]) == "journal":
+				_belt_col_right.add_child(zone)
+			else:
+				_belt_col_left.add_child(zone)
 		_zones.append(zone)
 		var col := UiTheme.vbox(2)
 		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
