@@ -45,6 +45,10 @@ const ZONE_KEYS: Array = ["roll", "event", "players", "journal"]
 ## side by side, each with a name, a chip and a balance), the lower belt takes the rest.
 const BELT_TOP_RATIO := 30.0
 const BELT_BOTTOM_RATIO := 70.0
+## The left column of the lower belt is FIXED width (SG-04/P-4 lets a flex row stretch
+## exactly one child - the journal is the one that grows). 520px at a 1600 frame: the
+## hero buttons and the event line need that much and no more.
+const BELT_LEFT_WIDTH := 520.0
 ## Within the lower belt: the roll column (the hero) and the event column share the
 ## left, the journal the right. A stretch ratio only says how the REMAINING space is
 ## shared - measured, the stack never squeezed anything (the journal holds 3 lines and
@@ -137,9 +141,15 @@ func build() -> void:
 	_belt_col_left.name = "panno-col-left"
 	_belt_col_left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_belt_col_left.add_theme_constant_override("separation", 4)
-	_belt_col_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# SG-04/P-4: a flex row may stretch EXACTLY ONE child. Two stretching children
+	# in an HBox is what makes a stretched Label collapse to its content width, and the
+	# rule counts every stretching Control, not only Labels. So the RIGHT column (the
+	# journal) grows - its content is long lines that must wrap - and the LEFT one (the
+	# hero and the event) takes a FIXED width, because its content is short values and
+	# buttons whose width is their own.
+	_belt_col_left.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_belt_col_left.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_belt_col_left.size_flags_stretch_ratio = 1.0
+	_belt_col_left.custom_minimum_size.x = BELT_LEFT_WIDTH
 	_belt_bottom.add_child(_belt_col_left)
 	_belt_col_right = VBoxContainer.new()
 	_belt_col_right.name = "panno-col-right"
@@ -147,7 +157,6 @@ func build() -> void:
 	_belt_col_right.add_theme_constant_override("separation", 4)
 	_belt_col_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_belt_col_right.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_belt_col_right.size_flags_stretch_ratio = 1.4
 	_belt_bottom.add_child(_belt_col_right)
 
 	for i in ZONE_KEYS.size():
