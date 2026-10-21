@@ -2,9 +2,9 @@
   "id": "evil",
   "name": "Evil",
   "name_ru": "Evil",
-  "extends": "neuro",
+  "extends": "default",
   "version": 1,
-  "_note": "Alternative skin for the Evil seat / dark-red mood. Inherits everything from neuro and only overrides colours — proof that a skin may ship a single token block and still render.",
+  "_note": "Alternative skin for the Evil seat: the DARK one. It no longer extends 'neuro' - that skin is LIGHT since 21.10, and inheriting it would put a dark-red theme on a pale field. It extends 'default' and carries its own full token block, so each theme is independent: neuro = light, evil = dark.",
   "tokens": {
     "color": {
       "bg": "#080406",
@@ -35,7 +35,27 @@
       "ev.text": "#e8edf3",
       "ev.accent": "#9fd0ff",
       "board.bg2": "#101820",
-      "board.bg3": "#22303c"
+      "board.bg3": "#22303c",
+      "player": [
+        "#ff6fae",
+        "#e8264f",
+        "#5fe3ff",
+        "#b6ff6b",
+        "#ffb020",
+        "#b36bff",
+        "#ffd166",
+        "#8f9bff"
+      ],
+      "group": {
+        "brown": "#8b5a3c",
+        "lightblue": "#5bb8e8",
+        "pink": "#d85aa8",
+        "orange": "#ee8a2a",
+        "red": "#d8363c",
+        "yellow": "#e8c61e",
+        "green": "#2fa862",
+        "darkblue": "#2e5fd8"
+      }
     }
   },
   "assets": {

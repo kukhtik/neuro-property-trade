@@ -46,6 +46,30 @@ VAR_MAP = {
     "board.bg2": "--board-bg2", "board.bg3": "--board-bg3",
 }
 
+# The FONT SIZES come from the skin too. They used to live only in the hand-written
+# proto.css, which had drifted from the skin (10/12/13 against the skin's 11/13/14) -
+# so the committed prototype and its own source disagreed, and the package check
+# caught it only when the prototype was regenerated.
+SIZE_MAP = {"xs": "--fs-xs", "s": "--fs-s", "m": "--fs-m", "l": "--fs-l", "xl": "--fs-xl"}
+
+
+_size_cache: dict = {}
+
+
+def resolved_sizes(sid: str) -> dict:
+    """The skin's font sizes with the extends chain applied."""
+    if sid in _size_cache:
+        return _size_cache[sid]
+    data = load_skin(sid)
+    sizes = dict(data.get("tokens", {}).get("size", {}))
+    parent = data.get("extends")
+    if parent:
+        base = resolved_sizes(parent)
+        base.update(sizes)
+        sizes = base
+    _size_cache[sid] = sizes
+    return sizes
+
 
 def load_skin(sid: str) -> dict:
     return json.loads((SKIN_DIR / sid / "skin.json").read_text(encoding="utf-8"))
@@ -87,6 +111,11 @@ def theme_block(sid: str, decl: dict) -> str:
         v = per.get(sid)
         if isinstance(v, str):
             pairs.append(f"--{name.replace('_', '-')}:{v}")
+    # the font sizes: the skin is the truth
+    for token, var in SIZE_MAP.items():
+        sz = resolved_sizes(sid).get(token)
+        if sz is not None:
+            pairs.append(f"{var}:{sz}px")
     return ':root[data-theme="%s"]{%s}' % (sid, ";".join(pairs))
 
 

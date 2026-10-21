@@ -20,6 +20,7 @@ extends Node
 const TileView := preload("res://visual/tile_view.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 const StateGlyphs := preload("res://visual/state_glyphs.gd")
+const UiTheme := preload("res://ui/theme.gd")
 
 const CELL := 96.0
 const CELLS := [
@@ -48,6 +49,13 @@ func _skin() -> SkinManager:
 
 
 var _fails: Array = []
+## The cell ground, read from the ACTIVE skin - the tile paints with
+## `UiTheme.COL().panel` (surface.1 of the ACTIVE skin), so that is the colour the
+## probe has to subtract. It used to assume "nearly black", which was true of the
+## DARK skin only.
+var _bg: Color = Color(0, 0, 0)
+## How close to the background a pixel must be to count AS the background.
+const _BG_TOLERANCE := 0.12
 var _checks := 0
 
 
@@ -76,6 +84,8 @@ func _run() -> void:
 	row.add_theme_constant_override("separation", 8)
 	host.add_child(row)
 
+	# The ground the cells are painted on, from the ACTIVE skin.
+	_bg = _read_bg()
 	var views: Array = []
 	for spec in CELLS:
 		var tv := TileView.new()
@@ -197,9 +207,31 @@ func _count_colour(img: Image, rect: Rect2, want: Color) -> int:
 	return n
 
 
+## The background of the cell, READ FROM THE SKIN - not assumed.
+##
+## The first version hard-coded "nearly black and nearly neutral", which was true
+## of the DARK skin only. When neuro became the LIGHT skin, nothing was near-black
+## any more, every pixel counted as ink, and all six cells measured the same
+## 9216 - the gate went red for a reason that had nothing to do with the shapes.
+## The background is now the skin's own tile colour, and a pixel counts as
+## background when it is CLOSE to it.
 func _is_bg(p: Color) -> bool:
-	# the dark panel background: nearly black and nearly neutral
-	return p.r < 0.12 and p.g < 0.12 and p.b < 0.16
+	return _bg_dist(p) <= _BG_TOLERANCE
+
+
+## How far a pixel is from the background colour (0 = the background itself).
+func _bg_dist(p: Color) -> float:
+	var dr := p.r - _bg.r
+	var dg := p.g - _bg.g
+	var db := p.b - _bg.b
+	return sqrt(dr * dr + dg * dg + db * db)
+
+
+## The background colour, taken from the skin the probe is measuring.
+func _read_bg() -> Color:
+	# the ACTIVE skin - the tile paints with UiTheme.COL().panel, and that is the
+	# active skin's surface.1. A fresh SkinManager would read a different one.
+	return UiTheme.COL()["panel"]
 
 
 func _check(ok: bool, why: String) -> void:

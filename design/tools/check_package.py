@@ -100,13 +100,14 @@ def main() -> int:
     # rendered 14. A harness that hardcodes a value from the thing it inspects cannot report that
     # value changing; these five numbers are read from BOTH sides and compared.
     print("[1b] sizes: mockup --fs-* vs game skins' tokens.size")
-    fs_block = re.search(r":root\s*\{([^}]*)\}", html)
-    if not fs_block:
-        fail("no :root { } block to read the --fs-* scale from", fails)
+    # The --fs-* scale is PER THEME: build_prototype.py reads it from each skin, so the
+    # prototype carries one block per theme. A single :root copy was a second source of
+    # truth and it had already drifted from the skin (10/12/13 against 11/13/14).
+    theme_re = re.compile(r"""\:root\[data-theme="([a-z0-9-]+)"\]\{([^}]*)\}""")
+    theme_blocks = dict(theme_re.findall(html))
+    if not theme_blocks:
+        fail("no :root[data-theme=...] block to read the --fs-* scale from", fails)
     else:
-        sizes_css = dict(re.findall(r"(--fs-[a-z0-9]+)\s*:\s*(\d+)px", fs_block.group(1)))
-        # the sizes are declared once at :root (they are not per-theme), so compare against the
-        # skins that declare them; a skin that inherits must resolve to the same numbers.
         for sid in SKIN_ORDER:
             chain = []
             cur = sid
@@ -118,6 +119,8 @@ def main() -> int:
                 sz.update(json.loads((GAME / "assets" / "skins" / c / "skin.json").read_text(encoding="utf-8"))
                           .get("tokens", {}).get("size", {}))
             n = 0
+            sizes_css = dict(re.findall(r"(--fs-[a-z0-9]+)\s*:\s*(\d+)px",
+                                       theme_blocks.get(sid, "")))
             for token, var in (("xs", "--fs-xs"), ("s", "--fs-s"), ("m", "--fs-m"), ("l", "--fs-l"), ("xl", "--fs-xl")):
                 if token not in sz:
                     continue

@@ -12,7 +12,9 @@ const PI := preload("res://core/player_identity.gd")
 
 static func test_list() -> Array[String]:
 	return ["test_default_skin_loads", "test_neuro_overrides_bg",
-		"test_evil_inherits_from_neuro", "test_extends_chain_resolves",
+		"test_neuro_is_light_and_evil_is_dark", "test_neuro_text_reads_on_the_light_field",
+		"test_evil_stands_alone",
+		"test_extends_chain_resolves",
 		"test_token_fallback_when_absent", "test_color_token_and_legacy_path",
 		"test_player_color_cycles", "test_group_color_fallback",
 		"test_tile_color_group_vs_type", "test_size_and_space_tokens",
@@ -38,20 +40,78 @@ static func test_neuro_overrides_bg() -> String:
 	var s = SM.new()
 	s.load_skin("neuro")
 	var bg = s.color("bg")
-	if bg != Color("0b0613"):
-		return "neuro bg should be #0b0613, got %s" % bg
+	# The owner's call (21.10): neuro is the LIGHT skin, evil is the dark one.
+	if bg != Color("f6f2fb"):
+		return "neuro bg should be #f6f2fb (the light skin), got %s" % bg
 	return ""
 
-static func test_evil_inherits_from_neuro() -> String:
+
+static func test_neuro_is_light_and_evil_is_dark() -> String:
+	# The point of the 21.10 change is not a hex - it is that the TWO themes differ in
+	# LIGHTNESS. A skin that says "light" but paints a dark field would pass every hex
+	# check and still be wrong, so this test compares the fields themselves.
+	var n = SM.new()
+	n.load_skin("neuro")
+	var e = SM.new()
+	e.load_skin("evil")
+	var nl := n.color("bg").get_luminance()
+	var el := e.color("bg").get_luminance()
+	if nl <= el:
+		return "neuro (%.3f) must be LIGHTER than evil (%.3f) - the owner asked for a light skin" % [nl, el]
+	return ""
+
+
+static func test_neuro_text_reads_on_the_light_field() -> String:
+	# A light field INVERTS the contrast problem: the dark skin hid a too-dark accent,
+	# the light one hides a too-light one. The text and the accents must still be
+	# readable on the pale field, or the skin is pretty and useless.
+	var s = SM.new()
+	s.load_skin("neuro")
+	var bg := s.color("bg")
+	for key in ["text", "muted", "accent", "accent2", "money", "danger", "good"]:
+		var c: Color = s.color(key)
+		var ratio: float = _contrast(c, bg)
+		if ratio < 4.5:
+			return "%s on the light field is only %.2f:1 - it must read (4.5:1)" % [key, ratio]
+	return ""
+
+
+## WCAG relative luminance and the contrast ratio between two opaque colours.
+## NOT Color.get_luminance() - that is Godot's own formula and it disagrees with
+## WCAG by enough to fail a 4.5:1 check that WCAG passes.
+static func _contrast(a: Color, b: Color) -> float:
+	var la := _wcag_lum(a)
+	var lb := _wcag_lum(b)
+	var hi: float = maxf(la, lb)
+	var lo: float = minf(la, lb)
+	return (hi + 0.05) / (lo + 0.05)
+
+
+static func _wcag_lum(c: Color) -> float:
+	var r := _chan(c.r)
+	var g := _chan(c.g)
+	var b := _chan(c.b)
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+static func _chan(v: float) -> float:
+	if v <= 0.03928:
+		return v / 12.92
+	return pow((v + 0.055) / 1.055, 2.4)
+
+
+static func test_evil_stands_alone() -> String:
 	var s = SM.new()
 	s.load_skin("evil")
 	# evil defines bg itself
 	if s.color("bg") != Color("080406"):
 		return "evil bg should be #080406, got %s" % s.color("bg")
-	# ...but inherits group colours from neuro (2 levels up via extends)
+	# It no longer extends neuro (that skin is LIGHT now, and a dark-red theme on a pale
+	# field is not the dark theme), so it carries its OWN group colours.
 	if s.group_color("brown") != Color("8b5a3c"):
-		return "evil should inherit neuro's brown, got %s" % s.group_color("brown")
+		return "evil should carry its own brown, got %s" % s.group_color("brown")
 	return ""
+
 
 static func test_extends_chain_resolves() -> String:
 	var s = SM.new()
@@ -77,8 +137,8 @@ static func test_token_fallback_when_absent() -> String:
 static func test_color_token_and_legacy_path() -> String:
 	var s = SM.new()
 	s.load_skin("neuro")
-	# semantic token path
-	if s.color("accent") != Color("ff6fae"):
+	# semantic token path - neuro is the LIGHT skin, so the accent is a deeper pink
+	if s.color("accent") != Color("c02a7d"):
 		return "token color.accent wrong: %s" % s.color("accent")
 	# neuro defines no colors.ui.*, so the legacy path must miss cleanly
 	if s.color("ui.accent", Color.RED) != Color.RED:
@@ -220,8 +280,9 @@ static func test_theme_builds_from_skin() -> String:
 	if str(th.get_type_variation_base("ButtonPrimary")) != "":
 		pass   # variations are declared by the component side; just ensure no crash
 	var col = th.get_color("font_color", "ButtonPrimary")
-	if col != Color("2a0618"):
-		return "ButtonPrimary font should be on_accent (#2a0618), got %s" % col
+	# neuro is the light skin: on_accent is white on a deep pink accent
+	if col != Color("ffffff"):
+		return "ButtonPrimary font should be on_accent (#ffffff), got %s" % col
 	if th.default_font_size != 14:
 		return "theme default font size should follow size.m (14), got %d" % th.default_font_size
 	var sb = th.get_stylebox("normal", "ButtonPrimary")
@@ -279,10 +340,10 @@ static func test_dotted_color_tokens_come_from_the_skin() -> String:
 	if not s.load_skin("neuro"):
 		return "neuro did not load"
 	var n := s.color("surface.1").to_html(false)
-	if n != "130b1f":
-		return "neuro surface.1 must be #130b1f from the file, got #%s (the fallback is #1e242e)" % n
-	if s.color("line").to_html(false) != "3b2a5e":
-		return "neuro line must be #3b2a5e, got #%s" % s.color("line").to_html(false)
+	if n != "ffffff":
+		return "neuro surface.1 must be #ffffff from the file, got #%s (the fallback is #1e242e)" % n
+	if s.color("line").to_html(false) != "b9a5d6":
+		return "neuro line must be #b9a5d6, got #%s" % s.color("line").to_html(false)
 	if not s.load_skin("default"):
 		return "default did not load"
 	if s.color("surface.1").to_html(false) != "1e242e":
