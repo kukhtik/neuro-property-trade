@@ -356,6 +356,7 @@ const D := {
 	"panno.event":   {"ru": "СОБЫТИЕ", "en": "EVENT"},
 	"panno.players": {"ru": "ИГРОКИ", "en": "PLAYERS"},
 	"panno.journal": {"ru": "ЖУРНАЛ", "en": "LOG"},
+	"panno.inspector": {"ru": "КЛЕТКА", "en": "TILE"},
 	# One row of the panno's player zone: cash is a separate value, this is what they own.
 	"panno.owns":    {"ru": "владений %d · домов %d", "en": "owns %d · houses %d"},
 	# The journal zone is 169 px tall: with an empty tail it would be a caption over a hole (R-3

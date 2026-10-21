@@ -93,8 +93,8 @@ func _run() -> void:
 	# not as direct children of panno-root - so the probe walks the whole tree.
 	var zones: Array = []
 	_collect_zones(root, zones)
-	if zones.size() != 4:
-		_fail("the panno has %d zone(s), expected 4" % zones.size())
+	if zones.size() != 5:
+		_fail("the panno has %d zone(s), expected 5" % zones.size())
 		_finish()
 		return
 
@@ -130,7 +130,7 @@ func _run() -> void:
 	print("  the lower belt: %s" % str(rows.get("bottom", [])))
 
 	# the four zones together must fill the interior
-	_check(total >= 1072.0 * 0.9, "the four zones fill only %.0f of 1072 px" % total)
+	_check(total >= 1072.0 * 0.9, "the zones fill only %.0f of 1072 px" % total)
 
 	# THE COMPOSITION, measured: the players zone is in the UPPER belt and the other three
 	# in the LOWER one. A stack of four would put all four at the same top edge - and the
@@ -139,8 +139,10 @@ func _run() -> void:
 	var lower: Array = rows.get("bottom", [])
 	_check(upper.size() == 1 and str(upper[0]) == "zone-players",
 		"the upper belt holds %s - it must hold the players zone alone" % str(upper))
-	_check(lower.size() == 3, "the lower belt holds %s - it must hold roll, event and journal"
+	_check(lower.size() == 4, "the lower belt holds %s - it must hold roll, event, journal"
 		% str(lower))
+	_check(lower.has("zone-inspector"), "the lower belt holds %s - the tile card must be IN
+		the ring, beside the journal (concept A), not outside it" % str(lower))
 	# and the two lower columns are side by side: the roll's left edge differs from the
 	# journal's. Stacked, they would share a left edge.
 	# The zones are in DIFFERENT PARENTS (the roll in the left column, the journal in the
@@ -236,9 +238,9 @@ func _fail(why: String) -> void:
 
 func _finish() -> void:
 	if _fails.is_empty():
-		print("==> PANNO-BELTS PASSED (%d checks: the hero zone keeps its room, and the four "
+		print("==> PANNO-BELTS PASSED (%d checks: the hero zone keeps its room, the five "
 			% _checks)
-		print("    zones fill the ring's interior)")
+		print("    zones fill the ring's interior, and the tile card is inside the ring)")
 		get_tree().quit(0)
 		return
 	for f in _fails:

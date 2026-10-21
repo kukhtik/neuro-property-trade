@@ -67,6 +67,8 @@ var _watermark := true
 ## zones; the widgets built below (watermark, dice tray, event banner, decision card) are hosted
 ## INSIDE its zones, so nothing in the centre is positioned by absolute coordinates any more.
 var _panno: Control
+## The tile card the shell asked to place inside the ring.
+var _hosted_card: Control = null
 var _last_line: Dictionary = {}          # the shell's finished journal line (R-14: not computed here)
 var _journal_tail: Array = []            # last N journal sentences, oldest first
 const JRN_TAIL := 3
@@ -155,6 +157,8 @@ func _build_centre() -> void:
 	add_child(_panno)
 	_panno.build()
 	_panno.seats_requested.connect(func() -> void: seats_requested.emit())
+	# the shell may have asked for the card before this _ready ran - place it now.
+	_place_hosted_card()
 	var roll_col: VBoxContainer = _panno.zone_box("roll")
 	var ev_col: VBoxContainer = _panno.zone_box("event")
 	if roll_col != null:
@@ -162,11 +166,52 @@ func _build_centre() -> void:
 	if ev_col != null:
 		_banner.reparent(ev_col, false)
 		_card.reparent(ev_col, false)
-	# The watermark is the COLD state's decoration; the panno already says "партия не начата".
+	# The INSPECTOR moves into the ring: concept A puts the tile card in the lower belt,
+	# beside the journal - two views of the same turn. The card belongs to the SHELL, so it
+	# arrives later, through `host_inspector()`.
+
+	# The watermark is the COLD state's decoration; the panno already says "партия не начала".
 	# It stays a child of the board (never inside a column: an autowrapping label there demanded
 	# 577px of minimum height and pushed every zone out of the ring).
 	_wm1.visible = false
 	_wm2.visible = false
+
+
+## Put the shell's tile card INSIDE the ring, in the panno's inspector slot.
+##
+## The board hosts the panno, so the board is the one that can place into it - and the
+## shell talks to the board through methods, never by reaching into its tree. The card
+## keeps its own behaviour (selection, action buttons) and only changes where it LIVES.
+##
+## Called once, after the panno is built. Returns false when the slot is not there,
+## so the caller can keep the card in the right column instead of losing it.
+func host_inspector(card: Control) -> bool:
+	if card == null:
+		return false
+	# The panno is built in _ready(), and the shell may ask BEFORE that has happened.
+	# Placing it then would silently do nothing and the card would stay outside the
+	# ring - which is exactly what a probe found. So the board RETAINS the card and
+	# places it as soon as the slot exists.
+	_hosted_card = card
+	return _place_hosted_card()
+
+
+## Put the retained card into the panno's slot, if the slot is there yet.
+func _place_hosted_card() -> bool:
+	if _hosted_card == null:
+		return false
+	if not is_instance_valid(_hosted_card):
+		_hosted_card = null
+		return false
+	if _panno == null or not _panno.has_method("inspector_slot_box"):
+		return false
+	var slot: VBoxContainer = _panno.inspector_slot_box()
+	if slot == null:
+		return false
+	if _hosted_card.get_parent() == slot:
+		return true
+	_hosted_card.reparent(slot, false)
+	return true
 
 
 ## Ring coordinates for board index (classic order: GO bottom-right, anti-clockwise).

@@ -197,6 +197,13 @@ func _build() -> void:
 	_inspector.name = "inspector"
 	_inspector.action_requested.connect(Callable(self, "_on_inspector_action"))
 	_rightcol.add_child(_inspector)
+	# The tile card moves INTO the ring, into the panno's inspector slot: concept A puts
+	# it in the lower belt beside the journal, and the right column was 344px - 14.5 % of
+	# the 1600 frame - of the screen that was NOT the board. The card keeps its own
+	# behaviour (the selection, the action buttons); only its PLACE changes. If the slot
+	# is not there the card stays in the right column - it must never be lost.
+	if _board != null and _board.has_method("host_inspector"):
+		_board.call("host_inspector", _inspector)
 
 	_build_compact_shell(body)
 

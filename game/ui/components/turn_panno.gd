@@ -40,7 +40,7 @@ signal seats_requested
 ##
 ## WHY, in one line: the hero action and the thing it acts on must be read together, and
 ## in a stack the eye meets four full-width bands before it gets to the journal.
-const ZONE_KEYS: Array = ["roll", "event", "players", "journal"]
+const ZONE_KEYS: Array = ["roll", "event", "players", "journal", "inspector"]
 ## The two belts share the interior 30/70: the seats need a fixed band (four cards
 ## side by side, each with a name, a chip and a balance), the lower belt takes the rest.
 const BELT_TOP_RATIO := 30.0
@@ -48,12 +48,15 @@ const BELT_BOTTOM_RATIO := 70.0
 ## The left column of the lower belt is FIXED width (SG-04/P-4 lets a flex row stretch
 ## exactly one child - the journal is the one that grows). 520px at a 1600 frame: the
 ## hero buttons and the event line need that much and no more.
-const BELT_LEFT_WIDTH := 520.0
+const BELT_LEFT_WIDTH := 520
+## The tile card's width in the lower belt - fixed, so the journal is the only
+## stretching child of that row (P-4).
+const INSPECTOR_WIDTH := 330.0
 ## Within the lower belt: the roll column (the hero) and the event column share the
 ## left, the journal the right. A stretch ratio only says how the REMAINING space is
 ## shared - measured, the stack never squeezed anything (the journal holds 3 lines and
 ## does not grow), so these ratios are about PROPORTION, not about survival.
-const RATIOS: Array = [22.0, 28.0, 30.0, 20.0]
+const RATIOS: Array = [22.0, 28.0, 30.0, 60.0, 40.0]
 const PLAYER_ROWS := 4
 const JOURNAL_ROWS := 3
 ## Font sizes are ratios of a board cell, so the panno reads the same at 1280 and at 1600.
@@ -77,11 +80,16 @@ var _zones: Array = []
 var _belt_top: HBoxContainer
 var _belt_bottom: HBoxContainer
 var _belt_col_left: VBoxContainer
-var _belt_col_right: VBoxContainer
+var _belt_col_right: HBoxContainer
 var _caps: Array = []
 var _font_nodes: Array = []      # [{node: Control, ratio: float}]
 
 var roll_slot: HBoxContainer
+## The slot the INSPECTOR sits in - the right column of the lower belt, beside the
+## journal. The panno supplies the layout, the shell supplies the widget (the same
+## pattern as `roll_slot` and the dice). The inspector is the shell's: it knows the
+## selection and owns the action buttons.
+var inspector_slot: VBoxContainer
 var _turn: Label
 var _event_who: Label
 var _event_text: Label
@@ -151,13 +159,17 @@ func build() -> void:
 	_belt_col_left.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_belt_col_left.custom_minimum_size.x = BELT_LEFT_WIDTH
 	_belt_bottom.add_child(_belt_col_left)
-	_belt_col_right = VBoxContainer.new()
+	_belt_col_right = HBoxContainer.new()
 	_belt_col_right.name = "panno-col-right"
 	_belt_col_right.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_belt_col_right.add_theme_constant_override("separation", 4)
 	_belt_col_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_belt_col_right.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_belt_bottom.add_child(_belt_col_right)
+	# the right side of the lower belt is a PAIR of columns: the journal and the
+	# tile card. They are two views of the same turn - what happened and what this
+	# tile is - and concept A puts them side by side. The journal keeps the wider
+	# share (its lines are long); the tile card needs enough width for its rows.
 
 	for i in ZONE_KEYS.size():
 		var zone := PanelContainer.new()
@@ -165,9 +177,17 @@ func build() -> void:
 		zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		zone.add_theme_stylebox_override("panel",
 			UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0, 6.0))
-		zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		zone.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		zone.size_flags_stretch_ratio = float(RATIOS[i])
+		# P-4: a flex row stretches EXACTLY ONE child. The lower belt's right side is
+		# a row of two zones - the journal and the tile card - so only the JOURNAL
+		# may grow. The card takes a fixed width: its rows are short, and a card that
+		# stretched to 600px of empty space is the owner's own complaint.
+		if str(ZONE_KEYS[i]) == "inspector":
+			zone.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			zone.custom_minimum_size.x = INSPECTOR_WIDTH
+		else:
+			zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# WHERE a zone lives:
 		#   players  - the whole upper belt
 		#   roll     - the upper half of the lower belt's LEFT column
@@ -179,7 +199,10 @@ func build() -> void:
 		if str(ZONE_KEYS[i]) == "players":
 			_belt_top.add_child(zone)
 		else:
-			if str(ZONE_KEYS[i]) == "journal":
+			if str(ZONE_KEYS[i]) == "journal" or str(ZONE_KEYS[i]) == "inspector":
+				# The journal and the tile card are SIBLINGS: two views of the same turn,
+				# and concept A puts them side by side in the ring's lower belt. The
+				# journal keeps the wider share - its lines are long.
 				_belt_col_right.add_child(zone)
 			else:
 				_belt_col_left.add_child(zone)
@@ -277,6 +300,13 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 				_font_nodes.append({"node": line, "ratio": FS_JRN})
 				col.add_child(line)
 				_jrn_rows.append(line)
+		"inspector":
+			# The tile card. The panno gives it a PLACE and a caption; the shell puts
+			# the widget in (the same pattern as `roll_slot` and the dice). The inspector
+			# stays the shell's - it knows the selection and owns the action buttons.
+			inspector_slot = UiTheme.vbox(4)
+			inspector_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			col.add_child(inspector_slot)
 
 
 ## Cell size comes from the board, so every font is a ratio of the ring's own geometry.
@@ -310,6 +340,15 @@ func zone_names() -> Array:
 
 ## The column of one zone, so the board can host its OWN widgets inside the panno's layout
 ## (the dice tray, the event banner, the decision card) instead of positioning them by hand.
+## Where the INSPECTOR goes. The shell asks for the slot and reparents the tile card
+## into it - the panno supplies the layout, the shell keeps the widget and its behaviour.
+## The same pattern as `roll_slot` and the dice tray.
+func inspector_slot_box() -> VBoxContainer:
+	if not _built:
+		build()
+	return inspector_slot
+
+
 func zone_box(key: String) -> VBoxContainer:
 	if not _built:
 		build()

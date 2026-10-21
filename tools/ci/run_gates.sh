@@ -119,6 +119,10 @@ GATES=(
 	# roll | journal | event below) - concept A's composition. In a stack of four
 	# full-width bands the eye meets three bands before it reaches the journal.
 	"PANNO-BELTS|hg|required|script|tools/ci/gates/panno_belts_gate.sh"
+	# INSPECTOR-IN-RING: the tile card is INSIDE the ring, in the lower belt beside
+	# the journal - it used to live in the shell's right column, 14.5 % of the frame
+	# off the board. The probe measures the REAL product, not a mock.
+	"INSPECTOR-IN-RING|hg|required|script|tools/ci/gates/inspector_in_ring_gate.sh"
 	"SG-11|sg|required|scene|sg11_usability_gate"
 	# GLYPH: no screen may draw a codepoint the font has no shape for. It found 74 of them across
 	# 13 files (every pictograph in the product plus most arrows) rendering as missing-glyph

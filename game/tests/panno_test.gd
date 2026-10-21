@@ -30,19 +30,23 @@ static func _panno():
 static func test_panno_four_zones_in_reading_order() -> String:
 	var p = _panno()
 	var names: Array = p.zone_names()
-	var want: Array = ["zone-roll", "zone-event", "zone-players", "zone-journal"]
+	# FIVE zones since 21.10: the tile card (the inspector) joined the journal in the
+	# lower belt's right side - concept A puts "what happened" and "what is this tile"
+	# together, and the right column was 344px of the 1600 frame that was NOT the board.
+	var want: Array = ["zone-roll", "zone-event", "zone-players", "zone-journal",
+		"zone-inspector"]
 	if names != want:
-		return "the panno's zones are %s, the brief's reading order is %s" % [str(names), str(want)]
+		return "the panno's zones are %s, the composition says %s" % [str(names), str(want)]
 	var ratios: Array = p.zone_ratios()
-	var want_r: Array = [22.0, 28.0, 30.0, 20.0]
+	var want_r: Array = [22.0, 28.0, 30.0, 60.0, 40.0]
 	if ratios.size() != want_r.size():
 		return "expected 4 zone ratios, got %d" % ratios.size()
 	for i in want_r.size():
 		if absf(float(ratios[i]) - float(want_r[i])) > 0.01:
-			return "zone %s has ratio %.1f, the brief's §4.1 table says %.0f" % [
+			return "zone %s has ratio %.1f, the composition says %.0f" % [
 				want[i], float(ratios[i]), float(want_r[i])]
 	# every zone must be able to take its share of the height
-	for key in ["roll", "event", "players", "journal"]:
+	for key in ["roll", "event", "players", "journal", "inspector"]:
 		var box = p.zone_box(key)
 		if box == null:
 			return "zone_box('%s') returned null - the zone cannot host anything" % key
