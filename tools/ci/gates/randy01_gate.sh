@@ -132,8 +132,27 @@ if ! kill -0 "$randy_pid" 2>/dev/null; then
 fi
 
 # --- the seat plays against Randy ---
-out="$(cd "$repo" && NEURO_SDK_WS_URL="ws://127.0.0.1:$port" timeout 120 "$godot" --headless --path game res://tools/gates/hg08_sdk_seat_gate.tscn 2>&1)"
+# The timeout must be LONGER than the scene's own watch phase: the scene allows 180s for
+# the match to advance (hg08_sdk_seat_gate.gd, the "watch" state) and the standalone HG-08
+# gate gives it 260s. At 120s this gate killed the scene BEFORE it could print the
+# "N SDK-seat intent(s) accepted" line - and the gate then reported "the seat did not
+# report how many intents the engine accepted", which reads like a protocol failure and
+# is not one. The scene's deadline is the authority: give it more than it asks for.
+# The timeout must EXCEED the scene's own watch deadline (180s, hg08_sdk_seat_gate.gd's
+# "watch" state) with room for the boot and for Randy's start. At 120s the gate killed the
+# scene mid-watch and read NOTHING - and then said "the seat did not report how many
+# intents the engine accepted", which reads like a protocol failure and is not one: the
+# server had logged 184 answers. The standalone HG-08 gate gives the same scene 260s.
+# The scene's output goes to a FILE, not into a shell variable: the gate kept only the
+# last six HG-08 lines, so the reason the scene stopped was thrown away and every failure
+# looked like the same thing. A gate that cannot show what the thing it measured said
+# cannot be diagnosed - and this one failed three times for three different reasons.
+scene_log="$repo/build/gates/RANDY-01-scene.log"
+mkdir -p "$repo/build/gates"
+(cd "$repo" && NEURO_SDK_WS_URL="ws://127.0.0.1:$port" timeout 320 "$godot" --headless \
+	--path game res://tools/gates/hg08_sdk_seat_gate.tscn) >"$scene_log" 2>&1
 rc=$?
+out="$(cat "$scene_log")"
 
 # --- what do we know? ---
 # Randy prints the command with util.inspect: `command: 'actions/register'`. The patterns
@@ -197,7 +216,8 @@ fi
 intents="$(printf '%s' "$out" | grep -aoE '[0-9]+ SDK-seat intent\(s\)' | grep -oE '^[0-9]+' | head -1)"
 if [ -z "$intents" ]; then
 	note "the seat did not report how many intents the engine accepted"
-	printf '%s\n' "$out" | grep -aE 'HG-08' | tail -6 | sed 's/^/    /'
+	printf '%s\n' "$out" | grep -aE 'HG-08|FAIL' | tail -8 | sed 's/^/    /'
+	note "the scene's own output: build/gates/RANDY-01-scene.log"
 	fails=$((fails + 1))
 elif [ "$intents" -lt 1 ]; then
 	note "the engine accepted 0 intents from the SDK seat against Randy"
