@@ -1,25 +1,39 @@
 extends PanelContainer
 ## The left dock (`#seats`): the player list, the stats strip and the ownership bar.
 ## v3 rebuild from the prototype markup; reads the spectator projection + seat list.
+##
+## 21.10: THE CARDS LIVE IN THE RING. The panno's players zone hosts this panel
+## (`turn_panno.players_slot`), so the four seats are laid out as a WRAPPING ROW of cards -
+## concept A's ".players 4 колонки карточками" - and `set_embedded(true)` drops the panel's
+## own title row because the zone already carries the caption. The same panel is also what
+## `drawer-seats` shows, where the row wraps down to one card per line.
 
 const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const MoneyFmt := preload("res://ui/core/money.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
 
+## The narrowest a seat card may be. In the ring's upper belt (1171px wide at 1600x1200) four
+## cards sit side by side; in a 320px drawer the flow wraps to one per line. Without a floor the
+## cards shrink to their text and the band reads as four strips.
+const CARD_MIN_W := 210.0
+
 var _title: Label
+var _head: HBoxContainer
 var _count: Label
-var _list: VBoxContainer
+var _list: HFlowContainer
 var _stats: HBoxContainer
 var _own_track: HBoxContainer
 var _own_legend: HBoxContainer
 var _skin: SkinManager
+var _embedded := false
 ## last sync() state - a locale switch re-renders the cards from it (SG-08)
 var _last_proj: Dictionary = {}
 var _last_seats: Array = []
 
 
 func _init() -> void:
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	add_theme_stylebox_override("panel",
 		UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var m := MarginContainer.new()
@@ -29,14 +43,20 @@ func _init() -> void:
 	var col := UiTheme.vbox(8)
 	m.add_child(col)
 
-	var head := UiTheme.hbox(8)
+	_head = UiTheme.hbox(8)
 	_title = UiTheme.label(I18n.t("ui.players"), 12, UiTheme.COL().text_dim)
-	head.add_child(_title)
+	_head.add_child(_title)
 	_count = UiTheme.label("", 10, UiTheme.COL().text_dim)
-	head.add_child(_count)
-	col.add_child(head)
+	_head.add_child(_count)
+	col.add_child(_head)
 
-	_list = UiTheme.vbox(4)
+	# HFlowContainer, not VBox: the four seats are a ROW when the host is the ring's wide upper
+	# belt and a COLUMN when it is the 320px drawer - the flow container is the one widget that
+	# answers both without a second layout mode to keep in sync.
+	_list = HFlowContainer.new()
+	_list.name = "seat-cards"
+	_list.add_theme_constant_override("h_separation", 6)
+	_list.add_theme_constant_override("v_separation", 4)
 	_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	col.add_child(_list)
 	_stats = UiTheme.hbox(4)
@@ -53,6 +73,16 @@ func _init() -> void:
 	_own_legend = UiTheme.hbox(0)
 	own.add_child(_own_legend)
 	col.add_child(own)
+
+
+## EMBEDDED IN THE RING. The panno's players zone carries the caption "Игроки" already, so the
+## panel drops its OWN title row there: two headings over one row of cards is a duplicate, not a
+## hierarchy. Everything else stays - the cards, the round/pot strip, the ownership bar - because
+## those are facts the ring does not otherwise show.
+func set_embedded(on: bool) -> void:
+	_embedded = on
+	if _head != null:
+		_head.visible = not on
 
 
 ## Update from the projection. `seats` carries pid/name/colour/input_driver.
@@ -87,12 +117,17 @@ func _card(p: Dictionary, seats: Array, turn: int, names: Dictionary) -> Control
 			driver = str(s.input_driver)
 	var card := PanelContainer.new()
 	var active: bool = pid == turn
-	# R-2 / D5: the cards DISTRIBUTE over the dock's height instead of stacking at the top and
-	# leaving ~555px of dead space under them. With four seats and a 716px column, three cards'
-	# worth of emptiness sat between the last card and the stats strip; a viewer read that as
-	# "the panel is broken". EXPAND_FILL makes the seat list share the free height evenly, so the
-	# panel is as tall as it is because its content needs it, not because a spacer filled it.
+	# R-2 / D5: the cards DISTRIBUTE over the host's room instead of stacking at the top and
+	# leaving ~555px of dead space under them; a viewer read that as "the panel is broken".
+	# In the ring they share the upper belt WIDTH instead (four across), which is why the floor
+	# is a width and the flow container wraps a narrow host back into a column.
 	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.custom_minimum_size.x = CARD_MIN_W
+	# The ring's players zone is a DOOR (a click opens `drawer-seats`). A card that swallowed the
+	# press would leave only the band's 20px caption clickable, so the press is passed up to the
+	# panno's zone column instead of being eaten here.
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
 	card.add_theme_stylebox_override("panel",
 		UiTheme.box(UiTheme.COL().panel_dark if active else UiTheme.COL().panel,
 			col if active else UiTheme.COL().border, 2 if active else 1, 0))
@@ -101,6 +136,9 @@ func _card(p: Dictionary, seats: Array, turn: int, names: Dictionary) -> Control
 		m.add_theme_constant_override(edge, 8)
 	card.add_child(m)
 	var col_box := UiTheme.vbox(2)
+	# a card taller than its four lines centres them instead of hugging the top edge (the belt is
+	# 326px at 1600x1200 - a top-aligned card would be half empty inside its own border)
+	col_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	m.add_child(col_box)
 	var row1 := UiTheme.hbox(8)
 	var av := Panel.new()

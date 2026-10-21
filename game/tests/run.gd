@@ -65,6 +65,10 @@ func _init() -> void:
 		# P1.1 (brief §4.1): the ring's centre is a four-zone turn panno - zones, ratios, projection
 		# source and the no-absolute-layout rule are pinned here.
 		"res://tests/panno_test.gd",
+		# AUDIO (track 2): `game_settings.sound`, the SoundManager switch/log, one asset per sound name
+		# and the engine-event -> sound binding. Before this module the product shipped a "Звук"
+		# checkbox that wrote nothing and no sound files at all.
+		"res://tests/sound_test.gd",
 	]
 	_check_orphan_modules(modules)
 	for path in modules:
@@ -102,9 +106,25 @@ func _check_orphan_modules(modules: Array[String]) -> void:
 func _run_module(path: String) -> void:
 	var mod: GDScript = load(path)
 	if mod == null:
-		_failures.append("cannot load %s" % path)
+		# A MODULE THAT DOES NOT PARSE VANISHES, AND THE RUN STAYS GREEN. This happened on
+		# 21.10: `sound_manager.gd` had a parse error (a `static` keyword on a comment line),
+		# so `sound_test.gd` could not preload it, the module was dropped, and the oracle
+		# reported "ran 444 tests, 0 failed" - while EIGHT sound tests never ran. The runner
+		# caught a listed function that does not exist and a module on disk that is not
+		# listed, but not a module that cannot be LOADED.
+		_failures.append("cannot load %s - it does not parse, so its tests never run" % path)
 		return
 	var names: Array = mod.call("test_list")
+	# AN EMPTY LIST MEANS THE MODULE IS BROKEN, NOT EMPTY. A module whose PRELOAD failed
+	# still parses itself, so `load()` returns a script, but `test_list()` comes back with
+	# nothing - and the runner counts 0 tests for it and stays green. That is what happened
+	# on 21.10: `sound_manager.gd` had a parse error, `sound_test.gd` could not preload it,
+	# and the oracle reported "ran 444 tests, 0 failed" while EIGHT sound tests never ran.
+	if names.is_empty():
+		var msg := "%s :: test_list() is EMPTY - the module is broken, not empty (a preload that failed to parse leaves the module itself parseable)" % path.get_file()
+		_failures.append(msg)
+		push_error(msg)
+		return
 	# A TEST FUNCTION THAT IS NOT LISTED IN `test_list` NEVER RUNS, and the suite stays green.
 	# That happened while adding the language button: the function was written, the assertion it
 	# makes was real, and `ran N tests, 0 failed` never counted it. Compare what the module

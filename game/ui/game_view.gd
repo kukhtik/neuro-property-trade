@@ -26,6 +26,10 @@ const ModalHost := preload("res://ui/modal_host.gd")
 const BoardScene := preload("res://visual/board_scene.gd")
 const BoardCamera := preload("res://ui/components/board_camera.gd")
 const SeatManager := preload("res://seats/seat_manager.gd")
+## SOUND: the shell is where an event becomes five surfaces (journal, toast, board banner, cell,
+## console). It is also where it becomes a sound — one call, the same event, so the ear and the
+## eye cannot be told different news.
+const SoundManager := preload("res://audio/sound_manager.gd")
 
 ## E-2 (master-fix-plan §2, D10): the event kinds that must leave a mark ON THE BOARD. The plan
 ## lists them: purchase, auction start/win, build, bankruptcy, jail, winner, tax, go bonus, trade.
@@ -137,7 +141,9 @@ func _build() -> void:
 	_top.name = "top"
 	_top.settings_requested.connect(func() -> void: settings_requested.emit())
 	_top.restart_requested.connect(func() -> void: restart_requested.emit())
-	_top.skin_requested.connect(func(id: String) -> void: skin_requested.emit(id))
+	_top.skin_requested.connect(func(id: String) -> void:
+		SoundManager.play("skin")
+		skin_requested.emit(id))
 	# PART 2: the header's panels button and the H key do the same thing.
 	_top.panels_requested.connect(Callable(self, "toggle_panels"))
 	col.add_child(_top)
@@ -151,6 +157,8 @@ func _build() -> void:
 	_seats_panel.name = "seats"
 	_seats_panel.custom_minimum_size.x = DOCK_L
 	_seats_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# A safety net only: the panel is hosted into the ring further down. Until that has happened
+	# it lives in the body row, so a board that failed to build a panno can never LOSE it.
 	body.add_child(_seats_panel)
 
 	# centre column: the STAGE (the board under a camera) with the console under it
@@ -170,7 +178,7 @@ func _build() -> void:
 	_board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_board.tile_clicked.connect(Callable(self, "_on_tile_clicked"))
 	# R-15: the panno's players zone replaces the seats rail; a click on it opens the full cards.
-	_board.seats_requested.connect(func() -> void: _open_drawer("seats"))
+	_board.seats_requested.connect(func() -> void: _on_seats_requested())
 	_camera.add_child(_board)
 	_camera.setup(_board)
 	_camera.token_pos_of = Callable(self, "_token_board_pos")
@@ -204,6 +212,22 @@ func _build() -> void:
 	# is not there the card stays in the right column - it must never be lost.
 	if _board != null and _board.has_method("host_inspector"):
 		_board.call("host_inspector", _inspector)
+	# THE SEAT CARDS MOVE INTO THE RING TOO (track 1, step 2), into the panno's players zone:
+	# the panno gives the place, this panel stays the widget. They came from a 268px left dock
+	# that the profile hides below 2000px wide, so on every window the product actually opens the
+	# richer view of the four seats was behind a drawer while the zone painted a poorer copy of
+	# the same four facts. `set_embedded` drops the panel's own title (the zone has a caption).
+	if _seats_panel != null and _seats_panel.has_method("set_embedded"):
+		_seats_panel.call("set_embedded", true)
+	# THE SEAT CARDS MOVE INTO THE RING (track 1, step 2), into the panno's players zone.
+	#
+	# DEFERRED, and that is not a style choice. The body row is still adding children
+	# at this point, so it is BUSY, and Godot refuses the move with
+	# "Parent node is busy adding/removing children" - the card stayed in the dock and
+	# the ring kept its poorer copy of the seat facts. The board already retains a widget
+	# and places it when the slot exists; the shell must wait for the same moment.
+	if _board != null and _board.has_method("host_players"):
+		_board.call("host_players", _seats_panel)
 
 	_build_compact_shell(body)
 
@@ -321,15 +345,28 @@ func set_panels_hidden(hidden: bool) -> void:
 ## the dock was hidden - v3_probe failed on exactly that at 1440x900.
 func dock_shown(which: String) -> bool:
 	match which:
-		"seats": return _seats_panel != null and _seats_panel.visible
+		"seats":
+			# THERE IS NO LEFT DOCK ANY MORE (R-15 removed the rail, track 1 step 2 moved the seat
+			# cards themselves into the ring). A probe asking "is the seats dock up?" gets the true
+			# answer - there is no dock to show - and "are the seats reachable?" is answered by
+			# zone-players in the ring and by `drawer-seats`, not by this.
+			return false
 		"rightcol": return _rightcol != null and _rightcol.visible
 	return false
 
 
+## The seats zone was clicked: open the full cards in the drawer. In a dock-width window they are
+## already on screen, so the drawer there would only cover the board with the same four cards.
+func _on_seats_requested() -> void:
+	if _is_compact():
+		_open_drawer("seats")
+
+
 func _apply_panels_visibility() -> void:
 	var compact := _is_compact()
-	if _seats_panel != null:
-		_seats_panel.visible = (not compact) and not _panels_hidden
+	# The seat cards are NOT a side panel any more: they live in the ring's players zone, which is
+	# part of the turn surface at every profile. Hiding them here would leave that zone a caption
+	# over nothing (R-5) - the very defect the move was meant to remove.
 	if _rightcol != null:
 		_rightcol.visible = (not compact) and not _panels_hidden
 	if _rail_right != null:
@@ -581,15 +618,28 @@ func _close_drawer(which: String) -> void:
 	if c != null:
 		match which:
 			"seats":
-				_body_row.add_child(c)
-				_body_row.move_child(c, 0)
-				(c as Control).visible = not _is_compact()
+				# THE SEAT CARDS BELONG TO THE RING: hand them back to the panno's players slot, not
+				# to the body row - the drawer was only borrowing them. The board retains whatever
+				# it is given, so this also works if the panno has not been built yet.
+				if _board != null and _board.has_method("host_players"):
+					_board.call("host_players", c)
+					(c as Control).visible = true
+				else:
+					_body_row.add_child(c)
+					_body_row.move_child(c, 0)
+					(c as Control).visible = not _is_compact()
 			"journal":
 				_rightcol.add_child(c)
 				_rightcol.move_child(c, 1)
 			"inspector":
-				_rightcol.add_child(c)
-				_rightcol.move_child(c, 2)
+				# same rule as the seat cards: the tile card lives in the ring's lower belt now, so
+				# closing its drawer must hand it back to the panno, not to the (hidden) right column
+				if _board != null and _board.has_method("host_inspector"):
+					_board.call("host_inspector", c)
+					(c as Control).visible = true
+				else:
+					_rightcol.add_child(c)
+					_rightcol.move_child(c, 2)
 	(d as Control).visible = false
 
 
@@ -702,6 +752,8 @@ func set_remote_session(sess) -> void:
 
 ## The host refused an intent from this client. Say why in the player's language.
 func show_rejection(reason: String) -> void:
+	# A refused intent is the one event with no engine event behind it: it never leaves the client.
+	SoundManager.play("error")
 	if _modals != null:
 		_modals.show_message(I18n.t("gv.rejected_title"), I18n.t("gv.rejected_body", [reason]))
 
@@ -709,6 +761,9 @@ func show_rejection(reason: String) -> void:
 ## Main pushes the spectator projection (local engine or the wire).
 func apply_projection(proj: Dictionary) -> void:
 	_proj = proj
+	# SOUND: turn start and the last seconds of the clock. The manager keeps its own state and
+	# reads no other source, so the ear follows the same projection the panels paint.
+	SoundManager.on_projection(proj)
 	if _cold:
 		_cold = false
 		if _console != null:
@@ -940,6 +995,9 @@ func _on_events(events: Array) -> void:
 	for ev in events:
 		var e: Dictionary = ev
 		var kind: String = str(e.get("type", ""))
+		# SOUND: the event decides the sound, exactly as it decides the journal line and the toast.
+		# Silent kinds (cash/tax/move...) are silent because SoundManager's map says so, not here.
+		SoundManager.play_event(kind)
 		if _toasts != null:
 			# E-1/D9: the toast gets the same context the journal line gets (tile names, seats), so a
 			# trade notification can name the properties instead of showing a bare proposer name.

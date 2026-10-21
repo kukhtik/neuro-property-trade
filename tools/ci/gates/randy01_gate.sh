@@ -72,7 +72,28 @@ else
 fi
 
 randy_pid=""
+# `npx tsx index.ts` is not one process: bash -> node(npx) -> cmd -> node(tsx) -> node(server).
+# Killing only $randy_pid (the subshell) kills the WRAPPER and lets the grandchildren live:
+# they re-parent, keep their sockets and ~35 MB each, and every gate run leaked one more
+# server (a night of sweeps left 40 orphaned node.exe on this machine). So the cleanup must
+# hunt by the one handle that survives re-parenting - the command line naming the Randy dir.
 cleanup() {
+	if command -v powershell.exe >/dev/null 2>&1; then
+		RANDY_DIR_WIN="$(cygpath -w "$randy_dir" 2>/dev/null || printf '%s' "$randy_dir")" \
+			powershell.exe -NoProfile -Command '
+				$d = $env:RANDY_DIR_WIN
+				$me = $PID
+				Get-CimInstance Win32_Process |
+					Where-Object {
+						$_.ProcessId -ne $me -and $_.CommandLine -and
+						$_.Name -in @("node.exe","cmd.exe") -and
+						$_.CommandLine.IndexOf($d, [StringComparison]::OrdinalIgnoreCase) -ge 0
+					} |
+					ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+			' >/dev/null 2>&1 || true
+	elif command -v pkill >/dev/null 2>&1; then
+		pkill -f "$randy_dir" 2>/dev/null || true
+	fi
 	if [ -n "$randy_pid" ]; then
 		kill "$randy_pid" 2>/dev/null || true
 	fi

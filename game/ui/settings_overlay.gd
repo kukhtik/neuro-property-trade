@@ -22,6 +22,9 @@ const SeatConfig := preload("res://seats/seat_config.gd")
 const PI := preload("res://core/player_identity.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const Bindings := preload("res://ui/core/bindings.gd")
+## The settings sheet owns the "Звук" answer: it writes the field AND tells the manager, so the
+## row is live instead of decoration (it carried `settings.tag_inert` until 21.10.2026).
+const SoundManager := preload("res://audio/sound_manager.gd")
 
 # REMOTE is the seat another MACHINE plays (a browser or a second copy of the game). It was
 # missing from this list, so a networked match could only be assembled from a CLI flag made
@@ -472,7 +475,11 @@ func _build_interface_tab() -> void:
 	_sound = CheckButton.new(); _sound.text = I18n.t("settings.sound_lbl")
 	_sound.button_pressed = true
 	_sound.tooltip_text = I18n.t("settings.sound_tip")
-	grid.add_child(_h("settings.sound", _sound, "settings.tag_inert"))
+	# LIVE, not inert: pressing it writes `game_settings.sound` (via _collect_settings) AND tells
+	# the manager at once, so the next click is already silent/audible. The row used to carry
+	# `settings.tag_inert` while the field it promised did not even exist.
+	_sound.toggled.connect(Callable(self, "_on_sound_toggled"))
+	grid.add_child(_h("settings.sound", _sound, "settings.tag_live"))
 
 	_language = OptionButton.new()
 	# the labels are localized like everything else: a hardcoded pair cannot follow a locale
@@ -496,6 +503,14 @@ func _build_interface_tab() -> void:
 ## P5: language selected -> switch locale (retranslate via _on_locale_changed).
 func _on_language(idx: int) -> void:
 	I18n.set_locale("en" if idx == 1 else "ru")
+
+
+## The "Звук" row. It is LIVE: the answer goes into `game_settings.sound` when the sheet is
+## collected AND straight into the manager now, and switching it ON says so out loud.
+func _on_sound_toggled(on: bool) -> void:
+	SoundManager.set_enabled(on)
+	if on:
+		SoundManager.play("toast")
 
 ## PART 4 — the CONTROLS tab (owner's order): rebind every key from the settings screen.
 ##
@@ -864,6 +879,7 @@ func _collect_settings() -> Settings:
 	s.free_parking = (_free_parking.selected == 1)
 	s.auctions_on_refusal = (_auctions.selected == 0)
 	s.animations = _animations.button_pressed
+	s.sound = _sound.button_pressed
 	s.event_overlay = _event_overlay.button_pressed
 	s.spectacle = _spectacle.button_pressed
 	s.language = "ru" if _language.selected == 0 else "en"

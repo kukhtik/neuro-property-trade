@@ -166,6 +166,9 @@ GATES=(
 	# the real state of the S3 promise, not a gate defect - its both-direction check has been run
 	# (floor 1.5 -> PASSED, floor 12 -> FAILED naming turn-phase). Promote with the font work.
 	"STREAM-READ|sg|required|script|tools/ci/gates/stream_read_gate.sh"
+	"PANELS-IN-RING|hg|required|script|tools/ci/gates/panels_in_ring_gate.sh"
+	"SOUND-EVENTS|hg|required|script|tools/ci/gates/sound_events_gate.sh"
+	"SOUND|hg|required|script|tools/ci/gates/sound_gate.sh"
 )
 
 

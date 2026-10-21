@@ -13,6 +13,9 @@ const TileView := preload("res://visual/tile_view.gd")
 const UiTheme := preload("res://ui/theme.gd")
 const I18n := preload("res://i18n/i18n.gd")
 const SkinManager := preload("res://visual/skin_manager.gd")
+## The board is where two of the event sounds belong: the dice to the tray tumble, a purchase to
+## the cell that changed hands. Same dispatcher (`play_event`), one extra call per kind.
+const SoundManager := preload("res://audio/sound_manager.gd")
 const TurnPanno := preload("res://ui/components/turn_panno.gd")
 const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 
@@ -67,8 +70,12 @@ var _watermark := true
 ## zones; the widgets built below (watermark, dice tray, event banner, decision card) are hosted
 ## INSIDE its zones, so nothing in the centre is positioned by absolute coordinates any more.
 var _panno: Control
-## The tile card the shell asked to place inside the ring.
-var _hosted_card: Control = null
+## The widgets the SHELL owns and this board places inside the ring: key -> Control.
+## "inspector" is the tile card, "players" the seat cards. The panno is built in `_ready()`
+## and the shell asks BEFORE that, so the board RETAINS each widget and places it as soon as
+## the slot exists - the first attempt of the tile-card move returned "ok" while placing
+## nothing, and the card stayed outside the ring.
+var _hosted: Dictionary = {}
 var _last_line: Dictionary = {}          # the shell's finished journal line (R-14: not computed here)
 var _journal_tail: Array = []            # last N journal sentences, oldest first
 const JRN_TAIL := 3
@@ -157,8 +164,9 @@ func _build_centre() -> void:
 	add_child(_panno)
 	_panno.build()
 	_panno.seats_requested.connect(func() -> void: seats_requested.emit())
-	# the shell may have asked for the card before this _ready ran - place it now.
-	_place_hosted_card()
+	# the shell may have asked for a widget before this _ready ran - place every retained one now.
+	for which in _hosted.keys():
+		_place_hosted(str(which))
 	var roll_col: VBoxContainer = _panno.zone_box("roll")
 	var ev_col: VBoxContainer = _panno.zone_box("event")
 	if roll_col != null:
@@ -169,6 +177,8 @@ func _build_centre() -> void:
 	# The INSPECTOR moves into the ring: concept A puts the tile card in the lower belt,
 	# beside the journal - two views of the same turn. The card belongs to the SHELL, so it
 	# arrives later, through `host_inspector()`.
+	# The SEAT CARDS move into the ring the same way, into the upper belt, through
+	# `host_players()`: their panel is the shell's PlayersPanel.
 
 	# The watermark is the COLD state's decoration; the panno already says "партия не начала".
 	# It stays a child of the board (never inside a column: an autowrapping label there demanded
@@ -186,32 +196,80 @@ func _build_centre() -> void:
 ## Called once, after the panno is built. Returns false when the slot is not there,
 ## so the caller can keep the card in the right column instead of losing it.
 func host_inspector(card: Control) -> bool:
-	if card == null:
-		return false
-	# The panno is built in _ready(), and the shell may ask BEFORE that has happened.
-	# Placing it then would silently do nothing and the card would stay outside the
-	# ring - which is exactly what a probe found. So the board RETAINS the card and
-	# places it as soon as the slot exists.
-	_hosted_card = card
-	return _place_hosted_card()
+	return _host("inspector", card)
 
 
-## Put the retained card into the panno's slot, if the slot is there yet.
-func _place_hosted_card() -> bool:
-	if _hosted_card == null:
+## Put the shell's SEAT CARDS inside the ring, in the panno's players slot (upper belt).
+## Same contract as `host_inspector`: the panel stays the shell's (it knows the seats and
+## paints them), only its address changes.
+func host_players(panel: Control) -> bool:
+	return _host("players", panel)
+
+
+## Retain a widget and try to place it. The panno is built in _ready(), and the shell may ask
+## BEFORE that has happened: placing it then would silently do nothing and the widget would stay
+## outside the ring - which is exactly what a probe found. So the board KEEPS the widget and
+## places it as soon as the slot exists (`_ready` calls `_place_hosted` for every retained one).
+func _host(which: String, widget: Control) -> bool:
+	if widget == null or not is_instance_valid(widget):
 		return false
-	if not is_instance_valid(_hosted_card):
-		_hosted_card = null
+	_hosted[which] = widget
+	if _place_hosted(which):
+		return true
+	# The move did not take: the widget's current parent was BUSY adding children, and
+	# Godot refuses a reparent then ("Parent node is busy adding/removing children").
+	# That is not a failure to report - it is a moment to wait for. The board already
+	# retains the widget; now it also retries once the tree has settled.
+	_retry_host.call_deferred(which)
+	return false
+
+
+## Retry a placement that was refused because a parent was busy. One deferred call can
+## still land while the parent is mid-add, so the attempt is repeated a few times.
+const HOST_RETRIES := 8
+
+
+func _retry_host(which: String, attempt: int = 0) -> void:
+	if not is_instance_valid(self):
+		return
+	if _place_hosted(which):
+		return
+	if attempt >= HOST_RETRIES:
+		return
+	_retry_host.call_deferred(which, attempt + 1)
+
+
+## Put a retained widget into the panno's slot, if the slot is there yet.
+func _place_hosted(which: String) -> bool:
+	var w = _hosted.get(which)
+	if w == null or not is_instance_valid(w):
+		_hosted.erase(which)
 		return false
-	if _panno == null or not _panno.has_method("inspector_slot_box"):
+	if _panno == null:
 		return false
-	var slot: VBoxContainer = _panno.inspector_slot_box()
+	var slot: VBoxContainer = null
+	match which:
+		"inspector":
+			if _panno.has_method("inspector_slot_box"):
+				slot = _panno.inspector_slot_box()
+		"players":
+			if _panno.has_method("players_slot_box"):
+				slot = _panno.players_slot_box()
 	if slot == null:
 		return false
-	if _hosted_card.get_parent() == slot:
+	if (w as Control).get_parent() == slot:
 		return true
-	_hosted_card.reparent(slot, false)
-	return true
+	var before: Node = (w as Control).get_parent()
+	# DEFINITIVE: is the reparent refused, or does something move it back afterwards?
+	# Godot's reparent() fails SILENTLY when the target is not an ancestor-compatible node.
+	var before_name := "null"
+	var bpar: Node = (w as Control).get_parent()
+	if bpar != null:
+		before_name = str(bpar.name)
+	(w as Control).reparent(slot, false)
+	return (w as Control).get_parent() == slot
+
+
 
 
 ## Ring coordinates for board index (classic order: GO bottom-right, anti-clockwise).
@@ -804,7 +862,12 @@ func _process(delta: float) -> void:
 ## Play one engine event (adapter shape): roll tumbles the tray, move hops the token.
 func play_event(ev: Dictionary) -> void:
 	var k: String = str(ev.get("k", ""))
+	# SOUND rides on the SAME dispatcher as the animations: one line, every event kind, so a new
+	# event cannot arrive with a picture and no sound. `roll` also gets its own line below, because
+	# the dice must be heard with the tray (the generic map leaves `roll` silent on purpose).
+	SoundManager.play_event(k)
 	if k == "roll":
+		SoundManager.play("dice", 0.05)
 		roll_tray(int(ev.get("a", 1)), int(ev.get("b", 1)))
 	elif k in ["move", "teleport"]:
 		var pid: int = int(ev.get("p", -1))

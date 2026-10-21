@@ -422,6 +422,9 @@ func _on_started(settings, seats: Array) -> void:
 	# Same as ПРИМЕНИТЬ: the "Анимации" answer must reach the shell on BOTH start paths, or a match
 	# started with START quietly runs with the previous answer (found by the settings audit, 19.10).
 	_game_view.set_animations(bool(settings.animations))
+	# The "Звук" row is applied here too: a match started from a saved/preset sheet must not run
+	# with the previous session's answer (same class of bug the animations row had).
+	SoundManager.set_enabled(bool(settings.sound))
 	_build_game(settings, seats)
 	_overlay.visible = false
 	_game_started = true
@@ -432,6 +435,7 @@ func _on_apply(settings, seats: Array) -> void:
 	# The "Анимации" row must reach the shell BEFORE the match is built, or the first match runs with
 	# yesterday's answer (the row is tagged live - see game_view.set_animations).
 	_game_view.set_animations(bool(settings.animations))
+	SoundManager.set_enabled(bool(settings.sound))
 	_build_game(settings, seats)
 	_overlay.visible = false
 	_game_started = true

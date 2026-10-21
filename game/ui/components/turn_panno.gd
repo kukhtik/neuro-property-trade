@@ -57,7 +57,6 @@ const INSPECTOR_WIDTH := 330.0
 ## shared - measured, the stack never squeezed anything (the journal holds 3 lines and
 ## does not grow), so these ratios are about PROPORTION, not about survival.
 const RATIOS: Array = [22.0, 28.0, 30.0, 60.0, 40.0]
-const PLAYER_ROWS := 4
 const JOURNAL_ROWS := 3
 ## Font sizes are ratios of a board cell, so the panno reads the same at 1280 and at 1600.
 const FS_CAPTION := 0.155
@@ -85,6 +84,11 @@ var _caps: Array = []
 var _font_nodes: Array = []      # [{node: Control, ratio: float}]
 
 var roll_slot: HBoxContainer
+## The slot the SEAT CARDS sit in - the upper belt. Same pattern as `inspector_slot`:
+## the panno supplies the place, the shell supplies the widget. The shell's PlayersPanel
+## owns the seat facts (position, the jail/bankrupt chips, the round/pot strip and the
+## ownership bar); the zone below it is only the door to the same cards in `drawer-seats`.
+var players_slot: VBoxContainer
 ## The slot the INSPECTOR sits in - the right column of the lower belt, beside the
 ## journal. The panno supplies the layout, the shell supplies the widget (the same
 ## pattern as `roll_slot` and the dice). The inspector is the shell's: it knows the
@@ -94,7 +98,6 @@ var _turn: Label
 var _event_who: Label
 var _event_text: Label
 var _event_money: Label
-var _pl_rows: Array = []          # [{root, chip, name, money, owns}]
 var _jrn_rows: Array = []
 
 
@@ -261,32 +264,22 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 			_font_nodes.append({"node": _event_money, "ratio": FS_VALUE})
 			col.add_child(_event_money)
 		"players":
-			for r in PLAYER_ROWS:
-				var row := UiTheme.hbox(8)
-				row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				# The rows share the zone's height: with fixed-height rows the column ended 58px
-				# short of its own bottom edge and READ-02 read that as 32 % dead space.
-				row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-				var chip := ColorRect.new()
-				chip.color = UiTheme.COL().border
-				chip.custom_minimum_size = Vector2(10, 10)
-				chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-				chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				row.add_child(chip)
-				var nm := UiTheme.label("", _fs(FS_VALUE), UiTheme.COL().text)
-				nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				_font_nodes.append({"node": nm, "ratio": FS_VALUE})
-				row.add_child(nm)
-				var money := UiTheme.label_money("", _fs(FS_VALUE))
-				_font_nodes.append({"node": money, "ratio": FS_VALUE})
-				row.add_child(money)
-				var owns := UiTheme.label("", _fs(FS_META), UiTheme.COL().text_dim)
-				_font_nodes.append({"node": owns, "ratio": FS_META})
-				row.add_child(owns)
-				col.add_child(row)
-				_pl_rows.append({"root": row, "chip": chip, "name": nm, "money": money, "owns": owns})
-			# The zone is the DOOR to the full seat cards: with the seats rail removed (R-15) the
-			# drawer would otherwise be unreachable in compact. A click, not a new control.
+			# THE SEAT CARDS. The panno gives the upper belt a PLACE; the shell puts its own
+			# PlayersPanel in it (the same pattern as the tile card and the dice tray). The panel
+			# owns the seat facts - position, the jail/bankrupt chips, the round/pot strip and the
+			# ownership bar - so "who is playing, with how much and where" has ONE source.
+			# Until 21.10 this zone painted four glance rows of its own (chip, name, cash, owned)
+			# while the FULL cards lived in the 268px left dock, which the profile hides below
+			# 2000px wide: the richer view of the same four facts was reachable only through a
+			# drawer. Moving the panel in removes the second, poorer copy instead of adding a third.
+			players_slot = UiTheme.vbox(4)
+			players_slot.name = "players-slot"
+			players_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			players_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			players_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			col.add_child(players_slot)
+			# The zone is the DOOR to the seat cards in `drawer-seats`: with the seats rail removed
+			# (R-15) the drawer would otherwise be unreachable in compact. A click, not a new control.
 			col.mouse_filter = Control.MOUSE_FILTER_STOP
 			col.tooltip_text = I18n.t("ui.players")
 			col.gui_input.connect(func(ev: InputEvent) -> void:
@@ -349,6 +342,15 @@ func inspector_slot_box() -> VBoxContainer:
 	return inspector_slot
 
 
+## Where the SEAT CARDS go. The shell asks for the slot and reparents its PlayersPanel
+## into it - the panno supplies the layout, the shell keeps the widget and its behaviour.
+## The same pattern as `inspector_slot` and the dice tray.
+func players_slot_box() -> VBoxContainer:
+	if not _built:
+		build()
+	return players_slot
+
+
 func zone_box(key: String) -> VBoxContainer:
 	if not _built:
 		build()
@@ -368,10 +370,6 @@ func set_cold(on: bool) -> void:
 	_event_who.text = ""
 	_event_text.text = I18n.t("plr.cold") if on else ""
 	_event_money.text = ""
-	for r in _pl_rows:
-		r["name"].text = ""
-		r["money"].text = ""
-		r["owns"].text = ""
 	for line in _jrn_rows:
 		line.text = ""
 
@@ -414,36 +412,10 @@ func sync(proj: Dictionary, seats: Array, human_pid: int, event_line: Dictionary
 		_event_text.text = I18n.t("plr.cold")
 		_event_money.text = ""
 
-	# PLAYERS zone: cash of EVERY seat (R-4) plus what they own.
-	for r in PLAYER_ROWS:
-		var row: Dictionary = _pl_rows[r]
-		# A row with no seat behind it is not "space", it is dead space: READ-02 measured the zone
-		# at 32 % empty in a 2-seat match because the four rows were always drawn. Hide them and
-		# let the column hand the height to the seats that exist.
-		row["root"].visible = r < players.size()
-		if r >= players.size():
-			row["chip"].color = UiTheme.COL().border
-			row["name"].text = ""
-			row["money"].text = ""
-			row["owns"].text = ""
-			continue
-		var p: Dictionary = players[r]
-		var pid: int = int(p.get("index", r))
-		row["chip"].color = _seat_color(seats, pid)
-		var nm := str(p.get("name", ""))
-		if nm == "":
-			nm = _seat_name(seats, players, pid)
-		var money := int(p.get("money", 0))
-		row["name"].text = nm
-		row["money"].text = "$%d" % money
-		var tiles: Array = p.get("tiles", [])
-		row["owns"].text = I18n.t("panno.owns", [tiles.size(), int(p.get("houses", 0))])
-		var dim := bool(p.get("bankrupt", false))
-		row["root"].modulate = Color(1, 1, 1, 0.45) if dim else Color(1, 1, 1, 1)
-		if pid == human_pid:
-			row["name"].add_theme_color_override("font_color", UiTheme.COL().accent2)
-		else:
-			row["name"].add_theme_color_override("font_color", UiTheme.COL().text)
+	# PLAYERS zone: painted by the SHELL's PlayersPanel, which this panno hosts in
+	# `players_slot` (the seat cards: cash of every seat, position, chips, round/pot).
+	# It used to paint four glance rows here - two views of the same facts in one band,
+	# and the poorer one. R-14 holds either way: the panel reads the same projection.
 
 	# JOURNAL zone: the last lines, oldest first (newest nearest the console).
 	#
@@ -471,13 +443,6 @@ func _seat_name(seats: Array, players: Array, pid: int) -> String:
 		if int(p.get("index", -1)) == pid:
 			return str(p.get("name", ""))
 	return ""
-
-
-func _seat_color(seats: Array, pid: int) -> Color:
-	for s in seats:
-		if int(s.pid) == pid:
-			return s.color
-	return UiTheme.COL().border
 
 
 func _tile_name(proj: Dictionary, index: int) -> String:

@@ -47,6 +47,9 @@ var evil_enabled: bool = false
 var spectacle: bool = true
 var event_overlay: bool = true
 var animations: bool = true   # master toggle for cosmetic tweens (spec control)
+## Sound effects (spec control). The settings sheet's "Звук" row wrote NOTHING until 21.10.2026 —
+## the field did not exist, so the checkbox was decoration. Read by SoundManager.set_enabled.
+var sound: bool = true
 var admin_token: String = ""  # token required by admin_gate for remote/override auth
 var language: String = "ru"  # UI language ("ru" | "en"); full localization is a follow-up
 var rng_seed: int = 0

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tools/gates/sound_events_gate.gd" id="1_sound_events"]
+
+[node name="SoundEventsGate" type="Node"]
+script = ExtResource("1_sound_events")

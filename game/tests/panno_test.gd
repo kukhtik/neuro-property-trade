@@ -16,7 +16,8 @@ const PANNO_PATH := "res://ui/components/turn_panno.gd"
 
 static func test_list() -> Array[String]:
 	return ["test_panno_four_zones_in_reading_order", "test_panno_fonts_follow_the_cell",
-		"test_panno_sync_paints_players_and_journal", "test_panno_reads_only_contract_keys",
+		"test_panno_sync_paints_players_and_journal",
+		"test_panno_players_zone_hosts_the_shell_cards", "test_panno_reads_only_contract_keys",
 		"test_panno_has_no_absolute_placement"]
 
 
@@ -84,7 +85,11 @@ static func _turn_font(p) -> int:
 	return best
 
 
-## One sync paints every seat's cash (R-4) and the last journal sentences - no engine access.
+## One sync paints the last event and the last journal sentences - no engine access.
+##
+## THE SEATS ARE NOT PAINTED HERE ANY MORE (21.10). The players zone is a SLOT: the shell's
+## PlayersPanel shows the four seat cards inside it (see the test below), so a panno that also
+## painted name/cash rows would be a second, poorer copy of the same facts in the same band.
 static func test_panno_sync_paints_players_and_journal() -> String:
 	var p = _panno()
 	p.apply_scale(80.0)
@@ -106,22 +111,17 @@ static func test_panno_sync_paints_players_and_journal() -> String:
 	]
 	var line := {"who": "Mira", "text": "продаёт с клетки 27", "cat": "money"}
 	p.sync(proj, seats, 0, line, ["a", "b", "c"])
-	# the zone column is [caption, row0..row3]: rows start at index 1
+	# the players zone is [caption, slot] - the seats arrive through the slot, not as rows here
 	var col_players: VBoxContainer = p.zone_box("players")
-	var rows: Array = []
-	for i in range(1, col_players.get_child_count()):
-		rows.append(col_players.get_child(i))
-	if rows.size() < 4:
-		return "the players zone has %d rows, the centre must show EVERY seat (up to 4)" % rows.size()
-	var row0: Control = rows[0]
-	var texts: Array = []
-	for c in row0.get_children():
-		if c is Label:
-			texts.append((c as Label).text)
-	if not texts.has("$1215"):
-		return "row 0 does not show the seat's cash; labels were %s" % str(texts)
-	if not texts.has("Хост"):
-		return "row 0 does not show the seat's name; labels were %s" % str(texts)
+	if col_players == null or col_players.get_child_count() != 2:
+		return "the players zone is not [caption, slot] - the seat cards have no home in the ring"
+	# the TURN line names whose turn it is (the one seat fact the panno still owns)
+	var turn_lbl := ""
+	for c in p.zone_box("roll").get_children():
+		if c is Label and str((c as Label).name) == "panno-turn":
+			turn_lbl = (c as Label).text
+	if not turn_lbl.contains("Neuro"):
+		return "the roll zone's turn line is `%s`, expected the seat whose turn it is" % turn_lbl
 	var jrn: VBoxContainer = p.zone_box("journal")
 	if jrn.get_child_count() < 4:
 		return "the journal zone has %d label(s), the brief asks for 3" % (jrn.get_child_count() - 1)
@@ -134,6 +134,45 @@ static func test_panno_sync_paints_players_and_journal() -> String:
 			ev_text += (c as Label).text + " | "
 	if not ev_text.contains("Mira") and not ev_text.contains("продаёт"):
 		return "the event zone does not carry the last event line (got %s)" % ev_text
+	p.free()
+	return ""
+
+
+## THE PLAYERS ZONE IS A SLOT (track 1, step 2: the seat cards move INTO the ring).
+##
+## Pins the contract the shell relies on: the zone exposes a container the shell can put its own
+## PlayersPanel into, the zone itself stops painting the seats, and the container fills the belt.
+## Negative shape this test refuses: a panno that paints its own four rows AND a host, or a
+## `players_slot` that is a stray node outside zone-players.
+static func test_panno_players_zone_hosts_the_shell_cards() -> String:
+	var p = _panno()
+	var slot: VBoxContainer = p.players_slot_box()
+	if slot == null:
+		return "the players zone exposes no slot - the shell's seat cards have nowhere to go"
+	var col: VBoxContainer = p.zone_box("players")
+	if col == null:
+		return "zone-players has no column"
+	if not col.is_ancestor_of(slot):
+		return "the players slot is not inside zone-players - the cards would land outside the belt"
+	if col.get_child_count() != 2:
+		return ("the players zone column has %d child(ren); it must be exactly [caption, slot] " +
+			"now that the shell paints the seats") % col.get_child_count()
+	if slot.size_flags_vertical & Control.SIZE_EXPAND == 0:
+		return "the players slot does not expand - the cards would hug a corner of the upper belt"
+	# hosting works: the widget the shell hands over ends up IN the slot (and is not reparented away)
+	var hosted := Control.new()
+	hosted.name = "hosted-cards"
+	slot.add_child(hosted)
+	if hosted.get_parent() != slot:
+		return "the players slot does not accept a hosted widget"
+	if slot.get_child_count() != 1:
+		return "the players slot holds %d widget(s) after hosting one" % slot.get_child_count()
+	# and the slot is the UPPER belt's - the seats are the top belt of the two, per concept A
+	var belt: Node = slot.get_parent()
+	while belt != null and str(belt.name) != "panno-belt-top" and str(belt.name) != "panno-belt-bottom":
+		belt = belt.get_parent()
+	if belt == null or str(belt.name) != "panno-belt-top":
+		return "the players slot is not in the UPPER belt - the seats must be the top band"
 	p.free()
 	return ""
 
