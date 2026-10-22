@@ -57,13 +57,11 @@ const INSPECTOR_WIDTH := 330.0
 ## shared - measured, the stack never squeezed anything (the journal holds 3 lines and
 ## does not grow), so these ratios are about PROPORTION, not about survival.
 const RATIOS: Array = [22.0, 28.0, 30.0, 60.0, 40.0]
-const JOURNAL_ROWS := 3
 ## Font sizes are ratios of a board cell, so the panno reads the same at 1280 and at 1600.
 const FS_CAPTION := 0.155
 const FS_VALUE := 0.270
 const FS_SUM := 0.520
 const FS_EVENT := 0.270
-const FS_JRN := 0.270
 ## The turn/phase line under the dice is a GLANCE value (R-7): at an 80px cell it must clear 20px,
 ## so it cannot be a caption-sized 0.19 ratio - it measured 15px and the panno test refused it.
 const FS_META := 0.270
@@ -98,7 +96,7 @@ var _turn: Label
 var _event_who: Label
 var _event_text: Label
 var _event_money: Label
-var _jrn_rows: Array = []
+var journal_slot: VBoxContainer
 
 
 func _ready() -> void:
@@ -287,12 +285,21 @@ func _build_zone(i: int, col: VBoxContainer) -> void:
 						and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 					seats_requested.emit())
 		"journal":
-			for r in JOURNAL_ROWS:
-				var line := UiTheme.label_wrap("", _fs(FS_JRN), UiTheme.COL().text_dim)
-				line.name = "panno-jrn-text"
-				_font_nodes.append({"node": line, "ratio": FS_JRN})
-				col.add_child(line)
-				_jrn_rows.append(line)
+			# THE JOURNAL, AND IT IS ONE JOURNAL.
+			#
+			# Until 22.10 this zone painted three lines of its own while the FULL journal -
+			# filters, counter, export, every row - lived in the 344px right dock: two journals
+			# of the same feed, one of them a poorer copy. The panno gives the journal a PLACE;
+			# the shell puts its own panel in it, exactly like the seat cards and the tile card.
+			# The panel keeps its behaviour (it owns the events, the filters and the export).
+			#
+			# THE PANNO DOES NOT SCROLL (clip_contents = true, R-13), so the panel carries its OWN
+			# scroll area - the rows scroll INSIDE the zone and the zone keeps its size.
+			journal_slot = UiTheme.vbox(4)
+			journal_slot.name = "journal-slot"
+			journal_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			journal_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			col.add_child(journal_slot)
 		"inspector":
 			# The tile card. The panno gives it a PLACE and a caption; the shell puts
 			# the widget in (the same pattern as `roll_slot` and the dice). The inspector
@@ -309,6 +316,14 @@ func apply_scale(cell: float) -> void:
 		var node = entry["node"]
 		if is_instance_valid(node):
 			node.add_theme_font_size_override("font_size", _fs(float(entry["ratio"])))
+	# THE JOURNAL PANEL IN THE SLOT SCALES WITH THE RING TOO. It is the shell's widget,
+	# so it cannot read the cell itself - the panno hands it over, exactly as it hands
+	# the cell to its own labels. A panel that kept its pixel sizes would be unreadable
+	# on a phone, where the ring is small (STREAM-READ measures that).
+	if journal_slot != null:
+		for c in journal_slot.get_children():
+			if c.has_method("set_ring_cell"):
+				c.call("set_ring_cell", _cell)
 
 
 func _fs(ratio: float) -> int:
@@ -342,6 +357,15 @@ func inspector_slot_box() -> VBoxContainer:
 	return inspector_slot
 
 
+## Where the JOURNAL goes. The shell asks for the slot and reparents its JournalPanel
+## into it - the panno supplies the layout, the shell keeps the widget and its behaviour.
+## The same pattern as `inspector_slot` and `players_slot`.
+func journal_slot_box() -> VBoxContainer:
+	if not _built:
+		build()
+	return journal_slot
+
+
 ## Where the SEAT CARDS go. The shell asks for the slot and reparents its PlayersPanel
 ## into it - the panno supplies the layout, the shell keeps the widget and its behaviour.
 ## The same pattern as `inspector_slot` and the dice tray.
@@ -370,14 +394,19 @@ func set_cold(on: bool) -> void:
 	_event_who.text = ""
 	_event_text.text = I18n.t("plr.cold") if on else ""
 	_event_money.text = ""
-	for line in _jrn_rows:
-		line.text = ""
+	# The journal is NOT cleared here: the panel in the slot owns the feed, and the shell
+	# empties it with `clear_rows()` when a new match starts. A cold board and a cold
+	# journal are two different facts.
 
 
 ## Paint from the projection + one finished journal line (the shell computes the line ONCE and
 ## hands the same sentence to the toast, the journal and this panno).
-## event_line: {who, text, tag, cat, money} or {} — journal_tail: strings, oldest first.
-func sync(proj: Dictionary, seats: Array, human_pid: int, event_line: Dictionary, journal_tail: Array) -> void:
+## event_line: {who, text, tag, cat, money} or {}.
+##
+## The `journal_tail` argument is GONE (22.10): it fed the three lines this panno used to
+## paint, and the panel in the journal slot owns the feed now. A parameter nobody reads is
+## a second source of truth waiting to drift.
+func sync(proj: Dictionary, seats: Array, human_pid: int, event_line: Dictionary) -> void:
 	if not _built:
 		build()
 	var players: Array = proj.get("players", [])
@@ -417,22 +446,11 @@ func sync(proj: Dictionary, seats: Array, human_pid: int, event_line: Dictionary
 	# It used to paint four glance rows here - two views of the same facts in one band,
 	# and the poorer one. R-14 holds either way: the panel reads the same projection.
 
-	# JOURNAL zone: the last lines, oldest first (newest nearest the console).
-	#
-	# An empty tail means "the match has just started": the zone would then be a caption over 169 px
-	# of nothing, which is exactly what R-3 forbids (PANEL-NOT-EMPTY measured 1 line there). Two
-	# true sentences stand in until the first event arrives - they are the zone's own explanation,
-	# not invented game state, so R-14 holds.
-	var start_lines: Array = []
-	if journal_tail.is_empty():
-		start_lines = [I18n.t("panno.jrn_start"), I18n.t("panno.jrn_hint")]
-	for i in JOURNAL_ROWS:
-		var line: Label = _jrn_rows[i]
-		if not start_lines.is_empty():
-			line.text = str(start_lines[i]) if i < start_lines.size() else ""
-			continue
-		var idx: int = journal_tail.size() - JOURNAL_ROWS + i
-		line.text = str(journal_tail[idx]) if idx >= 0 and idx < journal_tail.size() else ""
+	# JOURNAL zone: the shell's own panel, which lives in the slot above. The panno no
+	# longer paints journal lines: the panel owns the feed, the filters and the export, and
+	# a second copy of the same three sentences in the same band is the thing this whole
+	# change set out to remove. The panno still reads the same projection as before (R-14) -
+	# it just does not draw the feed itself.
 
 
 func _seat_name(seats: Array, players: Array, pid: int) -> String:

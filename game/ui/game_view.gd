@@ -97,7 +97,6 @@ var _drawers: Dictionary = {}
 var _journal_lines = JournalLines.new()
 ## brief §4.1: the last journal sentences, shown inside the ring's panno (the board must say what
 ## just happened without the side panel). The shell owns the text; board_scene only displays it.
-var _board_tail: Array = []
 
 
 ## THE "Анимации" SWITCH, ONE PLACE. `settings_overlay.gd:864` used to write
@@ -239,6 +238,11 @@ func _build() -> void:
 	# is not there the card stays in the right column - it must never be lost.
 	if _board != null and _board.has_method("host_inspector"):
 		_board.call("host_inspector", _inspector)
+	# THE JOURNAL MOVES INTO THE RING TOO (22.10): the panno's journal slot, in the lower
+	# belt's right column beside the tile card. One journal from now on - the full one,
+	# with its filters and its export - instead of three lines here and a copy there.
+	if _board != null and _board.has_method("host_journal"):
+		_board.call("host_journal", _journal)
 	# THE SEAT CARDS MOVE INTO THE RING TOO (track 1, step 2), into the panno's players zone:
 	# the panno gives the place, this panel stays the widget. They came from a 268px left dock
 	# that the profile hides below 2000px wide, so on every window the product actually opens the
@@ -406,6 +410,15 @@ func _fill_right_column() -> void:
 	# `add_child` ("already has a parent"), and the journal may be in the drawer's slot
 	# when the column is filled.
 	_fill(_toasts)
+	# THE JOURNAL IS HERE ONLY AS A SAFE HOME. It BELONGS to the ring - in the panno's
+	# journal slot - and the board moves it there as soon as the slot exists (see
+	# `host_journal` below). Until 22.10 the feed existed TWICE: three lines painted by the
+	# panno and the full panel - filters, counter, export - in this column.
+	#
+	# The panel must be IN THE TREE before the board can take it: a widget that is not in
+	# the tree cannot be reparented ("Node needs a parent to be reparented"), and the
+	# compact drawer borrows the same widget from the ring. This column is the fallback
+	# for a board that never built a panno - the panel must never be lost.
 	_fill(_journal)
 	_fill(_inspector)
 
@@ -669,6 +682,11 @@ func _open_drawer(which: String) -> void:
 				_board.call("release", "players")
 			(d as DrawerPanel).put(_seats_panel)
 		"journal":
+			# THE JOURNAL LIVES IN THE RING. The drawer BORROWS it, so the board must
+			# be told it is out of the ring - or the board's pending placement pulls it
+			# straight back and the drawer opens empty. (The seat cards had this exact bug.)
+			if _board != null and _board.has_method("release"):
+				_board.call("release", "journal")
 			(d as DrawerPanel).put(_journal)
 		"inspector":
 			(d as DrawerPanel).put(_inspector)
@@ -697,11 +715,17 @@ func _close_drawer(which: String) -> void:
 					_body_row.move_child(c, 0)
 					(c as Control).visible = not _is_compact()
 			"journal":
-				# The drawer BORROWS the panel, and `take()` leaves it in the tree - so putting
-				# it back is a REPARENT. `add_child` on a widget that already has a parent is
-				# refused ("already has a parent") and the refusal prints an ERROR.
-				c.reparent(_rightcol, false)
-				_rightcol.move_child(c, 1)
+				# THE JOURNAL BELONGS TO THE RING: hand it back to the panno's journal slot, not
+				# to the right column it no longer lives in. The board retains whatever it is
+				# given, so this also works if the panno has not been built yet.
+				if _board != null and _board.has_method("host_journal"):
+					_board.call("host_journal", c)
+					(c as Control).visible = true
+				else:
+					# The drawer BORROWS the panel, and `take()` leaves it in the tree - so putting
+					# it back is a REPARENT. `add_child` on a widget that already has a parent is
+					# refused ("already has a parent") and the refusal prints an ERROR.
+					c.reparent(_rightcol, false)
 			"inspector":
 				# same rule as the seat cards: the tile card lives in the ring's lower belt now, so
 				# closing its drawer must hand it back to the panno, not to the (hidden) right column
@@ -763,11 +787,9 @@ func setup(eng, mgr, seat_list: Array, s) -> void:
 		_journal.clear_rows()
 		if _journal.has_method("set_seats"):
 			_journal.set_seats(seats)
-	# the panno's journal zone starts empty with the match, like the feed it mirrors
-	_board_tail.clear()
+	# the ring starts empty with the match, like the feed it mirrors
 	if _board != null:
 		_board.set_last_line({})
-		_board.set_journal_tail([])
 	# WHO PLAYS HERE: the seat driven by a human (LOCAL/ADMIN), whoever that is. The old
 	# `_human_pid = 0` was right only by convention, and only on the host: any other ordering
 	# (or a client) got a screen whose buttons could never appear or played the wrong seat.
@@ -1047,18 +1069,15 @@ func _submit(pid: int, action: String, params: Dictionary) -> void:
 		show_rejection(str(res.get("reason", "?")))
 
 
-## The panno's journal zone (brief §4.1): the shell owns the sentence, board_scene only displays
+## The ring's event line (brief §4.1): the shell owns the sentence, board_scene only displays
 ## it, so the feed, the toast and the ring cannot disagree about what happened.
+## (The journal itself is the shell's panel, in the ring's journal slot - the panel
+## receives the raw events and composes its own rows, so the tail of sentences
+## the panno used to paint is gone.)
 func _note_board_line(line: Dictionary) -> void:
 	if _board == null:
 		return
 	_board.set_last_line(line)
-	var who_line := str(line.get("who", ""))
-	var text_line := str(line.get("text", ""))
-	_board_tail.append(text_line if who_line == "" else "%s · %s" % [who_line, text_line])
-	while _board_tail.size() > 3:
-		_board_tail.pop_front()
-	_board.set_journal_tail(_board_tail)
 
 
 ## Engine/manager events -> toasts, journal rows and board animations.

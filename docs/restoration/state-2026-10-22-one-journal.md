@@ -1,0 +1,76 @@
+# NPT — снимок состояния: один журнал в кольце, живая тема, мёртвый код удалён (2026-10-22)
+
+> Заменяет `state-2026-10-20-ring.md` (файл удалён — git его хранит).
+> Все числа — из прогонов ЭТОГО сеанса; команды рядом с вердиктом. Доки сверены с
+> реестром и с кодом, а не с предыдущими снимками.
+
+## 1. В двух абзацах
+
+**Журнал стал ОДИН, и он в кольце.** До 22.10 лента событий существовала дважды:
+панно рисовало свои три строки, а полная панель — заголовок, счётчик «показано N / M»,
+два фильтра, экспорт `.jsonl` и все строки — стояла в правом доке 344 px. Теперь панно
+даёт журналу МЕСТО (слот в нижнем поясе, рядом с карточкой клетки), а шелл кладёт
+туда свою панель — ровно тем же способом, каким туда уже уезжали карточки мест и
+карточка клетки. Панно больше не рисует ленту само, и мёртвый `journal_tail` (хвост
+предложений) убран из подписи `sync()`.
+
+**Тема скина перестала быть мёртвым кодом.** `SkinManager.theme()` строил объект
+`Theme` с ролевыми вариациями, и его читал один тест; 169 `add_theme_*` вызовов
+повторяли её работу вручную. Причина была измерена, а не предположена: **вариация,
+которая не называет свою базу, игнорируется движком** — кнопка с
+`theme_type_variation = "ButtonPrimary"` читала базовый тип. И метода
+`set_type_variation_base` в Godot 4.7.2 нет: он называется `set_type_variation`.
+
+## 2. Доказательства (команды и вердикты этого сеанса)
+
+| Проверка | Команда | Вердикт из строк |
+|---|---|---|
+| Оракул | `bash tools/ci/run_tests.sh` | `ran 420 tests, 0 failed` → `ORACLE PASSED` |
+| Тема (новый гейт) | `godot --headless --path game res://tools/gates/theme_gate.tscn` | `THEME PASSED (6 checks)` |
+| Журнал | `res://tools/gates/sg06_journal_gate.tscn` | `SG-06 PASSED (3 intents, feed lines are human, counter/filters/export work)` |
+| Компакт | `res://tools/gates/sg01_compact_gate.tscn` | `SG-01 PASSED (4 profiles, 0 unreachable regions, metrics hold at 1440x900)` |
+| Язык | `res://tools/gates/sg08_locale_gate.tscn` | `SG-08 PASSED (the switch reached furniture, rows and the whole tree - twice)` |
+| Скины | `res://tools/gates/sg09_skins_gate.tscn` | `SG-09 PASSED (4 skins switch mid-match: match survives, seats and journal recolour cleanly)` |
+| Роли текста | `res://tools/gates/sg04_text_roles_gate.tscn` | `SG-04 PASSED (both profiles: every label is a value or a paragraph, one stretch per row)` |
+| Панели в кольце | `res://tools/panels_in_ring_probe.tscn` | `PANELS-IN-RING PASSED (6 checks: the seat cards, the tile card and the journal are all inside the ring, and the old docks are gone)` |
+| Карточка в кольце | `res://tools/inspector_in_ring_probe.tscn` | `INSPECTOR-IN-RING PASSED (3 checks)` |
+
+## 3. Три вещи, которые стоит знать про этот снимок
+
+**Прокси-режим `--script` врёт про темы.** Под `--script` тема, назначенная узлу, НЕ
+достигает узла: виджет читает тему Godot по умолчанию. В настоящей сцене — достигает.
+Выводы сняты в сцене, потому что в `--script` они были противоположными.
+
+**`set_type_variation_base` не существует.** `Theme` в Godot 4.7.2 имеет
+`set_type_variation(variation, base)` и `get_type_variation_base`. Имя, которого ждал
+план, придумано — и оно молча ничего не делает.
+
+**Встроенный класс нельзя сделать вариацией себя.** `set_type_variation("Label",
+"Label")` — отказ движка: «A type associated with a built-in class cannot be marked as
+a variation of another type». Ролевые подписи (`LabelMuted`, `LabelTitle`,
+`LabelMoney`) объявляют базу `Label` и работают.
+
+## 4. Что удалено и почему это не регресс
+
+`ui_store.gd` (187 строк), `event_presenter.gd` (134), `intent_map.gd` (117) — **438
+строк без единого потребителя в продукте**. Проверено замером: `git grep
+'ui_store\|event_presenter\|intent_map' -- game/` вне `game/tests/` даёт ноль
+совпадений. 44 живых теста из двух модулей переехали в `game/tests/ui_live_test.gd`;
+удалено 32 теста, проверявших удалённое. MIN_TESTS 431 → 419 — падение объяснено тем
+же коммитом (правило 5 плана), план возврата записан рядом.
+
+## 5. Негативные проверки (тот же коммит, что и работа)
+
+| Что сломано | Что поймало | Вердикт |
+|---|---|---|
+| Вариация темы без базы | гейт `THEME` | `the ButtonPrimary variation read (0.875, 0.875, 0.875, 1.0), the skin's on_accent is (1.0, 1.0, 1.0, 1.0) - the variation did NOT resolve`, EXIT=1 |
+| Панно снова рисует свою строку журнала | два теста `panno_test` | `test_panno_sync_paints_players_and_event` и `test_panno_journal_zone_hosts_the_panel` — `ORACLE FAILED` |
+
+## 6. Что осталось
+
+- **Приёмка не начата**: заявка (бриф 002 закрыт 07.10, intake-форма жива), handoff,
+  релизный пакет. Письмо и handoff ждут «go» владельца.
+- **169 `add_theme_*` вызовов** — тема теперь живая, но миграция на роли не начата.
+  Это отдельная работа (P2.1 в плане).
+- **Панели в кольце**: карточки мест, карточка клетки и журнал — все внутри. Правая
+  колонка осталась с тостами.

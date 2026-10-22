@@ -51,7 +51,11 @@ const GLANCE_FLOOR := LayoutProfile.GLANCE_MIN_PHONE_PX
 const GLANCE_SET := [
 	{"node": "panno-turn", "role": "whose turn + what is happening (the panno)"},
 	{"node": "panno-event-text", "role": "what just happened (the panno)"},
-	{"node": "panno-jrn-text", "role": "the newest journal line (the panno)"},
+	# THE JOURNAL LINE IS JUDGED, AND IT IS THE PANEL'S (22.10). The panno painted three
+	# lines of its own ("panno-jrn-text") and the full panel - filters, counter, export -
+	# lived in the right dock: two journals of one feed. Now there is ONE, in the ring, and
+	# its row is the journal line a viewer reads. The panel names it "jrn-text".
+	{"node": "jrn-text", "role": "the newest journal line (the journal, in the ring)"},
 	# B1 moved these four facts OUT of the header into the four corner screens (the corners are the
 	# only place with room for a 50px line). The screens are judged here; the header keeps carrying
 	# the same facts as a control strip and is reported as context (see NOT_JUDGED below) - a
@@ -64,12 +68,10 @@ const GLANCE_SET := [
 	{"node": "turn-phase", "role": "what is happening (the header, context)", "context": true},
 	{"node": "top-round", "role": "the round (the header, context)", "context": true},
 	{"node": "top-pot", "role": "the money (the header, context)", "context": true},
-	# THE DOCK'S JOURNAL IS MEASURED ONLY WHEN IT IS DRAWN. At every frame narrower than 2000px the
-	# app runs compact and hides the right dock, so jrn-title/jrn-text exist as nodes nobody sees -
-	# the gate used to hand them the verdict and describe a picture that was not on screen (measured:
-	# at 1600x1200 and at 1920x1080 the dock is hidden and the panno carries the journal instead).
-	{"node": "jrn-title", "role": "the journal heading (the dock, when drawn)", "drawn_only": true},
-	{"node": "jrn-text", "role": "the newest journal line (the dock, when drawn)", "drawn_only": true},
+	# THE JOURNAL HEADING. The panel lives in the ring now (22.10), so its heading is drawn
+	# whenever the ring is - the "only when the dock is drawn" rule went with the dock. It is
+	# reported as context: a heading is furniture, the ROW is what a viewer reads.
+	{"node": "jrn-title", "role": "the journal heading (the journal, in the ring)", "context": true},
 ]
 ## Roles that may sit below the glance floor by design (a single-glyph tag, a secondary counter):
 ## reported as context, never judged. Empty today - the point is that the exclusion is a written

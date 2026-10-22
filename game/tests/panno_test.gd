@@ -16,8 +16,9 @@ const PANNO_PATH := "res://ui/components/turn_panno.gd"
 
 static func test_list() -> Array[String]:
 	return ["test_panno_four_zones_in_reading_order", "test_panno_fonts_follow_the_cell",
-		"test_panno_sync_paints_players_and_journal",
-		"test_panno_players_zone_hosts_the_shell_cards", "test_panno_reads_only_contract_keys",
+		"test_panno_sync_paints_players_and_event",
+		"test_panno_players_zone_hosts_the_shell_cards", "test_panno_journal_zone_hosts_the_panel",
+		"test_panno_reads_only_contract_keys",
 		"test_panno_has_no_absolute_placement"]
 
 
@@ -85,12 +86,13 @@ static func _turn_font(p) -> int:
 	return best
 
 
-## One sync paints the last event and the last journal sentences - no engine access.
+## One sync paints the last event - no engine access. (The journal is not painted here
+## any more: it is the shell's panel, in the slot below.)
 ##
 ## THE SEATS ARE NOT PAINTED HERE ANY MORE (21.10). The players zone is a SLOT: the shell's
 ## PlayersPanel shows the four seat cards inside it (see the test below), so a panno that also
 ## painted name/cash rows would be a second, poorer copy of the same facts in the same band.
-static func test_panno_sync_paints_players_and_journal() -> String:
+static func test_panno_sync_paints_players_and_event() -> String:
 	var p = _panno()
 	p.apply_scale(80.0)
 	var proj := {
@@ -110,7 +112,7 @@ static func test_panno_sync_paints_players_and_journal() -> String:
 		{"pid": 1, "name": "Neuro", "color": Color("#5fe3ff")},
 	]
 	var line := {"who": "Mira", "text": "продаёт с клетки 27", "cat": "money"}
-	p.sync(proj, seats, 0, line, ["a", "b", "c"])
+	p.sync(proj, seats, 0, line)
 	# the players zone is [caption, slot] - the seats arrive through the slot, not as rows here
 	var col_players: VBoxContainer = p.zone_box("players")
 	if col_players == null or col_players.get_child_count() != 2:
@@ -122,11 +124,15 @@ static func test_panno_sync_paints_players_and_journal() -> String:
 			turn_lbl = (c as Label).text
 	if not turn_lbl.contains("Neuro"):
 		return "the roll zone's turn line is `%s`, expected the seat whose turn it is" % turn_lbl
+	# THE JOURNAL ZONE IS A SLOT (22.10): the panno gives the journal a PLACE and the
+	# shell puts its own panel in it - the same pattern as the seat cards and the tile
+	# card. The panno does NOT paint journal lines any more: the panel owns the feed, and
+	# a second copy of the same sentences in the same band is what the change removed.
 	var jrn: VBoxContainer = p.zone_box("journal")
-	if jrn.get_child_count() < 4:
-		return "the journal zone has %d label(s), the brief asks for 3" % (jrn.get_child_count() - 1)
-	if (jrn.get_child(3) as Label).text != "c":
-		return "the journal zone's last line is %s, expected the newest sentence 'c'" % (jrn.get_child(3) as Label).text
+	if jrn.get_child_count() != 2:
+		return "the journal zone has %d child(ren), it should be [caption, slot]" % jrn.get_child_count()
+	if p.journal_slot_box() == null:
+		return "the panno has no journal slot - the journal has no place in the ring"
 	var ev: Control = p.zone_box("event")
 	var ev_text := ""
 	for c in ev.get_children():
@@ -134,6 +140,42 @@ static func test_panno_sync_paints_players_and_journal() -> String:
 			ev_text += (c as Label).text + " | "
 	if not ev_text.contains("Mira") and not ev_text.contains("продаёт"):
 		return "the event zone does not carry the last event line (got %s)" % ev_text
+	p.free()
+	return ""
+
+
+## THE JOURNAL ZONE IS A SLOT, AND THE JOURNAL IS ONE (22.10).
+##
+## Until 22.10 the feed existed TWICE: the panno painted three lines of its own and the
+## full panel - filters, counter, export, every row - sat in the 344px right dock. Two
+## journals of the same events, one of them a poorer copy of the other.
+##
+## The panno now gives the journal a PLACE (a slot) and the shell puts its own panel
+## in it, exactly as the seat cards and the tile card are placed. This test pins both
+## halves: the slot exists, and the panel can actually be put there.
+static func test_panno_journal_zone_hosts_the_panel() -> String:
+	var p = _panno()
+	var slot: VBoxContainer = p.journal_slot_box()
+	if slot == null:
+		return "the panno has no journal slot - the journal has no place in the ring"
+	if slot.get_parent() == null:
+		return "the journal slot is not in the panno's tree - it would be lost"
+	# THE SLOT MUST BE ABLE TO HOLD THE PANEL: a slot that cannot take a widget is a
+	# caption, and the journal would fall back to the dock - the very copy we removed.
+	var marker := Label.new()
+	marker.name = "probe-journal-panel"
+	slot.add_child(marker)
+	if slot.get_child_count() != 1 or slot.get_child(0) != marker:
+		return "the journal slot did not accept the panel - the journal would stay in the dock"
+	# AND NOTHING MAY PAINT JOURNAL LINES OF ITS OWN: that is the second copy. The ZONE
+	# holds its caption and the slot - a Label beside them would be a journal of the
+	# panno's own, next to the panel's. Both places are checked.
+	for c in slot.get_children():
+		if c is Label and c != marker:
+			return "the journal slot still paints a Label of its own (%s) - there are two journals again" % str(c.name)
+	for c in p.zone_box("journal").get_children():
+		if c is Label and c.get_index() != 0:
+			return "the journal zone paints a Label of its own (%s) beside the slot - there are two journals again" % str(c.name)
 	p.free()
 	return ""
 

@@ -62,7 +62,7 @@ func _run() -> void:
 	p.build()
 
 	# feed it a BUSY journal, the way a long match does. The panno's real signature is
-	# sync(proj, seats, human_pid, event_line, journal_tail) - the probe calls it the way
+	# sync(proj, seats, human_pid, event_line) - the probe calls it the way
 	# the product calls it, so the measurement is of the real thing.
 	#
 	# The SEATS are the product's own shape (a seat has `pid`, `name`, `color`), because
@@ -70,14 +70,11 @@ func _run() -> void:
 	# is not there, and the probe measured a broken widget instead of the real one.
 	var proj := _busy_projection()
 	var seats: Array = _seats()
-	# The contract (turn_panno.gd:257): event_line is {who, text, tag, cat, money} or {},
-	# and journal_tail is an ARRAY OF STRINGS, oldest first. A tail of dictionaries made the
-	# panno read a string where a line was - the probe measured a broken widget.
-	var tail: Array = []
-	for i in BUSY_EVENTS:
-		tail.append("Mira продаёт с клетки %d" % (27 - i % 40))
+	# The contract (turn_panno.gd): event_line is {who, text, tag, cat, money} or {}.
+	# The journal_tail argument is GONE (22.10): the panno does not paint the feed - the
+	# shell's panel in the journal slot owns it, and the probe measures the ZONE.
 	p.sync(proj, seats, 0, {"who": "Mira", "text": "продажа дома · Crest Square · +$70",
-		"tag": "дом", "cat": "build", "money": 70}, tail)
+		"tag": "дом", "cat": "build", "money": 70})
 
 	await get_tree().process_frame
 	await get_tree().process_frame

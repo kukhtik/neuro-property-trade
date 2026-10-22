@@ -77,8 +77,6 @@ var _panno: Control
 ## nothing, and the card stayed outside the ring.
 var _hosted: Dictionary = {}
 var _last_line: Dictionary = {}          # the shell's finished journal line (R-14: not computed here)
-var _journal_tail: Array = []            # last N journal sentences, oldest first
-const JRN_TAIL := 3
 
 
 func _ready() -> void:
@@ -208,6 +206,17 @@ func host_players(panel: Control) -> bool:
 	return _host("players", panel)
 
 
+## Put the shell's JOURNAL inside the ring, in the panno's journal slot (lower belt, right
+## column). Same contract as `host_inspector` and `host_players`: the panel stays the shell's
+## (it owns the events, the filters and the export), only its address changes.
+##
+## There was ONE journal before this: the panno painted three lines of its own while the full
+## panel - filters, counter, export, every row - sat in the 344px right dock. Two journals of
+## the same feed, one of them a poorer copy.
+func host_journal(panel: Control) -> bool:
+	return _host("journal", panel)
+
+
 ## Retain a widget and try to place it. The panno is built in _ready(), and the shell may ask
 ## BEFORE that has happened: placing it then would silently do nothing and the widget would stay
 ## outside the ring - which is exactly what a probe found. So the board KEEPS the widget and
@@ -274,6 +283,9 @@ func _place_hosted(which: String) -> bool:
 		"players":
 			if _panno.has_method("players_slot_box"):
 				slot = _panno.players_slot_box()
+		"journal":
+			if _panno.has_method("journal_slot_box"):
+				slot = _panno.journal_slot_box()
 	if slot == null:
 		return false
 	if (w as Control).get_parent() == slot:
@@ -617,15 +629,13 @@ func set_last_line(line: Dictionary) -> void:
 	_last_line = line
 
 
-func set_journal_tail(lines: Array) -> void:
-	_journal_tail = lines
 
 
 func _sync_centre(proj: Dictionary, seats: Array, human_pid: int) -> void:
 	# The panno paints FIRST and unconditionally: the zones (dice, players, journal) must be
 	# current in every phase, including the AUCTION branch below that returns early.
 	if _panno != null:
-		_panno.sync(proj, seats, human_pid, _last_line, _journal_tail)
+		_panno.sync(proj, seats, human_pid, _last_line)
 	var phase: String = str(proj.get("phase", ""))
 	var dice: Array = proj.get("dice", [0, 0])
 	if int(dice[0]) > 0 and not _rolling:

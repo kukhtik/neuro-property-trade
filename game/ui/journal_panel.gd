@@ -31,8 +31,30 @@ var _seats: Array = []         # [{pid, name}] for the seat filter
 var _f_pid := -1               # -1 = all seats
 var _f_cat := ""               # "" = all kinds
 
+## THE RING MEASURE. The panel used to live in the 344px right dock, where a font size
+## in PIXELS was right. It now lives in the panno's journal slot - inside the ring - and
+## the ring SCALES with its cell: the panno's own labels are a ratio of the cell, so they
+## read the same on a 1280 window and on a 4K one. A pixel font in the ring would be
+## unreadable on a phone (STREAM-READ measures the EFFECTIVE size after scaling).
+##
+## So the panel keeps its sizes as DESIGN sizes and re-derives them from the cell.
+## Zero cell = the dock, where the pixel sizes are already right.
+var _cell := 0.0
+const DS_TITLE := 12.0
+const DS_COUNT := 10.0
+const DS_BTN := 10.0
+const DS_WHO := 11.0
+const DS_TEXT := 12.0
+const DS_TAG := 9.0
+const DS_EMPTY := 12.0
+## The design sizes are expressed in the DOCK's pixels; the ring re-derives them from the
+## cell with this factor, measured from the panno: its own body text is 0.27 of a cell.
+const RING_FACTOR := 0.27 / 12.0
+
 
 func _init() -> void:
+	# The frame is drawn HERE, in the dock. In the ring the panno's zone already draws one,
+	# and two frames inside each other read as a mistake. `set_ring_cell` drops this one.
 	add_theme_stylebox_override("panel",
 		UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
 	var v := UiTheme.vbox(0)
@@ -47,12 +69,12 @@ func _init() -> void:
 	m.add_child(col)
 	# header: title · counter · export
 	var head := UiTheme.hbox(8)
-	_title = UiTheme.label(I18n.t("jrn.title"), 12, UiTheme.COL().text)
+	_title = UiTheme.label(I18n.t("jrn.title"), _ds(DS_TITLE), UiTheme.COL().text)
 	# the journal heading is on the "must be understood from one glance" list (docs/program.md,
 	# owner correction 16.10): the stream-readability gate asks for it BY NAME, never by guess.
 	_title.name = "jrn-title"
 	head.add_child(_title)
-	_count = UiTheme.label("", 10, UiTheme.COL().text_dim)
+	_count = UiTheme.label("", _ds(DS_COUNT), UiTheme.COL().text_dim)
 	_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(_count)
@@ -90,12 +112,56 @@ func _init() -> void:
 	list_margin.add_child(scroll)
 	v.add_child(list_margin)
 	# the friendly empty state lives INSIDE the scroll area, above the first row
-	_empty = UiTheme.label_wrap("", 12, UiTheme.COL().text_dim)
+	_empty = UiTheme.label_wrap("", _ds(DS_EMPTY), UiTheme.COL().text_dim)
 	_empty.name = "jrn-empty"
 	_empty.visible = false
 	_list.add_child(_empty)
 	_refill_filters()
 	_update_counters()
+
+
+## THE PANEL IS IN THE RING: the cell size comes from the board, exactly as the panno's
+## own labels get theirs. Every font in the panel is re-derived from it.
+##
+## A cell of 0 means the dock, where the design pixel sizes are already right.
+func set_ring_cell(cell: float) -> void:
+	_cell = maxf(0.0, cell)
+	if _cell > 0.0:
+		# IN THE RING: the zone draws the frame, and the panel's own margins are the
+		# zone's business too - the panno puts the caption above.
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	else:
+		add_theme_stylebox_override("panel",
+			UiTheme.box(UiTheme.COL().panel, UiTheme.COL().border, 1, 0))
+	_apply_sizes()
+	# the rows are drawn once per event, so they must be redrawn at the new size
+	_rebuild()
+
+
+## The size of a design size at the current cell.
+##
+## In the DOCK the design size is the pixel size. In the RING it is a fraction of the
+## cell, so the panel reads the same as the panno around it.
+func _ds(design: float) -> int:
+	if _cell <= 0.0:
+		return int(design)
+	return maxi(10, int(round(_cell * RING_FACTOR * design)))
+
+
+## Re-derive every font in the panel from the current cell.
+func _apply_sizes() -> void:
+	if _title != null:
+		_title.add_theme_font_size_override("font_size", _ds(DS_TITLE))
+	if _count != null:
+		_count.add_theme_font_size_override("font_size", _ds(DS_COUNT))
+	if _export_btn != null:
+		_export_btn.add_theme_font_size_override("font_size", _ds(DS_BTN))
+	if _pfilter != null:
+		_pfilter.add_theme_font_size_override("font_size", _ds(DS_BTN))
+	if _cfilter != null:
+		_cfilter.add_theme_font_size_override("font_size", _ds(DS_BTN))
+	if _empty != null:
+		_empty.add_theme_font_size_override("font_size", _ds(DS_EMPTY))
 
 
 ## The seats known to the shell: [{pid, name}] - drives the seat filter's options.
@@ -202,15 +268,15 @@ func _render_row(line: Dictionary) -> void:
 	row.add_child(m)
 	var ln := UiTheme.hbox(8)
 	m.add_child(ln)
-	var who := UiTheme.label(str(line.get("who", "")), 11, line.get("who_color", UiTheme.COL().text))
+	var who := UiTheme.label(str(line.get("who", "")), _ds(DS_WHO), line.get("who_color", UiTheme.COL().text))
 	who.custom_minimum_size.x = 60
 	who.name = "jrn-who"
 	ln.add_child(who)
-	var txt := UiTheme.label_wrap(str(line.get("text", "")), 12, UiTheme.COL().text)
+	var txt := UiTheme.label_wrap(str(line.get("text", "")), _ds(DS_TEXT), UiTheme.COL().text)
 	txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	txt.name = "jrn-text"
 	ln.add_child(txt)
-	var tag := UiTheme.label(str(line.get("tag", "")), 9, UiTheme.COL().text_dim)
+	var tag := UiTheme.label(str(line.get("tag", "")), _ds(DS_TAG), UiTheme.COL().text_dim)
 	ln.add_child(tag)
 	_list.add_child(row)
 	# autoscroll to the newest
