@@ -169,6 +169,14 @@ GATES=(
 	"PANELS-IN-RING|hg|required|script|tools/ci/gates/panels_in_ring_gate.sh"
 	"SOUND-EVENTS|hg|required|script|tools/ci/gates/sound_events_gate.sh"
 	"SOUND|hg|required|script|tools/ci/gates/sound_gate.sh"
+	# THEME (В7-B): the skin's `Theme` was DEAD CODE - it built type variations ("ButtonPrimary",
+	# "PanelHeader") that no widget ever used, and a variation that does not name its BASE is
+	# ignored by the engine (measured: a Button with `theme_type_variation = "ButtonPrimary"` read
+	# the base type's colour, and `Theme.set_type_variation_base` does not exist in this build - the
+	# method is `set_type_variation`). The theme is now applied at the shell's root and the gate
+	# proves it is ALIVE: the variations resolve, the base fallback works, the hand-written
+	# `add_theme_*` overrides still win, and the theme follows the skin.
+	"THEME|hg|required|scene|theme_gate"
 )
 
 

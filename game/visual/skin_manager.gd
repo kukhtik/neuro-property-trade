@@ -521,6 +521,23 @@ func theme() -> Theme:
 	th.set_stylebox("pressed", "ButtonPrimary", _flat(accent, accent, w2))
 	th.set_color("font_color", "ButtonPrimary", on_accent)
 
+	# A VARIATION MUST NAME ITS BASE, OR THE ENGINE IGNORES IT.
+	#
+	# Measured, not assumed: a Button with `theme_type_variation = "ButtonPrimary"` read
+	# the BASE type's colour until the theme declared `set_type_variation("ButtonPrimary",
+	# "Button")` - and `Theme.set_type_variation_base` does not exist in this build (the
+	# method is `set_type_variation`). Without these lines the whole theme was dead code
+	# wearing the costume of a refactor: every widget fell back to the base type.
+	for v in ["ButtonBase", "ChipBase", "TabButton", "SegmentButton", "ButtonPrimary"]:
+		th.set_type_variation(v, "Button")
+	for v in ["PanelBase", "PanelRail", "ModalFrame", "PlayerCard", "JournalRow", "ToastBg",
+			"PanelHeader", "PlayerCardActive", "JournalRowHL"]:
+		th.set_type_variation(v, "PanelContainer")
+	# A built-in class cannot be marked as a variation of ITSELF ("Label" of "Label"),
+	# and the engine refuses it - so the label roles declare no base and simply
+	# carry their own items. The Button and PanelContainer families do need theirs.
+	for v in ["LabelMuted", "LabelTitle", "LabelMoney"]:
+		th.set_type_variation(v, "Label")
 	th.set_color("font_color", "Label", text)
 	th.set_color("font_color", "LabelMuted", muted)
 	th.set_color("font_color", "LabelTitle", text)

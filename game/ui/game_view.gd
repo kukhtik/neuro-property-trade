@@ -188,6 +188,23 @@ func _build() -> void:
 	_console.start_requested.connect(func() -> void: settings_requested.emit())
 	centre.add_child(_console)
 
+	# THE SKIN'S THEME, APPLIED ONCE AT THE ROOT.
+	#
+	# The theme is a `Theme` resource: a control reads its colours and styleboxes from
+	# the nearest theme in the tree, and a `theme_type_variation` names a ROLE ("ButtonPrimary",
+	# "PanelHeader") rather than a colour. Measured in a real scene: a theme set on the root
+	# reaches controls deep in the tree, and a variation resolves against it - but ONLY if
+	# the theme declares that variation's base (`set_type_variation`), which is why
+	# `SkinManager.theme()` grew those lines.
+	#
+	# The theme is the DEFAULT for everything; the hand-written `add_theme_*` overrides
+	# still win where they exist (an override always beats the theme), so applying it
+	# changes NOTHING on screen today. That is the point: it is the floor a migration
+	# stands on, and it is measurable - a control that reads the skin's accent is
+	# reading the THEME, not an override.
+	var themed := SkinManager.new()
+	if themed.load_skin():
+		theme = themed.theme()
 	# right column: toasts, journal, inspector
 	_rightcol = UiTheme.vbox(8)
 	_rightcol.name = "rightcol"
