@@ -102,7 +102,7 @@ func _build() -> void:
 	(_header as Chamfer).add_child(_title_holder)
 
 	_title_label = Label.new()
-	_title_label.add_theme_font_size_override("font_size", _skin.size("s", 12))
+	_title_label.add_theme_font_size_override("font_size", _skin.size("s", 13))
 	_title_label.add_theme_color_override("font_color", _skin.color("muted"))
 	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	# no ellipsis: the rail lays the word out itself, and trimming would eat the vertical text
@@ -111,7 +111,7 @@ func _build() -> void:
 	_title_holder.add_child(_title_label)
 
 	_count_label = Label.new()
-	_count_label.add_theme_font_size_override("font_size", _skin.size("xs", 10))
+	_count_label.add_theme_font_size_override("font_size", _skin.size("xs", 11))
 	_count_label.add_theme_color_override("font_color", _skin.color("muted"))
 	_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -210,7 +210,7 @@ func _apply_state(animate: bool) -> void:
 		# clipped by a 26px holder (owner: «кнопки боковых панелей супер маленькие»).
 		custom_minimum_size.y = _rail_min_h()
 	else:
-		_title_label.add_theme_font_size_override("font_size", _skin.size("s", 12))
+		_title_label.add_theme_font_size_override("font_size", _skin.size("s", 13))
 		_chevron.text = ("‹" if _left_side else "›")
 		custom_minimum_size.y = 0.0
 	if t != null:

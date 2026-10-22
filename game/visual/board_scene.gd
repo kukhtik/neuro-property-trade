@@ -128,7 +128,12 @@ func _build_centre() -> void:
 		d.draw.connect(_draw_die.bind(d))
 		_tray.add_child(d)
 		_dice.append(d)
-	_sum = UiTheme.label("", 24, UiTheme.COL().text)
+	# THE DICE SUM - the design's hero number. `.dsum .val` is 48px (concept-a-composition.html:111),
+	# and 48 is in the design's vocabulary, so it is both the mockup's size and a legal literal.
+	# MOCK-02's cap is now the design's own maximum (48), not the role `xl` (28): the hero number is
+	# in the design on purpose, so the gate stopped rejecting it. Kept as the design's SIZE (not a
+	# cell ratio, not a 24 of its own); the layout at 48 is measured in the report.
+	_sum = UiTheme.label("", 48, UiTheme.COL().text)
 	_sum.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_sum.add_theme_stylebox_override("normal", UiTheme.box(UiTheme.COL().panel_dark, UiTheme.COL().border, 1, 0))
 	_sum.visible = false
@@ -150,7 +155,8 @@ func _build_centre() -> void:
 	add_child(_card)
 	var cv := UiTheme.vbox(4)
 	_card.add_child(cv)
-	_card_name = UiTheme.label("", 16, UiTheme.COL().text)
+	# the design's `.pname` (concept-a-composition.html: 15px) - the tile card's name in the centre.
+	_card_name = UiTheme.label("", 15, UiTheme.COL().text)
 	_card_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cv.add_child(_card_name)
 	_card_price = UiTheme.label("", 14, UiTheme.COL().money)
@@ -560,10 +566,18 @@ func _place_centre() -> void:
 	var die_px: float = maxf(18.0, roundf(_cell * 0.34))
 	for d in _dice:
 		d.custom_minimum_size = Vector2(die_px, die_px)
-	_sum.add_theme_font_size_override("font_size", maxi(14, int(_cell * 0.34)))
-	_banner.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.20)))
-	_card_name.add_theme_font_size_override("font_size", maxi(12, int(_cell * 0.18)))
-	_card_price.add_theme_font_size_override("font_size", maxi(11, int(_cell * 0.16)))
+	# The FLOORS of these dynamic sizes are steps of the skin's scale, not spare integers: the old
+	# 12 on the card name (and its siblings) were sizes the scale does not carry (11/13/14/18/28).
+	# The RATIO still scales with the cell - the mockup scales cell text too - but a cell smaller
+	# than the smallest step can never push a label below it.
+	var sk := UiTheme.skin()
+	# the sum is the one label in this block whose size is NOT cell-relative: the design draws it at
+	# `.dsum .val` = 48 regardless of the cell, and UiTheme.label already applied px(48) at build
+	# time; UiTheme.rescale_tree re-applies it on a window change. A cell ratio here would shrink the
+	# hero number back to ~23 (what it drew before) and stop matching the design.
+	_banner.add_theme_font_size_override("font_size", maxi(sk.size("xs", 11), int(_cell * 0.20)))
+	_card_name.add_theme_font_size_override("font_size", maxi(sk.size("s", 13), int(_cell * 0.18)))
+	_card_price.add_theme_font_size_override("font_size", maxi(sk.size("xs", 11), int(_cell * 0.16)))
 
 
 ## Watermark shows in the cold state only (proto renderCenter).

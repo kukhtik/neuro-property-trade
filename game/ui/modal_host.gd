@@ -78,7 +78,9 @@ func _init() -> void:
 	var v := UiTheme.vbox(10)
 	m.add_child(v)
 	var head := UiTheme.hbox(8)
-	_title = UiTheme.label("", 16, UiTheme.COL().text)
+	# the sheet's title is the scale's `l` step, as the mockup's `.modal-h .title` (var(--fs-l) = 18);
+	# the 16 it used to carry was a size outside the scale.
+	_title = UiTheme.label("", UiTheme.skin().size("l", 18), UiTheme.COL().text)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
 	var x := UiTheme.button(I18n.t("ui.close"), I18n.t("ui.close_tip"))
@@ -100,7 +102,27 @@ func show_message(title: String, text: String) -> void:
 	kind = ""
 	_title.text = title
 	_clear_body()
-	_body.add_child(UiTheme.label_wrap(text, 13, UiTheme.COL().text))
+	_body.add_child(UiTheme.label_wrap(text, UiTheme.skin().size("s", 13), UiTheme.COL().text))
+	visible = true
+
+
+## THE WINNER ROLE (`xl`). The mockup's game-over sheet gives the winner's NAME the top step of
+## the scale in the money colour - `design/ui-prototype.html`, `.winner-name { font-size:
+## var(--fs-xl) }` with `--fs-xl: 28px /* skin size.xl — winner */` - and puts the
+## "Победитель: <name>" line under it at the `s` step (`.modal .sub`). The product used to send the
+## victory through `show_message`, so the single largest step of the scale was drawn NOWHERE in
+## the game: the win was a paragraph at `s`, the same size as a rejection notice.
+func show_game_over(winner_name: String) -> void:
+	kind = "over"
+	_title.text = I18n.t("modal.game_over")
+	_clear_body()
+	var s := UiTheme.skin()
+	var name_lbl := UiTheme.label(winner_name, s.size("xl", 28), s.color("money"))
+	name_lbl.name = "gameover-winner"     # the role, by name: a gate/user asks for it, not a position
+	_body.add_child(name_lbl)
+	var sub := UiTheme.label_wrap(I18n.t("modal.winner", [winner_name]), s.size("s", 13), s.color("muted"))
+	sub.name = "gameover-winner-sub"
+	_body.add_child(sub)
 	visible = true
 
 
@@ -171,7 +193,8 @@ func _tile_name(proj: Dictionary, idx: int) -> String:
 func _tile_check_row(box: VBoxContainer, t: Dictionary) -> CheckBox:
 	var cb := CheckBox.new()
 	cb.text = "%s  ($%d)" % [str(t.get("name", "?")), int(t.get("cost", 0))]
-	cb.add_theme_font_size_override("font_size", 12)
+	# the mockup's `.tilechip` is the `s` step (13); the 12 here was outside the scale.
+	cb.add_theme_font_size_override("font_size", UiTheme.skin().size("s", 13))
 	cb.add_theme_color_override("font_color", UiTheme.COL().text)
 	box.add_child(cb)
 	return cb
@@ -189,7 +212,7 @@ func _scroll_list() -> VBoxContainer:
 
 func _cash_row(label_key: String, tip_key: String) -> LineEdit:
 	var row := UiTheme.hbox(8)
-	var l := UiTheme.label(I18n.t(label_key), 12, UiTheme.COL().text_dim)
+	var l := UiTheme.label(I18n.t(label_key), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim)
 	row.add_child(l)
 	var e := LineEdit.new()
 	e.text = "0"
@@ -218,7 +241,7 @@ func show_trade_composer(proj: Dictionary, seats: Array, human_pid: int) -> void
 	_clear_body()
 
 	var rrow := UiTheme.hbox(8)
-	rrow.add_child(UiTheme.label(I18n.t("modal.recipient"), 12, UiTheme.COL().text_dim))
+	rrow.add_child(UiTheme.label(I18n.t("modal.recipient"), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim))
 	_c_to = OptionButton.new()
 	# fit_to_longest_item sizes the dropdown by its widest ENTRY and can widen the sheet
 	_c_to.fit_to_longest_item = false
@@ -248,7 +271,7 @@ func show_trade_composer(proj: Dictionary, seats: Array, human_pid: int) -> void
 
 	_c_want_cash = _cash_row("modal.want_cash", "modal.want_cash_tip")
 
-	_c_err = UiTheme.label("", 11, UiTheme.COL().danger)
+	_c_err = UiTheme.label("", UiTheme.skin().size("xs", 11), UiTheme.COL().danger)
 	_body.add_child(_c_err)
 
 	var foot := UiTheme.hbox(8)
@@ -340,9 +363,9 @@ func show_trade_response(proj: Dictionary, seats: Array) -> void:
 	# hands. That is unanswerable: tiles are not interchangeable, and "2 tiles" is the same sentence
 	# for a brown and a dark-blue. The names come from the projection's board, the same source the
 	# board itself draws from.
-	_body.add_child(UiTheme.label(I18n.t("modal.trade_gives"), 12, UiTheme.COL().text_dim))
+	_body.add_child(UiTheme.label(I18n.t("modal.trade_gives"), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim))
 	_body.add_child(_terms_block(int(pend.get("give_cash", 0)), give_tiles, proj))
-	_body.add_child(UiTheme.label(I18n.t("modal.trade_asks"), 12, UiTheme.COL().text_dim))
+	_body.add_child(UiTheme.label(I18n.t("modal.trade_asks"), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim))
 	_body.add_child(_terms_block(int(pend.get("want_cash", 0)), want_tiles, proj))
 	var foot := UiTheme.hbox(8)
 	var decline := UiTheme.button(I18n.t("modal.decline"), I18n.t("modal.decline_tip"))
@@ -412,18 +435,18 @@ func show_auction(proj: Dictionary, seats: Array, human_pid: int) -> void:
 	else:
 		_body.add_child(UiTheme.label(I18n.t("modal.auction_no_timer"), 11, UiTheme.COL().text_dim))
 	if _a_high > 0:
-		_body.add_child(UiTheme.label(I18n.t("modal.auction_high", [_a_high]), 12, UiTheme.COL().money))
+		_body.add_child(UiTheme.label(I18n.t("modal.auction_high", [_a_high]), UiTheme.skin().size("s", 13), UiTheme.COL().money))
 		var lead := _seat_name(seats, int(pend.get("high_player", -1)))
-		_body.add_child(UiTheme.label(I18n.t("modal.auction_leader", [lead]), 12, UiTheme.COL().text_dim))
+		_body.add_child(UiTheme.label(I18n.t("modal.auction_leader", [lead]), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim))
 	else:
-		_body.add_child(UiTheme.label(I18n.t("modal.auction_none"), 12, UiTheme.COL().text_dim))
+		_body.add_child(UiTheme.label(I18n.t("modal.auction_none"), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim))
 	var bidder: int = int(pend.get("bidder", -1))
 	if human_pid < 0 or human_pid != bidder:
 		_body.add_child(UiTheme.label_wrap(I18n.t("modal.auction_watch"), 11, UiTheme.COL().text_dim))
 		visible = true
 		return
 	var row := UiTheme.hbox(8)
-	row.add_child(UiTheme.label(I18n.t("modal.bid_lbl"), 12, UiTheme.COL().text_dim))
+	row.add_child(UiTheme.label(I18n.t("modal.bid_lbl"), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim))
 	_a_bid = LineEdit.new()
 	_a_bid.name = "bid_input"
 	_a_bid.text = typed if typed != "" else str(maxi(1, _a_high + 5))
@@ -441,7 +464,7 @@ func show_auction(proj: Dictionary, seats: Array, human_pid: int) -> void:
 		close())
 	row.add_child(passb)
 	_body.add_child(row)
-	_a_err = UiTheme.label("", 11, UiTheme.COL().danger)
+	_a_err = UiTheme.label("", UiTheme.skin().size("xs", 11), UiTheme.COL().danger)
 	_body.add_child(_a_err)
 	visible = true
 

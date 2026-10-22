@@ -59,7 +59,9 @@ func _build() -> void:
 	card.custom_minimum_size.x = 420
 	centre.add_child(card)
 
-	_title = UiTheme.label(I18n.t("join.title"), 26, UiTheme.COL().text)
+	# Заголовок окна - та же роль, что у окна хоста (`modal_host.gd`: size("l", 18)).
+	# Было 26 - числа нет ни в шкале скина (11/13/14/18/28), ни в словаре дизайна.
+	_title = UiTheme.label(I18n.t("join.title"), UiTheme.skin().size("l", 18), UiTheme.COL().text)
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(_title)

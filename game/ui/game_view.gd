@@ -1230,6 +1230,8 @@ func show_game_over(winner_name: String) -> void:
 		# `modal.game_over` / `modal.winner` are the keys the v3 sheet declares for exactly this
 		# message (they sat unused while the shell asked for `over.title`/`over.winner`, two keys
 		# nobody had ever written - the game-over modal showed `{over.title}` to the player).
-		_modals.show_message(I18n.t("modal.game_over"), I18n.t("modal.winner", [winner_name]))
+		# The win has its OWN sheet now: the mockup sets the winner's name at `xl` (28) in the money
+		# colour, and that step was drawn nowhere while the victory was a generic message.
+		_modals.show_game_over(winner_name)
 	if _toasts != null:
 		_toasts.show_event_toast({"type": "winner", "data": {"player": winner_name}})

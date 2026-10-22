@@ -57,8 +57,12 @@ STATIC_RULES = [
     # UiTheme.label("текст", 12) / UiTheme.label_wrap("текст", 12, цвет) — размер приходит
     # АРГУМЕНТОМ, и это самый частый путь «сырого» числа в продукте (так админ-панель
     # выставляла 12 — числа, которого в шкале нет).
-    (re.compile(r"UiTheme\.label(?:_wrap)?\(\s*[^,()]*,\s*(\d+)"),
-     "кегль, переданный в UiTheme.label"),
+    # Это НЕ регулярка, а разбор аргументов (scan_label_calls): обе регулярки врут.
+    #   * `[^,()]*` — молча пропускал 59 вызовов, где первый аргумент со скобками
+    #     (`I18n.t("...")`), и пропущенные были ровно те, где размер стоял ВНЕ шкалы
+    #     (то есть гейт показывал не все нарушения, и правка по нему была неполной);
+    #   * `[^;]*?,\s*(\d+)` — ловит «0» из `p.get("money", 0)` ВНУТРИ первого аргумента,
+    #     то есть даёт ложное нарушение.
 ]
 
 # Каталоги, которые НЕ являются визуальным языком продукта: тесты (в них числа — это
@@ -94,6 +98,80 @@ def load_design_vocabulary():
     return vocab
 
 
+def _split_args(text):
+    """Делит список аргументов вызова по запятым ВЕРХНЕГО уровня (скобки и строки учтены)."""
+    args = []
+    depth = 0
+    quote = ""
+    cur = []
+    i = 0
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            cur.append(ch)
+            if ch == "\\" and i + 1 < len(text):
+                cur.append(text[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                quote = ""
+        elif ch in "\"'":
+            quote = ch
+            cur.append(ch)
+        elif ch in "([{":
+            depth += 1
+            cur.append(ch)
+        elif ch in ")]}":
+            depth -= 1
+            cur.append(ch)
+        elif ch == "," and depth == 0:
+            args.append("".join(cur).strip())
+            cur = []
+        else:
+            cur.append(ch)
+        i += 1
+    if cur:
+        args.append("".join(cur).strip())
+    return args
+
+
+LABEL_CALL = re.compile(r"UiTheme\.label(?:_wrap)?\s*\(")
+
+
+def scan_label_calls(line):
+    """Размеры, переданные в UiTheme.label(...) как ЧИСЛОВОЙ аргумент.
+
+    Берём только те аргументы, которые ЦЕЛИКОМ являются целым числом: `13` - да,
+    `p.get("money", 0)` - нет (это текст, внутри которого есть запятая и ноль).
+    """
+    found = []
+    for m in LABEL_CALL.finditer(line):
+        start = m.end()
+        depth = 1
+        quote = ""
+        i = start
+        while i < len(line) and depth > 0:
+            ch = line[i]
+            if quote:
+                if ch == "\\":
+                    i += 2
+                    continue
+                if ch == quote:
+                    quote = ""
+            elif ch in "\"'":
+                quote = ch
+            elif ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+            i += 1
+        args = _split_args(line[start:i - 1])
+        for a in args:
+            if re.fullmatch(r"\d+", a):
+                found.append(int(a))
+    return found
+
+
 def static_scan(allowed):
     """Ищет «сырые» кегля вне разрешённого набора в исходниках игры."""
     bad = []
@@ -116,6 +194,13 @@ def static_scan(allowed):
                         continue
                     bad.append({"file": rel, "line": i, "size": n, "why": why,
                                 "text": line.strip()[:110]})
+            # размеры, переданные в UiTheme.label(...) числом (разбор аргументов, не регулярка)
+            for n in scan_label_calls(line):
+                if n in allowed:
+                    continue
+                bad.append({"file": rel, "line": i, "size": n,
+                            "why": "кегль, переданный в UiTheme.label",
+                            "text": line.strip()[:110]})
     # отдельное правило: константа с кеглем (HOUSES_MIN := 10)
     const_rx = re.compile(r"const\s+([A-Z_]*(?:FONT|SIZE|MIN|MAX)[A-Z_]*)\s*:?=\s*(\d+)")
     for p in sorted(GAME_DIR.rglob("*.gd")):

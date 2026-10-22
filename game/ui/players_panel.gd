@@ -63,9 +63,9 @@ func _init() -> void:
 	m.add_child(col)
 
 	_head = UiTheme.hbox(8)
-	_title = UiTheme.label(I18n.t("ui.players"), 12, UiTheme.COL().text_dim)
+	_title = UiTheme.label(I18n.t("ui.players"), UiTheme.skin().size("s", 13), UiTheme.COL().text_dim)
 	_head.add_child(_title)
-	_count = UiTheme.label("", 10, UiTheme.COL().text_dim)
+	_count = UiTheme.label("", UiTheme.skin().size("xs", 11), UiTheme.COL().text_dim)
 	_head.add_child(_count)
 	col.add_child(_head)
 
@@ -327,7 +327,7 @@ func _card(p: Dictionary, seats: Array, turn: int, names: Dictionary, by_index: 
 	focus_btn.tooltip_text = I18n.t("plr.inv_tip", [name])
 	focus_btn.focus_mode = Control.FOCUS_NONE
 	focus_btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	focus_btn.add_theme_font_size_override("font_size", 11)
+	focus_btn.add_theme_font_size_override("font_size", UiTheme.skin().size("xs", 11))
 	focus_btn.add_theme_color_override("font_color", col)
 	for st in ["normal", "hover", "pressed"]:
 		focus_btn.add_theme_stylebox_override(st, UiTheme.box(
@@ -459,7 +459,7 @@ func _refresh_stats(proj: Dictionary, players: Array) -> void:
 		var val := UiTheme.label(cell[0], 14, UiTheme.COL().text)
 		val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		val.clip_text = true
-		var key := UiTheme.label(cell[1], 9, UiTheme.COL().text_dim)
+		var key := UiTheme.label(cell[1], UiTheme.skin().size("xs", 11), UiTheme.COL().text_dim)
 		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		key.clip_text = true
 		v.add_child(val)

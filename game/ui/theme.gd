@@ -281,7 +281,9 @@ static func _style_tooltip(c: Control) -> void:
 	var s := skin()
 	c.add_theme_stylebox_override("TooltipPanel", box(s.color("surface.2"), s.color("accent"), 1))
 	c.add_theme_color_override("TooltipLabel/font_color", s.color("text"))
-	c.add_theme_font_size_override("TooltipLabel/font_size", s.size("s", 12))
+	# The fallback is the SKIN's `s` (13), not 12: a skin that ships no `s` step must not drop the
+	# tooltip onto a size the scale does not have (11/13/14/18/28 - skin.json tokens.size).
+	c.add_theme_font_size_override("TooltipLabel/font_size", s.size("s", 13))
 
 
 ## VBox with consistent separation. The margin argument is kept for call-site

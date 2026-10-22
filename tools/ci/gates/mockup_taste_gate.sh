@@ -75,7 +75,11 @@ fi
 dump_arg="$repo_native/build/gates/mockup_taste.dump"
 if [ "${1:-}" = "--negative" ]; then
 	bad="$repo_native/build/gates/mockup_taste_negative.dump"
-	{ cat "$dump"; echo "TASTE|label|/fake/huge/64|-1|0|огромная надпись"; } > "$bad"
+	# ПОЛЯ ДОЛЖНЫ СТОЯТЬ НА СВОИХ МЕСТАХ: label|path|eff|dpx|board|text.
+	# 64 — это ЭФФЕКТИВНЫЙ КЕГЛЬ (третье поле). Если 64 уедет в путь, а eff станет -1,
+	# нарушения не будет, и гейт пройдёт с «испорченным» входом - то есть не докажет,
+	# что мерит. (Так и случилось: ребёнок это поймал, а обвязка была неправильная.)
+	{ cat "$dump"; echo "TASTE|label|/fake/huge|64|-1|0|huge label"; } > "$bad"
 	dump_arg="$bad"
 fi
 

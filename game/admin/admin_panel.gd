@@ -116,7 +116,10 @@ func _build() -> void:
 	# header: title + search + close
 	var head = HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
-	var title = UiTheme.label(I18n.t("admin.title"), 16, UiTheme.COL().gold)
+	# A PANEL HEADER is the scale's `l` step, the mockup's `.modal-h .title` / `.sheet-h .title`
+	# (var(--fs-l) = 18). The 16 here was outside both the scale and the design's vocabulary;
+	# `.brand` (12) is the top-bar wordmark - a different role, already drawn by top_bar.gd.
+	var title = UiTheme.label(I18n.t("admin.title"), UiTheme.skin().size("l", 18), UiTheme.COL().gold)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	_search = LineEdit.new()

@@ -32,14 +32,19 @@ const LayoutProfile := preload("res://ui/core/layout_profile.gd")
 ## Owner, 19.10: "поля бизнесов нужно немного переделать - увеличить шрифты". The ratios and the caps
 ## below are what makes a business cell readable at the B1 band: 0.20/0.16 of the SHORT side gives
 ## 17/14px on a 190x88 side cell and 21/17px on a 107x190 top cell - against 15/11 and 18/13 before.
-const NAME_MIN := 12
+## THE FLOORS ARE STEPS OF THE SKIN'S SCALE (skin.json → tokens.size = xs 11 · s 13 · m 14 · l 18 ·
+## xl 28). They used to be 12/10/12/10 — the numbers §7 of the journal had mis-typed as the scale
+## (10/12/13) — so a tight cell could land its type on a size the design does not own. GDScript
+## `const` cannot call the skin, so the constants carry the STEP they mean and the two places that
+## can read the skin at run time (`set_screen`, the corner fit) do exactly that.
+const NAME_MIN := 13      # skin size.s
 const NAME_MAX := 26
 const NAME_RATIO := 0.20
-const PRICE_MIN := 10
+const PRICE_MIN := 11     # skin size.xs
 const PRICE_MAX := 20
 const PRICE_RATIO := 0.16
-const BADGE_MIN := 12.0
-const HOUSES_MIN := 10
+const BADGE_MIN := 12.0   # a BOX side in px, not type: the badge's own geometry
+const HOUSES_MIN := 11    # skin size.xs (was 10 - below the smallest step)
 
 var index := 0
 var _skin: SkinManager
@@ -146,7 +151,9 @@ func set_screen(text: String, px: int, kind: String = "") -> void:
 	if kind != "":
 		_screen.name = "glance-" + kind     # the gate finds the role by name, not by position
 	_screen.text = text
-	_screen_want = maxi(10, px)
+	# the floor of the glance line is the scale's smallest step, read from the skin (a raw 10 was
+	# below the mockup's xs = 11).
+	_screen_want = maxi(UiTheme.skin().size("xs", 11), px)
 	_screen.add_theme_font_size_override("font_size", _screen_want)
 	_layout_children()
 
@@ -421,7 +428,8 @@ func _layout_children() -> void:
 		_screen.position = text_rect.position + Vector2(0, name_h)
 		_screen.size = Vector2(maxf(1.0, text_rect.size.x), maxf(1.0, text_rect.size.y - name_h))
 		_screen.add_theme_font_size_override("font_size",
-			_fit_px(_screen.text, text_rect.size.x, text_rect.size.y - name_h, 12, _screen_want))
+			_fit_px(_screen.text, text_rect.size.x, text_rect.size.y - name_h,
+				UiTheme.skin().size("s", 13), _screen_want))
 		_badge.position = Vector2(inner.position.x + 1, inner.position.y + 1)
 		_badge.size = Vector2(maxf(BADGE_MIN, c * 0.16), maxf(BADGE_MIN, _badge.get_combined_minimum_size().y))
 		return

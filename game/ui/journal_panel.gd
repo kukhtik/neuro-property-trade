@@ -40,16 +40,24 @@ var _f_cat := ""               # "" = all kinds
 ## So the panel keeps its sizes as DESIGN sizes and re-derives them from the cell.
 ## Zero cell = the dock, where the pixel sizes are already right.
 var _cell := 0.0
-const DS_TITLE := 12.0
-const DS_COUNT := 10.0
-const DS_BTN := 10.0
-const DS_WHO := 11.0
-const DS_TEXT := 12.0
-const DS_TAG := 9.0
-const DS_EMPTY := 12.0
+## THE ROLES ARE THE SKIN'S STEPS, NOT NUMBERS. These used to be the absolute design pixels
+## 12/10/10/11/12/9/12 — taken from §7 of the journal, whose table had the scale typed WRONG
+## (10/12/13). The skin (`game/assets/skins/neuro/skin.json` → tokens.size) and the mockup
+## (`design/ui-prototype.html` → --fs-xs..--fs-xl) both say **xs 11 · s 13 · m 14 · l 18 · xl 28**,
+## so 9/10/12 were sizes the product did not own. Each role now NAMES a step and `_ds()` reads its
+## value from the skin; the numbers below are only the fallback for a skin missing that step.
+const SIZES := {"xs": 11, "s": 13, "m": 14, "l": 18, "xl": 28}
+const DS_TITLE := "m"    # mockup `.jrn-h .title` — the header inherits the body step (14)
+const DS_COUNT := "xs"   # mockup `.jrn-h .count` (11)
+const DS_BTN := "s"      # mockup `.filters select` / a dock button (13)
+const DS_WHO := "xs"     # mockup `.jrow__t` (11)
+const DS_TEXT := "s"     # mockup `.jrow__text` (13)
+const DS_TAG := "xs"     # mockup `.jrow__tag` (11)
+const DS_EMPTY := "s"    # mockup `.jrn-empty` (13)
 ## The design sizes are expressed in the DOCK's pixels; the ring re-derives them from the
-## cell with this factor, measured from the panno: its own body text is 0.27 of a cell.
-const RING_FACTOR := 0.27 / 12.0
+## cell with this factor, measured from the panno: its own body text is 0.27 of a cell, and the
+## panno's body is the `s` step — so the anchor is 13, not the 12 the mis-typed table gave.
+const RING_FACTOR := 0.27 / 13.0
 
 
 func _init() -> void:
@@ -79,7 +87,10 @@ func _init() -> void:
 	_count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	head.add_child(_count)
 	_export_btn = UiTheme.button(I18n.t("jrn.export"), I18n.t("jrn.export_tip"))
-	_export_btn.add_theme_font_size_override("font_size", 10)
+	# the dock's small control: the skin's `s` step through the panel's own role, so the ring
+	# re-derives it from the cell like every other label here (a raw 10 was a size the scale
+	# does not have).
+	_export_btn.add_theme_font_size_override("font_size", _ds(DS_BTN))
 	_export_btn.pressed.connect(_on_export)
 	head.add_child(_export_btn)
 	col.add_child(head)
@@ -87,13 +98,13 @@ func _init() -> void:
 	var fil := UiTheme.hbox(8)
 	_pfilter = OptionButton.new()
 	_pfilter.tooltip_text = I18n.t("jrn.filter_seat_tip")
-	_pfilter.add_theme_font_size_override("font_size", 10)
+	_pfilter.add_theme_font_size_override("font_size", _ds(DS_BTN))
 	_pfilter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_pfilter.item_selected.connect(_on_pfilter)
 	fil.add_child(_pfilter)
 	_cfilter = OptionButton.new()
 	_cfilter.tooltip_text = I18n.t("jrn.filter_cat_tip")
-	_cfilter.add_theme_font_size_override("font_size", 10)
+	_cfilter.add_theme_font_size_override("font_size", _ds(DS_BTN))
 	# one grower per row (P-4): the seat filter takes the slack, the category filter sits at
 	# its content width
 	_cfilter.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -142,10 +153,15 @@ func set_ring_cell(cell: float) -> void:
 ##
 ## In the DOCK the design size is the pixel size. In the RING it is a fraction of the
 ## cell, so the panel reads the same as the panno around it.
-func _ds(design: float) -> int:
+##
+## `design` is a ROLE (a step of the skin's scale); its pixel value comes from the skin.
+func _ds(design: String) -> int:
+	var px := UiTheme.skin().size(design, int(SIZES.get(design, 14)))
 	if _cell <= 0.0:
-		return int(design)
-	return maxi(10, int(round(_cell * RING_FACTOR * design)))
+		return px
+	# the floor in the ring is the smallest step of the scale too - a 10px floor was the reason a
+	# ring-drawn row could fall below the mockup's xs (11) on a phone.
+	return maxi(UiTheme.skin().size("xs", 11), int(round(_cell * RING_FACTOR * float(px))))
 
 
 ## Re-derive every font in the panel from the current cell.
