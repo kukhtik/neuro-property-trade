@@ -15,7 +15,9 @@ opens the artifact exported by the SAME run, at the two sizes the promise names
 What it CANNOT answer - and says so instead of guessing - is text legibility and
 "is anything outside the window": that needs the live tree, which lives in the
 packed build and is measured by the native half of tools/ci/scenario_s3.sh
-(phone_fit_probe + the READ gate). Two halves, one verdict, no invented number.
+(the READ gate; the phone-LAYOUT half was cancelled by the owner on 23.10 - the
+promise that stays is phone READABILITY, measured by the required gate
+STREAM-READ). Two halves, one verdict, no invented number.
 
 Usage:
     py -3.12 tools/ci/s3_artifact.py --web build/s3/web --out build/s3 \

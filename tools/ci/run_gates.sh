@@ -105,11 +105,14 @@ GATES=(
 	# 416 -> 421, and every doc that quoted one was edited BY HAND - so every one was
 	# wrong the moment the next test landed. infra.md said 227 while the oracle ran 421.
 	"DOC-NUMBERS|hg|required|script|tools/ci/gates/doc_numbers_gate.sh"
-	# PROBES: the five diagnostic probes that were never wired into anything. A
+	# PROBES: the diagnostic probes that were never wired into anything. A
 	# measurement nobody re-runs is a measurement that silently stops being true.
-	# phone_fit is carried in QUARANTINE: it asks whether the layout fits a 390px
-	# phone-sized WINDOW (it does not - the layout measures 817px wide), and the
-	# product declares MIN_WIDTH = 880 and means it.
+	# phone_fit was here until 23.10 and is GONE: the owner cancelled the criterion
+	# («телефонную проверку отменяем. вместо нее… проверка на консистентность…»).
+	# The promise that REMAINS - «a viewer watching the stream on a phone can read it» -
+	# is measured by the required gate STREAM-READ (effective font size >= 12 px on a
+	# 390 px frame), and it is green. The replacement for the cancelled check is
+	# MOCK-01 (consistency) + MOCK-02 (visual taste), both below.
 	"PROBES|hg|required|script|tools/ci/gates/probes_gate.sh"
 	# STATE-GLYPHS: the board says a fact about a cell with a SHAPE, not with a word
 	# (R-21..R-26 - the owner's 'не пиши, а показывай в дизайне'). The probe measures PLAIN
@@ -152,6 +155,22 @@ GATES=(
 	# AFTER SG-07: FILL measures build/renders, and SG-07 is what draws them. Registered earlier,
 	# FILL found no frames on a clean CI checkout and went red with "the gate checked nothing".
 	"FILL|sg|required|scene|fill_gate"
+	# MOCK-01 (23.10) — «визуал не развалился и выглядит как макет». Замена ОТМЕНЁННОЙ
+	# телефонной проверки (владелец 23.10: «телефонную проверку отменяем. вместо нее нужно
+	# сделать проверку на консистентность… по пиксельное сравнение с макетом»).
+	# ЭТАЛОН — `design/variants/v5/concept-a-composition.html` (концепт A), а НЕ
+	# `design/ui-prototype.html`: у того ШАБЛОН ВЁРСТКИ отстал (доки `--L=268 --R=344`,
+	# которых в продукте нет с 21.10), и замер против него даёт 44 зоны вне допуска —
+	# это расхождение с устаревшей композицией, а не дефект продукта. Замер против концепта A:
+	# общий ink 92.6 % против 93.2 % (Δ −0.6 п.п.), каждая зона в пределах 7.0 п.п.
+	# Стоит ПОСЛЕ SG-07: кадр рисует SG-07, и гейт проверяет, что кадр не старше кода.
+	"MOCK-01|hg|quarantine|script|tools/ci/gates/mockup_consistency_gate.sh"
+	# MOCK-02 (23.10) — «визуальный вкус»: никаких огромных выбивающихся надписей. Кегль
+	# каждой надписи = шаг шкалы из СКИНА (`tokens.size` = 11/13/14/18/28 — те же значения
+	# читает макет), и ни одна надпись не крупнее потолка `xl`. Ловит и живую надпись, и
+	# «сырое» число в исходниках (именно так в коде появились 10 и 12 — по ошибочно
+	# записанной в журнале шкале).
+	"MOCK-02|hg|quarantine|script|tools/ci/gates/mockup_taste_gate.sh"
 	# READ-01/02/03 (master-fix-plan §1) run LAST, for the same reason SG-07 does: the gate opens
 	# a real window at three profiles and SG-10's clean-machine preflight must not see it alive.
 	# QUARANTINE until it has 2-3 consecutive green full sweeps; its negative check has already
@@ -197,6 +216,14 @@ GATES=(
 	"THEME|hg|required|scene|theme_gate"
 	# S3 - ПОСЛЕДНИЙ: он поднимает окна (оконный Godot + Chromium) и делает экспорт,
 	# поэтому идёт после всех остальных, как SG-07 и READ-01.
+	# ТЕЛЕФОННАЯ ПОЛОВИНА S3 ОТМЕНЕНА (владелец, 23.10): «телефонную проверку отменяем.
+	# вместо нее нужно сделать проверку на консистентность… по пиксельное сравнение с
+	# макетом». Критерий был «можно ли ИГРАТЬ в окне 390 px», и честный ответ был НЕТ
+	# (раскладка 817 px в окне 390 px; продукт объявляет MIN_WIDTH = 880 и отвечает за это),
+	# то есть половина была красной ПО СУЩЕСТВУ. Критерий снят — значит, снята и проба,
+	# его мерившая (game/tools/phone_fit_probe).
+	# ОСТАЁТСЯ: читаемость на телефоне — обязательный гейт STREAM-READ (≥ 12 px
+	# эффективных на кадре 390 px) и п. 3.18 в DoD. ЗАМЕНЯЕТ ОТМЕНЁННОЕ: MOCK-01 и MOCK-02.
 	"S3|sg|quarantine|script|tools/ci/scenario_s3.sh"
 )
 

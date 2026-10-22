@@ -11,8 +11,16 @@
 #      and wear the skin's palette (checked by tools/ci/palette_report.py - one impl).
 #   B. THE LIVE TREE at the same sizes: fonts, clipped text and things leaving the window
 #      are not visible to a browser (the UI is drawn into a canvas), so they are measured
-#      inside the app: game/tools/phone_fit_probe (390x844 and friends, promoted to git in
-#      this same step) and the READ gate (font floors + dock fill, prints 1280x720 too).
+#      inside the app - by the READ gate (font floors + dock fill, prints 1280x720 too).
+#
+# THE PHONE HALF OF B IS CANCELLED (owner, 23.10): «телефонную проверку отменяем. вместо
+# нее нужно сделать проверку на консистентность… по пиксельное сравнение с макетом». The
+# criterion was "can you PLAY in a 390 px window" and the honest answer was NO (817 px of
+# layout in a 390 px viewport; the product declares MIN_WIDTH = 880 and means it). The
+# criterion is gone, so the probe that measured it is gone (game/tools/phone_fit_probe).
+# WHAT STAYS: readability on a phone - that is the required gate STREAM-READ (>= 12 px
+# effective on a 390 px frame) and DoD 3.18. WHAT REPLACES THE CANCELLED CHECK: MOCK-01
+# (the live frame against the reference mockup) and MOCK-02 (type sizes and the cap).
 #
 # A stale artifact cannot pass: the export happens here, and its pck mtime is checked against
 # the run's start (HG-11a). Verdict is the last line.
@@ -101,13 +109,15 @@ for line in $(grep -aoE "token_coverage=[0-9.]+" "$out/artifact.log"); do
 	echo "   $line"
 done
 
-# --- half B: the live tree, same sizes ---------------------------------------------------------
-echo "==> S3 live-tree half: fonts / clipping / off-screen at phone sizes"
-rc_phone=0
-timeout 240 "$godot" --path "$(native "$repo/game")" --rendering-driver opengl3 --position 40,40 \
-	res://tools/phone_fit_probe.tscn >"$out/phone.log" 2>&1 || rc_phone=$?
-grep -a "^PHONE PROBE\|^==> PHONE PROBE" "$out/phone.log" | tail -2 || true
-
+# --- half B: the live tree ------------------------------------------------------------------------
+# ТЕЛЕФОННАЯ ПОЛОВИНА СНЯТА (решение владельца 23.10): «телефонную проверку отменяем.
+# вместо нее нужно сделать проверку на консистентность… по пиксельное сравнение с макетом».
+# Критерий был КРАСНЫМ по существу: продукт объявляет MIN_WIDTH = 880 (`game/ui/core/
+# layout_profile.gd`), а раскладка на 390 px просит 817 px. Отменён именно критерий
+# РАСКЛАДКИ. Читаемость надписей на узком кадре (каждая ≥ 12 px эффективных) остаётся:
+# это гейт `STREAM-READ` (required) и п. 3.18 в `docs/acceptance/definition-of-done.md`.
+# Замена телефонной проверки — гейты `MOCK-01` (консистентность, живой кадр против
+# эталона) и `MOCK-02` (визуальный вкус, кегль и потолок).
 echo "==> S3 live-tree half: READ-01/02/03 (font floors, dock fill) incl. 1280x720"
 rc_read=0
 bash "$repo/tools/ci/gates/read_gate.sh" neuro >"$out/read.log" 2>&1 || rc_read=$?
@@ -143,9 +153,6 @@ if [ "$art_rc" -ne 0 ]; then
 	add_reason "$(grep -a '^S3 ARTIFACT FAILED' "$out/artifact.log" | head -1 | cut -c1-220)"
 fi
 [ -n "$palette_note" ] && add_reason "$palette_note"
-if grep -aq "==> PHONE PROBE FAILED" "$out/phone.log"; then
-	add_reason "$(grep -a '==> PHONE PROBE FAILED' "$out/phone.log" | head -1 | cut -c1-220)"
-fi
 if [ "$rc_read" -ne 0 ] || grep -aq "==> READ-0[123] FAILED" "$out/read.log"; then
 	add_reason "$(grep -a '==> READ-0[123] FAILED' "$out/read.log" | head -1 | cut -c1-220)"
 fi
@@ -154,5 +161,5 @@ if [ -n "$reasons" ]; then
 	echo "==> S3 FAILED: $reasons"
 	exit 1
 fi
-echo "==> S3 PASSED (release build drawn at 1280x720 and 390x844 with no console error, palette ⊆ skin tokens; live tree: phone fit clean and READ floors met; took ${took}s; frames and logs in build/s3/)"
+echo "==> S3 PASSED (release build drawn at 1280x720 with no console error, palette ⊆ skin tokens; live tree: READ floors met; took ${took}s; frames and logs in build/s3/)"
 exit 0

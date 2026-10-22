@@ -84,7 +84,7 @@ NEURO_SDK_WS_URL=ws://127.0.0.1:8000 godot --path game   # место с дра�
 | `game/seats/` | места: `seat_manager.gd`, `seat.gd`, `seat_config.gd`, `minimal_action.gd`, `ai_persona.gd`, `trade_evaluator.gd`, `trade_negotiator.gd`, `drivers/` (`ai_driver`, `chat_driver`, `local_driver`, `remote_driver` — SDK-место ведёт `game/sdk/sdk_adapter.gd`) |
 | `game/ui/` | интерфейс: панели, журнал, инспектор, тема; контракт раскладки — `game/ui/core/layout_profile.gd` |
 | `game/tests/` | headless-модули: `run.gd` + `engine_test.gd`, `sdk_test.gd`, `ui_contract_test.gd`, `replay_test.gd`, `seats_test.gd`, `server_test.gd` и остальные |
-| `game/tools/` | пробы и CLI: `replay_cli.gd`, `soak_cli.gd`, `corpus.gd`, `phone_fit_probe.gd`, `layout_dump.gd`; гейтовые сцены — `game/tools/gates/` |
+| `game/tools/` | пробы и CLI: `replay_cli.gd`, `soak_cli.gd`, `corpus.gd`, `layout_dump.gd`; гейтовые сцены — `game/tools/gates/` |
 | `game/addons/neuro-sdk/` | вендоренный Godot Neuro SDK (MIT, `LICENSE.md` рядом с кодом) |
 | `tools/ci/` | оракул (`run_tests.sh`), реестр гейтов (`run_gates.sh`), сборка (`build_current.sh`), сценарий релиза (`scenario_s3.sh`), закреплённый Godot (`fetch_godot.sh`), мок websocket (`mock_neuro_ws.py`), мост Twitch (`twitch_bridge.py`); шелл-гейты — `tools/ci/gates/` |
 | `docs/` | `program.md` (единственный план), `licensing.md` (норма права), `how-to-play.md`, `infra.md`, `acceptance/`, `release/`, `restoration/`, `specs/` |
@@ -100,15 +100,19 @@ NEURO_SDK_WS_URL=ws://127.0.0.1:8000 godot --path game   # место с дра�
 ## 3. Notes — честные ограничения
 
 **Контракт узкого окна.** `game/ui/core/layout_profile.gd` объявляет
-`const MIN_WIDTH := 880`. Телефонное окно 390 px продукт не поддерживает: проба
-`game/tools/phone_fit_probe.gd` измеряет раскладку в 390×844, и по комментарию в
-`tools/ci/gates/probes_gate.sh` раскладка занимает 817 px в окне 390 px — переполнение
-больше чем вдвое. Это **не регрессия**: проба подключена к PROBES с инвертированным
-ожиданием (она обязана быть красной, пока раскладка не станет узкой) и держится в
-`quarantine`, её красный не блокирует сборку. Отдельное обещание — «зритель читает
-картинку с телефона» — меряет другой гейт, STREAM-READ: он масштабирует кадр 1920×1080
-до 390 px и судит эффективный кегль против порога 12 px. Поэтому «телефон не играет» и
-«телефон не читает стрим» — два разных ответа, и второй измерен.
+`const MIN_WIDTH := 880`. Телефонное окно 390 px продукт не поддерживает: раскладка
+занимает 817 px в окне 390 px — переполнение больше чем вдвое. **Критерий «влезает ли
+раскладка в 390 px» ОТМЕНЁН владельцем 23.10** («телефонную проверку отменяем. вместо
+нее нужно сделать проверку на консистентность… по пиксельное сравнение с макетом»), и
+вместе с критерием снята проба `game/tools/phone_fit_probe.*`, его мерившая. Это **не
+регрессия и не долг**: критерий снят осознанно.
+Что осталось и что пришло взамен:
+- **осталось**: «зритель читает картинку с телефона» — это меряет обязательный гейт
+  `STREAM-READ`: он масштабирует кадр 1920×1080 до 390 px и судит эффективный кегль
+  против порога 12 px (п. 3.18 в DoD). «Телефон не играет» и «телефон не читает стрим» —
+  два разных ответа, и второй измерен;
+- **пришло взамен**: `MOCK-01` (консистентность: живой кадр против эталонного макета,
+  зонами) и `MOCK-02` (визуальный вкус: кегль из шкалы скина и потолок).
 
 **Что меряется только на моке.** SDK-место проверяется гейтом HG-08 против
 `tools/ci/mock_neuro_ws.py`, а не против живого сервера Neuro: живой сервер — внешняя

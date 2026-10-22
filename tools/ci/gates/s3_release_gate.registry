@@ -1,1 +1,10 @@
 S3|sg|quarantine|script|tools/ci/scenario_s3.sh
+; The phone-LAYOUT half of S3 is CANCELLED (owner, 23.10): «телефонную проверку отменяем.
+; вместо нее нужно сделать проверку на консистентность… по пиксельное сравнение с макетом».
+; The criterion was "can you PLAY in a 390 px window" and the honest answer was NO (817 px
+; of layout in a 390 px viewport; the product declares MIN_WIDTH = 880 and means it), so
+; that half was red by construction. The criterion is gone, so the probe that measured it
+; (game/tools/phone_fit_probe) is gone with it.
+; WHAT STAYS: phone READABILITY - the required gate STREAM-READ (>= 12 px effective on a
+; 390 px frame) and DoD 3.18. WHAT REPLACES THE CANCELLED CHECK: MOCK-01 (the live frame
+; against the reference mockup) and MOCK-02 (type sizes and the cap).
