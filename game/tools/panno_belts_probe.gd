@@ -237,7 +237,9 @@ func _finish() -> void:
 	if _fails.is_empty():
 		print("==> PANNO-BELTS PASSED (%d checks: the hero zone keeps its room, the five "
 			% _checks)
-		print("    zones fill the ring's interior, and the tile card is inside the ring)")
+		print("    zones fill the ring's interior, and the tile card's ZONE is in the lower")
+		print("    belt - the PANEL itself is measured by PANELS-IN-RING, which looks up the")
+		print("    panel, not the zone")
 		get_tree().quit(0)
 		return
 	for f in _fails:
