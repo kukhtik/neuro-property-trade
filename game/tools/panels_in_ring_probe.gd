@@ -6,7 +6,7 @@ extends Node
 ##
 ##   the SEAT CARDS  (who is playing, with how much and where) - from the 268px left dock
 ##   the TILE CARD   (what is this cell)                    - from the 344px right column
-##   the JOURNAL     (three lines of what happened)          - the ring's lower belt
+##   the JOURNAL     (the full feed, with its filters)       - the ring's lower belt
 ##
 ## Before the move the ring's interior held a POORER COPY of the seat facts while the
 ## richer cards sat in a dock the profile hides below 2000px wide: the same four facts,
@@ -26,6 +26,7 @@ extends Node
 ## Verdict: ==> PANELS-IN-RING ...
 
 const MainScript := preload("res://main.gd")
+const JournalPanel := preload("res://ui/journal_panel.gd")
 
 const WIDTH := 1600
 const HEIGHT := 1200
@@ -36,7 +37,7 @@ const HEIGHT := 1200
 const PANELS := [
 	{"key": "players", "name": "seats"},
 	{"key": "inspector", "name": "inspector"},
-	{"key": "journal", "name": "zone-journal"},
+	{"key": "journal", "name": "journal"},
 ]
 
 ## A panel narrower than this is a sliver: it is "inside the ring" and still unreadable.
@@ -102,7 +103,37 @@ func _run() -> void:
 			% [key, nm, str(r.position), r.size.x, r.size.y,
 				("INSIDE" if inside else "OUTSIDE")])
 
-	# 3. THE OLD SHAPE IS GONE: the left dock that held the seat cards must not exist any
+	# 3. THE JOURNAL IS THE PANEL, AND IT IS THE ONLY ONE. Measuring the ZONE was the
+	#    mistake this probe carried until 22.10: the zone ("zone-journal") was a child of
+	#    the panno even when the full panel sat in the right column, so the check was
+	#    GREEN with the journal outside the ring. The proof: with the move to the ring
+	#    disabled, this probe still printed PASSED.
+	#    So: the panel itself must be a descendant of the panno - that is the claim.
+	# ONE journal, and it is the one in the ring. Counting the PANELS (by type, not by
+	# node name) is the honest way: the feed may legitimately be empty at this moment -
+	# a fresh match has no events and the panel shows its own empty state - so a check
+	# for "rows" would fail for a healthy product and pass for a duplicated one.
+	var journals: Array[Node] = []
+	_collect_journals(gv, journals)
+	_check(journals.size() == 1,
+		"there are %d journal panels in the product - the feed exists %d times"
+		% [journals.size(), journals.size()])
+	if journals.size() >= 1:
+		var jp := journals[0]
+		var j_in := _is_ancestor(panno, jp)
+		_check(j_in, "the journal panel is NOT inside the panno - it is still outside the ring")
+		# and no SECOND copy hides in the zone: one journal, one place.
+		var zone: Control = _find_by_name(gv, "zone-journal")
+		if zone != null:
+			var in_zone := 0
+			for j2 in journals:
+				if j2 != jp and _is_ancestor(zone, j2):
+					in_zone += 1
+			_check(in_zone == 0,
+				"the journal zone holds %d more journal panel(s) - there are TWO journals again"
+				% in_zone)
+
+	# 4. THE OLD SHAPE IS GONE: the left dock that held the seat cards must not exist any
 	# more. A dock that is still in the tree is a panel that can still be shown outside
 	# the ring - the very thing this track removed.
 	var seats_dock: Control = _find_by_name(gv, "seats-dock")
@@ -131,6 +162,16 @@ func _find_by_name(root: Node, nm: String) -> Control:
 	return null
 
 
+## Every journal panel under this root, by TYPE. A second one is a second feed.
+func _collect_journals(root: Node, out: Array[Node]) -> void:
+	if root == null:
+		return
+	if root is JournalPanel:
+		out.append(root)
+	for c in root.get_children():
+		_collect_journals(c, out)
+
+
 func _is_ancestor(maybe_ancestor: Node, node: Node) -> bool:
 	var n: Node = node.get_parent()
 	while n != null:
@@ -155,7 +196,8 @@ func _finish() -> void:
 	if _fails.is_empty():
 		print("==> PANELS-IN-RING PASSED (%d checks: the seat cards, the tile card and the "
 			% _checks)
-		print("    journal are all inside the ring, and the old docks are gone)")
+		print("    journal PANEL are all inside the ring, the old docks are gone, and there")
+		print("    is ONE journal - the zone holds no second copy of the feed)")
 		get_tree().quit(0)
 		return
 	for f in _fails:
