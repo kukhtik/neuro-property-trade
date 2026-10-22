@@ -8,8 +8,20 @@
 # was retired on 2026-10-15 (restoration closed; HG-06 covers the join in every sweep) and the
 # canonical set is `build/current` only.
 #
-# Freshness window: the last commit that touched SHIPPING code. `game/tools` (probe tooling)
-# and `game/tests` (the suite) do not ship inside the export, so they do not age an artifact.
+# Freshness window: the last commit that touched ANYTHING under `game/`.
+#
+# THIS USED TO EXCLUDE `game/tools` and `game/tests`, on the stated ground that "they do
+# not ship inside the export". That ground was FALSE, and it was false in the way that
+# hides defects: `game/export_presets.cfg` has `export_filter="all_resources"` and an
+# EMPTY `exclude_filter`, so the probes and the test suite DO go into the pack - measured,
+# not assumed: the exported `index.pck` holds `res://tools/panels_in_ring_probe.gd` and
+# `res://tests/panno_test.gd`. A window that skipped them therefore called a STALE
+# artifact fresh: on 22.10 two commits that changed only `game/tools/` left the shipped
+# pack behind the code, and this gate said FRESH.
+#
+# The window is now the whole of `game/`, because the whole of `game/` ships. (Shipping
+# the probes and the suite to players is a separate, smaller defect - the pack is 1.2 MB
+# - and it does not need a FALSE premise to be fixed.)
 #
 # An artifact may be deliberately old - but only by being LISTED with a reason in
 # tools/ci/freshness_allowlist.txt. "Stale and unlisted" is red.
@@ -21,8 +33,8 @@ allow="$repo/tools/ci/freshness_allowlist.txt"
 # `git -C` is a NATIVE binary: it cannot open an MSYS `/c/...` path (the same trap as godot),
 # so the repo is handed to it in `C:/...` form.
 repo_win="$(cd "$repo" && pwd -W 2>/dev/null || printf '%s' "$repo")"
-code_ts="$(git -C "$repo_win" log -1 --format=%ct -- game ":(exclude)game/tools" ":(exclude)game/tests" 2>/dev/null || true)"
-code_sha="$(git -C "$repo_win" log -1 --format=%h -- game ":(exclude)game/tools" ":(exclude)game/tests" 2>/dev/null || true)"
+code_ts="$(git -C "$repo_win" log -1 --format=%ct -- game 2>/dev/null || true)"
+code_sha="$(git -C "$repo_win" log -1 --format=%h -- game 2>/dev/null || true)"
 if [ -z "$code_ts" ]; then
 	echo "==> FRESHNESS FAILED: cannot read the last shipping-code commit (is this a git checkout?)"
 	exit 1
