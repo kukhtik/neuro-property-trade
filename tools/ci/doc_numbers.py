@@ -178,7 +178,13 @@ def main() -> int:
             if said != tests:
                 problems.append("%s: says %d, the product has %d (%s)" % (path, said, tests, pattern))
                 if args.write:
-                    new = re.sub(r"\d+", str(tests), m.group(0))
+                    # ТОЛЬКО ПЕРВОЕ число: в совпадении может быть второе, и оно -
+                    # ЧУЖОЕ ("0 SCRIPT ERROR", "zero third-party dependencies").
+                    # `re.sub` без count менял и его тоже, и строка
+                    # "ORACLE PASSED (428 tests, 0 SCRIPT ERROR)" превращалась в
+                    # "(428 tests, 428 SCRIPT ERROR)" - гейт чинил документ и СРАЗУ
+                    # ломал его. Первое число - и есть то, которое мы проверяем.
+                    new = re.sub(r"\d+", str(tests), m.group(0), count=1)
                     text = text.replace(m.group(0), new, 1)
         if args.write and problems:
             with open(os.path.join(REPO, path), "w", encoding="utf-8", newline="") as fh:
