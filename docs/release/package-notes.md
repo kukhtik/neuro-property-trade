@@ -30,7 +30,7 @@ tools/ci/build_current.sh      # обе половины (--windows / --web — 
 ## 3. Как проверить
 
 ```bash
-tools/ci/run_tests.sh        # оракул: headless-сьют, порог MIN_TESTS (420), ноль SCRIPT ERROR
+tools/ci/run_tests.sh        # оракул: headless-сьют, порог MIN_TESTS (428), ноль SCRIPT ERROR
 tools/ci/run_gates.sh        # реестр гейтов, отчёт в build/gates/
 tools/ci/scenario_s3.sh      # релизная веб-сборка в настоящем Chromium на 1280x720 и 390x844
 ```
@@ -38,7 +38,7 @@ tools/ci/scenario_s3.sh      # релизная веб-сборка в наст�
 Вердикты читаются строками, не кодом возврата:
 
 - `run_tests.sh` — строка `ALL TESTS PASSED` плюс число тестов не ниже `MIN_TESTS`
-  (по умолчанию 420, задаётся переменной окружения) плюс отсутствие `SCRIPT ERROR`.
+  (по умолчанию 428, задаётся переменной окружения) плюс отсутствие `SCRIPT ERROR`.
   Код возврата один ничего не значит: раннер пропускает неразобранный модуль и всё равно
   выходит с 0 — ровно поэтому порог по числу и существует.
 - `run_gates.sh` — по строке на гейт (`==> HG-XX PASSED` / `==> HG-XX FAILED: причина`) и
