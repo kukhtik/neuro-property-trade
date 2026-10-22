@@ -219,33 +219,26 @@ def main():
     print()
 
     # --- 2. layout ------------------------------------------------------------------
-    print("[2] layout — the mockup declares the dock widths, the frame shows them")
-    print("    mockup: --L=%spx --R=%spx" % (m_widths.get("L", "?"), m_widths.get("R", "?")))
-    panels = None
-    if not layout_ok:
-        print("    %s" % layout_note)
-    else:
-        line_rgb = parse_hex(a_toks.get("line", "")) or (57, 64, 77)
-        panels, W, edges = measure_panels(frame, line_rgb)
-        if panels:
-            lw, rw = panels
-            print("    frame %dpx: left panel %spx, right panel %spx (%d edges)"
-                  % (W, lw, rw, len(edges)))
-            ml, mr = m_widths.get("L"), m_widths.get("R")
-            if ml and mr:
-                # the app runs at 1440 and the mockup's widest step targets a desktop too, so
-                # the RATIO is the comparable quantity — what a responsive design preserves
-                m_ratio = mr / ml
-                a_ratio = rw / max(lw, 1)
-                print("    right/left ratio   mockup=%.2f   app=%.2f" % (m_ratio, a_ratio))
-                if abs(m_ratio - a_ratio) > 0.6:
-                    fails.append("layout: right/left ratio mockup %.2f vs app %.2f"
-                                 % (m_ratio, a_ratio))
-                    print("    -> DIFFERENT")
-                else:
-                    print("    -> comparable")
-        else:
-            print("    could not isolate the panel edges in the frame")
+    # WHAT CHANGED (21.10), and why there is no dock comparison here any more.
+    #
+    # The composition became BOARD-FIRST: the ring IS the frame, and the journal and the
+    # inspector moved INTO it, so the app has no side docks. The mockup's LAYOUT TEMPLATE
+    # (design/src/proto.js) still declares the old ones (--L=268 --R=344), and this check
+    # compared the app's measured dock ratio with that declaration. It failed with
+    # "right/left ratio mockup 1.28 vs app 0.05" - while the product was RIGHT - because
+    # it was measuring a composition that no longer exists. Worse, the detector itself no
+    # longer means what it says: the thin vertical rules it finds in the app frame are the
+    # ring's INNER border, not panel edges, so "left panel 176px" was a misreading.
+    #
+    # So: the subject is gone, and a check whose subject is gone must not pretend to
+    # measure. The coverage moved to the gate MOCK-01, which compares the LIVE FRAME with
+    # the REFERENCE MOCKUP (design/variants/v5/concept-a-composition.html) zone by zone -
+    # the same question ("does the app look like the design?"), asked of a composition that
+    # actually exists. The palette and structure checks below are unaffected.
+    print("[2] layout — not comparable here: the app is board-first since 21.10 (no side docks)")
+    print("    the mockup's layout template still declares the old ones (--L=%spx --R=%spx);"
+          % (m_widths.get("L", "?"), m_widths.get("R", "?")))
+    print("    the layout comparison is the gate MOCK-01 (live frame vs the reference mockup, by zones)")
     print()
 
     # --- 3. structure ---------------------------------------------------------------
@@ -262,8 +255,6 @@ def main():
                      % ", ".join(missing))
     else:
         print("    -> all %d declared" % len(want))
-    if layout_ok and panels:
-        print("    app frame shows left panel | board | right panel, in that order")
     print()
 
     out = PROJ / "build" / "smoke" / "comparison.json"
@@ -272,7 +263,8 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({
         "theme": theme, "mockup_widths": m_widths, "frame": str(frame) if frame else "",
-        "frame_panels": panels, "palette_matched": matched, "layout_note": layout_note,
+        "frame_panels": None, "palette_matched": matched, "layout_note": layout_note,
+        "layout_comparison": "the gate MOCK-01 (live frame vs the reference mockup, by zones)",
         "failures": fails,
     }, indent=2, ensure_ascii=False), encoding="utf-8")
     print("wrote %s" % out)
