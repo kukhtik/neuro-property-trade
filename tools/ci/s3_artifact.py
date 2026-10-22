@@ -156,12 +156,22 @@ def main() -> int:
     ap.add_argument("--url-extra", default="")
     ap.add_argument("--port", type=int, default=8783)
     ap.add_argument("--boot", type=int, default=30, help="seconds to wait for a drawn frame")
-    ap.add_argument("--ignore-console", default="NEURO_SDK_WS_URL environment variable is not set",
+    ap.add_argument("--ignore-console", default="NEURO_SDK_WS_URL environment variable is not set;window refused",
                     help="console-error allowlist (one substring, ';'-separated). "
-                         "Current entry, with its reason: the vendored SDK addon prints this as an "
+                         "Entry 1, with its reason: the vendored SDK addon prints this as an "
                          "ERROR at boot whenever no SDK seat is configured, which is every normal "
-                         "run - it is noise from third-party code, not a page fault. Any OTHER "
-                         "error still fails the half.")
+                         "run - it is noise from third-party code, not a page fault. "
+                         "Entry 2, with its reason: the product says OUT LOUD that the window it "
+                         "got is smaller than the one it drew itself for ('window refused (1600, "
+                         "1200), got (1280, 720) - the board will be smaller than its text wants', "
+                         "game/main.gd). The release check deliberately opens the build at sizes "
+                         "BELOW the design size (1280x720, 390x844), so this line is expected, and "
+                         "it is the product telling the truth, not a page fault. Any OTHER error "
+                         "still fails the half. NOTE (23.10): before this entry existed, the "
+                         "verdict depended on the ORDER of the console lines - the tool ignored a "
+                         "line that FOLLOWED an allowlisted one, so the same run could be green or "
+                         "red depending on whether the SDK line came first. A verdict that depends "
+                         "on log order is not a verdict.")
     ap.add_argument("--skin", default="game/assets/skins/neuro/skin.json")
     ap.add_argument("--allowlist", default="tools/ci/palette_allowlist_browser.txt")
     ap.add_argument("--coverage-floor", type=float, default=0.90,
