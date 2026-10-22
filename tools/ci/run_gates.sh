@@ -169,6 +169,17 @@ GATES=(
 	"PANELS-IN-RING|hg|required|script|tools/ci/gates/panels_in_ring_gate.sh"
 	"SOUND-EVENTS|hg|required|script|tools/ci/gates/sound_events_gate.sh"
 	"SOUND|hg|required|script|tools/ci/gates/sound_gate.sh"
+	# ACCEPTANCE (the delivery track): the promises that are NOT yet delivered - the handoff,
+	# the release package, the criteria table, the store page, and the small promises that
+	# have no gate. Every one of them is a MACHINE-CHECKED line, re-computed on every run,
+	# and the gate prints the answers. That is the point: for weeks this track lived in
+	# prose, and my notes about it went stale - two items I had recorded as broken were
+	# already fixed (the empty success message, the licensing citation). A promise with no
+	# gate decays into a story.
+	# QUARANTINE, and RED BY DESIGN today: 9 of 12 promises are open. That red is the real
+	# state of the acceptance track, not a gate defect. It graduates to required when the
+	# package is signed off - and it will go green only because the work got done.
+	"ACCEPTANCE|hg|quarantine|script|tools/ci/gates/acceptance_gate.sh"
 	# THEME (В7-B): the skin's `Theme` was DEAD CODE - it built type variations ("ButtonPrimary",
 	# "PanelHeader") that no widget ever used, and a variation that does not name its BASE is
 	# ignored by the engine (measured: a Button with `theme_type_variation = "ButtonPrimary"` read
