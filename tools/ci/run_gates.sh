@@ -179,6 +179,13 @@ GATES=(
 	# QUARANTINE, and RED BY DESIGN today: 9 of 12 promises are open. That red is the real
 	# state of the acceptance track, not a gate defect. It graduates to required when the
 	# package is signed off - and it will go green only because the work got done.
+	# E-5, HG-15 и VOICE-01 стоят ПЕРЕД ACCEPTANCE не по порядку приёмки, а по
+	# зависимости: проверка приёмки (c_d1, c_d2, c_c4) читает ИХ ВЕРДИКТЫ из
+	# build/gates/*.json, и эти json'ы должны быть посчитаны ДО неё. Иначе гейт
+	# приёмки проверял бы несуществующий результат.
+	"E-5|sg|quarantine|script|tools/ci/gates/e5_inventory_gate.sh"
+	"HG-15|hg|quarantine|script|tools/ci/gates/hg15_pause_gate.sh"
+	"VOICE-01|hg|quarantine|script|tools/ci/gates/voice01_gate.sh"
 	"ACCEPTANCE|hg|quarantine|script|tools/ci/gates/acceptance_gate.sh"
 	# THEME (В7-B): the skin's `Theme` was DEAD CODE - it built type variations ("ButtonPrimary",
 	# "PanelHeader") that no widget ever used, and a variation that does not name its BASE is
@@ -188,10 +195,9 @@ GATES=(
 	# proves it is ALIVE: the variations resolve, the base fallback works, the hand-written
 	# `add_theme_*` overrides still win, and the theme follows the skin.
 	"THEME|hg|required|scene|theme_gate"
-	"E-5|sg|quarantine|script|tools/ci/gates/e5_inventory_gate.sh"
-	"HG-15|hg|quarantine|script|tools/ci/gates/hg15_pause_gate.sh"
+	# S3 - ПОСЛЕДНИЙ: он поднимает окна (оконный Godot + Chromium) и делает экспорт,
+	# поэтому идёт после всех остальных, как SG-07 и READ-01.
 	"S3|sg|quarantine|script|tools/ci/scenario_s3.sh"
-	"VOICE-01|hg|quarantine|script|tools/ci/gates/voice01_gate.sh"
 )
 
 

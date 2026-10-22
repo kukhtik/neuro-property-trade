@@ -84,10 +84,20 @@ c_c5() {  # the timer promise is registered and green
 	grep -q '"verdict": "pass"' build/gates/HG-13.json
 }
 c_d1() {  # VOICE-01 (who is speaking) is a promise with a gate
-	grep -q '"VOICE-01' tools/ci/run_gates.sh
+	# ТОЛЬКО СТРОКА В РЕЕСТРЕ - ЭТО НЕ ПРОВЕРКА ОБЕЩАНИЯ. Так было: гейт VOICE-01 был
+	# зелёным, а продукт НЕ говорил - `set_voice_source` вызывала только проба, и в
+	# реальной игре индикатор не мог загореться никогда. Строка в реестре говорит, что
+	# гейт СУЩЕСТВУЕТ, а не что обещание выполнено. Поэтому проверка теперь требует
+	# ЗЕЛЁНОГО ВЕРДИКТА гейта: измеряло - значит зелёное.
+	grep -q '"VOICE-01' tools/ci/run_gates.sh || return 1
+	[ -f build/gates/VOICE-01.json ] || return 1
+	grep -q '"verdict": "pass"' build/gates/VOICE-01.json
 }
 c_d2() {  # E-5 (the player's inventory) is a promise with a gate
-	git grep -qiE 'inventory' -- game/ && grep -q '"E-5' tools/ci/run_gates.sh
+	git grep -qiE 'inventory' -- game/ || return 1
+	grep -q '"E-5' tools/ci/run_gates.sh || return 1
+	[ -f build/gates/E-5.json ] || return 1
+	grep -q '"verdict": "pass"' build/gates/E-5.json
 }
 
 echo "=== ACCEPTANCE: the delivery package, re-checked now ==="
