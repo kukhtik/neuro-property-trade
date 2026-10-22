@@ -86,6 +86,8 @@ var _done := false
 ## one entry per profile: {"label", "cells_ok", "cells_total", "silent", "min_font", "left_dead", "right_dead"}
 var _results: Array = []
 var _fails: Array = []
+## how long the gate has been WAITING for the seat cards to arrive (frames)
+var _content_waits := 0
 ## what the scan SAW below the floor (an audit that cannot name its own find is not an audit)
 var _under: Array = []
 var _small_named: Array = []
@@ -111,8 +113,10 @@ func _process(_dt: float) -> void:
 		"settle2":
 			_settle2()
 		"measure":
-			_measure()
-			_next_profile()
+			# _measure() returns EARLY while it waits for the content; advancing then would
+			# skip the profile entirely (the gate measured three of four and said so).
+			if _measure():
+				_next_profile()
 		"done":
 			_finish()
 
@@ -185,18 +189,81 @@ func _next_profile() -> void:
 
 
 func _settle2() -> void:
-	_measure()
-	_next_profile()
+	# the same wait applies here: a profile that is not ready yet must not be skipped
+	if _measure():
+		_next_profile()
+
+
+## Is the thing READ-02 measures actually THERE?
+##
+## The seat cards reach the ring ASYNCHRONOUSLY: the shell hands its panel to the board,
+## the board keeps it and re-parents it on a deferred call (`_host` -> `_retry_host`), and
+## the panel fills its cards from the projection. Six frames after `_sync_all` the panel
+## was 54px tall and carried ONE 6px row - and READ-02 called that "56% empty" while the
+## product was perfectly fine. 90 frames would have been enough, but a NUMBER is a guess.
+## The phone-fit probe's own lesson applies: ask the tree until it answers.
+##
+## So: the panel must exist, be VISIBLE, and carry a real card row before the dead-zone
+## measurement means anything. Until then the gate WAITS - it does not measure a half-built
+## tree and call the result a defect.
+func _seats_ready() -> bool:
+	var gv = _launcher.get("_game_view")
+	if gv == null:
+		return false
+	var seats: Control = gv.find_child("seats", true, false)
+	if seats == null or not seats.is_visible_in_tree():
+		return false
+	if seats.size.y <= 1.0:
+		return false
+	# THE CARD ROW ITSELF. Measured: six frames after `_sync_all` on a 2560x1440 frame the
+	# panel was 2262x54 and the card row was 2236x0 - the HFlowContainer had not placed the
+	# cards yet, so the panel showed no content and the dead-zone maths called the gap
+	# "56% empty". A row of zero height is the honest signal: there is nothing to measure.
+	var cards: Control = gv.find_child("seat-cards", true, false)
+	if cards == null or cards.size.y <= 1.0:
+		return false
+	# AND the panel must be LAID OUT for the zone it lives in. At boot on a 2560x1440
+	# frame the seat panel was 54px tall inside a 253px zone, with one 6px row: the
+	# board's layout had not run for this frame yet, and the dead-zone measurement
+	# called that "56% empty". A panel that has not been laid out is not a defect.
+	# The ZONE is stretched by the belt; the PANEL inside it is stretched by the zone.
+	# At boot on 2560x1440 the ZONE was 54px (the belt had not been given its 30% yet)
+	# and the panel matched it - so comparing the panel to the zone proves nothing.
+	# The BELT is the frame of reference: the zone must be a real share of it.
+	var belt: Control = gv.find_child("panno-belt-top", true, false)
+	var zone: Control = gv.find_child("zone-players", true, false)
+	if belt != null and zone != null and belt.size.y > 1.0:
+		if zone.size.y < belt.size.y * 0.5:
+			return false
+	return true
 
 
 ## --- the measurement -------------------------------------------------------------------------
 
-func _measure() -> void:
+## Measure this profile. Returns TRUE when it measured, FALSE when it is still waiting.
+func _measure() -> bool:
 	var label: String = PROFILES[_profile_idx].label
+	# WAIT FOR THE THING BEING MEASURED. Every profile comes through here, and the first
+	# one goes _settle -> _measure while the others go _settle2 -> _measure - so the wait
+	# has to live HERE, not in the settle path.
+	#
+	# WHY: the seat cards reach the ring asynchronously (the shell hands its panel to the
+	# board, the board re-parents it on a deferred call, the panel fills from the
+	# projection). Six frames after `_sync_all` on a 2560x1440 frame the panel was 54px
+	# tall with ONE 6px row, and READ-02 called that "56% empty" - while the product was
+	# fine. 90 frames happened to be enough, but a NUMBER is a guess; the phone-fit
+	# probe's own lesson is to ask the tree until it answers.
+	if not _seats_ready():
+		if _content_waits < 300:
+			_content_waits += 1
+			_wait = 6
+			return false
+		_fails.append("%s: the seat cards never arrived in the ring - the panel stayed empty"
+			% label)
 	var gv = _launcher.get("_game_view")
 	if gv == null:
 		_fails.append("%s: no game view" % label)
-		return
+		return true
 	# board_scene names its BoardView "board"; fall back to a scan so a rename cannot silently
 	# make this gate measure nothing (the map's own lesson about probes reading dead fields).
 	var board: Control = null
@@ -207,9 +274,10 @@ func _measure() -> void:
 		board = _find_board_recursive(gv)
 	if board == null:
 		_fails.append("%s: no board in the live tree - the gate would measure nothing" % label)
-		return
+		return true
 	var row := _read_board(board, label)
 	_results.append(row)
+	return true
 
 
 func _find_board_recursive(n: Node) -> Control:

@@ -257,9 +257,26 @@ run_gate() {
 	err_noise4='Parse JSON failed'
 	plain_errs="$(grep -aE "^ERROR:" "$log" | grep -avE "$err_noise|$err_noise2|$err_noise3|$err_noise4" | head -3 || true)"
 	skip_line="$(grep -a "==> $id SKIPPED" "$log" | tail -1 || true)"
+	# A COMPOSITE gate can print SEVERAL verdicts under its own id: `read_gate.sh` prints
+	# READ-01, READ-02 and READ-03, and its own aggregate "READ GATE FAILED". The runner
+	# looked only for "==> $id FAILED" - so a gate whose FIRST sub-verdict passed and whose
+	# second one failed reported GREEN. It was not a theory: on 22.10 READ-02 was red
+	# ("the left dock is 56% empty") in the log, read_gate.sh exited 1, and the sweep
+	# wrote "ok: READ-01". A gate that says FAILED anywhere is failed.
+	# the SPECIFIC reason first: a line "==> READ-02 FAILED: <why>" names the defect,
+	# while the aggregate "==> READ GATE FAILED (see ...)" only points at the log.
+	any_fail="$(grep -aE "^==> ([A-Z0-9-]+ )*FAILED:[[:space:]]" "$log" | tail -1 || true)"
+	if [ -z "$any_fail" ]; then
+		any_fail="$(grep -aE "^==> ([A-Z0-9-]+ )*FAILED" "$log" | tail -1 || true)"
+	fi
 	if [ -n "$fail_line" ]; then
 		verdict="fail"
 		reason="$(printf '%s' "$fail_line" | sed "s/.*==> $id FAILED:[[:space:]]*//")"
+	elif [ -n "$any_fail" ]; then
+		# the gate said FAILED about something - under its own id or a sub-verdict of it
+		verdict="fail"
+		reason="$(printf '%s' "$any_fail" | sed "s/^==> \([A-Z0-9-]* \)*FAILED:[[:space:]]*//" | cut -c1-220)"
+		[ -n "$reason" ] || reason="the gate reported a FAILED verdict (see the log)"
 	elif [ "${errs:-0}" -ne 0 ]; then
 		verdict="fail"
 		reason="SCRIPT ERROR in the gate output"
