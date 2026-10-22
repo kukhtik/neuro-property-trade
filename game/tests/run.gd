@@ -68,6 +68,10 @@ func _init() -> void:
 		# and the engine-event -> sound binding. Before this module the product shipped a "Звук"
 		# checkbox that wrote nothing and no sound files at all.
 		"res://tests/sound_test.gd",
+		# E-5 / D13: карточка игрока показывает ЧТО у него (список клеток по именам в подсказке), а
+		# отдельное действие карточки выделяет его клетки на доске. До этого карточка несла только
+		# чип «В собственности: N» - количество без списка.
+		"res://tests/players_tooltip_test.gd",
 	]
 	_check_orphan_modules(modules)
 	for path in modules:

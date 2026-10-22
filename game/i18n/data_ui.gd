@@ -162,6 +162,24 @@ const D := {
 	"plr.bankrupt":         {"ru": "БАНКРОТ", "en": "BANKRUPT"},
 	"plr.active":           {"ru": "» ход", "en": "» turn"},
 	"plr.tooltip":          {"ru": "Игрок: %s\nДрайвер: %s\nДеньги: $%d\nПозиция: %s\nТайлы: %d\nДома: %d · Залоги: %d", "en": "Player: %s\nDriver: %s\nCash: $%d\nPosition: %s\nTiles: %d\nHouses: %d · Mortgaged: %d"},
+	# E-5 / D13: ИНВЕНТАРЬ КАРТОЧКИ. Карточка умела только чип «В собственности: N» - количество
+	# без списка, и зритель не мог узнать, ЧТО именно человек собрал. Список живёт в подсказке
+	# карточки (`plr.inv_*`), название группы - токеном рядом с именем клетки; ЦВЕТ группы
+	# отдаёт полоска образцов в самой карточке, потому что подсказка цвет рисовать не умеет.
+	"plr.inv_show":         {"ru": "КЛЕТКИ", "en": "TILES"},
+	"plr.inv_tip":          {"ru": "Показать на доске клетки игрока %s", "en": "Show the tiles of %s on the board"},
+	"plr.inv_head":         {"ru": "%s · $%d", "en": "%s · $%d"},
+	"plr.inv_jail":         {"ru": "тюрьма: %d", "en": "jail: %d"},
+	"plr.inv_cards":        {"ru": "карты выхода: %d", "en": "jail cards: %d"},
+	"plr.inv_count":        {"ru": "клетки: %d", "en": "tiles: %d"},
+	"plr.inv_none":         {"ru": "клеток нет", "en": "no tiles"},
+	"plr.inv_houses":       {"ru": "дома: %d", "en": "houses: %d"},
+	"plr.inv_mortgaged":    {"ru": "в залоге", "en": "mortgaged"},
+	# VOICE-01 «кто говорит» (D1). Два ключа и только они: подсказка зажжённого индикатора
+	# называет говорящего словом, а при `voice_unavailable` продукт тихо деградирует — индикатор
+	# гаснет, и о причине говорит подсказка карточки (никаких «красных» сообщений).
+	"voice.speaking":       {"ru": "говорит: %s", "en": "speaking: %s"},
+	"voice.unavailable":    {"ru": "голос недоступен", "en": "voice unavailable"},
 
 	# ---- action panel ----
 	"act.cold_status":      {"ru": "Партия ещё не начата", "en": "Match not started yet"},

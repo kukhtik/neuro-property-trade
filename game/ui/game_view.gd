@@ -178,6 +178,12 @@ func _build() -> void:
 	_board.tile_clicked.connect(Callable(self, "_on_tile_clicked"))
 	# R-15: the panno's players zone replaces the seats rail; a click on it opens the full cards.
 	_board.seats_requested.connect(func() -> void: _on_seats_requested())
+	# E-5/D13: карточка игрока — источник выбора, доска — потребитель. Клик по САМОЙ карточке
+	# остаётся дверью в drawer-seats (press уходит наверх, в зону панно); выделение клеток просит
+	# отдельная кнопка карточки, поэтому обе вещи живут рядом и не спорят за одно нажатие.
+	# По ИМЕНИ сигнала: `_seats_panel` объявлен как Control, а типизированный доступ к сигналу
+	# панели потребовал бы второго предзагруженного класса в этом файле.
+	_seats_panel.connect("player_tiles_requested", Callable(self, "_on_player_tiles_requested"))
 	_camera.add_child(_board)
 	_camera.setup(_board)
 	_camera.token_pos_of = Callable(self, "_token_board_pos")
@@ -391,6 +397,16 @@ func dock_shown(which: String) -> bool:
 func _on_seats_requested() -> void:
 	if _is_compact():
 		_open_drawer("seats")
+
+
+## E-5 / D13: карточка попросила показать СВОИ клетки. Карточка помнит выбор сама (чтобы кольцо
+## на ней пережило перерисовку), доска получает только pid - она не должна знать про карточки.
+## Дверь в ящик это не отменяет: `_on_seats_requested` приходит с ДРУГОГО сигнала.
+func _on_player_tiles_requested(pid: int) -> void:
+	if _seats_panel != null and _seats_panel.has_method("focus_player"):
+		_seats_panel.call("focus_player", pid)
+	if _board != null and _board.has_method("set_owner_focus"):
+		_board.call("set_owner_focus", pid)
 
 
 ## Put the right column's children in, once the tree has settled.

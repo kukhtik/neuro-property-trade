@@ -569,13 +569,41 @@ func apply(entry: Dictionary) -> void:
 		sb.expand_margin_top = -3.0
 		sb.expand_margin_bottom = -3.0
 		show = true
-	elif owner >= 0:
+	elif bool(entry.get("owner_focus", false)) and owner >= 0:
+		# E-5: клетка ВЫБРАННОГО игрока получает КОЛЬЦО его цвета - шире обычной рамки владения
+		# (3px против 2px) и с тенью, чтобы «мои клетки» читались через всю доску сразу.
+		# Порядок важен: кольцо хода и выбранная клетка старше выбора игрока (это состояния,
+		# на которые игрок ДЕЙСТВУЕТ), выбор игрока старше простой рамки владения.
+		sb.set_border_width_all(3)
+		sb.border_color = owner_col
+		sb.shadow_color = owner_col
+		sb.shadow_size = 6
+		show = true
+	elif owner >= 0 and not bool(entry.get("owner_muted", false)):
 		sb.set_border_width_all(2)
 		sb.border_color = owner_col
 		show = true
 	_state.add_theme_stylebox_override("panel", sb)
 	_state.visible = show
 	modulate = Color(1, 1, 1, 0.5) if bool(entry.get("dimmed", false)) else Color.WHITE
+
+
+## E-5: чем сейчас нарисована рамка состояния, одним словарём. Тест и проба читают ЭТО, а не
+## приватный `_state`: проверка «кольцо ровно на его клетках» должна спрашивать виджет, а не
+## повторять его правила у себя.
+func state_frame() -> Dictionary:
+	var col: Color = UiTheme.COL().border
+	var w := 0
+	var shadow := 0
+	if _state != null:
+		var sb := _state.get_theme_stylebox("panel")
+		if sb is StyleBoxFlat:
+			var f := sb as StyleBoxFlat
+			col = f.border_color
+			w = f.border_width_left
+			shadow = f.shadow_size
+	return {"visible": _state != null and _state.visible, "width": w, "color": col,
+		"shadow": shadow}
 
 
 func _gui_input(event: InputEvent) -> void:

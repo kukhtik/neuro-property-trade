@@ -37,6 +37,9 @@ var _tiles: Array = []
 var _cell := 0.0
 var _band_px := 0.0
 var _selected := -1
+## E-5: чьи клетки подсвечены на доске (-1 = никто). Доска ПОМНИТ выбор: `sync()` пересобирает
+## записи на каждое событие, и без собственного поля подсветка гасла бы на первом же ходу.
+var _focus_pid := -1
 var _entries: Dictionary = {}       # index -> state dict handed to the tiles
 
 var _wm1: Label
@@ -614,6 +617,11 @@ func sync(proj: Dictionary, seats: Array, human_pid: int) -> void:
 			e["owner_name"] = nm
 		e["active"] = i == turn_pos and not _watermark
 		e["selected"] = i == _selected
+		# E-5: подсветка выбранного игрока. `owner_muted` глушит рамки ВСЕХ владений, пока выбор
+		# активен: иначе «его» клетки не отличались бы от чужих, и выбор ничего не сообщал бы.
+		var fl: Dictionary = focus_flags(owner, _focus_pid)
+		e["owner_focus"] = fl["owner_focus"]
+		e["owner_muted"] = fl["owner_muted"]
 		entries[i] = e
 	_entries = entries
 	for i in _tiles.size():
@@ -760,6 +768,34 @@ func set_selected(idx: int) -> void:
 		var e: Dictionary = _entries.get(i, {})
 		e["selected"] = i == idx
 		_tiles[i].apply(e)
+
+
+## E-5: выбрать игрока, чьи клетки получают кольцо, а чужие рамки владения гаснут. Зовётся из
+## оболочки по сигналу карточки (`PlayersPanel.player_tiles_requested`), поэтому доска не знает,
+## ОТКУДА пришёл выбор, и остаётся той же доской для зрителя без карточек.
+func set_owner_focus(pid: int) -> void:
+	_focus_pid = pid
+	for i in _tiles.size():
+		var e: Dictionary = _entries.get(i, {})
+		var fl: Dictionary = focus_flags(int(e.get("owner", -1)), pid)
+		e["owner_focus"] = fl["owner_focus"]
+		e["owner_muted"] = fl["owner_muted"]
+		_tiles[i].apply(e)
+
+
+func focused_player() -> int:
+	return _focus_pid
+
+
+## E-5: ПРАВИЛО подсветки, одной функцией. Вынесено в static, чтобы тест проверял правило, а
+## проба - живой виджет: два независимых свидетеля против «правило правое, а кисть молчит».
+static func focus_flags(owner: int, focus_pid: int) -> Dictionary:
+	return {
+		"owner_focus": focus_pid >= 0 and owner == focus_pid,
+		# пока выбор активен, рамка ВЛАДЕНИЯ у остальных глушится: подсветка без этого
+		# перестаёт быть ответом на вопрос «где его клетки» - все рамки выглядели бы одинаково
+		"owner_muted": focus_pid >= 0,
+	}
 
 
 ## The roll: the TRAY tumbles and settles on the decided faces (0.85s).
