@@ -1,6 +1,7 @@
 # Neuro Property Trade
 
-Standalone property-trading board game (classic Monopoly mechanics, original theme)
+Standalone property-trading board game (the classic tabletop property-trading
+mechanics, original theme)
 built for [Neuro-sama](https://twitch.tv/vedal987) integration via the
 [Neuro SDK](https://github.com/VedalAI/neuro-sdk).
 
@@ -10,8 +11,9 @@ intents; the engine validates and executes them; the AI can never corrupt state)
 
 ## Why standalone
 
-- Monopoly **mechanics are public domain** (patent expired; see `docs/licensing.md`).
-  Hasbro trademarks are NOT used: original name, street names, tokens and art.
+- The **mechanics are public domain**: the patent expired in 1954, and a game's rules
+  are an idea, not expression (see `docs/licensing.md`). Third-party trademarks and
+  trade dress are NOT used: original name, street names, tokens and art.
 - Full control over game state → clean, reliable Neuro state-reads and action
   validation without reverse-engineering a commercial title.
 - A board game is a good fit for the Neuro API: low actions per minute, a state that
@@ -106,9 +108,9 @@ The engine, seats, network host, admin console, visual layer and the UI overhaul
 Verified by the oracle, the probes and the gate program — all run in CI:
 
 ```bash
-tools/ci/run_tests.sh     # 420 headless tests (rules engine + the projection contract + UI core)
+tools/ci/run_tests.sh     # 428 headless tests (rules engine + the projection contract + UI core)
 tools/ci/run_probes.sh    # 3 behavioral probes (i18n, skin, v3 layout)
-tools/ci/run_gates.sh     # 39 required gates: functionality (HG) + interface (SG), report in build/gates/
+tools/ci/run_gates.sh     # 43 gates (38 required + 5 in quarantine): functionality (HG) + interface (SG), report in build/gates/
 ```
 
 Plus determinism (every recorded game replays to a byte-identical fingerprint), a regenerated
@@ -127,5 +129,6 @@ Roadmap and known gaps: `docs/program.md` (the single plan) + the current snapsh
 
 ## License
 
-Code: MIT. Game content: original, non-Hasbro. "Monopoly" is referenced
-descriptively only. See `docs/licensing.md`.
+Code: MIT. Game content: original — no third-party trademarks, trade dress or character
+designs are used. The mechanics themselves are public domain (the patent expired in
+1954); the legal basis and the naming rules are in `docs/licensing.md`.

@@ -44,7 +44,7 @@ clone, and runs the oracle there.
 ### Why not GUT
 
 The suite is a plain-function runner (`tests/run.gd` + a `test_list()` per
-module), 420 tests, zero third-party dependencies. GUT would add a plugin, a
+module), 428 tests, zero third-party dependencies. GUT would add a plugin, a
 second runner and a second config format without adding coverage, and its
 default pass criterion is weaker than what the CI requirement actually needs
 (count floor + SCRIPT ERROR detection, above).
@@ -158,7 +158,7 @@ in-browser playthrough smoke is still manual and tracked in `docs/plan.md`.
 ```bash
 git clone https://github.com/kukhtik/neuro-property-trade && cd neuro-property-trade
 tools/ci/fetch_godot.sh      # ~86 MB, sha512-verified
-tools/ci/run_tests.sh        # expect: ORACLE PASSED (420 tests, 0 SCRIPT ERROR)
+tools/ci/run_tests.sh        # expect: ORACLE PASSED (428 tests, 0 SCRIPT ERROR)
 ```
 
 ## 8. Logs and measurement

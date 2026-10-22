@@ -188,6 +188,10 @@ GATES=(
 	# proves it is ALIVE: the variations resolve, the base fallback works, the hand-written
 	# `add_theme_*` overrides still win, and the theme follows the skin.
 	"THEME|hg|required|scene|theme_gate"
+	"E-5|sg|quarantine|script|tools/ci/gates/e5_inventory_gate.sh"
+	"HG-15|hg|quarantine|script|tools/ci/gates/hg15_pause_gate.sh"
+	"S3|sg|quarantine|script|tools/ci/scenario_s3.sh"
+	"VOICE-01|hg|quarantine|script|tools/ci/gates/voice01_gate.sh"
 )
 
 
