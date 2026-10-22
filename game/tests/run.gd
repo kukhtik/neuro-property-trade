@@ -33,7 +33,7 @@ func _init() -> void:
 		"res://tests/i18n_test.gd",
 		"res://tests/replay_test.gd",
 		"res://tests/skin_manager_test.gd",
-		"res://tests/event_presenter_test.gd",
+		"res://tests/ui_live_test.gd",
 		"res://tests/server_test.gd",
 		# CHAT-01: the Twitch chat seat (promise S2) had every piece and NO acceptance
 		# test - `grep -c CHAT-01 tools/ci/run_gates.sh` was 0.
@@ -48,7 +48,6 @@ func _init() -> void:
 		"res://tests/ui_contract_test.gd",
 		# UI-core pure-function tests: EventAdapter, Money, IntentMap,
 		# LayoutProfile, UiProfile, UiStore, JournalLines
-		"res://tests/ui_core_test.gd",
 		# E-4: an auction is visible on the sheet AND on the board (clock + central plate)
 		"res://tests/auction_ui_test.gd",
 		# E-3: the rent a tile charges NOW is visible (projection rent_now == the engine's own rule)

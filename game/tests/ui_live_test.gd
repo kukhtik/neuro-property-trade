@@ -1,25 +1,26 @@
 extends RefCounted
-## Headless tests for the pure UI-core modules.
+## Headless tests for the LIVE UI-core modules — every one of them is preloaded by the product.
 ##
 ## Modules covered:
 ##   EventAdapter   — engine → UI event schema, deltas, round tracking
 ##   Money          — formatting (amount, signed, compact, name_of)
-##   IntentMap      — UI action → engine intent translation + availability
 ##   LayoutProfile  — window-size → layout-profile mapping + rail widths
 ##   UiProfile      — execution-role profiles (player/stream/admin)
-##   UiStore        — view model: resync, apply_delta, lookups
 ##   JournalLines   — event + context → human-readable journal line
+##   KeyboardNav    — the keyboard model: Tab/arrow focus, the hotkey hint
+##   Bindings       — the one home for every rebindable key
 ##
 ## What is NOT covered here (needs a live scene tree or full engine run):
-##   EventPresenter  — already covered by event_presenter_test.gd
 ##   LaunchParams   — already covered by launch_params_test.gd (CLI/URL paths)
+##
+## Split out of `ui_core_test.gd` when the unused UiStore / EventPresenter / IntentMap
+## architecture was deleted (438 lines, no product consumer). Their tests went with them;
+## every test that exercises a module the product actually imports is preserved here.
 
 const AdapterScript := preload("res://ui/core/event_adapter.gd")
 const MoneyScript := preload("res://ui/core/money.gd")
-const IntentMapScript := preload("res://ui/core/intent_map.gd")
 const LayoutProfileScript := preload("res://ui/core/layout_profile.gd")
 const UiProfileScript := preload("res://ui/core/ui_profile.gd")
-const UiStoreScript := preload("res://ui/core/ui_store.gd")
 const JournalLinesScript := preload("res://ui/core/journal_lines.gd")
 const KeyboardNavScript := preload("res://ui/core/keyboard_nav.gd")
 const BindingsScript := preload("res://ui/core/bindings.gd")
@@ -70,15 +71,6 @@ static func test_list() -> Array[String]:
 		"test_signed_positive_plus_prefix", "test_signed_negative_no_plus",
 		"test_compact_thousands_K", "test_compact_millions_M",
 		"test_name_of_empty_fallback", "test_name_of_truncation",
-		# IntentMap
-		"test_to_engine_roll", "test_to_engine_build_house",
-		"test_to_engine_trade_offer_all_params",
-		"test_to_engine_unknown_action_returns_empty",
-		"test_can_decline_when_pass_and_buy_legal",
-		"test_can_decline_false_when_only_pass",
-		"test_can_buy_when_legal", "test_can_build_needs_tile",
-		"test_tile_action_hint_returns_build_when_legal",
-		"test_tile_action_hint_empty_when_nothing_legal",
 		# LayoutProfile
 		"test_wide_at_1600", "test_desktop_at_1280",
 		"test_compact_under_1280", "test_compact_short_height",
@@ -90,13 +82,6 @@ static func test_list() -> Array[String]:
 		"test_for_id_player", "test_for_id_stream_disables_input",
 		"test_for_id_admin_enables_tools", "test_infer_admin_from_flag",
 		"test_infer_stream_from_flag", "test_infer_player_on_web",
-		# UiStore
-		"test_resync_fills_vm", "test_resync_preserves_started",
-		"test_apply_delta_cash", "test_apply_delta_absolute_cash",
-		"test_apply_delta_position", "test_apply_delta_owner",
-		"test_apply_delta_houses", "test_apply_delta_mortgage",
-		"test_apply_delta_bankruptcy", "test_player_lookup_by_pid",
-		"test_tile_lookup_by_index", "test_select_tile_updates_vm",
 		# JournalLines
 		"test_line_for_buy_uses_tile_name",
 		"test_line_for_rent_uses_both_names",
@@ -418,110 +403,6 @@ static func test_name_of_truncation() -> String:
 
 
 # ------------------------------------------------------------------
-# IntentMap
-# ------------------------------------------------------------------
-
-static func test_to_engine_roll() -> String:
-	var im = IntentMapScript.new()
-	var r: Dictionary = im.to_engine("roll")
-	if r.get("action", "") != "roll":
-		return "roll must map to engine action 'roll'"
-	return ""
-
-
-static func test_to_engine_build_house() -> String:
-	var im = IntentMapScript.new()
-	var r: Dictionary = im.to_engine("build", {"tile": 7})
-	if r.get("action", "") != "build_house":
-		return "build must map to 'build_house'"
-	if int(r.get("params", {}).get("tile", -1)) != 7:
-		return "build must carry tile 7 in params"
-	return ""
-
-
-static func test_to_engine_trade_offer_all_params() -> String:
-	var im = IntentMapScript.new()
-	var r: Dictionary = im.to_engine("trade_offer", {
-		"to": 2, "give_tiles": [5], "give_cash": 500,
-		"want_tiles": [11], "want_cash": 0
-	})
-	if r.get("action", "") != "propose_trade":
-		return "trade_offer must map to 'propose_trade'"
-	var p: Dictionary = r.get("params", {})
-	if int(p.get("to", -1)) != 2:
-		return "params.to must be 2"
-	if int(p.get("give_cash", -1)) != 500:
-		return "params.give_cash must be 500"
-	return ""
-
-
-static func test_to_engine_unknown_action_returns_empty() -> String:
-	var im = IntentMapScript.new()
-	var r: Dictionary = im.to_engine("not_a_real_action")
-	if not r.is_empty():
-		return "unknown action must return empty dict"
-	return ""
-
-
-static func test_can_decline_when_pass_and_buy_legal() -> String:
-	var im = IntentMapScript.new()
-	var legal := ["roll", "buy", "pass"]
-	var r: bool = im.can("decline", legal)
-	if r != true:
-		return "decline must be available when both pass and buy are legal"
-	return ""
-
-
-static func test_can_decline_false_when_only_pass() -> String:
-	var im = IntentMapScript.new()
-	# auction phase: pass is legal but buy is not
-	var legal := ["pass", "bid"]
-	var r: bool = im.can("decline", legal)
-	if r != false:
-		return "decline must be false when buy is not legal"
-	return ""
-
-
-static func test_can_buy_when_legal() -> String:
-	var im = IntentMapScript.new()
-	var legal := ["buy"]
-	var r: bool = im.can("buy", legal)
-	if r != true:
-		return "buy must be available when legal"
-	return ""
-
-
-static func test_can_build_needs_tile() -> String:
-	var im = IntentMapScript.new()
-	var legal := ["build_house"]
-	# without a tile param, build must not be available
-	if im.can("build", legal) != false:
-		return "build without a tile must be false"
-	# with a tile param, it should be available
-	if im.can("build", legal, {"tile": 5}) != true:
-		return "build with tile 5 must be available"
-	return ""
-
-
-static func test_tile_action_hint_returns_build_when_legal() -> String:
-	var im = IntentMapScript.new()
-	var legal := ["build_house"]
-	var h: String = im.tile_action_hint(legal, 5)
-	if h != "build":
-		return "hint must be 'build', got '%s'" % h
-	return ""
-
-
-static func test_tile_action_hint_empty_when_nothing_legal() -> String:
-	var im = IntentMapScript.new()
-	var legal := ["roll"]
-	var h: String = im.tile_action_hint(legal, 5)
-	if h != "":
-		return "hint must be empty when nothing is legal, got '%s'" % h
-	return ""
-
-
-# ------------------------------------------------------------------
 # LayoutProfile
 # ------------------------------------------------------------------
 
@@ -702,170 +583,6 @@ static func test_infer_player_on_web() -> String:
 
 
 # ------------------------------------------------------------------
-# UiStore
-# ------------------------------------------------------------------
-
-static func test_resync_fills_vm() -> String:
-	var s = UiStoreScript.new()
-	var proj := {
-		"phase": "TURN_START", "turn_player": 1, "round": 3,
-		"parking_pot": 500,
-		"players": [{
-			"index": 0, "name": "Alice", "money": 1500, "position": 5,
-			"in_jail": false, "jail_turns": 0, "bankrupt": false,
-			"tiles": [], "houses": 0, "mortgaged": 0
-		}, {
-			"index": 1, "name": "Bob", "money": 1200, "position": 10,
-			"in_jail": true, "jail_turns": 2, "bankrupt": false,
-			"tiles": [5], "houses": 1, "mortgaged": 0
-		}],
-		"board": [{
-			"index": 5, "name": "V Putiao", "short": "V Putiao",
-			"type": "street", "group": "brown", "cost": 60,
-			"owner": 1, "houses": 1, "mortgaged": false
-		}],
-		"pending": {"can_buy": false}, "legal": ["roll"]
-	}
-	s.resync(proj)
-	var vm = s.vm
-	if vm["started"] != true:
-		return "started must be true after resync"
-	if vm["phase"] != "TURN_START":
-		return "phase must be TURN_START, got '%s'" % vm["phase"]
-	if vm["turn"] != 1:
-		return "turn must be 1, got %d" % vm["turn"]
-	if vm["pot"] != 500:
-		return "pot must be 500, got %d" % vm["pot"]
-	if vm["players"].size() != 2:
-		return "must have 2 players, got %d" % vm["players"].size()
-	if int(vm["players"][0]["money"]) != 1500:
-		return "player 0 money must be 1500"
-	if vm["tiles"].size() != 1:
-		return "must have 1 tile, got %d" % vm["tiles"].size()
-	return ""
-
-
-static func test_resync_preserves_started() -> String:
-	var s = UiStoreScript.new()
-	s.vm["started"] = true
-	s.resync({"phase": "SETUP", "turn_player": 0, "round": 1,
-		"players": [], "board": [], "pending": {}, "legal": []})
-	if s.vm["started"] != true:
-		return "resync must not reset started"
-	return ""
-
-
-static func test_apply_delta_cash() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	var before = int(s.vm["players"][0]["money"])
-	s.apply_delta([["c", 0, -120]])
-	var after = int(s.vm["players"][0]["money"])
-	if after != before - 120:
-		return "cash delta must subtract 120: before=%d after=%d" % [before, after]
-	return ""
-
-
-static func test_apply_delta_absolute_cash() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	s.vm["players"][0]["money"] = 1000
-	s.apply_delta([["cb", 0, 800]])
-	var after = int(s.vm["players"][0]["money"])
-	if after != 800:
-		return "absolute cash must set to 800, got %d" % after
-	return ""
-
-
-static func test_apply_delta_position() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	s.apply_delta([["pos", 0, 17]])
-	if int(s.vm["players"][0]["pos"]) != 17:
-		return "position delta must move player to 17"
-	return ""
-
-
-static func test_apply_delta_owner() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	s.apply_delta([["o", 5, 0]])
-	if int(s.vm["tiles"][0]["owner"]) != 0:
-		return "owner delta must set owner to 0"
-	return ""
-
-
-static func test_apply_delta_houses() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	s.apply_delta([["h", 5, 3]])
-	if int(s.vm["tiles"][0]["houses"]) != 3:
-		return "house delta must set houses to 3, got %d" % s.vm["tiles"][0]["houses"]
-	return ""
-
-
-static func test_apply_delta_mortgage() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	s.apply_delta([["m", 5, true]])
-	if s.vm["tiles"][0]["mortgaged"] != true:
-		return "mortgage delta must set mortgaged=true"
-	return ""
-
-
-static func test_apply_delta_bankruptcy() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	s.apply_delta([["out", 0]])
-	if s.vm["players"][0]["bankrupt"] != true:
-		return "out delta must set bankrupt=true"
-	return ""
-
-
-static func test_player_lookup_by_pid() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	var p: Dictionary = s.player(1)
-	if p.is_empty():
-		return "player(1) must not be empty"
-	if int(p.get("id", -1)) != 1:
-		return "player(1) id must be 1"
-	var empty: Dictionary = s.player(999)
-	if not empty.is_empty():
-		return "player(999) must be empty for unknown pid"
-	return ""
-
-
-static func test_tile_lookup_by_index() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	var t: Dictionary = s.tile(5)
-	if t.is_empty():
-		return "tile(5) must not be empty"
-	if int(t.get("index", -1)) != 5:
-		return "tile(5) index must be 5"
-	var empty: Dictionary = s.tile(999)
-	if not empty.is_empty():
-		return "tile(999) must be empty for unknown index"
-	return ""
-
-
-static func test_select_tile_updates_vm() -> String:
-	var s = UiStoreScript.new()
-	_build_minimal_store(s)
-	if s.vm["selected_tile"] != -1:
-		return "initial selected_tile must be -1"
-	s.select_tile(7)
-	if s.vm["selected_tile"] != 7:
-		return "selected_tile must be 7 after select_tile(7)"
-	# selecting the same tile again must be idempotent (no double signal)
-	s.select_tile(7)
-	if s.vm["selected_tile"] != 7:
-		return "selecting same tile twice must keep it at 7"
-	return ""
-
-
-# ------------------------------------------------------------------
 # JournalLines
 # ------------------------------------------------------------------
 
@@ -927,32 +644,6 @@ static func test_line_for_hidden_type_returns_empty() -> String:
 	if not line.is_empty():
 		return "line_for hidden type must return empty dict, got %s" % str(line)
 	return ""
-
-
-# ------------------------------------------------------------------
-# Helpers
-# ------------------------------------------------------------------
-
-static func _build_minimal_store(s: UiStore) -> void:
-	s.resync({
-		"phase": "SETUP", "turn_player": 0, "round": 1,
-		"parking_pot": 0,
-		"players": [{
-			"index": 0, "name": "A", "money": 1500,
-			"position": 0, "in_jail": false, "jail_turns": 0,
-			"bankrupt": false, "tiles": [], "houses": 0, "mortgaged": 0
-		}, {
-			"index": 1, "name": "B", "money": 1500,
-			"position": 0, "in_jail": false, "jail_turns": 0,
-			"bankrupt": false, "tiles": [], "houses": 0, "mortgaged": 0
-		}],
-		"board": [{
-			"index": 5, "name": "V Putiao", "short": "V Putiao",
-			"type": "street", "group": "brown", "cost": 60,
-			"owner": -1, "houses": 0, "mortgaged": false
-		}],
-		"pending": {}, "legal": []
-	})
 
 
 # --- KeyboardNav (PART 3): the pure keyboard model --------------------------------------------

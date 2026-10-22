@@ -105,15 +105,15 @@ UNLISTENED / UNAPPLIED. **Инструмент признаёт слепоту �
 |---|---|
 | `layout_profile.{for_screen,rail_left,rail_right,left_width,right_width,top_height,bottom_height,is_supported,RAIL_WIDTH}` | KEEP → **P2.2**: план сам делает `layout_profile` единственным домом метрик; сегодня его знают только тесты |
 | `theme.{label_muted,label_money,button_primary_chamfer,use_skin}` | KEEP → **P2.1**: Theme-ресурс либо вбирает эти фабрики, либо они удаляются |
-| `event_presenter.{EventPresenter,push,set_sink,set_resync,is_busy,skip_all,set_projection_source}` | WIP(**SG-06**): журнал уже строит `journal_lines.gd`+adapter — презентеру нужен живой потребитель или удаление вместе с `event_presenter_test` (тогда MIN_TESTS вниз тем же коммитом) |
+| ~~`event_presenter.*`~~ | **УДАЛЕНО 22.10**: у презентера не было потребителя в продукте (`git grep` по `game/` вне `tests/` — только комментарии в `event_adapter.gd`); 134 строки + 11 тестов — мёртвый код удалён, а не архивирован (правило 4) |
 | `event_messages.bind_engine` + статик `_engine` | WIP(**SG-06/E-2**): привязку не зовёт никто → тексты событий живут на фолбэке по тегу места. Либо звать из `board_scene`, либо снести оба |
 | `seat_manager.{push_chat,push_admin_intent}` | WIP(**S2/P1.2**): `push_chat` — точка входа чата Твича (обещание S2); `push_admin_intent` решить там же (админка ходит другим путём) |
 | `chat_driver` (спавнится `seat_manager`, производителя нет) | WIP(**S2/P1.2**): заглушка без источника голосов — ровно то, что закрывает P1.2 |
 | SDK-сигналы `voice_chat.{voice_ready,voice_unavailable,speaking_changed,speech_cancelled,audio_received}` | WIP(**VOICE-01/P1.4**): «кто говорит» висит на `speaking_changed`, а он не подключён нигде |
 | SDK-сигналы `websocket.{connection_failed,disconnected,character_changed}` | WIP(**HG-06/P1.3**): слушаем только `connected` — экран джойна не умеет «не удалось подключиться» |
 | `remote_driver.{connect_to_host,request_state,configure,idle_ms,is_connected_to_host,disconnect_from_host}`, `game_server.{peer_count,seated_count,close_all}`, `protocol.{S2C,is_valid_client_msg,channel_for}`, `main.{_join_as_remote,server_port}` | WIP(**remote-native**): весь нативный remote-путь без потребителя — своп v3 унёс сцену, которая им пользовалась. Решить в сессии джойна: сценарий или удаление |
-| `intent_map.{IntentMap,to_engine,tile_action_hint}` | WIP(**P2.3**): UI либо ходит через карту интентов, либо карта уходит |
-| `ui_store.{set_follow,mark_over}` | WIP(**ZOOM-01/P1.4**: камера и зум) |
+| ~~`intent_map.*`~~ | **УДАЛЕНО 22.10**: карта интентов не была подключена (UI ходит в движок напрямую через `_on_action`); 117 строк + 8 тестов — мёртвый код удалён |
+| ~~`ui_store.*`~~ | **УДАЛЕНО 22.10**: хранилище состояния не имело потребителя (zoom живёт в `board_camera.gd`); 187 строк + 14 тестов — мёртвый код удалён |
 | `ui_profile.{text_scale,shows_journal,shows_role_badge}` | WIP(**HG-12**): профиль роли обязан влиять на раскладку — иначе поле удаляется (правило владельца: нельзя держать поле, которое ничего не делает) |
 | `rail_panel.{set_expanded_width,set_content,set_count,is_collapsed,is_manual}`, `drawer_panel.W` | WIP(**P2.3**): рейлы/ящики переезжают в `.tscn`; тогда API рейла либо используется, либо исчезает |
 | `skin_manager.int_proportion` | WIP(**P2.1**) — вместе с темой |
@@ -359,6 +359,28 @@ SG-02 (`needs 2028px in a 1440px frame`, 670 находок). И само обе
 потому что диагональная кнопка была ДАЛЬШЕ и по оси (фикстура не различала правила). Фикстура
 переделана (диагональ ближе по оси, но ниже) — теперь снятие штрафа валит ровно этот тест:
 `ran 395 tests, 1 failed` → `ORACLE FAILED`.
+
+### 22.10 — трек 4, часть 1: мёртвая архитектура удалена (MIN_TESTS 431 → 419)
+
+**Что удалено и почему это не регресс.** `ui_store.gd` (187 строк), `event_presenter.gd` (134),
+`intent_map.gd` (117) — **438 строк**, у которых не было ни одного потребителя в продукте.
+Проверено замером, а не на глаз: `git grep 'ui_store\|event_presenter\|intent_map' -- game/`
+вне `game/tests/` даёт **ноль** совпадений (остаются только комментарии в `event_adapter.gd`).
+Живой путь другой: `main.gd → game_view.apply_projection(proj) → панели.sync(proj)`, и UI
+ходит в движок напрямую через `_on_action` — карта интентов в этом пути не участвует.
+
+**Почему MIN_TESTS упал, и план возврата.** Удалено 32 теста, которые проверяли удалённое
+(11 у `event_presenter`, 8 у `intent_map`, 13 у `ui_store`). 44 ЖИВЫХ теста из этих двух
+модулей (EventAdapter, Money, IntentMap→adapter, LayoutProfile, UiProfile, JournalLines,
+KeyboardNav, Bindings) переехали в новый `game/tests/ui_live_test.gd` — ни один живой тест
+не потерян. 452 → 419.
+
+**План возврата:** если `ui_store`/`event_presenter`/`intent_map` снова понадобятся — у них
+есть ТЕКСТЫ (события, дельты, карта интентов), и вернуть их дешевле, чем писать заново:
+`git show 8b51692:game/ui/core/intent_map.gd`. Порог MIN_TESTS вернётся к 431+ тем же
+коммитом, в котором вернётся код.
+
+**Замер:** `ran 419 tests, 0 failed` · `ORACLE PASSED (419 tests, 0 SCRIPT ERROR)`.
 
 ## 4. Фаза 2 — носитель оболочки (только после зелёных P1.1–P1.3 и явного «go» владельца)
 
