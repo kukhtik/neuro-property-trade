@@ -482,6 +482,17 @@ func _build_game(settings, seats: Array) -> void:
 	_start_server_if_needed(seats)
 
 	_game_view.setup(_engine, _manager, seats, settings)
+	# VOICE-01 «КТО ГОВОРИТ»: голос - отдельный вебсокет SDK-места, и он должен дойти
+	# до панели мест. ПОРЯДОК ВАЖЕН: сначала панель подписывается на сигналы, потом
+	# канал открывается - `voice_unavailable` (сервера голоса нет) приходит при
+	# старте, и подписчик должен уже слушать, иначе тихая деградация осталась бы
+	# незамеченной. Без этих двух строк индикатор в карточке был бы мёртвым кодом:
+	# модуль голоса в продукте просто не существовал.
+	if _manager != null and _manager.has_method("voice_source"):
+		var voice_src = _manager.voice_source()
+		if voice_src != null:
+			_game_view.set_voice_source(voice_src)
+			_manager.start_voice()
 	# game-over banner: seat_manager emits game_over when the engine reaches END_GAME
 	if _manager.game_over.is_connected(_on_game_over):
 		_manager.game_over.disconnect(_on_game_over)

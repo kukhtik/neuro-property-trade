@@ -121,7 +121,41 @@ func set_voice_source(source: Object, pid: int = -1) -> void:
 	_voice_sources[key] = source
 	if not _voice_state.has(key):
 		_voice_state[key] = {"lit": false, "available": true}
+	# ПАНЕЛЬ слушает источник САМА, а не только через индикатор. Причина: индикатор
+	# привязывается к источнику при СОЗДАНИИ карточки, а `voice_unavailable` (сервера
+	# голоса нет) приходит сразу при старте канала - то есть ДО первой карточки. Если бы
+	# слушал только индикатор, деградация молча пролетела бы мимо: подсказка молчала бы
+	# «голос недоступен», а индикатор - залипал бы в состоянии «доступен».
+	_bind_source_state(key, source)
 	# перерисовать карточки, если состояние уже есть: источник может прийти и после первого sync
+	if not _last_proj.is_empty():
+		sync(_last_proj, _last_seats)
+
+
+## VOICE-01: панель помнит состояние источника сама (индикатор может ещё не существовать).
+func _bind_source_state(key: int, source: Object) -> void:
+	if source == null or not is_instance_valid(source):
+		return
+	if not source.has_signal("voice_unavailable"):
+		return
+	if not source.is_connected("voice_unavailable", _on_source_unavailable):
+		source.connect("voice_unavailable", _on_source_unavailable)
+	if source.has_signal("voice_ready") and not source.is_connected("voice_ready", _on_source_ready):
+		source.connect("voice_ready", _on_source_ready)
+
+
+func _on_source_unavailable(_reason: String) -> void:
+	for key in _voice_sources:
+		_voice_state[key] = {"lit": false, "available": false}
+	if not _last_proj.is_empty():
+		sync(_last_proj, _last_seats)
+
+
+func _on_source_ready() -> void:
+	for key in _voice_sources:
+		var st: Dictionary = _voice_state.get(key, {"lit": false, "available": true})
+		st["available"] = true
+		_voice_state[key] = st
 	if not _last_proj.is_empty():
 		sync(_last_proj, _last_seats)
 

@@ -15,6 +15,9 @@ var engine
 var seats: Array = []        # of Seat (RefCounted)
 var _drivers := {}           # pid -> Node driver instance
 var _sdk_adapters := {}      # pid -> SdkAdapter node (HG-08: the SDK seat's actor)
+## VOICE-01: канал голоса матча (NeuroVoiceChat). Создаётся, когда в матче есть
+## SDK-место; без него голоса нет вовсе, и это НЕ ошибка - голос опционален.
+var _voice = null
 var _last_decision_key := ""
 var _tick_elapsed := 0.0
 var _last_process_delta := 0.0
@@ -75,7 +78,34 @@ func setup(eng, seat_list: Array) -> void:
 				events_emitted.emit(events)
 				emit_spectator())
 			_sdk_adapters[s.pid] = ad
+			# VOICE-01 «КТО ГОВОРИТ». Голос - ОТДЕЛЬНЫЙ вебсокет, и он нужен ровно
+			# тогда, когда в матче есть SDK-место: у него один голос (Neuro), и панель
+			# мест должна показать, что говорит именно это место. До этой строки
+			# модуль голоса в продукте не существовал ВООБЩЕ: сигналы
+			# `speaking_changed`/`voice_unavailable` не имели ни одного потребителя,
+			# и обещание «кто говорит» было бы мёртвым кодом с зелёным гейтом.
+			# Канал НЕ открывается здесь: панель должна подписаться на сигналы
+			# РАНЬШЕ, чем придёт `voice_unavailable` (иначе деградация пришла бы в
+			# пустоту) - поэтому старт делает вызывающий, после подписки.
+			if _voice == null:
+				_voice = load("res://addons/neuro-sdk/voice/voice_chat.gd").new()
+				_voice.name = "NeuroVoice"
+				add_child(_voice)
 		# SDK needs no auto-driver beyond the adapter above.
+
+## VOICE-01: канал голоса матча для панели мест. `null` - голоса в матче нет
+## (нет SDK-места, или голос не создавался) - это НЕ ошибка.
+func voice_source() -> Object:
+	return _voice
+
+
+## VOICE-01: открыть канал голоса. Вызывается ПОСЛЕ того, как панель мест
+## подписалась на сигналы: `voice_unavailable` (сервера голоса нет) приходит
+## при старте, и подписчик должен уже слушать.
+func start_voice() -> void:
+	if _voice != null and is_instance_valid(_voice):
+		_voice.start_voice()
+
 
 func _spawn_driver(pid: int, path: String) -> void:
 	var Script = load(path)

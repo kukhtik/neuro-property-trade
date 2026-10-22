@@ -409,6 +409,13 @@ func _on_player_tiles_requested(pid: int) -> void:
 		_board.call("set_owner_focus", pid)
 
 
+## VOICE-01 «кто говорит»: источник голоса приходит из оболочки (у SDK-места в матче).
+## Панель мест показывает, кто говорит; источник без места = голос SDK-места.
+func set_voice_source(source: Object) -> void:
+	if _seats_panel != null and _seats_panel.has_method("set_voice_source"):
+		_seats_panel.call("set_voice_source", source)
+
+
 ## Put the right column's children in, once the tree has settled.
 ## Put the right column's children in, before the column joins `body`.
 ##

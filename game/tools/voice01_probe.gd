@@ -293,6 +293,55 @@ func _run() -> void:
 	I18n.set_locale("ru")
 	print("VOICE-01 PROBE: цвет — токен скина, кегль существующий, подсказка переводится")
 
+	# --- 10. ПРОДУКТОВАЯ ПРОВОДКА: голос создаёт ПРОДУКТ, а не проба --------------------
+	# Всё выше мерило логику индикатора на ПОДСТАВЛЕННОМ источнике. Но обещание «кто
+	# говорит» - это обещание ПРОДУКТА: в настоящей игре модуль голоса должен
+	# существовать и доезжать до карточки. Пока продукт его не создавал, индикатор был
+	# мёртвым кодом с зелёным гейтом, и гейт этого не замечал. Теперь замечает:
+	# убери проводку из main.gd/seat_manager - эта проверка покраснеет.
+	var SeatScript := load("res://seats/seat.gd")
+	var SettingsScript := load("res://core/game_settings.gd")
+	var st2 = SettingsScript.new()
+	st2.seat_count = 2
+	st2.starting_order = "manual"
+	var seats_sdk: Array = []
+	var s_sdk = SeatScript.new(0)
+	s_sdk.name = "Neuro"
+	s_sdk.input_driver = "SDK"
+	s_sdk.driver_label = "sdk:neuro"
+	seats_sdk.append(s_sdk)
+	var s_host = SeatScript.new(1)
+	s_host.name = "Host"
+	s_host.input_driver = "LOCAL"
+	seats_sdk.append(s_host)
+	var l2 = MainScript.new()
+	add_child(l2)
+	l2.call("_build_game", st2, seats_sdk)
+	var mgr2 = l2.get("_manager")
+	_check(mgr2 != null and mgr2.has_method("voice_source"),
+		"менеджер мест не отдаёт источник голоса - продуктовая проводка отсутствует")
+	var vsrc = mgr2.call("voice_source") if mgr2 != null else null
+	_check(vsrc != null, "продукт не создал канал голоса для SDK-места")
+	var gv2 = l2.get("_game_view")
+	var panel2 = gv2.get("_seats_panel") if gv2 != null else null
+	_check(panel2 != null, "в продукте нет панели мест")
+	var bound = panel2.get("_voice_sources") if panel2 != null else {}
+	_check(bound is Dictionary and not bound.is_empty(),
+		"оболочка не передала источник голоса панели мест - в игре индикатор не загорится")
+	# ТИХАЯ ДЕГРАДАЦИЯ В ПРОДУКТЕ: сервера голоса нет (NEURO_SDK_WS_URL не задан) -
+	# настоящий модуль говорит `voice_unavailable`, и ПАНЕЛЬ это видит и гаснет.
+	panel2.call("sync", proj, seats_sdk) if panel2 != null else null
+	var vstate = panel2.get("_voice_state") if panel2 != null else {}
+	_check(vstate is Dictionary and not vstate.is_empty(),
+		"панель не знает состояние голоса")
+	var any_unavailable := false
+	for k in (vstate as Dictionary):
+		if not bool((vstate[k] as Dictionary).get("available", true)):
+			any_unavailable = true
+	_check(any_unavailable,
+		"настоящий модуль голоса сообщил о недоступности, но панель этого не увидела")
+	print("VOICE-01 PROBE: продукт создал канал голоса и передал его карточкам")
+
 	_finish()
 
 
