@@ -131,9 +131,16 @@ Both are still in quarantine and both have a checked negative.
 
 The open task is resource consumption: the target is the frugality of 2000-era games — no
 allocations in the frame, no tree lookups in the frame, memory that does not grow over a long
-match, and repaints on events rather than every frame. The gates for it (`ECO-01…ECO-04`) are
+match, and repaints on events rather than every frame. The gates for it (`ECO-01…ECO-05`) are
 **not written yet** and no budget is fixed, so the word "optimized" claims nothing today; the
-plan is `docs/program.md` §4a.
+plan is `docs/program.md` §4a. The rule of the phase: measure, change one thing, keep every
+quality gate green, measure again — a lighter build that looks or plays worse is rejected.
+
+The package already carries nothing the game does not use: the release `.pck` went from
+1 074 960 to 676 612 bytes (−37.1 %, 492 → 310 files) after the CI probes were excluded, and
+the acceptance check proves both directions — no foreign file under `res://tools/`, and the
+product's own `replay.gd` still in the pack. The engine itself (`index.wasm`, 39.5 MB) is 58
+times the pack and can only be trimmed by building a custom export template.
 
 Roadmap and known gaps: `docs/program.md` (the single plan) + the current snapshot in
 `docs/restoration/`.
