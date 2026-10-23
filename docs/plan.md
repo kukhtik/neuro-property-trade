@@ -33,6 +33,7 @@ build/             artifacts (gitignored): web/, windows/, gates/, renders/, cur
 | Question | File |
 |---|---|
 | What are we doing next, and why | `docs/program.md` |
+| The economy/optimization task (resource consumption) | `docs/program.md` §4a · gates `ECO-01…ECO-04` — `docs/restoration/gates.md` §4a |
 | Which checks exist and what they prove | `docs/restoration/gates.md` |
 | What is true right now (numbers, evidence) | `docs/restoration/state-*.md` (newest) |
 | What the interface must do (F-01…F-73, P-1…P-16) | `docs/specs/ui-full-redesign-spec.md` |

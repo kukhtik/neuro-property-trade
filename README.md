@@ -124,6 +124,17 @@ reads 12px when the frame is scaled to a 390px phone. Both requirements are func
 frame, so the same layout holds from 1600x1200 to 4K; the one frame that cannot carry both is
 1920x1080 (16:9), and `docs/restoration/gates.md` shows the arithmetic.
 
+Two interface gates compare the live frame with the reference mockup: `MOCK-01` measures the
+consistency zone by zone, `MOCK-02` measures the visual taste (every font size is a step of the
+skin's scale, nothing is above the 48px cap, and a role is never overridden under the screen).
+Both are still in quarantine and both have a checked negative.
+
+The open task is resource consumption: the target is the frugality of 2000-era games — no
+allocations in the frame, no tree lookups in the frame, memory that does not grow over a long
+match, and repaints on events rather than every frame. The gates for it (`ECO-01…ECO-04`) are
+**not written yet** and no budget is fixed, so the word "optimized" claims nothing today; the
+plan is `docs/program.md` §4a.
+
 Roadmap and known gaps: `docs/program.md` (the single plan) + the current snapshot in
 `docs/restoration/`.
 

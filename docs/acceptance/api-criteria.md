@@ -21,6 +21,24 @@
 | 8 | Нет читов: скрытая информация скрыта так же, как от человека | `game/sdk/projection.gd` → `for_player(engine, pid)` + `_private_view(engine, pid)`: в приватный блок попадают только СВОИ карты выхода из тюрьмы; `for_spectator(engine)` — публичное представление вообще без `legal` и `private` | `game/tests/sdk_test.gd` → `test_projection_private_jail_cards_isolated` (у соседа ноль, у себя два); `game/tests/ui_contract_test.gd` → `test_projection_outputs_pinned` (спектатор не содержит `legal`/`private`); оба модуля в сьюте оракула `tools/ci/run_tests.sh` |
 | 9 | «Be painfully explicit» — быть предельно явным | `game/sdk/markdown_renderer.gd` → `render(proj)`: фаза, чей ход, каждый игрок (деньги, позиция, тюрьма), все клетки с владельцем/домами/залогом, ожидающее решение с числами (ставка, кто поставил), полный список легальных действий, приватный блок; `game/sdk/decision_controller.gd` → `_query()` формулирует фазу словами («You landed on an unowned property. Choose one: …») | `game/tests/sdk_test.gd` → `test_renderer_contains_sections` + `test_renderer_legal_actions_listed`. Полнота «явности» числом не измеряется — см. ниже, «Пункт 9» |
 
+## Смежные обещания интерфейса (не из брифа API, но из тех же правил)
+
+Критерии 1–9 выше — это бриф по API. Ниже — обещания интерфейса, которые владелец добавил
+23.10 вместе с отменой телефонной проверки. Для них таблица «пункт → код → замер» такая же.
+
+| Обещание | Код | Замер |
+|---|---|---|
+| Визуал не разваливается: живой кадр совпадает с эталонным макетом | `game/visual/board_scene.gd`, `game/ui/components/turn_panno.gd` | `MOCK-01`: `tools/ci/mockup_measure.py` сравнивает кадр 1600×1200 с эталоном `design/variants/v5/renders/concept-a-composition.png` по 48 зонам → `==> MOCK-01 PASSED (ink: frame 92.6 % mockup 93.2 % delta -0.6 p.p.)`. Негатив: белый кадр → `-100 p.p.` → `FAILED` |
+| Нет огромных выбивающихся надписей; кегль — из шкалы скина и словаря дизайна | `game/ui/theme.gd` (роли из `skin.json`), `game/tools/mockup_taste_probe.gd` (живой дамп) | `MOCK-02`: `tools/ci/mockup_taste.py` → `==> MOCK-02 PASSED (every size is a step of the skin's scale […]; no label above the cap 48 px; 186 labels measured)`. Негатив: 64 px и «роль 15, рисуется 13» → `1 live violation(s), 1 overridden role(s)` → `FAILED` |
+| Продукт реально говорит (кто говорит) | `game/seats/seat_manager.gd` → `game/main.gd` → `game/ui/players_panel.gd` → `game/ui/voice_led.gd` | `VOICE-01`: `game/tools/voice01_probe.gd` меряет **продуктовый** путь, а не мок → `==> VOICE-01 PASSED`. Негатив: удаление wiring из `main.gd` → `FAILED` |
+| Пакет не везёт тестовые модули | `game/export_presets.cfg` (`exclude_filter="tests/*"`) | `S3`/`C3`: в собранном pck `0` вхождений `res://tests/`; pck 1 074 960 байт |
+
+**Пока не измерено (новая задача владельца, 23.10).** Экономия ресурсов — качество потребления
+как у игр 2000 года (ноль аллокаций в кадре, нет поиска по дереву в кадре, память не растёт,
+перерисовка по событию). План — `docs/program.md` §4а, реестр гейтов `ECO-01…ECO-04` —
+`docs/restoration/gates.md` §4а. **Гейтов ещё нет**, бюджет не зафиксирован, поэтому это
+обещание пока **не выполнено**.
+
 ## Примечания — что закрыто не полностью
 
 Честный список, а не оговорка: эти клетки выше пусты не случайно.
