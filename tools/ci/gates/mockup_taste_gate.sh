@@ -75,11 +75,17 @@ fi
 dump_arg="$repo_native/build/gates/mockup_taste.dump"
 if [ "${1:-}" = "--negative" ]; then
 	bad="$repo_native/build/gates/mockup_taste_negative.dump"
-	# ПОЛЯ ДОЛЖНЫ СТОЯТЬ НА СВОИХ МЕСТАХ: label|path|eff|dpx|board|text.
+	# ПОЛЯ ДОЛЖНЫ СТОЯТЬ НА СВОИХ МЕСТАХ: label|path|eff|dpx|kind|text.
 	# 64 — это ЭФФЕКТИВНЫЙ КЕГЛЬ (третье поле). Если 64 уедет в путь, а eff станет -1,
 	# нарушения не будет, и гейт пройдёт с «испорченным» входом - то есть не докажет,
 	# что мерит. (Так и случилось: ребёнок это поймал, а обвязка была неправильная.)
-	{ cat "$dump"; echo "TASTE|label|/fake/huge|64|-1|0|huge label"; } > "$bad"
+	# kind: 0 - обычная надпись (кегль - роль). 1 - клетка доски, 3 - кегль от клетки.
+	# Вторая строка - «роль переопределена»: design_px = 15 (имя в словаре дизайна), а
+	# рисуется 13. Это ровно тот дефект, который был в карточке клетки (код говорил одно,
+	# а экран рисовал другое), и он НЕ ловится ни потолком, ни словарём.
+	{ cat "$dump"; \
+	  echo "TASTE|label|/fake/huge|64|-1|0|huge label"; \
+	  echo "TASTE|label|/fake/overridden|13|15|0|role overridden"; } > "$bad"
 	dump_arg="$bad"
 fi
 

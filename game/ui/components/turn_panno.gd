@@ -316,6 +316,14 @@ func apply_scale(cell: float) -> void:
 		var node = entry["node"]
 		if is_instance_valid(node):
 			node.add_theme_font_size_override("font_size", _fs(float(entry["ratio"])))
+			# МЕТКА «КЕГЛЬ ВЫЧИСЛЕН ОТ КЛЕТКИ». Её кегль меняется вместе с клеткой, и это
+			# законно (дизайн: «Font sizes are ratios of a board cell»). Проба вкуса (MOCK-02)
+			# по этой метке отличает такие надписи от обычных: у обычной кегль - это РОЛЬ, и
+			# роль обязана быть на экране; здесь роль пересчитывается, и проверять нечего.
+			# Без этой метки карточка клетки, которую доска переносит В панно
+			# (`_card.reparent(ev_col)`), выглядела бы как «панно» и пряталась бы от проверки
+			# «роль переопределена» - а именно её переопределяли.
+			node.set_meta("cell_relative", true)
 	# THE JOURNAL PANEL IN THE SLOT SCALES WITH THE RING TOO. It is the shell's widget,
 	# so it cannot read the cell itself - the panno hands it over, exactly as it hands
 	# the cell to its own labels. A panel that kept its pixel sizes would be unreadable

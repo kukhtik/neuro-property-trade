@@ -242,7 +242,7 @@ def parse_dump(path):
             try:
                 labels.append({
                     "path": parts[2], "eff": int(parts[3]), "dpx": int(parts[4]),
-                    "board": int(parts[5]),
+                    "kind": int(parts[5]),
                     "text": parts[6] if len(parts) > 6 else "",
                 })
             except ValueError:
@@ -279,6 +279,7 @@ def main():
     cap_px = cap * (ui_scale if ui_scale else 1.0)
     live_violations = []
     off_vocab = []
+    role_mismatch = []
     for lab in labels:
         eff = lab["eff"]
         # ПОТОЛОК — это и есть «огромные выбивающиеся надписи» буквально.
@@ -288,13 +289,26 @@ def main():
                 "why": "крупнее потолка дизайна (%d px)" % int(cap_px),
                 "text": lab["text"]})
             continue
-        if lab["board"]:
+        # РОЛЬ ПЕРЕОПРЕДЕЛЕНА. У надписи есть `design_px` - роль из словаря дизайна; если
+        # эффективный кегль ей не равен, значит кто-то переопределил размер поверх роли
+        # (например, перевёл её на долю клетки). Тогда код говорит одно, а экран рисует
+        # другое - ровно тот дефект, который стоил 15 -> 13 в карточке клетки.
+        # Надписи ДОСКИ (kind 1) и ПАННО (kind 2) сюда не попадают: их кегль вычисляется от
+        # размера клетки (дизайн: «Font sizes are ratios of a board cell»), и пересчёт законен.
+        dpx = lab["dpx"]
+        if lab["kind"] == 0 and dpx > 0 and dpx in allowed and eff != dpx:
+            role_mismatch.append({
+                "path": lab["path"], "eff": eff,
+                "why": "роль design_px = %d, а рисуется %d px - роль переопределена" % (dpx, eff),
+                "text": lab["text"]})
+            continue
+        if lab["kind"] == 1:
             continue  # кегль клетки доски считается от размера клетки — законно
         # Кегль, ВЫЧИСЛЕННЫЙ от клетки (панно: `int(_cell * ratio)`), не обязан быть в
-        # словаре дизайна — это задокументированное решение («Font sizes are ratios of a
-        # board cell»). Поэтому «не в словаре» живых кеглей — это ЗАМЕЧАНИЕ, а не провал:
+        # словаре дизайна - это задокументированное решение дизайна («Font sizes are ratios of a
+        # board cell»), и гейт помечает такой кегль как **замечание**, а не как провал:
         # проваливает ЛИТЕРАЛЫ в исходниках (static), а живое ловит потолок.
-        design = lab["dpx"] if lab["dpx"] > 0 else int(round(eff / (ui_scale or 1.0)))
+        design = dpx if dpx > 0 else int(round(eff / (ui_scale or 1.0)))
         if design not in allowed:
             off_vocab.append({
                 "path": lab["path"], "eff": eff,
@@ -327,16 +341,23 @@ def main():
                   "a cell-relative size is legitimate) ---" % len(off_vocab))
             for v in off_vocab[:6]:
                 print("  %s  eff %d  %s  | %s" % (v["path"], v["eff"], v["why"], v.get("text", "")))
+        if role_mismatch:
+            print()
+            print("--- live: the role was overridden (%d) ---" % len(role_mismatch))
+            for v in role_mismatch:
+                print("  %s  eff %d  %s  | %s" % (v["path"], v["eff"], v["why"], v.get("text", "")))
         print()
 
-    if src_violations or live_violations:
+    if src_violations or live_violations or role_mismatch:
         worst_static = src_violations[0] if src_violations else None
         worst_live = live_violations[0] if live_violations else None
-        print("==> MOCK-02 FAILED: %d raw size(s) outside the scale in the source, %d live violation(s)%s%s"
-              % (len(src_violations), len(live_violations),
+        worst_role = role_mismatch[0] if role_mismatch else None
+        print("==> MOCK-02 FAILED: %d raw size(s) outside the scale in the source, %d live violation(s), %d overridden role(s)%s%s%s"
+              % (len(src_violations), len(live_violations), len(role_mismatch),
                  ("; worst source: %s:%d size %d" % (worst_static["file"], worst_static["line"],
                                                     worst_static["size"])) if worst_static else "",
-                 ("; worst live: %s (eff %d)" % (worst_live["path"], worst_live["eff"])) if worst_live else ""))
+                 ("; worst live: %s (eff %d)" % (worst_live["path"], worst_live["eff"])) if worst_live else "",
+                 ("; worst role: %s (eff %d)" % (worst_role["path"], worst_role["eff"])) if worst_role else ""))
         return 1
     print("==> MOCK-02 PASSED (every size is a step of the skin's scale %s; no label above the cap %d px; %d labels measured)"
           % (sorted(allowed), cap, len(labels)))

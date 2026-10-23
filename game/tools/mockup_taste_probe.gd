@@ -70,19 +70,27 @@ func _walk(node: Node, path: String) -> int:
 			var txt := str(l.text).replace("|", "/")
 			if txt.length() > 28:
 				txt = txt.substr(0, 28)
-			print("%slabel|%s|%d|%d|%d|%s" % [OUT_PREFIX, p, eff, dpx, _is_board(l), txt])
+			# kind: 0 - обычная надпись (её кегль - РОЛЬ), 1 - надпись клетки доски,
+			# 3 - надпись, чей кегль ВЫЧИСЛЯЕТСЯ от клетки (метка `cell_relative`, которую
+			# ставит панно: `turn_panno.apply_scale`). Только у 0 кегль - роль, и она обязана
+			# быть на экране: у 1 и 3 пересчёт от клетки законен.
+			var kind := 0
+			if l.has_meta("cell_relative"):
+				kind = 3
+			elif _under_tile(l):
+				kind = 1
+			print("%slabel|%s|%d|%d|%d|%s" % [OUT_PREFIX, p, eff, dpx, kind, txt])
 			n += 1
 		n += _walk(ch, p)
 	return n
 
 
-## Надпись внутри клетки доски: её кегль считается от размера клетки (`int(_cell * k)`),
-## поэтому он НЕ обязан быть шагом шкалы — но обязан быть не больше потолка.
-func _is_board(node: Node) -> int:
+## Надпись внутри клетки доски (tile_view): её кегль считается от размера клетки.
+func _under_tile(node: Node) -> bool:
 	var anc: Node = node.get_parent()
 	while anc != null:
 		var scr = anc.get_script()
 		if scr != null and str(scr.resource_path).ends_with("visual/tile_view.gd"):
-			return 1
+			return true
 		anc = anc.get_parent()
-	return 0
+	return false
