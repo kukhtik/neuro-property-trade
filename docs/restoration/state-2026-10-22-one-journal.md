@@ -39,9 +39,12 @@
 | «Кто говорит» (VOICE-01) | `bash tools/ci/gates/voice01_gate.sh` | `VOICE-01 PASSED (44 проверок: ...)` |
 | Пауза (HG-15) | `bash tools/ci/gates/hg15_pause_gate.sh` | `HG-15 PASSED (пауза через admin_override: интенты отбиты, обе проекции согласны, снапшот чист, resume без дублей, таймер стоит — 21 проверок)` |
 | Пак без тестов (C3) | `grep -ac 'res://tests/' build/current/web/index.pck` | `0` (было 40; pck 1.25 МБ → 1.08 МБ) |
-| Числа в доках | `py -3.12 tools/ci/doc_numbers.py` | `DOC-NUMBERS PASSED` (428 тестов; 43 гейта = 38 required + 5 в карантине) |
-| Полный свип | `bash tools/ci/run_gates.sh --all` | `GATES PASSED (every required gate is green; 1 skipped by design - reported above; quarantine reds are reported above)` — `required 37/38 green`, карантин `4 green, 1 red` (S3 — по телефону) |
+| Числа в доках | `py -3.12 tools/ci/doc_numbers.py` | `DOC-NUMBERS PASSED` (428 тестов; 45 гейтов = 38 required + 7 в карантине) |
+| Полный свип (23.10, финальный) | `bash tools/ci/run_gates.sh --all` | `GATES PASSED (every required gate is green; 1 skipped by design - reported above; quarantine reds are reported above)` — `required 37/38 green`, карантин `7 green, 0 red` |
 | VOICE-01 (после починки) | `bash tools/ci/gates/voice01_gate.sh` | `VOICE-01 PASSED (50 проверок)` — из них продуктовая проводка; негатив: без неё `VOICE-01 FAILED` |
+| MOCK-01 (консистентность, 23.10) | `bash tools/ci/gates/mockup_consistency_gate.sh` | `MOCK-01 PASSED (the live frame matches the reference mockup zone by zone; overall ink frame 92.6 % mockup 93.2 % Δ −0.6 п.п.)`; негатив: белый кадр → `FAILED` (48 зон, −100 п.п.) |
+| MOCK-02 (вкус, 23.10) | `bash tools/ci/gates/mockup_taste_gate.sh` | `MOCK-02 PASSED (186 надписей; кегль из шкалы ∪ словаря дизайна; потолок 48)`; негатив: 64 px → `FAILED` |
+| Финальный свип 23.10 | `bash tools/ci/run_gates.sh --all` | `GATES PASSED` — required 37/38 green (RANDY-01 skip by design), **карантин 7 green / 0 red** |
 
 ## 3. Три вещи, которые стоит знать про этот снимок
 
