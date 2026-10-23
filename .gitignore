@@ -52,3 +52,6 @@ design/renders/
 
 # output of design/variants/tools/liveness_probe.py
 liveness/
+
+# рабочие деревья делегатов (создаёт harness, в коммит не идут)
+.worktrees/
