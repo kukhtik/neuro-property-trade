@@ -16,6 +16,12 @@ var cut := "tr"
 var border_bonus := 0
 
 var _skin: SkinManager
+## Кэш геометрии: в кадре ничего не создаётся (задача владельца 23.10). Ключ - размер,
+## скос и толщина рамки; при их неизменности `_draw` только рисует готовые массивы.
+var _geo_key := Vector4.ZERO
+var _geo_valid := false
+var _geo_fill := PackedVector2Array()
+var _geo_outline := PackedVector2Array()
 
 
 func _init() -> void:
@@ -61,21 +67,39 @@ func _draw() -> void:
 	var s := size
 	var ch: float = sk.shape("chamfer", 9.0)
 	ch = clampf(ch, 0.0, minf(s.x, s.y) / 3.0)
-	var pts := _polygon(Vector2.ZERO, s, ch, cut)
-	draw_colored_polygon(pts, sk.color(fill_token, Color.TRANSPARENT))
 	var w := int(sk.shape("line", 1.0)) + border_bonus
+	# ГЕОМЕТРИЯ КЭШИРУЕТСЯ (задача владельца 23.10: в кадре ничего не создаётся).
+	# Раньше каждая перерисовка собирала два массива и Vector2 - то есть мусор на каждую
+	# перерисовку каждой скошенной панели. Теперь геометрия пересобирается только когда
+	# изменились размер, скос или толщина рамки; в кадре остаётся только отрисовка.
+	var key := Vector4(s.x, s.y, ch, float(w))
+	if not _geo_valid or key != _geo_key:
+		_rebuild_geometry(s, ch, w)
+		_geo_key = key
+		_geo_valid = true
+	draw_colored_polygon(_geo_fill, sk.color(fill_token, Color.TRANSPARENT))
 	if w > 0:
-		var inset_px := float(w)
-		var closed := PackedVector2Array()
-		if pts.size() >= 4 and s.x > inset_px * 2.0 and s.y > inset_px * 2.0:
-			for p in pts:
-				closed.append(Vector2(
-					clampf(p.x, inset_px, s.x - inset_px),
-					clampf(p.y, inset_px, s.y - inset_px)))
-		else:
-			closed = pts.duplicate()
-		closed.append(closed[0])
-		draw_polyline(closed, sk.color(border_token, Color.WHITE), float(w), true)
+		draw_polyline(_geo_outline, sk.color(border_token, Color.WHITE), float(w), true)
+
+
+## Пересобирает кэш геометрии. Вызывается только когда размер/скос/рамка изменились.
+func _rebuild_geometry(s: Vector2, ch: float, w: int) -> void:
+	var pts := _polygon(Vector2.ZERO, s, ch, cut)
+	_geo_fill = pts
+	_geo_outline = PackedVector2Array()
+	if w <= 0:
+		return
+	var inset_px := float(w)
+	var closed := PackedVector2Array()
+	if pts.size() >= 4 and s.x > inset_px * 2.0 and s.y > inset_px * 2.0:
+		for p in pts:
+			closed.append(Vector2(
+				clampf(p.x, inset_px, s.x - inset_px),
+				clampf(p.y, inset_px, s.y - inset_px)))
+	else:
+		closed = pts.duplicate()
+	closed.append(closed[0])
+	_geo_outline = closed
 
 
 ## The chamfered rectangle outline, clockwise from the top-left.

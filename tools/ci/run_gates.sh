@@ -225,6 +225,7 @@ GATES=(
 	# ОСТАЁТСЯ: читаемость на телефоне — обязательный гейт STREAM-READ (≥ 12 px
 	# эффективных на кадре 390 px) и п. 3.18 в DoD. ЗАМЕНЯЕТ ОТМЕНЁННОЕ: MOCK-01 и MOCK-02.
 	"S3|sg|quarantine|script|tools/ci/scenario_s3.sh"
+	"ECO-02|sg|quarantine|script|tools/ci/gates/eco02_hotpath_gate.sh"
 )
 
 

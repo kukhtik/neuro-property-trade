@@ -1,0 +1,19 @@
+# ECO-02 - the hot path must not allocate, search the tree, or churn the scene.
+#
+# The number below is the RATCHET: the gate fails when the product's hot path has MORE
+# hot-path violations than this. Lower it when you remove one; never raise it.
+#
+# Baseline measured 23.10: 3 -> 0. What was removed:
+#   * game/ui/components/chamfer_panel.gd - the chamfered outline was rebuilt (two
+#     arrays + N Vector2) on EVERY redraw of EVERY chamfered panel; now the geometry is
+#     cached and rebuilt only when the size, the chamfer or the border width changes.
+#   * game/ui/top_bar.gd - the timer text was formatted (string + array) and the label
+#     was re-set on EVERY frame, 60 times a second for a digit that changes once a
+#     second; now the text is touched only when the shown second changes.
+#
+# Scope: the PRODUCT only. CI tooling (game/tools, game/tests) runs in headless probes,
+# never in a frame of the game, and is not even shipped; measuring it would bury the
+# product's number in noise.
+#
+# Format: a single integer, the allowed number of hot-path violations.
+0

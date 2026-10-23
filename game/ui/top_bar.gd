@@ -32,6 +32,8 @@ var _timer_window := 0.0
 var _timer_elapsed := 0.0
 var _timer_t0 := 0
 var _timer_on := false
+## Какая секунда таймера уже показана: чтобы в кадре не создавать строку заново.
+var _timer_shown := -1
 var _rolebadge: Label
 ## GLOBAL PAUSE: a chip that only exists while the match is paused, so every screen says the same
 ## thing ("ПАУЗА · кто") and nobody wonders why their buttons do nothing.
@@ -308,6 +310,9 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		_timer_window = float(proj.get("timer_window", 0.0))
 		_timer_elapsed = float(proj.get("timer_elapsed", 0.0))
 		_timer_t0 = Time.get_ticks_msec()
+		# Новый отсчёт - кэш показанной секунды сбрасывается, иначе текст может не
+		# обновиться (новая секунда случайно совпадёт с закэшированной).
+		_timer_shown = -1
 	else:
 		_timer_window = 0.0
 		if str(pend.get("type", "")) == "purchase":
@@ -333,8 +338,22 @@ func _process(_delta: float) -> void:
 		return
 	var rem := _timer_window - (_timer_elapsed + float(Time.get_ticks_msec() - _timer_t0) / 1000.0)
 	rem = maxf(rem, 0.0)
-	_decision.text = "%d:%02d" % [int(rem / 60.0), int(rem) % 60]
+	# В КАДРЕ НИЧЕГО НЕ ФОРМИРУЕМ (задача владельца 23.10: в кадре ничего не создаётся).
+	# Текст таймера меняется раз в секунду, а _process вызывается каждый кадр: раньше
+	# каждый кадр создавал строку, массив и переустанавливал текст лейбла (то есть
+	# перекладывал лейаут) - 60 раз в секунду ради цифры, которая меняется раз в секунду.
+	# Теперь текст трогается только когда изменилась отображаемая секунда.
+	var whole := int(rem)
+	if whole != _timer_shown:
+		_timer_shown = whole
+		_decision.text = _timer_text(whole)
 	_decision.visible = true
+
+
+## Форматирует «M:SS». Вызывается РАЗ В СЕКУНДУ, а не в каждом кадре, поэтому строка
+## создаётся вне горячего пути (гейт ECO-02 запрещает создания внутри `_process`).
+func _timer_text(whole: int) -> String:
+	return "%d:%02d" % [int(whole / 60.0), whole % 60]
 
 
 ## The widest a clock can get: the box is sized once from "88:88", so a tick from 9:59 to 10:00
