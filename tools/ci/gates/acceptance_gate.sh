@@ -71,9 +71,21 @@ c_a6() {  # the criteria table: brief item -> where in the code -> what measures
 c_c1() {  # the release-build scenario is a registered gate, so CI checks the artifact
 	grep -q 'scenario_s3' tools/ci/run_gates.sh
 }
-c_c3() {  # the pack ships no test module
+c_c3() {  # the pack ships no test module and no CI probe
+	# Проверка «в паке нет лишнего» (задача владельца 23.10: не нести лишние библиотеки).
+	# Правило жёсткое: в паке не должно быть НИ ОДНОГО файла res://tools/, кроме
+	# продуктового res://tools/replay.gd (CLI воспроизведения — он нужен игроку).
+	# Пробы гейтов (res://tools/gates/) и пробы (voice01/ui_passport/keyboard_only/
+	# hg15_pause) — это тестовый инструментарий, в рантайме игрока они не нужны.
+	# Список имён НЕ выписывается: проверка «любой файл в res://tools/, кроме replay.gd»
+	# не даст новой пробе тихо уехать в поставку.
 	local pck=build/current/web/index.pck
-	[ -f "$pck" ] && [ "$(grep -ac 'res://tests/' "$pck" || true)" = "0" ]
+	[ -f "$pck" ] || return 1
+	[ "$(grep -ac 'res://tests/' "$pck" || true)" = "0" ] || return 1
+	grep -ao 'res://tools/[A-Za-z0-9_./-]*' "$pck" | sort -u | grep -v '^res://tools/replay\.gd' \
+		| grep -q . && return 1
+	# и наоборот: продуктовый replay.gd в паке ОСТАЛСЯ (обрезка не должна съесть работу игры)
+	[ "$(grep -ac 'res://tools/replay.gd' "$pck" || true)" != "0" ]
 }
 c_c4() {  # the pause promise has a gate
 	grep -q '"HG-15' tools/ci/run_gates.sh
