@@ -299,11 +299,16 @@ func sync(proj: Dictionary, seats: Array) -> void:
 	for i in _steps.get_child_count():
 		(_steps.get_child(i) as ColorRect).color = UiTheme.COL().accent if i <= step / 3 else UiTheme.COL().border
 	var pend: Dictionary = proj.get("pending", {})
-	_decision.text = ""
 	# HG-13: the decision zone carries the TIME while a seat waits - the projection has carried
 	# timer_window/elapsed/active all along (seat_manager.emit_spectator); nobody painted them.
 	# A projection that does not carry the clock at all must not ERASE it: the two views used to
 	# disagree (one had the timer, one did not) and the label flickered off/on four times a second.
+	#
+	# ПОРЯДОК ВАЖЕН: сначала решаем, покажет ли зона часы, и только потом чистим надпись.
+	# Раньше надпись чистилась ВСЕГДА, а часы рисовались в следующем `_process` - между
+	# этими двумя событиями надпись была ПУСТОЙ на один кадр. Это поймал гейт HG-13
+	# («текст таймера мигал»), и это была регрессия моей же оптимизации. Теперь, когда часы
+	# идут, надпись заполняется СРАЗУ, и пустого кадра не бывает вовсе.
 	if proj.has("timer_active"):
 		_timer_on = bool(proj.get("timer_active", false)) and float(proj.get("timer_window", 0.0)) > 0.0
 	if _timer_on:
@@ -313,8 +318,12 @@ func sync(proj: Dictionary, seats: Array) -> void:
 		# Новый отсчёт - кэш показанной секунды сбрасывается, иначе текст может не
 		# обновиться (новая секунда случайно совпадёт с закэшированной).
 		_timer_shown = -1
+		var whole := int(maxf(_timer_window - _timer_elapsed, 0.0))
+		_timer_shown = whole
+		_decision.text = _timer_text(whole)
 	else:
 		_timer_window = 0.0
+		_decision.text = ""
 		if str(pend.get("type", "")) == "purchase":
 			_decision.text = I18n.t("top.decision")
 	_decision.visible = _timer_on or _decision.text != ""
