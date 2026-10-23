@@ -155,7 +155,13 @@ func _build_centre() -> void:
 	add_child(_card)
 	var cv := UiTheme.vbox(4)
 	_card.add_child(cv)
-	# the design's `.pname` (concept-a-composition.html: 15px) - the tile card's name in the centre.
+	# 15 px — размер ИМЕНИ в дизайне (`concept-a-composition.html`: `.pname{font-size:15px}`).
+	# Уточнение (23.10): `.pname` в макете — это имя ИГРОКА в полосе мест, а не имя клетки;
+	# карточки клетки в эталоне вообще нет (в центре макета `.deck` — шапка, герой, кубики,
+	# действия). Значит кегль этой карточки решает не макет, а роли скина, а 15 — это размер
+	# имени в дизайне, и имя клетки столько же стоит, сколько имя игрока.
+	# Фиксированный размер (не доля клетки) — как сумма кубиков: `UiTheme.label` ставит px(15),
+	# а пересчёт окна делает `rescale_tree`.
 	_card_name = UiTheme.label("", 15, UiTheme.COL().text)
 	_card_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cv.add_child(_card_name)
@@ -576,8 +582,12 @@ func _place_centre() -> void:
 	# time; UiTheme.rescale_tree re-applies it on a window change. A cell ratio here would shrink the
 	# hero number back to ~23 (what it drew before) and stop matching the design.
 	_banner.add_theme_font_size_override("font_size", maxi(sk.size("xs", 11), int(_cell * 0.20)))
-	_card_name.add_theme_font_size_override("font_size", maxi(sk.size("s", 13), int(_cell * 0.18)))
+	# Цена клетки - по доле клетки (как и было).
 	_card_price.add_theme_font_size_override("font_size", maxi(sk.size("xs", 11), int(_cell * 0.16)))
+	# Имя карточки клетки - ФИКСИРОВАННЫЙ размер (15 px, размер имени в дизайне), как сумма
+	# кубиков: переопределение по доле клетки возвращало его к 13, то есть код говорил одно,
+	# а на экране рисовалось другое. Размер меняется вместе с окном через px() и
+	# `rescale_tree`, а не дроблением от клетки.
 
 
 ## Watermark shows in the cold state only (proto renderCenter).
